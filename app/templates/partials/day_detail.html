@@ -1,0 +1,98 @@
+<section>
+  <h3>{{ day }} の詳細</h3>
+
+  {% if data["在宅"]|length == 0 and data["出社"]|length == 0 and data["出張"]|length == 0 %}
+  <div class="no-data-message">
+    この日のデータはありません
+  </div>
+  {% else %}
+  <!-- 勤務場所データと円グラフ、社員リスト -->
+  <div class="day-detail-container">
+    <!-- 左側：グラフエリア -->
+    <div class="day-chart-area">
+      <div class="location-chart-container">
+        <canvas id="location-pie-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- 右側：社員リストエリア -->
+    <div class="day-user-list-area">
+      <div class="user-lists">
+        <div class="user-category">
+          <h4>在宅</h4>
+          <ul>
+            {% for user in data["在宅"] %}
+            <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
+            {% endfor %}
+          </ul>
+          <div class="user-count">合計: {{ data["在宅"]|length }}名</div>
+        </div>
+
+        <div class="user-category">
+          <h4>出社</h4>
+          <ul>
+            {% for user in data["出社"] %}
+            <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
+            {% endfor %}
+          </ul>
+          <div class="user-count">合計: {{ data["出社"]|length }}名</div>
+        </div>
+
+        <div class="user-category">
+          <h4>出張</h4>
+          <ul>
+            {% for user in data["出張"] %}
+            <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
+            {% endfor %}
+          </ul>
+          <div class="user-count">合計: {{ data["出張"]|length }}名</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+<script>
+  // パイチャートを描画
+  document.addEventListener('htmx:afterSwap', function () {
+    const locationChart = document.getElementById('location-pie-chart');
+    if (locationChart) {
+      // データからパイチャートを作成
+      const homeCount = parseInt('{{ data["在宅"]|length }}' || '0');
+      const officeCount = parseInt('{{ data["出社"]|length }}' || '0');
+      const tripCount = parseInt('{{ data["出張"]|length }}' || '0');
+
+      // データがある場合のみグラフを表示
+      if (homeCount > 0 || officeCount > 0 || tripCount > 0) {
+        new Chart(locationChart, {
+          type: 'pie',
+          data: {
+            labels: ['在宅', '出社', '出張'],
+            datasets: [{
+              data: [homeCount, officeCount, tripCount],
+              backgroundColor: [
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)'
+              ]
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'bottom'
+              },
+              tooltip: {
+                enabled: true
+              }
+            }
+          }
+        });
+      }
+    }
+  });
+</script>

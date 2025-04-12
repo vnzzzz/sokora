@@ -1,0 +1,8 @@
+services:
+  sokora:
+    container_name: sokora
+    build: .
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./data/work_entries.csv:/app/work_entries.csv

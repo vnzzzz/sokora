@@ -1,0 +1,149 @@
+body {
+  margin: 16px;
+  font-family: sans-serif;
+}
+
+table {
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+th,
+td {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+}
+
+tr:hover {
+  background-color: #f0f8ff;
+  cursor: pointer;
+}
+
+button {
+  margin-right: 6px;
+}
+
+.calendar {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.calendar th {
+  background-color: #f2f2f2;
+  text-align: center;
+}
+
+.calendar-day {
+  height: 80px;
+  vertical-align: top;
+  padding: 4px;
+}
+
+.empty-day {
+  background-color: #f9f9f9;
+}
+
+.day-number {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.day-stats {
+  font-size: 0.75em;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* 日曜日のスタイル */
+.calendar tr td:first-child {
+  background-color: #fff0f0;
+}
+
+/* 土曜日のスタイル */
+.calendar tr td:last-child {
+  background-color: #f0f0ff;
+}
+
+.chart-container {
+  display: flex;
+  justify-content: center;
+  margin: 5px 0;
+  height: 50px;
+}
+
+.day-chart {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.location-chart-container {
+  width: 220px;
+  height: 220px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.user-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 0;
+  width: 100%;
+}
+
+.user-category {
+  width: 100%;
+}
+
+.user-category h4 {
+  margin-top: 0;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+.location-stats {
+  text-align: center;
+  margin: 10px 0;
+  font-size: 1.1em;
+}
+
+.stat-item {
+  display: inline-block;
+  margin: 0 10px;
+  padding: 5px 10px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  border-left: 3px solid #3498db;
+}
+
+.day-detail-container {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.day-chart-area {
+  width: 220px;
+}
+
+.day-user-list-area {
+  flex: 1;
+}
+
+.no-data-message {
+  text-align: center;
+  padding: 50px 0;
+  color: #888;
+  font-style: italic;
+  font-size: 1.2em;
+}
+
+.user-count {
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #555;
+  text-align: right;
+  border-top: 1px dashed #ddd;
+  padding-top: 5px;
+  font-weight: bold;
+}

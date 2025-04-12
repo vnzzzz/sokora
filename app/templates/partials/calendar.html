@@ -1,0 +1,42 @@
+<section>
+  <h2>{{ month }}</h2>
+  <table border="1" cellpadding="6" class="calendar">
+    <thead>
+      <tr>
+        <th>日</th>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th>土</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for week in calendar.weeks %}
+      <tr>
+        {% for day in week %}
+        {% if day %}
+        <td hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" class="calendar-day">
+          <div class="day-number">{{ day.day }}</div>
+          <div class="day-stats">
+            <div>在宅: {{ day.home }}</div>
+            <div>出社: {{ day.office }}</div>
+            <div>出張: {{ day.trip }}</div>
+          </div>
+        </td>
+        {% else %}
+        <td class="empty-day"></td>
+        {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top: 8px;">
+    <button hx-get="/api/calendar?month={{ calendar.prev_month }}" hx-target="#calendar-area">＜前月</button>
+    <button hx-get="/api/calendar" hx-target="#calendar-area">今月</button>
+    <button hx-get="/api/calendar?month={{ calendar.next_month }}" hx-target="#calendar-area">翌月＞</button>
+  </div>
+</section>
