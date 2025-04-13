@@ -1,26 +1,26 @@
 <section class="p-2">
   <h2 class="text-xl font-bold mb-4 text-center">{{ month }}</h2>
   <div class="overflow-x-auto">
-    <table class="table table-sm table-zebra">
+    <table class="table table-xs table-zebra w-full">
       <thead>
         <tr>
-          <th class="bg-base-200 text-center sticky left-0 z-10">勤務場所</th>
+          <th class="bg-base-200 text-center sticky left-0 z-10 w-16">勤務場所</th>
           {% for week in calendar.weeks %}
           {% for day in week %}
           {% if day %}
           <th
-            class="bg-base-200 text-center px-1 py-2 {% if loop.index0 == 0 %}bg-red-50{% elif loop.index0 == 6 %}bg-blue-50{% endif %}"
+            class="bg-base-200 text-center p-1 w-10 {% if loop.index0 == 0 %}bg-opacity-90 bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-opacity-90 bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
             hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
-            <div class="font-bold">{{ day.day }}</div>
-            <div class="text-xs text-gray-500">
+            <div class="font-bold text-sm">{{ day.day }}</div>
+            <div class="text-xs opacity-70">
               {% set weekday_index = loop.index0 %}
-              {% if weekday_index == 0 %}<span class="text-red-500">日</span>
+              {% if weekday_index == 0 %}日
               {% elif weekday_index == 1 %}月
               {% elif weekday_index == 2 %}火
               {% elif weekday_index == 3 %}水
               {% elif weekday_index == 4 %}木
               {% elif weekday_index == 5 %}金
-              {% elif weekday_index == 6 %}<span class="text-blue-500">土</span>
+              {% elif weekday_index == 6 %}土
               {% endif %}
             </div>
           </th>
@@ -36,9 +36,9 @@
           {% for day in week %}
           {% if day %}
           <td
-            class="text-center hover:bg-base-300 cursor-pointer {% if loop.index0 == 0 %}bg-red-50{% elif loop.index0 == 6 %}bg-blue-50{% endif %}"
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if loop.index0 == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
             hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
-            <span class="badge badge-success badge-sm">{{ day.home }}</span>
+            <span class="text-success">{{ day.home }}</span>
           </td>
           {% endif %}
           {% endfor %}
@@ -50,9 +50,9 @@
           {% for day in week %}
           {% if day %}
           <td
-            class="text-center hover:bg-base-300 cursor-pointer {% if loop.index0 == 0 %}bg-red-50{% elif loop.index0 == 6 %}bg-blue-50{% endif %}"
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if loop.index0 == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
             hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
-            <span class="badge badge-primary badge-sm">{{ day.office }}</span>
+            <span class="text-primary">{{ day.office }}</span>
           </td>
           {% endif %}
           {% endfor %}
@@ -64,9 +64,9 @@
           {% for day in week %}
           {% if day %}
           <td
-            class="text-center hover:bg-base-300 cursor-pointer {% if loop.index0 == 0 %}bg-red-50{% elif loop.index0 == 6 %}bg-blue-50{% endif %}"
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if loop.index0 == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
             hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
-            <span class="badge badge-warning badge-sm">{{ day.trip }}</span>
+            <span class="text-warning">{{ day.trip }}</span>
           </td>
           {% endif %}
           {% endfor %}

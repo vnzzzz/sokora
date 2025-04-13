@@ -9,8 +9,8 @@
   <!-- 勤務場所データと円グラフ、社員リスト -->
   <div class="flex flex-col md:flex-row gap-6">
     <!-- 左側：グラフエリア -->
-    <div class="flex justify-center">
-      <div class="w-56 h-56">
+    <div class="flex justify-center items-center">
+      <div class="w-48 h-48">
         <canvas id="location-pie-chart"></canvas>
       </div>
     </div>
@@ -18,9 +18,12 @@
     <!-- 右側：社員リストエリア -->
     <div class="flex-1">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="card bg-base-100 shadow-sm">
+        <div class="card bg-base-100 shadow">
           <div class="card-body p-4">
-            <h4 class="card-title text-base">在宅</h4>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-success"></span>
+              <h4 class="card-title text-base">在宅</h4>
+            </div>
             <ul class="menu menu-sm p-0">
               {% for user in data["在宅"] %}
               <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
@@ -31,9 +34,12 @@
           </div>
         </div>
 
-        <div class="card bg-base-100 shadow-sm">
+        <div class="card bg-base-100 shadow">
           <div class="card-body p-4">
-            <h4 class="card-title text-base">出社</h4>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-primary"></span>
+              <h4 class="card-title text-base">出社</h4>
+            </div>
             <ul class="menu menu-sm p-0">
               {% for user in data["出社"] %}
               <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
@@ -44,9 +50,12 @@
           </div>
         </div>
 
-        <div class="card bg-base-100 shadow-sm">
+        <div class="card bg-base-100 shadow">
           <div class="card-body p-4">
-            <h4 class="card-title text-base">出張</h4>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-warning"></span>
+              <h4 class="card-title text-base">出張</h4>
+            </div>
             <ul class="menu menu-sm p-0">
               {% for user in data["出張"] %}
               <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
