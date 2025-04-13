@@ -89,15 +89,21 @@
                                 <input type="hidden" name="date" value="{{ day.date }}">
 
                                 <div class="form-control">
-                                  <select name="location" class="select select-bordered w-full">
-                                    <option value="">未設定</option>
-                                    {% for location_type in location_types %}
-                                    <option value="{{ location_type }}" {% if day.date in user_locations and
-                                      user_locations[day.date]==location_type %}selected{% endif %}>
-                                      {{ location_type }}
-                                    </option>
-                                    {% endfor %}
-                                  </select>
+                                  <div class="relative">
+                                    <input type="text" name="location" list="location-options-{{ day.date }}"
+                                      class="input input-bordered w-full location-input" placeholder="勤務場所を選択または入力"
+                                      value="{% if day.date in user_locations %}{{ user_locations[day.date] }}{% endif %}"
+                                      aria-label="勤務場所" aria-required="true" required>
+                                    <datalist id="location-options-{{ day.date }}">
+                                      <option value="">未設定</option>
+                                      {% for location_type in location_types %}
+                                      <option value="{{ location_type }}">{{ location_type }}</option>
+                                      {% endfor %}
+                                    </datalist>
+                                  </div>
+                                  <p class="text-xs text-base-content/70 mt-1">既存の勤務場所から選択するか、新しい勤務場所を入力してください</p>
+                                  <div class="error-message text-error text-sm mt-1" style="display: none;">
+                                    勤務場所を入力してください</div>
                                 </div>
 
                                 <div class="flex justify-end space-x-2">
@@ -135,15 +141,20 @@
                                 <input type="hidden" name="date" value="{{ day.date }}">
 
                                 <div class="form-control">
-                                  <select name="location" class="select select-bordered w-full">
-                                    <option value="">未設定</option>
-                                    {% for location_type in location_types %}
-                                    <option value="{{ location_type }}" {% if day.date in user_locations and
-                                      user_locations[day.date]==location_type %}selected{% endif %}>
-                                      {{ location_type }}
-                                    </option>
-                                    {% endfor %}
-                                  </select>
+                                  <div class="relative">
+                                    <input type="text" name="location" list="location-options-new-{{ day.date }}"
+                                      class="input input-bordered w-full location-input" placeholder="勤務場所を選択または入力"
+                                      value="" aria-label="勤務場所" aria-required="true" required>
+                                    <datalist id="location-options-new-{{ day.date }}">
+                                      <option value="">未設定</option>
+                                      {% for location_type in location_types %}
+                                      <option value="{{ location_type }}">{{ location_type }}</option>
+                                      {% endfor %}
+                                    </datalist>
+                                  </div>
+                                  <p class="text-xs text-base-content/70 mt-1">既存の勤務場所から選択するか、新しい勤務場所を入力してください</p>
+                                  <div class="error-message text-error text-sm mt-1" style="display: none;">
+                                    勤務場所を入力してください</div>
                                 </div>
 
                                 <div class="flex justify-end space-x-2">
@@ -197,11 +208,79 @@
     .has-data {
       background-color: rgba(var(--color-primary) / 0.05);
     }
+
+    /* 勤務場所入力のスタイル */
+    .location-input:focus {
+      border-color: hsl(var(--p));
+      box-shadow: 0 0 0 1px hsla(var(--p) / 30%);
+    }
+
+    .location-input.error {
+      border-color: hsl(var(--er));
+    }
   </style>
 
   <!-- JavaScript -->
   <script>
-    // ここにJavaScriptコードを追加（必要な場合）
+    // 勤務場所入力のバリデーション
+    document.addEventListener('DOMContentLoaded', function () {
+      // すべての勤務場所フォームを取得
+      const forms = document.querySelectorAll('form[action="/api/attendance/update"]');
+
+      forms.forEach(form => {
+        const locationInput = form.querySelector('input[name="location"]');
+        const errorMessage = form.querySelector('.error-message');
+
+        // エラーメッセージを表示する関数
+        const showError = () => {
+          if (errorMessage) {
+            errorMessage.style.display = 'block';
+            locationInput.classList.add('error');
+          }
+        };
+
+        // エラーメッセージを非表示にする関数
+        const hideError = () => {
+          if (errorMessage) {
+            errorMessage.style.display = 'none';
+            locationInput.classList.remove('error');
+          }
+        };
+
+        form.addEventListener('submit', function (e) {
+          // 入力値の前後の空白を削除
+          locationInput.value = locationInput.value.trim();
+
+          // 空白チェック
+          if (locationInput.value === '') {
+            e.preventDefault();
+            showError();
+            locationInput.focus();
+          } else {
+            hideError();
+          }
+        });
+
+        if (locationInput) {
+          // 入力時にエラーを非表示
+          locationInput.addEventListener('input', function () {
+            if (this.value.trim() !== '') {
+              hideError();
+            }
+          });
+
+          // フォーカスが外れたときに空白を削除
+          locationInput.addEventListener('blur', function () {
+            this.value = this.value.trim();
+            if (this.value === '') {
+              showError();
+            } else {
+              hideError();
+            }
+          });
+        }
+      });
+    });
   </script>
 </body>
 
