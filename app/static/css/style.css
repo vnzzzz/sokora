@@ -78,6 +78,107 @@ button:hover {
   margin-top: 2px;
 }
 
+/* カレンダーマトリックス新スタイル */
+.calendar-matrix {
+  width: 100%;
+  overflow-x: auto;
+  display: block;
+  margin-bottom: 16px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.calendar-matrix table {
+  border-collapse: collapse;
+  width: auto;
+  margin: 0 auto;
+}
+
+.calendar-matrix thead,
+.calendar-matrix tbody {
+  display: table;
+  width: 100%;
+}
+
+.location-header {
+  width: 70px;
+  background-color: #f2f2f2;
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.location-type {
+  width: 70px;
+  background-color: #f2f2f2;
+  font-weight: bold;
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.date-header {
+  min-width: 22px;
+  width: 22px;
+  background-color: #f2f2f2;
+  text-align: center;
+  cursor: pointer;
+  padding: 3px 1px;
+  font-size: 0.9em;
+}
+
+.date-header:hover {
+  background-color: #e8e8e8;
+}
+
+.weekday {
+  font-size: 0.65em;
+  color: #666;
+}
+
+.day-cell {
+  text-align: center;
+  min-width: 22px;
+  width: 22px;
+  cursor: pointer;
+  padding: 3px 1px;
+}
+
+.day-cell:hover {
+  background-color: #f0f8ff;
+}
+
+.empty-cell,
+.empty-date {
+  background-color: #f9f9f9;
+  width: 22px;
+  min-width: 22px;
+}
+
+/* 曜日別のスタイル（マトリックス用） */
+.date-header:nth-child(7n + 2) {
+  /* 日曜日 */
+  background-color: #fff0f0;
+}
+
+.date-header:nth-child(7n + 8) {
+  /* 土曜日 */
+  background-color: #f0f0ff;
+}
+
+.day-cell:nth-child(7n + 2) {
+  /* 日曜日 */
+  background-color: #fff8f8;
+}
+
+.day-cell:nth-child(7n + 8) {
+  /* 土曜日 */
+  background-color: #f8f8ff;
+}
+
 /* 曜日別のスタイル */
 .calendar tr td:first-child {
   background-color: #fff0f0; /* 日曜日 */

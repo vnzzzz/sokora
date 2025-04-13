@@ -1,38 +1,66 @@
 <section>
   <h2>{{ month }}</h2>
-  <table border="1" cellpadding="6" class="calendar">
-    <thead>
-      <tr>
-        <th>日</th>
-        <th>月</th>
-        <th>火</th>
-        <th>水</th>
-        <th>木</th>
-        <th>金</th>
-        <th>土</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for week in calendar.weeks %}
-      <tr>
-        {% for day in week %}
-        {% if day %}
-        <td hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" class="calendar-day">
-          <div class="day-number">{{ day.day }}</div>
-          <div class="day-stats">
-            <div>在宅: {{ day.home }}</div>
-            <div>出社: {{ day.office }}</div>
-            <div>出張: {{ day.trip }}</div>
-          </div>
-        </td>
-        {% else %}
-        <td class="empty-day"></td>
-        {% endif %}
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="calendar-matrix">
+    <table border="1" cellpadding="4" cellspacing="0">
+      <thead>
+        <tr>
+          <th class="location-header">勤務場所</th>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <th class="date-header" hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
+            {{ day.day }}
+            <div class="weekday">
+              {% set weekday_index = loop.index0 %}
+              {% if weekday_index == 0 %}日
+              {% elif weekday_index == 1 %}月
+              {% elif weekday_index == 2 %}火
+              {% elif weekday_index == 3 %}水
+              {% elif weekday_index == 4 %}木
+              {% elif weekday_index == 5 %}金
+              {% elif weekday_index == 6 %}土
+              {% endif %}
+            </div>
+          </th>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="location-type">在宅</td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <td class="day-cell" hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">{{ day.home }}</td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="location-type">出社</td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <td class="day-cell" hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">{{ day.office }}</td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="location-type">出張</td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <td class="day-cell" hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">{{ day.trip }}</td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <div style="margin-top: 8px;">
     <button hx-get="/api/calendar?month={{ calendar.prev_month }}" hx-target="#calendar-area">＜前月</button>
