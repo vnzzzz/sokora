@@ -104,6 +104,7 @@ def edit_user_attendance(
         "location_types": location_types,
         "prev_month": prev_month_str,
         "next_month": next_month_str,
+        "month_name": calendar_data["month_name"],
     }
 
     return templates.TemplateResponse("attendance_edit.html", context)
