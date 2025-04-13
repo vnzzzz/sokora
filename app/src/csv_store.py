@@ -129,6 +129,164 @@ def get_entries_by_date() -> DefaultDict[str, Dict[str, str]]:
     return date_entries
 
 
+def get_all_users() -> List[str]:
+    """CSVファイルからすべてのユーザー名を取得する
+
+    Returns:
+        List[str]: ユーザー名のリスト
+    """
+    data = read_all_entries()
+    return sorted(list(data.keys()))
+
+
+def add_user(username: str) -> bool:
+    """CSVファイルに新しいユーザーを追加する
+
+    Args:
+        username: 追加するユーザー名
+
+    Returns:
+        bool: 追加が成功したかどうか
+    """
+    if not username.strip():
+        return False
+
+    csv_path = get_csv_file_path()
+
+    try:
+        # 現在のデータを読み込む
+        data = read_all_entries()
+
+        # すでに存在する場合は追加しない
+        if username in data:
+            return False
+
+        # ファイルを読み込み、ヘッダーを取得
+        headers = []
+        rows = []
+
+        if csv_path.exists():
+            with csv_path.open("r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                headers = next(reader)
+                rows = list(reader)
+        else:
+            # ファイルが存在しない場合は新規作成
+            headers = ["user_name"]
+
+        # 新しいユーザーを追加
+        new_row = [username] + [""] * (len(headers) - 1)
+        rows.append(new_row)
+
+        # ファイルに書き込む
+        with csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            writer.writerows(rows)
+
+        return True
+    except Exception as e:
+        raise IOError(f"ユーザーの追加に失敗しました: {str(e)}")
+
+
+def delete_user(username: str) -> bool:
+    """CSVファイルからユーザーを削除する
+
+    Args:
+        username: 削除するユーザー名
+
+    Returns:
+        bool: 削除が成功したかどうか
+    """
+    csv_path = get_csv_file_path()
+
+    if not csv_path.exists():
+        return False
+
+    try:
+        # ファイルを読み込む
+        headers = []
+        rows = []
+
+        with csv_path.open("r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            rows = [row for row in reader if row[0] != username]
+
+        # 行が削除されなかった場合（該当するユーザーがいない場合）
+        if len(rows) == sum(1 for _ in open(csv_path, encoding="utf-8")) - 1:
+            return False
+
+        # ファイルに書き込む
+        with csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            writer.writerows(rows)
+
+        return True
+    except Exception as e:
+        raise IOError(f"ユーザーの削除に失敗しました: {str(e)}")
+
+
+def update_user_entry(username: str, date: str, location: str) -> bool:
+    """ユーザーの特定の日付の勤務場所を更新する
+
+    Args:
+        username: ユーザー名
+        date: YYYY-MM-DD形式の日付
+        location: 勤務場所
+
+    Returns:
+        bool: 更新が成功したかどうか
+    """
+    csv_path = get_csv_file_path()
+
+    if not csv_path.exists():
+        return False
+
+    try:
+        # ファイルを読み込む
+        headers = []
+        rows = []
+
+        with csv_path.open("r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            rows = list(reader)
+
+        # 日付が存在するかチェック
+        if date not in headers[1:]:
+            # 日付が存在しない場合は追加
+            headers.append(date)
+            for row in rows:
+                row.append("")
+
+        # 日付のインデックスを取得
+        date_index = headers.index(date)
+
+        # ユーザーが存在するかチェック
+        user_exists = False
+        for row in rows:
+            if row[0] == username:
+                user_exists = True
+                row[date_index] = location
+                break
+
+        # ユーザーが存在しない場合は何もしない
+        if not user_exists:
+            return False
+
+        # ファイルに書き込む
+        with csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)
+            writer.writerows(rows)
+
+        return True
+    except Exception as e:
+        raise IOError(f"エントリーの更新に失敗しました: {str(e)}")
+
+
 def parse_month(month: str) -> Tuple[int, int]:
     """YYYY-MM形式の文字列を年と月に分解する
 

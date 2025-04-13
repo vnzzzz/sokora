@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja" x-data class="bg-base-100">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ username }} の勤怠入力 - Sokora</title>
+
+  <!-- スタイルとJavaScript -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/htmx.min.js"></script>
+
+  <!-- Tailwind設定 -->
+  <script>
+    tailwind.config = {
+      theme: { extend: {} },
+      daisyui: { themes: ["light", "dark"] }
+    }
+  </script>
+
+  <!-- テーマ切り替えボタンのスタイル -->
+  <style>
+    .theme-controller {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 100;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-base-100">
+  <!-- テーマ切り替えボタン -->
+  <div class="theme-controller">
+    <label class="swap swap-rotate btn btn-circle btn-sm">
+      <input type="checkbox" data-toggle-theme="light,dark" data-act-class="swap-active" />
+      <svg class="swap-on fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path
+          d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" />
+      </svg>
+      <svg class="swap-off fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path
+          d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
+      </svg>
+    </label>
+  </div>
+
+  <!-- ヘッダー -->
+  <header class="navbar bg-base-200 shadow-sm px-4 py-2">
+    <div class="navbar-start">
+      <a href="/" class="text-xl font-bold">Sokora</a>
+    </div>
+    <div class="navbar-end space-x-2">
+      <a href="/attendance" class="btn btn-sm btn-accent">社員一覧へ戻る</a>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="container mx-auto p-4 space-y-6">
+    <div class="card bg-base-200 shadow-sm p-4">
+      <div class="flex items-center gap-2 mb-4">
+        <h3 class="text-lg font-bold">{{ username }} の勤怠入力</h3>
+      </div>
+
+      <div class="mb-4">
+        <p class="text-sm opacity-70">日付をクリックして勤務場所を設定してください。</p>
+      </div>
+
+      <!-- カレンダー形式の表示 -->
+      <div class="overflow-x-auto">
+        <!-- 曜日ヘッダー -->
+        <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
+          {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+          {% for day in weekdays %}
+          <div class="p-1">{{ day }}</div>
+          {% endfor %}
+        </div>
+
+        <!-- カレンダーグリッド -->
+        <div class="grid grid-cols-7 gap-1">
+          {% for week in calendar_data %}
+          {% for day in week %}
+          {% if day.date %}
+          {% set has_data = day.date in user_dates %}
+          {% set location = user_locations[day.date] if has_data else "" %}
+          {% set style_class = location_styles[location] if location in location_styles else "" %}
+
+          <div x-data="{ showModal: false, date: '{{ day.date }}', currentLocation: '{{ location }}' }" class="p-1 border rounded min-h-12 
+                 {% if has_data %}{{ style_class.split(' ')[0] }}{% endif %}
+                 text-center cursor-pointer
+                 {% if day.is_today %}border-accent{% endif %}" @click="showModal = true">
+            <div class="text-sm font-bold">{{ day.day }}</div>
+            {% if has_data %}
+            <div class="text-xs mt-1">
+              <span class="{{ style_class.split(' ')[1] if style_class else '' }}">{{ location }}</span>
+            </div>
+            {% endif %}
+
+            <!-- 勤務場所設定モーダル -->
+            <div x-show="showModal" style="display:none;"
+              class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+              @click.away="showModal = false">
+              <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full" @click.stop>
+                <h3 class="font-bold text-lg mb-4">{{ username }} - <span x-text="date"></span>の勤務場所設定</h3>
+                <form action="/api/attendance/update" method="post" class="space-y-4">
+                  <input type="hidden" name="username" value="{{ username }}">
+                  <input type="hidden" name="date" x-bind:value="date">
+
+                  <div class="form-control">
+                    <label class="label">
+                      <span class="label-text">勤務場所</span>
+                    </label>
+                    <select name="location" class="select select-bordered w-full" x-model="currentLocation">
+                      <option value="">-- 選択してください --</option>
+                      {% for loc_type in location_types %}
+                      <option value="{{ loc_type }}">{{ loc_type }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+
+                  <div class="flex justify-end space-x-2">
+                    <button type="button" class="btn btn-outline" @click="showModal = false">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="p-1 border rounded bg-base-200/30 min-h-12"></div>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 月移動ボタン -->
+      <div class="flex justify-center mt-4 space-x-2">
+        <a href="/attendance/edit/{{ username }}?month={{ prev_month }}" class="btn btn-sm btn-outline">＜前月</a>
+        <a href="/attendance/edit/{{ username }}" class="btn btn-sm">今月</a>
+        <a href="/attendance/edit/{{ username }}?month={{ next_month }}" class="btn btn-sm btn-outline">翌月＞</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- JavaScript -->
+  <script>
+    // ページ読み込み時の初期化処理
+    document.addEventListener('DOMContentLoaded', function () {
+      // ここに必要な初期化コードを追加
+    });
+  </script>
+</body>
+
+</html>
