@@ -56,7 +56,7 @@
       <h1 class="text-xl font-bold">Sokora</h1>
     </div>
     <div class="navbar-end space-x-2">
-      <button class="btn btn-sm btn-primary" hx-get="/api/csv/export" hx-target="#detail-area">CSVダウンロード</button>
+      <a href="/api/csv/export" class="btn btn-sm btn-primary">CSVダウンロード</a>
       <button class="btn btn-sm btn-secondary" @click="$store.importModal.toggle()">CSVアップロード</button>
     </div>
     <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;"

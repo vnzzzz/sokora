@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -169,11 +169,18 @@ async def import_csv(file: UploadFile = File(...)) -> Dict[str, str]:
 
 
 @app.get("/api/csv/export")
-def export_csv() -> FileResponse:
+def export_csv() -> StreamingResponse:
     """CSVファイルをエクスポートする
 
     Returns:
-        FileResponse: CSVファイルのダウンロードレスポンス
+        StreamingResponse: CSVファイルのダウンロードレスポンス
     """
-    csv_path = Path("work_entries.csv")
-    return FileResponse(csv_path, media_type="text/csv", filename="work_entries.csv")
+    csv_path = Path("data/work_entries.csv")
+
+    def iterfile():
+        with open(csv_path, mode="rb") as file_like:
+            yield from file_like
+
+    response = StreamingResponse(iterfile(), media_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=work_entries.csv"
+    return response
