@@ -13,15 +13,47 @@ def import_csv_data(content: str):
 
 
 def read_all_entries():
+    """新しいCSV形式からデータを読み込む"""
     if not CSV_FILE.exists():
-        return []
+        return {}
+
+    # 新しい形式: {user_name: {date: location}}
+    data = {}
+
     with CSV_FILE.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        return list(reader)
+        reader = csv.reader(f)
+        headers = next(reader)  # 日付がヘッダーに格納されている
+        dates = headers[1:]  # 最初の列はuser_name
+
+        for row in reader:
+            user_name = row[0]
+            user_data = {}
+
+            for i, location in enumerate(row[1:], 1):
+                if location:  # 空欄でない場合のみ登録
+                    date = dates[i - 1]
+                    user_data[date] = location
+
+            data[user_name] = user_data
+
+    return data
+
+
+def get_entries_by_date():
+    """日付ごとのエントリーを取得する"""
+    data = read_all_entries()
+    date_entries = defaultdict(dict)
+
+    # ユーザーごとのデータを日付ごとのデータに変換
+    for user_name, user_data in data.items():
+        for date, location in user_data.items():
+            date_entries[date][user_name] = location
+
+    return date_entries
 
 
 def get_calendar_data(month: str):
-    entries = read_all_entries()
+    date_entries = get_entries_by_date()
     calendar_dict = defaultdict(lambda: {"在宅": 0, "出社": 0, "出張": 0})
 
     # 月データの解析
@@ -31,12 +63,11 @@ def get_calendar_data(month: str):
     cal = calendar.monthcalendar(year, month_num)
 
     # エントリーデータの集計
-    for row in entries:
-        date_str = row["work_date"]
-        if date_str.startswith(month):
-            loc = row["location"]
-            day = int(date_str.split("-")[2])
-            calendar_dict[day][loc] = calendar_dict[day].get(loc, 0) + 1
+    for date, entries in date_entries.items():
+        if date.startswith(month):
+            day = int(date.split("-")[2])
+            for user, location in entries.items():
+                calendar_dict[day][location] = calendar_dict[day].get(location, 0) + 1
 
     # 週ごとにまとめたカレンダーデータを作成
     calendar_weeks = []
@@ -73,17 +104,26 @@ def get_calendar_data(month: str):
 
 
 def get_day_data(day: str):
-    entries = read_all_entries()
+    date_entries = get_entries_by_date()
     detail = {"在宅": [], "出社": [], "出張": []}
-    for row in entries:
-        if row["work_date"] == day:
-            loc = row["location"]
-            detail.setdefault(loc, []).append(row["user_name"])
+
+    if day in date_entries:
+        for user_name, location in date_entries[day].items():
+            detail.setdefault(location, []).append(user_name)
+
     return detail
 
 
 def get_user_data(username: str):
-    entries = read_all_entries()
-    user_entries = [row for row in entries if row["user_name"] == username]
-    user_entries.sort(key=lambda x: x["work_date"])
+    data = read_all_entries()
+
+    if username not in data:
+        return []
+
+    user_entries = []
+    for date, location in sorted(data[username].items()):
+        user_entries.append(
+            {"user_name": username, "work_date": date, "location": location}
+        )
+
     return user_entries
