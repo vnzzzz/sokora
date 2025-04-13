@@ -25,7 +25,6 @@
             <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
             {% endfor %}
           </ul>
-          <div class="user-count">合計: {{ data["在宅"]|length }}名</div>
         </div>
 
         <div class="user-category">
@@ -35,7 +34,6 @@
             <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
             {% endfor %}
           </ul>
-          <div class="user-count">合計: {{ data["出社"]|length }}名</div>
         </div>
 
         <div class="user-category">
@@ -45,7 +43,6 @@
             <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
             {% endfor %}
           </ul>
-          <div class="user-count">合計: {{ data["出張"]|length }}名</div>
         </div>
       </div>
     </div>

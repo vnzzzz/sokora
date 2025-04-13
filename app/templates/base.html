@@ -8,6 +8,7 @@
   <script src="/static/js/alpine.min.js" defer></script>
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 
@@ -63,7 +64,6 @@
                   <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
                   {% endfor %}
                 </ul>
-                <div class="user-count">合計: {{ default_data["在宅"]|length }}名</div>
               </div>
 
               <div class="user-category">
@@ -73,7 +73,6 @@
                   <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
                   {% endfor %}
                 </ul>
-                <div class="user-count">合計: {{ default_data["出社"]|length }}名</div>
               </div>
 
               <div class="user-category">
@@ -83,7 +82,6 @@
                   <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
                   {% endfor %}
                 </ul>
-                <div class="user-count">合計: {{ default_data["出張"]|length }}名</div>
               </div>
             </div>
           </div>
@@ -104,6 +102,9 @@
         }
       });
     });
+
+    // Chart.jsプラグイン登録
+    Chart.register(ChartDataLabels);
 
     // Chart.jsヘルパー関数
     const chartColors = [
@@ -138,11 +139,23 @@
             maintainAspectRatio: true,
             plugins: {
               legend: {
-                display: showLegend,
-                position: 'bottom'
+                display: false
               },
               tooltip: {
                 enabled: true
+              },
+              datalabels: {
+                formatter: (value, ctx) => {
+                  const label = ctx.chart.data.labels[ctx.dataIndex];
+                  return `${label}\n${value}名`;
+                },
+                color: '#fff',
+                font: {
+                  weight: 'bold',
+                  size: 14
+                },
+                align: 'center',
+                anchor: 'center'
               }
             }
           }
@@ -161,15 +174,12 @@
       if (event.detail.target.id === 'detail-area') {
         const locationChart = document.getElementById('location-pie-chart');
         if (locationChart) {
-          // データを取得
-          const homeCountEl = document.querySelector('.user-category:nth-child(1) .user-count');
-          const officeCountEl = document.querySelector('.user-category:nth-child(2) .user-count');
-          const tripCountEl = document.querySelector('.user-category:nth-child(3) .user-count');
-
-          if (homeCountEl && officeCountEl && tripCountEl) {
-            const homeCount = parseInt(homeCountEl.textContent.match(/\d+/) || '0');
-            const officeCount = parseInt(officeCountEl.textContent.match(/\d+/) || '0');
-            const tripCount = parseInt(tripCountEl.textContent.match(/\d+/) || '0');
+          // データを直接取得
+          const containers = document.querySelectorAll('.user-category');
+          if (containers.length >= 3) {
+            const homeCount = containers[0].querySelectorAll('li').length;
+            const officeCount = containers[1].querySelectorAll('li').length;
+            const tripCount = containers[2].querySelectorAll('li').length;
 
             createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
           }
