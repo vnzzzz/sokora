@@ -13,8 +13,9 @@
           "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 else
           "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else ""
           ) %}
-          <th class="bg-base-200 text-center p-1 w-10 {% if is_weekend %}{{ weekend_class }}{% endif %}"
-            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
+          <th class="bg-base-200 text-center p-1 w-10 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" data-date="{{ day.date }}"
+            onclick="highlightSelectedDate('{{ day.date }}')">
             <div class="font-bold text-sm">{{ day.day }}</div>
             <div class="text-xs opacity-70">
               {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
@@ -28,13 +29,7 @@
       </thead>
       <tbody>
         <!-- 勤務場所ごとの行 -->
-        {% set locations = [
-        {"name": "在宅", "color": "text-success", "key": "home"},
-        {"name": "出社", "color": "text-primary", "key": "office"},
-        {"name": "出張", "color": "text-warning", "key": "trip"}
-        ] %}
-
-        {% for location in locations %}
+        {% for location in calendar.locations %}
         <tr>
           <td class="bg-base-200 font-medium text-center sticky left-0 z-10">{{ location.name }}</td>
           {% for week in calendar.weeks %}
@@ -45,9 +40,11 @@
           "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 else
           "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else ""
           ) %}
-          <td class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %}"
-            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
-            <span class="{{ location.color }}">{{ day[location.key] }}</span>
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" data-date="{{ day.date }}"
+            onclick="highlightSelectedDate('{{ day.date }}')">
+            <span class="{{ location.color }}">{{ day[location.key] if location.key in day else 0 }}</span>
           </td>
           {% endif %}
           {% endfor %}
@@ -65,4 +62,63 @@
     <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.next_month }}"
       hx-target="#calendar-area">翌月＞</button>
   </div>
+
+  <script>
+    // 選択された日付を強調表示する関数
+    function highlightSelectedDate(date) {
+      // 前の選択をすべて解除
+      document.querySelectorAll('.calendar-cell').forEach(cell => {
+        cell.classList.remove('selected-date');
+      });
+
+      // 選択された日付の全てのセルに選択クラスを追加
+      document.querySelectorAll(`.calendar-cell[data-date="${date}"]`).forEach(cell => {
+        cell.classList.add('selected-date');
+      });
+
+      // 選択された日付を保存
+      localStorage.setItem('selectedDate', date);
+    }
+
+    // ページ読み込み時に以前選択された日付があれば復元
+    document.addEventListener('DOMContentLoaded', function () {
+      const savedDate = localStorage.getItem('selectedDate');
+      if (savedDate) {
+        // 保存された日付が現在のカレンダーに存在するか確認
+        const dateExists = document.querySelector(`.calendar-cell[data-date="${savedDate}"]`);
+        if (dateExists) {
+          highlightSelectedDate(savedDate);
+        }
+      }
+    });
+
+    // htmxのイベントを監視して、カレンダーが更新されたときに選択状態を復元
+    document.addEventListener('htmx:afterSwap', function (event) {
+      if (event.detail.target.id === 'calendar-area') {
+        const savedDate = localStorage.getItem('selectedDate');
+        if (savedDate) {
+          const dateExists = document.querySelector(`.calendar-cell[data-date="${savedDate}"]`);
+          if (dateExists) {
+            highlightSelectedDate(savedDate);
+          }
+        }
+      }
+    });
+  </script>
+
+  <style>
+    /* 選択された日付のスタイル */
+    .selected-date {
+      border: 2px solid #ff6b6b !important;
+      background-color: rgba(255, 107, 107, 0.1) !important;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* ヘッダーの場合は太字で強調 */
+    th.selected-date {
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  </style>
 </section>

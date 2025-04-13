@@ -1,196 +1,118 @@
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-import datetime
-from typing import Optional
-import os
+from fastapi.responses import HTMLResponse
+from fastapi.openapi.utils import get_openapi
 import logging
+import os
+import json
 
 # ロガー設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from . import csv_store
-from .utils.date_utils import (
-    format_date,
-    get_today_formatted,
-    get_current_month_formatted,
-    get_last_viewed_date,
-)
+# ルートモジュールの導入
+from .routes import root, attendance, calendar, csv
 
-app = FastAPI(title="Sokora勤務管理アプリ")
+# FastAPIアプリを作成（デフォルトのドキュメントを無効化）
+app = FastAPI(
+    title="Sokora API",
+    docs_url=None,  # デフォルトの/docsを無効化
+    redoc_url=None,  # デフォルトの/redocを無効化
+)
 
 # 静的ファイルを /static で配信
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-templates = Jinja2Templates(directory="src/templates")
+# 各モジュールのルーターをアプリケーションに含める
+app.include_router(root.router)
+app.include_router(attendance.page_router)  # ページ表示用ルーター
+app.include_router(attendance.router)  # API用ルーター
+app.include_router(calendar.router)
+app.include_router(csv.router)
 
 
-@app.get("/", response_class=HTMLResponse)
-def root_page(request: Request) -> HTMLResponse:
-    """トップページを表示する
+# カスタムOpenAPIスキーマ定義
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
 
-    Args:
-        request: FastAPIリクエストオブジェクト
+    openapi_schema = get_openapi(
+        title="Sokora API",
+        version="1.0.0",
+        description="SokoraのAPIドキュメント",
+        routes=app.routes,
+    )
 
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
+    # 明示的にOpenAPIバージョンを設定
+    openapi_schema["openapi"] = "3.0.2"
+
+    # タグの順序とカスタム説明を追加
+    openapi_schema["tags"] = [
+        {
+            "name": "勤怠管理",
+            "description": "ユーザーの勤怠データを管理するためのエンドポイント",
+        },
+        {
+            "name": "カレンダー",
+            "description": "カレンダー表示や日別詳細情報を取得するエンドポイント",
+        },
+        {
+            "name": "CSVデータ",
+            "description": "CSVデータのインポートとエクスポートを行うエンドポイント",
+        },
+        {
+            "name": "ページ表示",
+            "description": "アプリケーションのUIページを表示するエンドポイント",
+        },
+    ]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
+# カスタムSwagger UIページを提供
+@app.get("/api/docs", include_in_schema=False)
+async def custom_swagger_ui_html(request: Request):
+    """カスタムパスのSwagger UIを提供"""
+    swagger_js = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"
+    swagger_css = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
+    openapi_url = app.openapi_url or "/openapi.json"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{app.title} - API Documentation</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="{swagger_css}">
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="{swagger_js}"></script>
+        <script>
+            const ui = SwaggerUIBundle({{
+                url: '{openapi_url}',
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout",
+                deepLinking: true
+            }})
+        </script>
+    </body>
+    </html>
     """
-    today_str = get_today_formatted()
-    day_data = csv_store.get_day_data(today_str)
 
-    context = {"request": request, "default_day": today_str, "default_data": day_data}
-    return templates.TemplateResponse("base.html", context)
+    return HTMLResponse(content=html_content)
 
 
-@app.get("/api/calendar", response_class=HTMLResponse)
-def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
-    """指定された月のカレンダーを表示する
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        month: YYYY-MM形式の月指定（未指定の場合は現在の月）
-
-    Returns:
-        HTMLResponse: レンダリングされたカレンダーHTML
-    """
-    if month is None:
-        month = get_current_month_formatted()
-
-    calendar_data = csv_store.get_calendar_data(month)
-    context = {
-        "request": request,
-        "month": calendar_data["month_name"],
-        "calendar": calendar_data,
-    }
-    return templates.TemplateResponse("partials/calendar.html", context)
-
-
-@app.get("/api/day/{day}", response_class=HTMLResponse)
-def get_day_detail(request: Request, day: str) -> HTMLResponse:
-    """指定された日の詳細を表示する
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        day: YYYY-MM-DD形式の日付
-
-    Returns:
-        HTMLResponse: レンダリングされた日別詳細HTML
-    """
-    detail = csv_store.get_day_data(day)
-    context = {"request": request, "day": day, "data": detail}
-    return templates.TemplateResponse("partials/day_detail.html", context)
-
-
-@app.get("/api/user/{username}", response_class=HTMLResponse)
-def get_user_detail(
-    request: Request, username: str, month: Optional[str] = None
-) -> HTMLResponse:
-    """指定されたユーザーの詳細を表示する
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        username: ユーザー名
-        month: YYYY-MM形式の月指定（未指定の場合は現在の月）
-
-    Returns:
-        HTMLResponse: レンダリングされたユーザー詳細HTML
-    """
-    last_viewed_date = get_last_viewed_date(request)
-
-    if month is None:
-        month = get_current_month_formatted()
-
-    # 指定された月のカレンダーデータを取得
-    calendar_data = csv_store.get_calendar_data(month)
-
-    # ユーザーのデータを取得
-    user_entries = csv_store.get_user_data(username)
-
-    # ユーザーの予定がある日付と勤務場所のマップを作成
-    user_dates = []
-    user_locations = {}
-    for entry in user_entries:
-        date = entry["date"]
-        user_dates.append(date)
-        user_locations[date] = entry["location"]
-
-    # 前月と次月の設定
-    year, month_num = map(int, month.split("-"))
-    prev_month = csv_store.get_prev_month_date(year, month_num)
-    prev_month_str = f"{prev_month.year}-{prev_month.month:02d}"
-    next_month = csv_store.get_next_month_date(year, month_num)
-    next_month_str = f"{next_month.year}-{next_month.month:02d}"
-
-    context = {
-        "request": request,
-        "username": username,
-        "entries": user_entries,
-        "calendar_data": calendar_data["weeks"],
-        "user_dates": user_dates,
-        "user_locations": user_locations,
-        "prev_month": prev_month_str,
-        "next_month": next_month_str,
-        "last_viewed_date": last_viewed_date,
-    }
-
-    return templates.TemplateResponse("partials/user_detail.html", context)
-
-
-@app.post("/api/csv/import")
-async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResponse:
-    """CSVファイルをインポートする
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        file: アップロードされたCSVファイル
-
-    Returns:
-        HTMLResponse: インポート結果のHTMLレスポンス
-    """
-    try:
-        contents = await file.read()
-        csv_store.import_csv_data(contents.decode("utf-8"))
-
-        # 今日のデータを取得してコンテキストを作成
-        today_str = get_today_formatted()
-        day_data = csv_store.get_day_data(today_str)
-
-        context = {
-            "request": request,
-            "day": today_str,
-            "data": day_data,
-            "success_message": "CSVデータが正常にインポートされました。",
-        }
-
-        return templates.TemplateResponse("partials/day_detail.html", context)
-    except Exception as e:
-        logger.error(f"CSVインポートエラー: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"CSVインポートエラー: {str(e)}")
-
-
-@app.get("/api/csv/export")
-def export_csv() -> FileResponse:
-    """CSVファイルをエクスポートする
-
-    Returns:
-        FileResponse: CSVファイルのダウンロードレスポンス
-    """
-    try:
-        csv_path = csv_store.get_csv_file_path()
-
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
-
-        return FileResponse(
-            path=csv_path,
-            filename="work_entries.csv",
-            media_type="text/csv",
-            content_disposition_type="attachment",
-        )
-    except Exception as e:
-        logger.error(f"CSVエクスポートエラー: {str(e)}")
-        raise HTTPException(
-            status_code=404, detail=f"CSVファイルが見つかりません: {str(e)}"
-        )
+@app.get("/openapi.json", include_in_schema=False)
+async def get_openapi_endpoint():
+    """OpenAPI JSONスキーマを提供"""
+    return app.openapi()
