@@ -3,10 +3,36 @@ from pathlib import Path
 from collections import defaultdict
 import calendar
 import datetime
+import os
 from typing import Dict, List, Optional, Any, DefaultDict
 
+
 # 定数定義
-CSV_FILE = Path("work_entries.csv")
+# まず基本パスを確認
+def find_csv_file():
+    """CSV_FILEの場所を特定する関数"""
+    possible_paths = [
+        "work_entries.csv",  # 基本パス
+        os.path.join(os.getcwd(), "work_entries.csv"),  # カレントディレクトリ
+        os.path.join(os.getcwd(), "data", "work_entries.csv"),  # data/ディレクトリ
+        os.path.join(
+            os.path.dirname(os.getcwd()), "data", "work_entries.csv"
+        ),  # 親ディレクトリのdata/
+        os.path.join(os.getcwd(), "app", "work_entries.csv"),  # Docker環境用
+        os.path.join(
+            os.getcwd(), "app", "data", "work_entries.csv"
+        ),  # Docker環境用data/
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            return Path(path)
+
+    # 存在しない場合は基本パスを返す（新規作成用）
+    return Path("work_entries.csv")
+
+
+CSV_FILE = find_csv_file()
 LOCATION_TYPES = ["在宅", "出社", "出張"]
 
 
