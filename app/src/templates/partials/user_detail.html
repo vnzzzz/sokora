@@ -11,14 +11,12 @@
 
   <!-- カレンダー形式の表示 -->
   <div class="overflow-x-auto">
+    <!-- 曜日ヘッダー -->
     <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
-      <div class="p-1">日</div>
-      <div class="p-1">月</div>
-      <div class="p-1">火</div>
-      <div class="p-1">水</div>
-      <div class="p-1">木</div>
-      <div class="p-1">金</div>
-      <div class="p-1">土</div>
+      {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+      {% for day in weekdays %}
+      <div class="p-1">{{ day }}</div>
+      {% endfor %}
     </div>
 
     <!-- カレンダーグリッド -->
@@ -26,31 +24,24 @@
       {% for week in calendar_data %}
       {% for day in week %}
       {% if day.date %}
+      {% set location_styles = {
+      "在宅": "bg-success/10 text-success",
+      "出社": "bg-primary/10 text-primary",
+      "出張": "bg-warning/10 text-warning"
+      } %}
+      {% set has_data = day.date in user_dates %}
+      {% set location = user_locations[day.date] if has_data else "" %}
+      {% set style_class = location_styles[location] if location in location_styles else "" %}
+
       <div class="p-1 border rounded min-h-12 
-                      {% if day.date in user_dates %}
-                        {% if user_locations[day.date] == '在宅' %}
-                          bg-success/10 
-                        {% elif user_locations[day.date] == '出社' %}
-                          bg-primary/10 
-                        {% elif user_locations[day.date] == '出張' %}
-                          bg-warning/10 
-                        {% endif %}
-                      {% endif %}
-                      text-center
-                      {% if day.is_today %}border-accent{% endif %}" hx-get="/api/day/{{ day.date }}"
+                   {% if has_data %}{{ style_class.split(" ")[0] }}{% endif %}
+                   text-center
+                   {% if day.is_today %}border-accent{% endif %}" hx-get="/api/day/{{ day.date }}"
         hx-target="#detail-area">
         <div class="text-sm font-bold">{{ day.day }}</div>
-        {% if day.date in user_dates %}
+        {% if has_data %}
         <div class="text-xs mt-1">
-          {% if user_locations[day.date] == '在宅' %}
-          <span class="text-success">在宅</span>
-          {% elif user_locations[day.date] == '出社' %}
-          <span class="text-primary">出社</span>
-          {% elif user_locations[day.date] == '出張' %}
-          <span class="text-warning">出張</span>
-          {% else %}
-          <span>{{ user_locations[day.date] }}</span>
-          {% endif %}
+          <span class="{{ style_class.split(" ")[1] if style_class else "" }}">{{ location }}</span>
         </div>
         {% endif %}
       </div>

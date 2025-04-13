@@ -5,24 +5,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>sokora</title>
-  <!-- ミニファイドJSはDockerfileで取得して/static/jsに配置 -->
-  <script src="/static/js/alpine.min.js" defer></script>
-  <script src="/static/js/htmx.min.js"></script>
-  <!-- Tailwind CSS と daisyUI の CDN -->
+
+  <!-- スタイルとJavaScript -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/htmx.min.js"></script>
+
+  <!-- Tailwind設定 -->
   <script>
     tailwind.config = {
-      theme: {
-        extend: {}
-      },
-      daisyui: {
-        themes: ["light", "dark"],
-      },
+      theme: { extend: {} },
+      daisyui: { themes: ["light", "dark"] }
     }
   </script>
-  <!-- テーマ切り替えボタンのためのスタイル -->
+
+  <!-- テーマ切り替えボタンのスタイル -->
   <style>
     .theme-controller {
       position: fixed;
@@ -49,6 +48,7 @@
     </label>
   </div>
 
+  <!-- ヘッダー -->
   <header class="navbar bg-base-200 shadow-sm px-4 py-2">
     <div class="navbar-start">
       <h1 class="text-xl font-bold">Sokora</h1>
@@ -57,6 +57,8 @@
       <a href="/api/csv/export" class="btn btn-sm btn-primary">CSVダウンロード</a>
       <button class="btn btn-sm btn-secondary" @click="$store.importModal.toggle()">CSVアップロード</button>
     </div>
+
+    <!-- CSVアップロードモーダル -->
     <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;"
       class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
       <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full">
@@ -73,6 +75,7 @@
     </div>
   </header>
 
+  <!-- メインコンテンツ -->
   <main class="container mx-auto p-4 space-y-6">
     <!-- カレンダー領域 -->
     <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area"
@@ -80,23 +83,21 @@
       <!-- 初期ロード時に /api/calendar を呼び出し、ここに差し込み -->
     </div>
 
-    <!-- 日別・ユーザー別の詳細表示領域 -->
+    <!-- 詳細表示領域 -->
     <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
-      <!-- デフォルトで今日のデータを表示 -->
       {% if default_day and default_data %}
       <section>
         <h3 class="text-lg font-bold mb-4">{{ default_day }} の詳細</h3>
 
         {% if default_data["在宅"]|length == 0 and default_data["出社"]|length == 0 and default_data["出張"]|length == 0 %}
-        <div class="alert alert-info">
-          この日のデータはありません
-        </div>
+        <div class="alert alert-info">この日のデータはありません</div>
         {% else %}
         <!-- 勤務場所データと社員リスト -->
         <div class="flex flex-col md:flex-row gap-6">
           <!-- 社員リストエリア -->
           <div class="flex-1">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- 在宅 -->
               <div class="card bg-base-100 shadow">
                 <div class="card-body p-4">
                   <div class="flex items-center gap-2">
@@ -113,6 +114,7 @@
                 </div>
               </div>
 
+              <!-- 出社 -->
               <div class="card bg-base-100 shadow">
                 <div class="card-body p-4">
                   <div class="flex items-center gap-2">
@@ -129,6 +131,7 @@
                 </div>
               </div>
 
+              <!-- 出張 -->
               <div class="card bg-base-100 shadow">
                 <div class="card-body p-4">
                   <div class="flex items-center gap-2">
@@ -153,25 +156,23 @@
     </div>
   </main>
 
+  <!-- JavaScript -->
   <script>
     // Alpine.jsのグローバルストア
     document.addEventListener('alpine:init', () => {
       Alpine.store('importModal', {
         open: false,
-        toggle() {
-          this.open = !this.open;
-        }
+        toggle() { this.open = !this.open; }
       });
     });
 
-    // モーダルを閉じるグローバル関数
+    // モーダルを閉じる関数
     function closeImportModal() {
       if (typeof Alpine !== 'undefined') {
         Alpine.store('importModal').open = false;
       }
     }
   </script>
-
 </body>
 
 </html>
