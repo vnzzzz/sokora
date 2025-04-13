@@ -1,44 +1,45 @@
 # sokora
 
-誰がどこで働いているか、カレンダーと簡単な操作でサクッと管理できる勤怠（勤務場所）管理アプリです。「在宅 / 出社 / 出張」
-などが一目でわかり、日別の詳細やユーザー別の予定もすぐに確認できます。
+A sleek attendance management app that lets you track who's working where with a calendar interface and intuitive
+controls. Instantly see who's "working from home / in office / on business trip" with daily details and personal
+schedules available at a glance.
 
-## 特徴
+## Features
 
-- カレンダー UI
-  - 月単位のカレンダーで在宅・出社などの人数を集計表示
-- シンプルな操作感日付クリックで日別詳細、ユーザー名クリックで個人の予定を閲覧
-- CSV アップロード & ダウンロード
-  - 一括編集やバックアップに便利
+- Calendar UI
+  - Monthly view with aggregated stats for remote/office attendance
+- Intuitive UX: Click on dates for daily details, click on usernames to view individual schedules
+- CSV Upload & Download
+  - Perfect for bulk editing and backups
 
 ## How to
 
-1. 起動
+1. Launch
 
    ```bash
    docker compose up --build
    ```
 
-2. アクセス
+2. Access
 
-   ブラウザで下記にアクセス
+   Open in your browser
 
    ```bash
    http://localhost:8000
    ```
 
-3. 終了
+3. Shutdown
 
    ```bash
    docker compose down
    ```
 
-## 技術スタック
+## Tech Stack
 
-軽量かつシンプルを意識しました。
+Built with a focus on lightweight simplicity.
 
-- Docker (コンテナ化)
-- Poetry (依存管理)
+- Docker (Containerization)
+- Poetry (Dependency management)
 - FastAPI (API)
-- HTMX & Alpine.js (ビルド不要 UI)
-- Chart.js (円グラフなどのビジュアル表示)
+- HTMX & Alpine.js (No-build UI)
+- Chart.js (Visual data representation with pie charts and more)
