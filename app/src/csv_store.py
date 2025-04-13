@@ -10,6 +10,9 @@ from typing import Dict, List, Optional, Any, DefaultDict, Tuple
 # 定数定義
 LOCATION_TYPES = ["在宅", "出社", "出張"]
 
+# 日本のカレンダー設定（0:月曜始まり → 6:日曜始まり）
+calendar.setfirstweekday(6)
+
 
 def get_csv_file_path() -> Path:
     """CSV_FILEの場所を特定する関数
