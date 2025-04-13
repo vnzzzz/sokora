@@ -86,67 +86,35 @@
     <!-- 詳細表示領域 -->
     <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
       {% if default_day and default_data %}
-      <section>
+      <section class="p-2">
         <h3 class="text-lg font-bold mb-4">{{ default_day }} の詳細</h3>
 
-        {% if default_data["在宅"]|length == 0 and default_data["出社"]|length == 0 and default_data["出張"]|length == 0 %}
+        {% if not default_has_data %}
         <div class="alert alert-info">この日のデータはありません</div>
         {% else %}
         <!-- 勤務場所データと社員リスト -->
-        <div class="flex flex-col md:flex-row gap-6">
-          <!-- 社員リストエリア -->
+        <div class="flex flex-col gap-4">
           <div class="flex-1">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <!-- 在宅 -->
-              <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                  <div class="flex items-center gap-2">
-                    <span class="badge badge-success"></span>
-                    <h4 class="card-title text-base">在宅</h4>
+            <div
+              class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+              <!-- 勤務場所カード -->
+              {% for location in default_locations %}
+              <div class="card bg-base-100 shadow w-auto min-w-[7rem] max-w-[12rem]">
+                <div class="card-body px-3 py-3">
+                  <div class="flex items-center gap-1 mb-1">
+                    <span class="badge badge-{{ location.badge }}"></span>
+                    <h4 class="card-title text-sm">{{ location.name }}</h4>
                   </div>
                   <ul class="menu menu-sm p-0">
-                    {% for user in default_data["在宅"] %}
+                    {% for user in default_data[location.name] %}
                     <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
-                      <a>{{ user }}</a>
+                      <a class="py-1">{{ user }}</a>
                     </li>
                     {% endfor %}
                   </ul>
                 </div>
               </div>
-
-              <!-- 出社 -->
-              <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                  <div class="flex items-center gap-2">
-                    <span class="badge badge-primary"></span>
-                    <h4 class="card-title text-base">出社</h4>
-                  </div>
-                  <ul class="menu menu-sm p-0">
-                    {% for user in default_data["出社"] %}
-                    <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
-                      <a>{{ user }}</a>
-                    </li>
-                    {% endfor %}
-                  </ul>
-                </div>
-              </div>
-
-              <!-- 出張 -->
-              <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                  <div class="flex items-center gap-2">
-                    <span class="badge badge-warning"></span>
-                    <h4 class="card-title text-base">出張</h4>
-                  </div>
-                  <ul class="menu menu-sm p-0">
-                    {% for user in default_data["出張"] %}
-                    <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
-                      <a>{{ user }}</a>
-                    </li>
-                    {% endfor %}
-                  </ul>
-                </div>
-              </div>
+              {% endfor %}
             </div>
           </div>
         </div>

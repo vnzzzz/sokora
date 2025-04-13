@@ -39,8 +39,30 @@ def root_page(request: Request) -> HTMLResponse:
     """
     today_str = get_today_formatted()
     day_data = csv_store.get_day_data(today_str)
+    location_types = csv_store.get_location_types()
 
-    context = {"request": request, "default_day": today_str, "default_data": day_data}
+    # 勤務場所のスタイル情報を生成
+    colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
+    locations = []
+    for i, loc_type in enumerate(location_types):
+        color_index = i % len(colors)
+        locations.append(
+            {
+                "name": loc_type,
+                "badge": colors[color_index],
+            }
+        )
+
+    # データがあるかどうかをチェック
+    has_data = any(len(users) > 0 for users in day_data.values())
+
+    context = {
+        "request": request,
+        "default_day": today_str,
+        "default_data": day_data,
+        "default_locations": locations,
+        "default_has_data": has_data,
+    }
     return templates.TemplateResponse("base.html", context)
 
 
