@@ -16,16 +16,9 @@
     この日のデータはありません
   </div>
   {% else %}
-  <!-- 勤務場所データと円グラフ、社員リスト -->
+  <!-- 勤務場所データと社員リスト -->
   <div class="flex flex-col md:flex-row gap-6">
-    <!-- 左側：グラフエリア -->
-    <div class="flex justify-center items-center">
-      <div class="w-48 h-48">
-        <canvas id="location-pie-chart"></canvas>
-      </div>
-    </div>
-
-    <!-- 右側：社員リストエリア -->
+    <!-- 社員リストエリア -->
     <div class="flex-1">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="card bg-base-100 shadow">
@@ -79,17 +72,4 @@
     </div>
   </div>
   {% endif %}
-
-  <script>
-    // 日付詳細のデータを取得して円グラフを描画
-    document.addEventListener('DOMContentLoaded', function () {
-      const homeCount = parseInt('{{ data["在宅"]|length }}');
-      const officeCount = parseInt('{{ data["出社"]|length }}');
-      const tripCount = parseInt('{{ data["出張"]|length }}');
-
-      if (typeof createPieChart === 'function') {
-        createPieChart('location-pie-chart', homeCount, officeCount, tripCount);
-      }
-    });
-  </script>
 </section>

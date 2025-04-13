@@ -15,10 +15,9 @@ COPY . /app
 # 4) Poetryで依存解決
 RUN poetry install --no-root
 
-# 5) ミニファイドJSライブラリを取得(HTMX, Alpine.js, Chart.js)
+# 5) ミニファイドJSライブラリを取得(HTMX, Alpine.js)
 RUN curl -Lo /app/src/static/js/htmx.min.js    https://unpkg.com/htmx.org/dist/htmx.min.js \
-  && curl -Lo /app/src/static/js/alpine.min.js  https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js \
-  && curl -Lo /app/src/static/js/chart.min.js   https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js
+  && curl -Lo /app/src/static/js/alpine.min.js  https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js
 
 EXPOSE 8000
 

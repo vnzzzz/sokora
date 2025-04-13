@@ -8,8 +8,6 @@
   <!-- ミニファイドJSはDockerfileで取得して/static/jsに配置 -->
   <script src="/static/js/alpine.min.js" defer></script>
   <script src="/static/js/htmx.min.js"></script>
-  <script src="/static/js/chart.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
   <!-- Tailwind CSS と daisyUI の CDN -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -94,16 +92,9 @@
           この日のデータはありません
         </div>
         {% else %}
-        <!-- 勤務場所データと円グラフ、社員リスト -->
+        <!-- 勤務場所データと社員リスト -->
         <div class="flex flex-col md:flex-row gap-6">
-          <!-- 左側：グラフエリア -->
-          <div class="flex justify-center items-center">
-            <div class="w-48 h-48">
-              <canvas id="location-pie-chart"></canvas>
-            </div>
-          </div>
-
-          <!-- 右側：社員リストエリア -->
+          <!-- 社員リストエリア -->
           <div class="flex-1">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="card bg-base-100 shadow">
@@ -179,107 +170,6 @@
         Alpine.store('importModal').open = false;
       }
     }
-
-    // Chart.jsプラグイン登録
-    Chart.register(ChartDataLabels);
-
-    // Chart.jsヘルパー関数
-    const chartColors = [
-      'rgba(74, 222, 128, 0.8)', // 在宅 (success color - 緑)
-      'rgba(96, 165, 250, 0.8)', // 出社 (primary color - 青)
-      'rgba(251, 146, 60, 0.8)'  // 出張 (warning color - オレンジ)
-    ];
-
-    function createPieChart(canvasId, homeCount, officeCount, tripCount, showLegend = true) {
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
-
-      // 既存のチャートがあれば破棄する
-      const existingChart = Chart.getChart(canvas);
-      if (existingChart) {
-        existingChart.destroy();
-      }
-
-      // データがある場合のみグラフを表示
-      if (homeCount > 0 || officeCount > 0 || tripCount > 0) {
-        new Chart(canvas, {
-          type: 'pie',
-          data: {
-            labels: ['在宅', '出社', '出張'],
-            datasets: [{
-              data: [homeCount, officeCount, tripCount],
-              backgroundColor: chartColors
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: {
-                display: false
-              },
-              tooltip: {
-                enabled: true
-              },
-              datalabels: {
-                formatter: (value, ctx) => {
-                  const label = ctx.chart.data.labels[ctx.dataIndex];
-                  return `${label}\n${value}名`;
-                },
-                color: '#fff',
-                font: {
-                  weight: 'bold',
-                  size: 14
-                },
-                align: 'center',
-                anchor: 'center'
-              }
-            }
-          }
-        });
-      }
-    }
-
-    // HTMXイベントリスナー
-    document.addEventListener('htmx:afterSwap', function (event) {
-      // カレンダーエリアが更新されたときの処理
-      if (event.detail.target.id === 'calendar-area') {
-        // カレンダー内のチャートを再初期化
-      }
-
-      // 詳細エリアが更新されたときのチャート描画
-      if (event.detail.target.id === 'detail-area') {
-        const locationChart = document.getElementById('location-pie-chart');
-        if (locationChart) {
-          // 各カテゴリーのカード内のリスト項目数を取得
-          const cards = document.querySelectorAll('.card');
-          let homeCount = 0, officeCount = 0, tripCount = 0;
-
-          cards.forEach(card => {
-            const titleElement = card.querySelector('.card-title');
-            if (!titleElement) return;
-
-            const title = titleElement.textContent.trim();
-            const count = card.querySelectorAll('li').length;
-
-            if (title === '在宅') homeCount = count;
-            else if (title === '出社') officeCount = count;
-            else if (title === '出張') tripCount = count;
-          });
-
-          createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
-        }
-      }
-    });
-
-    // 初期表示時のチャート描画
-    document.addEventListener('DOMContentLoaded', function () {
-      const homeCount = parseInt('{{ default_data["在宅"]|length }}' || '0');
-      const officeCount = parseInt('{{ default_data["出社"]|length }}' || '0');
-      const tripCount = parseInt('{{ default_data["出張"]|length }}' || '0');
-
-      createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
-    });
   </script>
 
 </body>
