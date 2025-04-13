@@ -1,5 +1,7 @@
 # sokora
 
+![image](docs/images/image1.png)
+
 A sleek attendance management app that lets you track who's working where with a calendar interface and intuitive
 controls. Instantly see who's "working from home / in office / on business trip" with daily details and personal
 schedules available at a glance.
@@ -43,3 +45,4 @@ Built with a focus on lightweight simplicity.
 - FastAPI (API)
 - HTMX & Alpine.js (No-build UI)
 - Chart.js (Visual data representation with pie charts and more)
+- CSV files (Data source, no database required)
