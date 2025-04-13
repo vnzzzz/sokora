@@ -305,10 +305,31 @@ def update_user_entry(user_id: str, date: str, location: str) -> bool:
 
         # 日付が存在するかチェック
         if date not in headers[2:]:
-            # 日付が存在しない場合は追加
-            headers.append(date)
+            # 日付が存在しない場合は適切な位置に挿入する
+            date_headers = headers[2:]
+
+            # 適切な挿入位置を探す
+            insert_position = 2  # デフォルトは最初の日付位置
+
+            # 日付が既存の日付より未来の場合、適切な位置を探す
+            for i, existing_date in enumerate(date_headers):
+                if existing_date > date:
+                    # 挿入位置を見つけた
+                    insert_position = i + 2  # headers[0]とheaders[1]の分を加算
+                    break
+                else:
+                    # 最後まで到達した場合、末尾に追加
+                    insert_position = len(headers)
+
+            # 新しい日付をヘッダーに挿入
+            headers.insert(insert_position, date)
+
+            # すべての行に新しい列を挿入
             for row in rows:
-                row.append("")
+                # 行が短い場合は必要な長さまで拡張
+                while len(row) < insert_position:
+                    row.append("")
+                row.insert(insert_position, "")
 
         # 日付のインデックスを取得
         date_index = headers.index(date)
