@@ -30,8 +30,11 @@ def root_page(request: Request) -> HTMLResponse:
     today_str = get_today_formatted()
     day_data = csv_store.get_day_data(today_str)
 
+    # 勤務場所の種類を取得
+    location_types = csv_store.get_location_types()
+
     # 勤務場所のバッジ情報を生成
-    locations = generate_location_badges()
+    locations = generate_location_badges(location_types)
 
     # データがあるかどうかをチェック
     has_data = has_data_for_day(day_data)

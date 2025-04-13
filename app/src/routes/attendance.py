@@ -82,15 +82,23 @@ def edit_user_attendance(
         user_dates.append(date)
         user_locations[date] = entry["location"]
 
-    # 勤務場所のスタイル情報を生成
-    location_styles = generate_location_styles()
+    # 勤務場所の種類を取得
     location_types = csv_store.get_location_types()
 
+    # 勤務場所のスタイル情報を生成
+    location_styles = generate_location_styles(location_types)
+
     # 前月と次月の設定
-    year, month_num = map(int, month.split("-"))
-    prev_month = csv_store.get_prev_month_date(year, month_num)
+    from ..utils.calendar_utils import (
+        parse_month,
+        get_prev_month_date,
+        get_next_month_date,
+    )
+
+    year, month_num = parse_month(month)
+    prev_month = get_prev_month_date(year, month_num)
     prev_month_str = f"{prev_month.year}-{prev_month.month:02d}"
-    next_month = csv_store.get_next_month_date(year, month_num)
+    next_month = get_next_month_date(year, month_num)
     next_month_str = f"{next_month.year}-{next_month.month:02d}"
 
     context = {

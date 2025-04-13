@@ -64,7 +64,8 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
     detail = csv_store.get_day_data(day)
 
     # 勤務場所のバッジ情報を生成
-    locations = generate_location_badges()
+    location_types = csv_store.get_location_types()
+    locations = generate_location_badges(location_types)
 
     # データがあるかどうかをチェック
     has_data = has_data_for_day(detail)
@@ -118,13 +119,20 @@ def get_user_detail(
         user_locations[date] = entry["location"]
 
     # 勤務場所のスタイル情報を生成
-    location_styles = generate_location_styles()
+    location_types = csv_store.get_location_types()
+    location_styles = generate_location_styles(location_types)
 
-    # 前月と次月の設定
-    year, month_num = map(int, month.split("-"))
-    prev_month = csv_store.get_prev_month_date(year, month_num)
+    # 前月と次月の設定（utils/calendar_utils の関数を使用）
+    from ..utils.calendar_utils import (
+        parse_month,
+        get_prev_month_date,
+        get_next_month_date,
+    )
+
+    year, month_num = parse_month(month)
+    prev_month = get_prev_month_date(year, month_num)
     prev_month_str = f"{prev_month.year}-{prev_month.month:02d}"
-    next_month = csv_store.get_next_month_date(year, month_num)
+    next_month = get_next_month_date(year, month_num)
     next_month_str = f"{next_month.year}-{next_month.month:02d}"
 
     context = {
