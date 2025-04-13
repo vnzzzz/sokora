@@ -80,7 +80,7 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
     """CSVファイルからすべてのエントリーを読み込む
 
     Returns:
-        Dict[str, Dict[str, str]]: {user_name: {date: location}}形式のデータ
+        Dict[str, Dict[str, str]]: {user_id: {date: location}}形式のデータ
     """
     csv_path = get_csv_file_path()
     if not csv_path.exists():
@@ -92,20 +92,23 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
         with csv_path.open("r", encoding="utf-8") as f:
             reader = csv.reader(f)
             headers = next(reader)  # 日付がヘッダーに格納されている
-            dates = headers[1:]  # 最初の列はuser_name
+            dates = headers[2:]  # 最初の列はuser_name、2列目はuser_id
 
             for row in reader:
-                user_name = row[0]
+                if len(row) < 2:  # user_nameとuser_idが最低限必要
+                    continue
+
+                user_id = row[1]
                 user_data: Dict[str, str] = {}
 
-                for i, location in enumerate(row[1:], 1):
+                for i, location in enumerate(row[2:], 2):
                     if location and i <= len(
-                        dates
+                        headers
                     ):  # 空欄でない場合かつインデックスが有効な場合のみ登録
-                        date = dates[i - 1]
+                        date = headers[i]
                         user_data[date] = location
 
-                data[user_name] = user_data
+                data[user_id] = user_data
     except Exception as e:
         raise IOError(f"CSVデータの読み込みに失敗しました: {str(e)}")
 
@@ -116,34 +119,78 @@ def get_entries_by_date() -> DefaultDict[str, Dict[str, str]]:
     """日付ごとのエントリーを取得する
 
     Returns:
-        DefaultDict[str, Dict[str, str]]: {date: {user_name: location}}形式のデータ
+        DefaultDict[str, Dict[str, str]]: {date: {user_id: location}}形式のデータ
     """
     data = read_all_entries()
     date_entries: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
 
     # ユーザーごとのデータを日付ごとのデータに変換
-    for user_name, user_data in data.items():
+    for user_id, user_data in data.items():
         for date, location in user_data.items():
-            date_entries[date][user_name] = location
+            date_entries[date][user_id] = location
 
     return date_entries
 
 
-def get_all_users() -> List[str]:
-    """CSVファイルからすべてのユーザー名を取得する
+def get_all_users() -> List[Tuple[str, str]]:
+    """CSVファイルからすべてのユーザー名とIDを取得する
 
     Returns:
-        List[str]: ユーザー名のリスト
+        List[Tuple[str, str]]: (user_name, user_id)のリスト
     """
-    data = read_all_entries()
-    return sorted(list(data.keys()))
+    csv_path = get_csv_file_path()
+    if not csv_path.exists():
+        return []
+
+    users = []
+
+    try:
+        with csv_path.open("r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            headers = next(reader)  # ヘッダー行をスキップ
+
+            for row in reader:
+                if len(row) >= 2 and row[0].strip() and row[1].strip():
+                    users.append((row[0], row[1]))  # (user_name, user_id)のタプル
+    except Exception as e:
+        raise IOError(f"ユーザーデータの読み込みに失敗しました: {str(e)}")
+
+    return sorted(users, key=lambda x: x[0])  # user_nameでソート
 
 
-def add_user(username: str) -> bool:
+def get_user_name_by_id(user_id: str) -> str:
+    """ユーザーIDからユーザー名を取得する
+
+    Args:
+        user_id: ユーザーID
+
+    Returns:
+        str: ユーザー名（見つからない場合は空文字）
+    """
+    csv_path = get_csv_file_path()
+    if not csv_path.exists():
+        return ""
+
+    try:
+        with csv_path.open("r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            next(reader)  # ヘッダー行をスキップ
+
+            for row in reader:
+                if len(row) >= 2 and row[1] == user_id:
+                    return row[0]
+    except Exception:
+        pass
+
+    return ""
+
+
+def add_user(username: str, user_id: str = "") -> bool:
     """CSVファイルに新しいユーザーを追加する
 
     Args:
         username: 追加するユーザー名
+        user_id: ユーザーID（指定がない場合は自動生成）
 
     Returns:
         bool: 追加が成功したかどうか
@@ -155,11 +202,30 @@ def add_user(username: str) -> bool:
 
     try:
         # 現在のデータを読み込む
-        data = read_all_entries()
+        users = get_all_users()
 
-        # すでに存在する場合は追加しない
-        if username in data:
-            return False
+        # user_idが未指定の場合は自動生成
+        if not user_id:
+            # 姓のローマ字の最初の文字と名前のローマ字を組み合わせる想定
+            # 例: 山田太郎 -> t-yamada
+            first_char = username[0]
+            user_id = f"{first_char}-{username[1:]}"
+
+            # IDの重複を避ける
+            existing_ids = [u[1] for u in users]
+            if user_id in existing_ids:
+                # 重複する場合は連番を付ける
+                count = 1
+                new_user_id = f"{user_id}{count}"
+                while new_user_id in existing_ids:
+                    count += 1
+                    new_user_id = f"{user_id}{count}"
+                user_id = new_user_id
+
+        # ユーザー名にすでに同じものが存在する場合は追加しない
+        for name, id in users:
+            if name == username or id == user_id:
+                return False
 
         # ファイルを読み込み、ヘッダーを取得
         headers = []
@@ -172,10 +238,10 @@ def add_user(username: str) -> bool:
                 rows = list(reader)
         else:
             # ファイルが存在しない場合は新規作成
-            headers = ["user_name"]
+            headers = ["user_name", "user_id"]
 
         # 新しいユーザーを追加
-        new_row = [username] + [""] * (len(headers) - 1)
+        new_row = [username, user_id] + [""] * (len(headers) - 2)
         rows.append(new_row)
 
         # ファイルに書き込む
@@ -189,11 +255,11 @@ def add_user(username: str) -> bool:
         raise IOError(f"ユーザーの追加に失敗しました: {str(e)}")
 
 
-def delete_user(username: str) -> bool:
+def delete_user(user_id: str) -> bool:
     """CSVファイルからユーザーを削除する
 
     Args:
-        username: 削除するユーザー名
+        user_id: 削除するユーザーID
 
     Returns:
         bool: 削除が成功したかどうか
@@ -211,10 +277,11 @@ def delete_user(username: str) -> bool:
         with csv_path.open("r", encoding="utf-8") as f:
             reader = csv.reader(f)
             headers = next(reader)
-            rows = [row for row in reader if row[0] != username]
+            rows = [row for row in reader if len(row) < 2 or row[1] != user_id]
 
         # 行が削除されなかった場合（該当するユーザーがいない場合）
-        if len(rows) == sum(1 for _ in open(csv_path, encoding="utf-8")) - 1:
+        original_count = sum(1 for _ in open(csv_path, encoding="utf-8")) - 1
+        if len(rows) == original_count:
             return False
 
         # ファイルに書き込む
@@ -228,11 +295,11 @@ def delete_user(username: str) -> bool:
         raise IOError(f"ユーザーの削除に失敗しました: {str(e)}")
 
 
-def update_user_entry(username: str, date: str, location: str) -> bool:
+def update_user_entry(user_id: str, date: str, location: str) -> bool:
     """ユーザーの特定の日付の勤務場所を更新する
 
     Args:
-        username: ユーザー名
+        user_id: ユーザーID
         date: YYYY-MM-DD形式の日付
         location: 勤務場所
 
@@ -255,7 +322,7 @@ def update_user_entry(username: str, date: str, location: str) -> bool:
             rows = list(reader)
 
         # 日付が存在するかチェック
-        if date not in headers[1:]:
+        if date not in headers[2:]:
             # 日付が存在しない場合は追加
             headers.append(date)
             for row in rows:
@@ -267,8 +334,11 @@ def update_user_entry(username: str, date: str, location: str) -> bool:
         # ユーザーが存在するかチェック
         user_exists = False
         for row in rows:
-            if row[0] == username:
+            if len(row) >= 2 and row[1] == user_id:
                 user_exists = True
+                # 行が短い場合は拡張
+                while len(row) <= date_index:
+                    row.append("")
                 row[date_index] = location
                 break
 
@@ -425,21 +495,23 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
     }
 
 
-def get_day_data(day: str) -> Dict[str, List[str]]:
+def get_day_data(day: str) -> Dict[str, List[Dict[str, str]]]:
     """指定された日のデータを取得する
 
     Args:
         day: YYYY-MM-DD形式の日付
 
     Returns:
-        Dict[str, List[str]]: ロケーション別のユーザー一覧
+        Dict[str, List[Dict[str, str]]]: ロケーション別のユーザー一覧（user_nameとuser_idを含む）
 
     Raises:
         ValueError: 無効な日付フォーマットの場合
     """
     entries_by_date = get_entries_by_date()
     location_types = get_location_types()
-    result: Dict[str, List[str]] = {loc_type: [] for loc_type in location_types}
+    result: Dict[str, List[Dict[str, str]]] = {
+        loc_type: [] for loc_type in location_types
+    }
 
     # 日付の検証
     parts = day.split("-")
@@ -447,22 +519,25 @@ def get_day_data(day: str) -> Dict[str, List[str]]:
         return result
 
     # 特定の日の各ユーザーの勤務場所を集計
-    for username, location in entries_by_date.get(day, {}).items():
+    for user_id, location in entries_by_date.get(day, {}).items():
+        user_name = get_user_name_by_id(user_id)
+        user_data = {"user_id": user_id, "user_name": user_name}
+
         # すべての勤務場所を受け入れる
         if location in result:
-            result[location].append(username)
+            result[location].append(user_data)
         # CSVにあるが辞書にないロケーションタイプの場合は追加する
         elif location.strip():
-            result[location] = [username]
+            result[location] = [user_data]
 
     return result
 
 
-def get_user_data(username: str) -> List[Dict[str, str]]:
+def get_user_data(user_id: str) -> List[Dict[str, str]]:
     """指定されたユーザーのデータを取得する
 
     Args:
-        username: ユーザー名
+        user_id: ユーザーID
 
     Returns:
         List[Dict[str, str]]: ユーザーのエントリー一覧
@@ -470,8 +545,8 @@ def get_user_data(username: str) -> List[Dict[str, str]]:
     data = read_all_entries()
     entries = []
 
-    if username in data:
-        user_data = data[username]
+    if user_id in data:
+        user_data = data[user_id]
         for date, location in user_data.items():
             entries.append({"date": date, "location": location})
 

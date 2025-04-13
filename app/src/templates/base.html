@@ -45,8 +45,8 @@
                   </div>
                   <ul class="menu menu-sm p-0">
                     {% for user in default_data[location.name] %}
-                    <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
-                      <a class="py-1">{{ user }}</a>
+                    <li hx-get="/api/user/{{ user.user_id|e }}" hx-target="#detail-area">
+                      <a class="py-1">{{ user.user_name|e }}</a>
                     </li>
                     {% endfor %}
                   </ul>

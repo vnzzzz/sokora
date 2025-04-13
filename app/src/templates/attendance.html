@@ -69,12 +69,12 @@
             </tr>
           </thead>
           <tbody>
-            {% for user in users %}
+            {% for user_name, user_id in users %}
             <tr>
-              <td>{{ user }}</td>
+              <td>{{ user_name }}</td>
               <td class="text-right">
                 <div class="flex justify-end gap-2">
-                  <a href="/attendance/edit/{{ user }}" class="btn btn-sm btn-primary">
+                  <a href="/attendance/edit/{{ user_id }}" class="btn btn-sm btn-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                       stroke="currentColor" class="w-4 h-4">
                       <path stroke-linecap="round" stroke-linejoin="round"
@@ -97,11 +97,11 @@
                       class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
                       <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full" @click.stop>
                         <h3 class="font-bold text-lg mb-4">削除の確認</h3>
-                        <p class="mb-4">「{{ user }}」を削除してもよろしいですか？この操作は取り消せません。</p>
+                        <p class="mb-4">「{{ user_name }}」を削除してもよろしいですか？この操作は取り消せません。</p>
                         <div class="flex justify-end space-x-2">
                           <button type="button" class="btn btn-outline"
                             @click="showDeleteConfirm = false">キャンセル</button>
-                          <form action="/api/user/delete/{{ user }}" method="post">
+                          <form action="/api/user/delete/{{ user_id }}" method="post">
                             <button type="submit" class="btn btn-error">削除</button>
                           </form>
                         </div>

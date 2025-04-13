@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
+import html
 
 from .. import csv_store
 from ..utils.date_utils import (
@@ -78,30 +79,35 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
     return templates.TemplateResponse("partials/day_detail.html", context)
 
 
-@router.get("/user/{username}", response_class=HTMLResponse)
+@router.get("/user/{user_id}", response_class=HTMLResponse)
 def get_user_detail(
-    request: Request, username: str, month: Optional[str] = None
+    request: Request, user_id: str, month: Optional[str] = None
 ) -> HTMLResponse:
     """指定されたユーザーの詳細を表示する
 
     Args:
         request: FastAPIリクエストオブジェクト
-        username: ユーザー名
+        user_id: ユーザーID
         month: YYYY-MM形式の月指定（未指定の場合は現在の月）
 
     Returns:
         HTMLResponse: レンダリングされたユーザー詳細HTML
     """
+    # user_idをエスケープ処理
+    user_id = html.escape(user_id)
     last_viewed_date = get_last_viewed_date(request)
 
     if month is None:
         month = get_current_month_formatted()
 
+    # ユーザー名の取得
+    user_name = csv_store.get_user_name_by_id(user_id)
+
     # 指定された月のカレンダーデータを取得
     calendar_data = csv_store.get_calendar_data(month)
 
     # ユーザーのデータを取得
-    user_entries = csv_store.get_user_data(username)
+    user_entries = csv_store.get_user_data(user_id)
 
     # ユーザーの予定がある日付と勤務場所のマップを作成
     user_dates = []
@@ -123,7 +129,8 @@ def get_user_detail(
 
     context = {
         "request": request,
-        "username": username,
+        "user_id": user_id,
+        "user_name": user_name,
         "entries": user_entries,
         "calendar_data": calendar_data["weeks"],
         "user_dates": user_dates,

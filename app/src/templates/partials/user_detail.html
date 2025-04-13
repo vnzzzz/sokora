@@ -1,59 +1,67 @@
-<section class="p-2">
-  <div class="flex items-center gap-2 mb-4">
-    <h3 class="text-lg font-bold">{{ username }} の勤務記録</h3>
-    <button class="btn btn-sm btn-ghost" hx-get="/api/day/{{ last_viewed_date }}" hx-target="#detail-area">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-        class="w-5 h-5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-      </svg>
-    </button>
-  </div>
+<section class="p-2" hx-swap-oob="true" id="detail-area">
+  <div class="space-y-4">
+    <div class="flex justify-between items-center">
+      <h3 class="text-lg font-bold">{{ user_name }} の勤務予定</h3>
 
-  <!-- カレンダー形式の表示 -->
-  <div class="overflow-x-auto">
-    <!-- 曜日ヘッダー -->
-    <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
-      {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
-      {% for day in weekdays %}
-      <div class="p-1">{{ day }}</div>
-      {% endfor %}
-    </div>
-
-    <!-- カレンダーグリッド -->
-    <div class="grid grid-cols-7 gap-1">
-      {% for week in calendar_data %}
-      {% for day in week %}
-      {% if day.date %}
-      {% set has_data = day.date in user_dates %}
-      {% set location = user_locations[day.date] if has_data else "" %}
-      {% set style_class = location_styles[location] if location in location_styles else "" %}
-
-      <div class="p-1 border rounded min-h-12 
-                   {% if has_data %}{{ style_class.split(" ")[0] }}{% endif %}
-                   text-center
-                   {% if day.is_today %}border-accent{% endif %}" hx-get="/api/day/{{ day.date }}"
-        hx-target="#detail-area">
-        <div class="text-sm font-bold">{{ day.day }}</div>
-        {% if has_data %}
-        <div class="text-xs mt-1">
-          <span class="{{ style_class.split(" ")[1] if style_class else "" }}">{{ location }}</span>
-        </div>
-        {% endif %}
+      <div class="btn-group">
+        <a href="/api/user/{{ user_id }}?month={{ prev_month }}" class="btn btn-sm"
+          hx-get="/api/user/{{ user_id }}?month={{ prev_month }}" hx-target="#detail-area">前月</a>
+        <a href="/api/user/{{ user_id }}" class="btn btn-sm" hx-get="/api/user/{{ user_id }}"
+          hx-target="#detail-area">今月</a>
+        <a href="/api/user/{{ user_id }}?month={{ next_month }}" class="btn btn-sm"
+          hx-get="/api/user/{{ user_id }}?month={{ next_month }}" hx-target="#detail-area">翌月</a>
       </div>
-      {% else %}
-      <div class="p-1 border rounded bg-base-200/30 min-h-12"></div>
-      {% endif %}
-      {% endfor %}
-      {% endfor %}
     </div>
-  </div>
 
-  <!-- 月移動ボタン -->
-  <div class="flex justify-center mt-4 space-x-2">
-    <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ username }}?month={{ prev_month }}"
-      hx-target="#detail-area">＜前月</button>
-    <button class="btn btn-sm" hx-get="/api/user/{{ username }}" hx-target="#detail-area">今月</button>
-    <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ username }}?month={{ next_month }}"
-      hx-target="#detail-area">翌月＞</button>
+    <!-- カレンダー形式の表示 -->
+    <div class="overflow-x-auto">
+      <!-- 曜日ヘッダー -->
+      <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
+        {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+        {% for day in weekdays %}
+        <div class="p-1">{{ day }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- カレンダーグリッド -->
+      <div class="grid grid-cols-7 gap-1">
+        {% for week in calendar_data %}
+        {% for day in week %}
+        {% if day %}
+        {% set has_data = day.date in user_dates %}
+        {% set location = user_locations[day.date] if has_data else "" %}
+        {% set style_class = location_styles[location] if location in location_styles else "" %}
+
+        <div class="p-1 border rounded min-h-12 
+                    {% if has_data %}{{ style_class.split(" ")[0] }}{% endif %}
+                    text-center
+                    {% if day.date == last_viewed_date %}border-accent{% endif %}" hx-get="/api/day/{{ day.date }}"
+          hx-target="#detail-area">
+          <div class="text-sm font-bold">{{ day.day }}</div>
+          {% if has_data %}
+          <div class="text-xs mt-1">
+            <span class="{{ style_class.split(" ")[1] if style_class else "" }}">{{ location }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="p-1 border rounded bg-base-200/30 min-h-12"></div>
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- 編集リンク -->
+    <div class="flex justify-end">
+      <a href="/attendance/edit/{{ user_id }}" class="btn btn-primary btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="w-4 h-4 mr-1">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+        </svg>
+        編集する
+      </a>
+    </div>
   </div>
 </section>

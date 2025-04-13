@@ -41,15 +41,15 @@ def attendance_page(request: Request) -> HTMLResponse:
     )
 
 
-@page_router.get("/attendance/edit/{username}", response_class=HTMLResponse)
+@page_router.get("/attendance/edit/{user_id}", response_class=HTMLResponse)
 def edit_user_attendance(
-    request: Request, username: str, month: Optional[str] = None
+    request: Request, user_id: str, month: Optional[str] = None
 ) -> HTMLResponse:
     """ユーザーの勤怠を編集するページを表示する
 
     Args:
         request: FastAPIリクエストオブジェクト
-        username: 編集するユーザー名
+        user_id: 編集するユーザーID
         month: YYYY-MM形式の月指定（未指定の場合は現在の月）
 
     Returns:
@@ -61,11 +61,17 @@ def edit_user_attendance(
     # 指定された月のカレンダーデータを取得
     calendar_data = csv_store.get_calendar_data(month)
 
+    # ユーザー名の取得
+    user_name = csv_store.get_user_name_by_id(user_id)
+
     # ユーザーのデータを取得
-    user_entries = csv_store.get_user_data(username)
-    if not user_entries and not csv_store.get_all_users().count(username):
+    user_entries = csv_store.get_user_data(user_id)
+    all_users = csv_store.get_all_users()
+    all_user_ids = [user[1] for user in all_users]
+
+    if not user_entries and user_id not in all_user_ids:
         raise HTTPException(
-            status_code=404, detail=f"ユーザー '{username}' が見つかりません"
+            status_code=404, detail=f"ユーザーID '{user_id}' が見つかりません"
         )
 
     # ユーザーの予定がある日付と勤務場所のマップを作成
@@ -89,7 +95,8 @@ def edit_user_attendance(
 
     context = {
         "request": request,
-        "username": username,
+        "user_id": user_id,
+        "user_name": user_name,
         "calendar_data": calendar_data["weeks"],
         "user_dates": user_dates,
         "user_locations": user_locations,
@@ -121,19 +128,19 @@ async def add_user(request: Request, username: str = Form(...)) -> RedirectRespo
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/user/delete/{username}", response_class=RedirectResponse)
-async def delete_user(request: Request, username: str) -> RedirectResponse:
+@router.post("/user/delete/{user_id}", response_class=RedirectResponse)
+async def delete_user(request: Request, user_id: str) -> RedirectResponse:
     """ユーザーを削除する
 
     Args:
         request: FastAPIリクエストオブジェクト
-        username: 削除するユーザー名
+        user_id: 削除するユーザーID
 
     Returns:
         RedirectResponse: 勤怠入力ページへのリダイレクト
     """
     try:
-        csv_store.delete_user(username)
+        csv_store.delete_user(user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -142,7 +149,7 @@ async def delete_user(request: Request, username: str) -> RedirectResponse:
 @router.post("/attendance/update", response_class=RedirectResponse)
 async def update_attendance(
     request: Request,
-    username: str = Form(...),
+    user_id: str = Form(...),
     date: str = Form(...),
     location: str = Form(...),
 ) -> RedirectResponse:
@@ -150,7 +157,7 @@ async def update_attendance(
 
     Args:
         request: FastAPIリクエストオブジェクト
-        username: 更新するユーザー名（フォームデータ）
+        user_id: 更新するユーザーID（フォームデータ）
         date: 更新する日付（フォームデータ）
         location: 更新する勤務場所（フォームデータ）
 
@@ -158,7 +165,7 @@ async def update_attendance(
         RedirectResponse: ユーザー編集ページへのリダイレクト
     """
     try:
-        csv_store.update_user_entry(username, date, location)
-        return RedirectResponse(url=f"/attendance/edit/{username}", status_code=303)
+        csv_store.update_user_entry(user_id, date, location)
+        return RedirectResponse(url=f"/attendance/edit/{user_id}", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
