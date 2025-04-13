@@ -1,31 +1,30 @@
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
 import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
+import os
+import logging
+
+# ロガー設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from . import csv_store
+from .utils.date_utils import (
+    format_date,
+    get_today_formatted,
+    get_current_month_formatted,
+    get_last_viewed_date,
+)
 
-app = FastAPI()
+app = FastAPI(title="Sokora勤務管理アプリ")
 
 # 静的ファイルを /static で配信
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 templates = Jinja2Templates(directory="src/templates")
-
-
-def format_date(date: datetime.date) -> str:
-    """日付をYYYY-MM-DD形式に整形する
-
-    Args:
-        date: 日付オブジェクト
-
-    Returns:
-        str: YYYY-MM-DD形式の文字列
-    """
-    return f"{date.year}-{date.month:02d}-{date.day:02d}"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -38,9 +37,7 @@ def root_page(request: Request) -> HTMLResponse:
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    # デフォルトで今日のデータを取得
-    today = datetime.date.today()
-    today_str = format_date(today)
+    today_str = get_today_formatted()
     day_data = csv_store.get_day_data(today_str)
 
     context = {"request": request, "default_day": today_str, "default_data": day_data}
@@ -59,9 +56,7 @@ def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
         HTMLResponse: レンダリングされたカレンダーHTML
     """
     if month is None:
-        # デフォルトで今月を表示
-        today = datetime.date.today()
-        month = f"{today.year}-{today.month:02d}"
+        month = get_current_month_formatted()
 
     calendar_data = csv_store.get_calendar_data(month)
     context = {
@@ -102,20 +97,10 @@ def get_user_detail(
     Returns:
         HTMLResponse: レンダリングされたユーザー詳細HTML
     """
-    # 最後に表示していた日付を取得 (リファラーから)
-    referer = request.headers.get("referer", "")
-    last_viewed_date = ""
-    if "/api/day/" in referer:
-        last_viewed_date = referer.split("/api/day/")[-1].split("?")[0]
-    else:
-        # デフォルトは今日
-        today = datetime.date.today()
-        last_viewed_date = format_date(today)
+    last_viewed_date = get_last_viewed_date(request)
 
     if month is None:
-        # デフォルトで今月を表示
-        today = datetime.date.today()
-        month = f"{today.year}-{today.month:02d}"
+        month = get_current_month_formatted()
 
     # 指定された月のカレンダーデータを取得
     calendar_data = csv_store.get_calendar_data(month)
@@ -154,18 +139,35 @@ def get_user_detail(
 
 
 @app.post("/api/csv/import")
-async def import_csv(file: UploadFile = File(...)) -> Dict[str, str]:
+async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResponse:
     """CSVファイルをインポートする
 
     Args:
+        request: FastAPIリクエストオブジェクト
         file: アップロードされたCSVファイル
 
     Returns:
-        Dict[str, str]: インポート結果のステータス
+        HTMLResponse: インポート結果のHTMLレスポンス
     """
-    contents = await file.read()
-    csv_store.import_csv_data(contents.decode("utf-8"))
-    return {"status": "ok", "message": "CSV imported successfully"}
+    try:
+        contents = await file.read()
+        csv_store.import_csv_data(contents.decode("utf-8"))
+
+        # 今日のデータを取得してコンテキストを作成
+        today_str = get_today_formatted()
+        day_data = csv_store.get_day_data(today_str)
+
+        context = {
+            "request": request,
+            "day": today_str,
+            "data": day_data,
+            "success_message": "CSVデータが正常にインポートされました。",
+        }
+
+        return templates.TemplateResponse("partials/day_detail.html", context)
+    except Exception as e:
+        logger.error(f"CSVインポートエラー: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"CSVインポートエラー: {str(e)}")
 
 
 @app.get("/api/csv/export")
@@ -175,5 +177,20 @@ def export_csv() -> FileResponse:
     Returns:
         FileResponse: CSVファイルのダウンロードレスポンス
     """
-    csv_path = Path("work_entries.csv")
-    return FileResponse(csv_path, media_type="text/csv", filename="work_entries.csv")
+    try:
+        csv_path = csv_store.get_csv_file_path()
+
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
+
+        return FileResponse(
+            path=csv_path,
+            filename="work_entries.csv",
+            media_type="text/csv",
+            content_disposition_type="attachment",
+        )
+    except Exception as e:
+        logger.error(f"CSVエクスポートエラー: {str(e)}")
+        raise HTTPException(
+            status_code=404, detail=f"CSVファイルが見つかりません: {str(e)}"
+        )

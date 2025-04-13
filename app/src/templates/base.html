@@ -5,26 +5,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>sokora</title>
-  <!-- ミニファイドJSはDockerfileで取得して/static/jsに配置 -->
-  <script src="/static/js/alpine.min.js" defer></script>
-  <script src="/static/js/htmx.min.js"></script>
-  <script src="/static/js/chart.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-  <!-- Tailwind CSS と daisyUI の CDN -->
+
+  <!-- スタイルとJavaScript -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/htmx.min.js"></script>
+
+  <!-- Tailwind設定 -->
   <script>
     tailwind.config = {
-      theme: {
-        extend: {}
-      },
-      daisyui: {
-        themes: ["light", "dark"],
-      },
+      theme: { extend: {} },
+      daisyui: { themes: ["light", "dark"] }
     }
   </script>
-  <!-- テーマ切り替えボタンのためのスタイル -->
+
+  <!-- テーマ切り替えボタンのスタイル -->
   <style>
     .theme-controller {
       position: fixed;
@@ -51,19 +48,23 @@
     </label>
   </div>
 
+  <!-- ヘッダー -->
   <header class="navbar bg-base-200 shadow-sm px-4 py-2">
     <div class="navbar-start">
       <h1 class="text-xl font-bold">Sokora</h1>
     </div>
     <div class="navbar-end space-x-2">
-      <button class="btn btn-sm btn-primary" hx-get="/api/csv/export" hx-target="#detail-area">CSVダウンロード</button>
+      <a href="/api/csv/export" class="btn btn-sm btn-primary">CSVダウンロード</a>
       <button class="btn btn-sm btn-secondary" @click="$store.importModal.toggle()">CSVアップロード</button>
     </div>
+
+    <!-- CSVアップロードモーダル -->
     <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;"
       class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
       <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full">
         <h3 class="font-bold text-lg mb-4">CSVアップロード</h3>
-        <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area" class="space-y-4">
+        <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area"
+          hx-on::after-request="closeImportModal()" class="space-y-4">
           <input type="file" name="file" class="file-input file-input-bordered w-full" />
           <div class="flex justify-end space-x-2">
             <button type="button" class="btn btn-outline" @click="$store.importModal.toggle()">キャンセル</button>
@@ -74,6 +75,7 @@
     </div>
   </header>
 
+  <!-- メインコンテンツ -->
   <main class="container mx-auto p-4 space-y-6">
     <!-- カレンダー領域 -->
     <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area"
@@ -81,30 +83,21 @@
       <!-- 初期ロード時に /api/calendar を呼び出し、ここに差し込み -->
     </div>
 
-    <!-- 日別・ユーザー別の詳細表示領域 -->
+    <!-- 詳細表示領域 -->
     <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
-      <!-- デフォルトで今日のデータを表示 -->
       {% if default_day and default_data %}
       <section>
         <h3 class="text-lg font-bold mb-4">{{ default_day }} の詳細</h3>
 
         {% if default_data["在宅"]|length == 0 and default_data["出社"]|length == 0 and default_data["出張"]|length == 0 %}
-        <div class="alert alert-info">
-          この日のデータはありません
-        </div>
+        <div class="alert alert-info">この日のデータはありません</div>
         {% else %}
-        <!-- 勤務場所データと円グラフ、社員リスト -->
+        <!-- 勤務場所データと社員リスト -->
         <div class="flex flex-col md:flex-row gap-6">
-          <!-- 左側：グラフエリア -->
-          <div class="flex justify-center items-center">
-            <div class="w-48 h-48">
-              <canvas id="location-pie-chart"></canvas>
-            </div>
-          </div>
-
-          <!-- 右側：社員リストエリア -->
+          <!-- 社員リストエリア -->
           <div class="flex-1">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- 在宅 -->
               <div class="card bg-base-100 shadow">
                 <div class="card-body p-4">
                   <div class="flex items-center gap-2">
@@ -121,6 +114,7 @@
                 </div>
               </div>
 
+              <!-- 出社 -->
               <div class="card bg-base-100 shadow">
                 <div class="card-body p-4">
                   <div class="flex items-center gap-2">
@@ -137,6 +131,7 @@
                 </div>
               </div>
 
+              <!-- 出張 -->
               <div class="card bg-base-100 shadow">
                 <div class="card-body p-4">
                   <div class="flex items-center gap-2">
@@ -161,119 +156,23 @@
     </div>
   </main>
 
+  <!-- JavaScript -->
   <script>
     // Alpine.jsのグローバルストア
     document.addEventListener('alpine:init', () => {
       Alpine.store('importModal', {
         open: false,
-        toggle() {
-          this.open = !this.open;
-        }
+        toggle() { this.open = !this.open; }
       });
     });
 
-    // Chart.jsプラグイン登録
-    Chart.register(ChartDataLabels);
-
-    // Chart.jsヘルパー関数
-    const chartColors = [
-      'rgba(74, 222, 128, 0.8)', // 在宅 (success color - 緑)
-      'rgba(96, 165, 250, 0.8)', // 出社 (primary color - 青)
-      'rgba(251, 146, 60, 0.8)'  // 出張 (warning color - オレンジ)
-    ];
-
-    function createPieChart(canvasId, homeCount, officeCount, tripCount, showLegend = true) {
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
-
-      // 既存のチャートがあれば破棄する
-      const existingChart = Chart.getChart(canvas);
-      if (existingChart) {
-        existingChart.destroy();
-      }
-
-      // データがある場合のみグラフを表示
-      if (homeCount > 0 || officeCount > 0 || tripCount > 0) {
-        new Chart(canvas, {
-          type: 'pie',
-          data: {
-            labels: ['在宅', '出社', '出張'],
-            datasets: [{
-              data: [homeCount, officeCount, tripCount],
-              backgroundColor: chartColors
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: {
-                display: false
-              },
-              tooltip: {
-                enabled: true
-              },
-              datalabels: {
-                formatter: (value, ctx) => {
-                  const label = ctx.chart.data.labels[ctx.dataIndex];
-                  return `${label}\n${value}名`;
-                },
-                color: '#fff',
-                font: {
-                  weight: 'bold',
-                  size: 14
-                },
-                align: 'center',
-                anchor: 'center'
-              }
-            }
-          }
-        });
+    // モーダルを閉じる関数
+    function closeImportModal() {
+      if (typeof Alpine !== 'undefined') {
+        Alpine.store('importModal').open = false;
       }
     }
-
-    // HTMXイベントリスナー
-    document.addEventListener('htmx:afterSwap', function (event) {
-      // カレンダーエリアが更新されたときの処理
-      if (event.detail.target.id === 'calendar-area') {
-        // カレンダー内のチャートを再初期化
-      }
-
-      // 詳細エリアが更新されたときのチャート描画
-      if (event.detail.target.id === 'detail-area') {
-        const locationChart = document.getElementById('location-pie-chart');
-        if (locationChart) {
-          // 各カテゴリーのカード内のリスト項目数を取得
-          const cards = document.querySelectorAll('.card');
-          let homeCount = 0, officeCount = 0, tripCount = 0;
-
-          cards.forEach(card => {
-            const titleElement = card.querySelector('.card-title');
-            if (!titleElement) return;
-
-            const title = titleElement.textContent.trim();
-            const count = card.querySelectorAll('li').length;
-
-            if (title === '在宅') homeCount = count;
-            else if (title === '出社') officeCount = count;
-            else if (title === '出張') tripCount = count;
-          });
-
-          createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
-        }
-      }
-    });
-
-    // 初期表示時のチャート描画
-    document.addEventListener('DOMContentLoaded', function () {
-      const homeCount = parseInt('{{ default_data["在宅"]|length }}' || '0');
-      const officeCount = parseInt('{{ default_data["出社"]|length }}' || '0');
-      const tripCount = parseInt('{{ default_data["出張"]|length }}' || '0');
-
-      createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
-    });
   </script>
-
 </body>
 
 </html>
