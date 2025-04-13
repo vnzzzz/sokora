@@ -4,7 +4,7 @@
     <table class="table table-xs table-zebra w-full">
       <thead>
         <tr>
-          <th class="bg-base-200 text-center sticky left-0 z-10 w-16">勤務場所</th>
+          <th class="bg-base-200 text-center sticky left-0 z-10 w-32">勤務場所</th>
           {% for week in calendar.weeks %}
           {% for day in week %}
           {% if day %}
@@ -31,7 +31,8 @@
         <!-- 勤務場所ごとの行 -->
         {% for location in calendar.locations %}
         <tr>
-          <td class="bg-base-200 font-medium text-center sticky left-0 z-10">{{ location.name }}</td>
+          <td class="bg-base-200 font-medium text-center sticky left-0 z-10 w-32 whitespace-nowrap">{{ location.name }}
+          </td>
           {% for week in calendar.weeks %}
           {% for day in week %}
           {% if day %}
@@ -44,7 +45,8 @@
             class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
             hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" data-date="{{ day.date }}"
             onclick="highlightSelectedDate('{{ day.date }}')">
-            <span class="{{ location.color }}">{{ day[location.key] if location.key in day else 0 }}</span>
+            <span class="{{ location.color }} whitespace-nowrap">{{ day[location.key] if location.key in day else 0
+              }}</span>
           </td>
           {% endif %}
           {% endfor %}
