@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A minimal FastAPI app with Poetry"
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-packages = [{ include = "app" }]
+packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.13"

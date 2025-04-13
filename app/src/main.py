@@ -11,9 +11,9 @@ from . import csv_store
 app = FastAPI()
 
 # 静的ファイルを /static で配信
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory="src/templates")
 
 
 def format_date(date: datetime.date) -> str:

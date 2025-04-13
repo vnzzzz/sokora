@@ -1,7 +1,9 @@
 services:
   sokora:
     container_name: sokora
-    build: .
+    build:
+      context: app
+      dockerfile: Dockerfile
     ports:
       - 8000:${PORT}
     volumes:
