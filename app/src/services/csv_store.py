@@ -4,8 +4,21 @@ from collections import defaultdict
 import calendar
 import datetime
 import os
+import logging
 from typing import Dict, List, Optional, Any, DefaultDict, Tuple, Set
 
+from ..utils.file_utils import get_csv_file_path, read_csv_file, write_csv_file
+from ..utils.calendar_utils import (
+    parse_month,
+    get_prev_month_date,
+    get_next_month_date,
+    generate_location_data,
+    create_calendar_weeks,
+)
+from ..utils.common import get_default_location_types
+
+# ロガー設定
+logger = logging.getLogger(__name__)
 
 # 日本のカレンダー設定（0:月曜始まり → 6:日曜始まり）
 calendar.setfirstweekday(6)
@@ -28,36 +41,9 @@ def get_location_types() -> List[str]:
 
     # デフォルトの勤務場所タイプがない場合の対応
     if not locations:
-        return ["在宅", "出社", "出張"]
+        return get_default_location_types()
 
     return sorted(list(locations))
-
-
-def get_csv_file_path() -> Path:
-    """CSV_FILEの場所を特定する関数
-
-    Returns:
-        Path: CSVファイルのパス
-    """
-    possible_paths = [
-        "work_entries.csv",  # 基本パス
-        os.path.join(os.getcwd(), "work_entries.csv"),  # カレントディレクトリ
-        os.path.join(os.getcwd(), "data", "work_entries.csv"),  # data/ディレクトリ
-        os.path.join(
-            os.path.dirname(os.getcwd()), "data", "work_entries.csv"
-        ),  # 親ディレクトリのdata/
-        os.path.join(os.getcwd(), "app", "work_entries.csv"),  # Docker環境用
-        os.path.join(
-            os.getcwd(), "app", "data", "work_entries.csv"
-        ),  # Docker環境用data/
-    ]
-
-    for path in possible_paths:
-        if os.path.exists(path):
-            return Path(path)
-
-    # 存在しない場合は基本パスを返す（新規作成用）
-    return Path("work_entries.csv")
 
 
 def import_csv_data(content: str) -> None:
@@ -69,11 +55,13 @@ def import_csv_data(content: str) -> None:
     Raises:
         IOError: ファイルの書き込みに失敗した場合
     """
+    from ..utils.file_utils import import_csv_data as file_import_csv_data
+
     try:
-        with get_csv_file_path().open("w", encoding="utf-8", newline="") as f:
-            f.write(content)
-    except Exception as e:
-        raise IOError(f"CSVデータの書き込みに失敗しました: {str(e)}")
+        file_import_csv_data(content)
+    except IOError as e:
+        logger.error(f"CSVデータのインポートに失敗しました: {str(e)}")
+        raise
 
 
 def read_all_entries() -> Dict[str, Dict[str, str]]:
@@ -82,35 +70,29 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
     Returns:
         Dict[str, Dict[str, str]]: {user_id: {date: location}}形式のデータ
     """
-    csv_path = get_csv_file_path()
-    if not csv_path.exists():
-        return {}
-
+    headers, rows = read_csv_file()
     data: Dict[str, Dict[str, str]] = {}
 
-    try:
-        with csv_path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            headers = next(reader)  # 日付がヘッダーに格納されている
-            dates = headers[2:]  # 最初の列はuser_name、2列目はuser_id
+    if not headers:
+        return data
 
-            for row in reader:
-                if len(row) < 2:  # user_nameとuser_idが最低限必要
-                    continue
+    dates = headers[2:]  # 最初の列はuser_name、2列目はuser_id
 
-                user_id = row[1]
-                user_data: Dict[str, str] = {}
+    for row in rows:
+        if len(row) < 2:  # user_nameとuser_idが最低限必要
+            continue
 
-                for i, location in enumerate(row[2:], 2):
-                    if location and i <= len(
-                        headers
-                    ):  # 空欄でない場合かつインデックスが有効な場合のみ登録
-                        date = headers[i]
-                        user_data[date] = location
+        user_id = row[1]
+        user_data: Dict[str, str] = {}
 
-                data[user_id] = user_data
-    except Exception as e:
-        raise IOError(f"CSVデータの読み込みに失敗しました: {str(e)}")
+        for i, location in enumerate(row[2:], 2):
+            if (
+                i < len(headers) and location.strip()
+            ):  # 空欄でない場合かつインデックスが有効な場合のみ登録
+                date = headers[i]
+                user_data[date] = location
+
+        data[user_id] = user_data
 
     return data
 
@@ -138,22 +120,12 @@ def get_all_users() -> List[Tuple[str, str]]:
     Returns:
         List[Tuple[str, str]]: (user_name, user_id)のリスト
     """
-    csv_path = get_csv_file_path()
-    if not csv_path.exists():
-        return []
-
+    headers, rows = read_csv_file()
     users = []
 
-    try:
-        with csv_path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            headers = next(reader)  # ヘッダー行をスキップ
-
-            for row in reader:
-                if len(row) >= 2 and row[0].strip() and row[1].strip():
-                    users.append((row[0], row[1]))  # (user_name, user_id)のタプル
-    except Exception as e:
-        raise IOError(f"ユーザーデータの読み込みに失敗しました: {str(e)}")
+    for row in rows:
+        if len(row) >= 2 and row[0].strip() and row[1].strip():
+            users.append((row[0], row[1]))  # (user_name, user_id)のタプル
 
     return sorted(users, key=lambda x: x[0])  # user_nameでソート
 
@@ -167,76 +139,41 @@ def get_user_name_by_id(user_id: str) -> str:
     Returns:
         str: ユーザー名（見つからない場合は空文字）
     """
-    csv_path = get_csv_file_path()
-    if not csv_path.exists():
-        return ""
+    headers, rows = read_csv_file()
 
-    try:
-        with csv_path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            next(reader)  # ヘッダー行をスキップ
-
-            for row in reader:
-                if len(row) >= 2 and row[1] == user_id:
-                    return row[0]
-    except Exception:
-        pass
+    for row in rows:
+        if len(row) >= 2 and row[1] == user_id:
+            return row[0]
 
     return ""
 
 
-def add_user(username: str, user_id: str = "") -> bool:
+def add_user(username: str, user_id: str) -> bool:
     """CSVファイルに新しいユーザーを追加する
 
     Args:
         username: 追加するユーザー名
-        user_id: ユーザーID（指定がない場合は自動生成）
+        user_id: ユーザーID
 
     Returns:
         bool: 追加が成功したかどうか
     """
-    if not username.strip():
+    if not username.strip() or not user_id.strip():
         return False
-
-    csv_path = get_csv_file_path()
 
     try:
         # 現在のデータを読み込む
         users = get_all_users()
 
-        # user_idが未指定の場合は自動生成
-        if not user_id:
-            # 姓のローマ字の最初の文字と名前のローマ字を組み合わせる想定
-            # 例: 山田太郎 -> t-yamada
-            first_char = username[0]
-            user_id = f"{first_char}-{username[1:]}"
-
-            # IDの重複を避ける
-            existing_ids = [u[1] for u in users]
-            if user_id in existing_ids:
-                # 重複する場合は連番を付ける
-                count = 1
-                new_user_id = f"{user_id}{count}"
-                while new_user_id in existing_ids:
-                    count += 1
-                    new_user_id = f"{user_id}{count}"
-                user_id = new_user_id
-
-        # ユーザー名にすでに同じものが存在する場合は追加しない
+        # ユーザー名またはIDにすでに同じものが存在する場合は追加しない
         for name, id in users:
             if name == username or id == user_id:
                 return False
 
         # ファイルを読み込み、ヘッダーを取得
-        headers = []
-        rows = []
+        headers, rows = read_csv_file()
 
-        if csv_path.exists():
-            with csv_path.open("r", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                headers = next(reader)
-                rows = list(reader)
-        else:
+        if not headers:
             # ファイルが存在しない場合は新規作成
             headers = ["user_name", "user_id"]
 
@@ -245,13 +182,11 @@ def add_user(username: str, user_id: str = "") -> bool:
         rows.append(new_row)
 
         # ファイルに書き込む
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(headers)
-            writer.writerows(rows)
+        write_csv_file(headers, rows)
 
         return True
     except Exception as e:
+        logger.error(f"ユーザーの追加に失敗しました: {str(e)}")
         raise IOError(f"ユーザーの追加に失敗しました: {str(e)}")
 
 
@@ -264,34 +199,27 @@ def delete_user(user_id: str) -> bool:
     Returns:
         bool: 削除が成功したかどうか
     """
-    csv_path = get_csv_file_path()
-
-    if not csv_path.exists():
-        return False
-
     try:
         # ファイルを読み込む
-        headers = []
-        rows = []
+        headers, rows = read_csv_file()
 
-        with csv_path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            headers = next(reader)
-            rows = [row for row in reader if len(row) < 2 or row[1] != user_id]
+        if not headers:
+            return False
+
+        original_row_count = len(rows)
+        # user_idに一致しない行だけを残す
+        filtered_rows = [row for row in rows if len(row) < 2 or row[1] != user_id]
 
         # 行が削除されなかった場合（該当するユーザーがいない場合）
-        original_count = sum(1 for _ in open(csv_path, encoding="utf-8")) - 1
-        if len(rows) == original_count:
+        if len(filtered_rows) == original_row_count:
             return False
 
         # ファイルに書き込む
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(headers)
-            writer.writerows(rows)
+        write_csv_file(headers, filtered_rows)
 
         return True
     except Exception as e:
+        logger.error(f"ユーザーの削除に失敗しました: {str(e)}")
         raise IOError(f"ユーザーの削除に失敗しました: {str(e)}")
 
 
@@ -306,27 +234,40 @@ def update_user_entry(user_id: str, date: str, location: str) -> bool:
     Returns:
         bool: 更新が成功したかどうか
     """
-    csv_path = get_csv_file_path()
-
-    if not csv_path.exists():
-        return False
-
     try:
         # ファイルを読み込む
-        headers = []
-        rows = []
+        headers, rows = read_csv_file()
 
-        with csv_path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            headers = next(reader)
-            rows = list(reader)
+        if not headers:
+            return False
 
         # 日付が存在するかチェック
         if date not in headers[2:]:
-            # 日付が存在しない場合は追加
-            headers.append(date)
+            # 日付が存在しない場合は適切な位置に挿入する
+            date_headers = headers[2:]
+
+            # 適切な挿入位置を探す
+            insert_position = 2  # デフォルトは最初の日付位置
+
+            # 日付が既存の日付より未来の場合、適切な位置を探す
+            for i, existing_date in enumerate(date_headers):
+                if existing_date > date:
+                    # 挿入位置を見つけた
+                    insert_position = i + 2  # headers[0]とheaders[1]の分を加算
+                    break
+                else:
+                    # 最後まで到達した場合、末尾に追加
+                    insert_position = len(headers)
+
+            # 新しい日付をヘッダーに挿入
+            headers.insert(insert_position, date)
+
+            # すべての行に新しい列を挿入
             for row in rows:
-                row.append("")
+                # 行が短い場合は必要な長さまで拡張
+                while len(row) < insert_position:
+                    row.append("")
+                row.insert(insert_position, "")
 
         # 日付のインデックスを取得
         date_index = headers.index(date)
@@ -347,67 +288,12 @@ def update_user_entry(user_id: str, date: str, location: str) -> bool:
             return False
 
         # ファイルに書き込む
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(headers)
-            writer.writerows(rows)
+        write_csv_file(headers, rows)
 
         return True
     except Exception as e:
+        logger.error(f"エントリーの更新に失敗しました: {str(e)}")
         raise IOError(f"エントリーの更新に失敗しました: {str(e)}")
-
-
-def parse_month(month: str) -> Tuple[int, int]:
-    """YYYY-MM形式の文字列を年と月に分解する
-
-    Args:
-        month: YYYY-MM形式の月指定
-
-    Returns:
-        Tuple[int, int]: (年, 月)のタプル
-
-    Raises:
-        ValueError: 無効な月フォーマットの場合
-    """
-    try:
-        year, month_num = map(int, month.split("-"))
-        if month_num < 1 or month_num > 12:
-            raise ValueError(f"無効な月番号: {month_num}")
-        return year, month_num
-    except Exception:
-        raise ValueError(
-            f"無効な月フォーマット: {month}。YYYY-MM形式で指定してください。"
-        )
-
-
-def get_prev_month_date(year: int, month: int) -> datetime.date:
-    """前月の日付を取得する
-
-    Args:
-        year: 年
-        month: 月
-
-    Returns:
-        datetime.date: 前月の日付オブジェクト
-    """
-    if month == 1:
-        return datetime.date(year - 1, 12, 1)
-    return datetime.date(year, month - 1, 1)
-
-
-def get_next_month_date(year: int, month: int) -> datetime.date:
-    """翌月の日付を取得する
-
-    Args:
-        year: 年
-        month: 月
-
-    Returns:
-        datetime.date: 翌月の日付オブジェクト
-    """
-    if month == 12:
-        return datetime.date(year + 1, 1, 1)
-    return datetime.date(year, month + 1, 1)
 
 
 def get_calendar_data(month: str) -> Dict[str, Any]:
@@ -446,38 +332,10 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
                 continue  # 無効な日付形式はスキップ
 
     # 週ごとにまとめたカレンダーデータを作成
-    calendar_weeks = []
-
-    for week in cal:
-        week_data = []
-        for day in week:
-            if day == 0:  # 0は月の範囲外の日
-                week_data.append(None)
-            else:
-                day_data = {
-                    "day": day,
-                    "date": f"{month}-{day:02d}",
-                }
-                # 各勤務場所タイプのカウントをデータに追加
-                for loc_type in location_types:
-                    day_data[loc_type] = calendar_dict[day].get(loc_type, 0)
-                week_data.append(day_data)
-        calendar_weeks.append(week_data)
+    calendar_weeks = create_calendar_weeks(cal, month, calendar_dict, location_types)
 
     # 勤務場所のスタイル情報を生成
-    # 固定の色情報を使用
-    colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
-    locations = []
-    for i, loc_type in enumerate(location_types):
-        color_index = i % len(colors)
-        locations.append(
-            {
-                "name": loc_type,
-                "color": f"text-{colors[color_index]}",
-                "key": loc_type,
-                "badge": colors[color_index],
-            }
-        )
+    locations = generate_location_data(location_types)
 
     # 前月・翌月の計算
     prev_month_date = get_prev_month_date(year, month_num)

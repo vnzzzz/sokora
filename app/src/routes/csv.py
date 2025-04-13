@@ -13,6 +13,7 @@ import os
 from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
+from ..utils.file_utils import get_csv_file_path
 
 router = APIRouter(prefix="/api/csv", tags=["CSVデータ"])
 templates = Jinja2Templates(directory="src/templates")
@@ -37,8 +38,11 @@ async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
         today_str = get_today_formatted()
         day_data = csv_store.get_day_data(today_str)
 
+        # 勤務場所の種類を取得
+        location_types = csv_store.get_location_types()
+
         # 勤務場所のバッジ情報を生成
-        locations = generate_location_badges()
+        locations = generate_location_badges(location_types)
 
         # データがあるかどうかをチェック
         has_data = has_data_for_day(day_data)
@@ -64,7 +68,7 @@ def export_csv() -> FileResponse:
     Returns:
         FileResponse: CSVファイルのダウンロードレスポンス
     """
-    csv_path = csv_store.get_csv_file_path()
+    csv_path = get_csv_file_path()
 
     if not os.path.exists(csv_path):
         raise HTTPException(status_code=404, detail="CSVファイルが見つかりません")

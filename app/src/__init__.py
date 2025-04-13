@@ -14,9 +14,10 @@ FastAPIを使用したシンプルな勤務状況管理ツールです。
 
 import logging
 import os
+from .services import csv_store
 
 # アプリケーションのバージョン
-__version__ = "0.1.0"
+APP_VERSION = "1.0.0"
 
 # ログレベルの設定（環境変数から取得するか、デフォルトでINFOを使用）
 log_level = os.environ.get("SOKORA_LOG_LEVEL", "INFO").upper()

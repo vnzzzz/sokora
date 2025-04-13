@@ -1,7 +1,7 @@
 <section class="p-2" hx-swap-oob="true" id="detail-area">
   <div class="space-y-4">
     <div class="flex justify-between items-center">
-      <h3 class="text-lg font-bold">{{ user_name }} の勤務予定</h3>
+      <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) の勤務予定</h3>
 
       <div class="btn-group">
         <a href="/api/user/{{ user_id }}?month={{ prev_month }}" class="btn btn-sm"

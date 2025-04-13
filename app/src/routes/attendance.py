@@ -82,15 +82,23 @@ def edit_user_attendance(
         user_dates.append(date)
         user_locations[date] = entry["location"]
 
-    # 勤務場所のスタイル情報を生成
-    location_styles = generate_location_styles()
+    # 勤務場所の種類を取得
     location_types = csv_store.get_location_types()
 
+    # 勤務場所のスタイル情報を生成
+    location_styles = generate_location_styles(location_types)
+
     # 前月と次月の設定
-    year, month_num = map(int, month.split("-"))
-    prev_month = csv_store.get_prev_month_date(year, month_num)
+    from ..utils.calendar_utils import (
+        parse_month,
+        get_prev_month_date,
+        get_next_month_date,
+    )
+
+    year, month_num = parse_month(month)
+    prev_month = get_prev_month_date(year, month_num)
     prev_month_str = f"{prev_month.year}-{prev_month.month:02d}"
-    next_month = csv_store.get_next_month_date(year, month_num)
+    next_month = get_next_month_date(year, month_num)
     next_month_str = f"{next_month.year}-{next_month.month:02d}"
 
     context = {
@@ -104,6 +112,7 @@ def edit_user_attendance(
         "location_types": location_types,
         "prev_month": prev_month_str,
         "next_month": next_month_str,
+        "month_name": calendar_data["month_name"],
     }
 
     return templates.TemplateResponse("attendance_edit.html", context)
@@ -111,18 +120,21 @@ def edit_user_attendance(
 
 # APIエンドポイント
 @router.post("/user/add", response_class=RedirectResponse)
-async def add_user(request: Request, username: str = Form(...)) -> RedirectResponse:
+async def add_user(
+    request: Request, username: str = Form(...), user_id: str = Form(...)
+) -> RedirectResponse:
     """新しいユーザーを追加する
 
     Args:
         request: FastAPIリクエストオブジェクト
         username: 追加するユーザー名（フォームデータ）
+        user_id: ユーザーID（フォームデータ）
 
     Returns:
         RedirectResponse: 勤怠入力ページへのリダイレクト
     """
     try:
-        csv_store.add_user(username)
+        csv_store.add_user(username, user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

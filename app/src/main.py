@@ -13,11 +13,15 @@ logger = logging.getLogger(__name__)
 # ルートモジュールの導入
 from .routes import root, attendance, calendar, csv
 
+# アプリケーションのバージョン
+APP_VERSION = "1.0.0"
+
 # FastAPIアプリを作成（デフォルトのドキュメントを無効化）
 app = FastAPI(
     title="Sokora API",
     docs_url=None,  # デフォルトの/docsを無効化
     redoc_url=None,  # デフォルトの/redocを無効化
+    version=APP_VERSION,
 )
 
 # 静的ファイルを /static で配信
@@ -31,6 +35,27 @@ app.include_router(calendar.router)
 app.include_router(csv.router)
 
 
+# APIタグの定義
+API_TAGS = [
+    {
+        "name": "勤怠管理",
+        "description": "ユーザーの勤怠データを管理するためのエンドポイント",
+    },
+    {
+        "name": "カレンダー",
+        "description": "カレンダー表示や日別詳細情報を取得するエンドポイント",
+    },
+    {
+        "name": "CSVデータ",
+        "description": "CSVデータのインポートとエクスポートを行うエンドポイント",
+    },
+    {
+        "name": "ページ表示",
+        "description": "アプリケーションのUIページを表示するエンドポイント",
+    },
+]
+
+
 # カスタムOpenAPIスキーマ定義
 def custom_openapi():
     if app.openapi_schema:
@@ -38,7 +63,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="Sokora API",
-        version="1.0.0",
+        version=APP_VERSION,
         description="SokoraのAPIドキュメント",
         routes=app.routes,
     )
@@ -47,24 +72,7 @@ def custom_openapi():
     openapi_schema["openapi"] = "3.0.2"
 
     # タグの順序とカスタム説明を追加
-    openapi_schema["tags"] = [
-        {
-            "name": "勤怠管理",
-            "description": "ユーザーの勤怠データを管理するためのエンドポイント",
-        },
-        {
-            "name": "カレンダー",
-            "description": "カレンダー表示や日別詳細情報を取得するエンドポイント",
-        },
-        {
-            "name": "CSVデータ",
-            "description": "CSVデータのインポートとエクスポートを行うエンドポイント",
-        },
-        {
-            "name": "ページ表示",
-            "description": "アプリケーションのUIページを表示するエンドポイント",
-        },
-    ]
+    openapi_schema["tags"] = API_TAGS
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
