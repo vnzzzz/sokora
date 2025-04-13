@@ -24,11 +24,6 @@
       {% for week in calendar_data %}
       {% for day in week %}
       {% if day.date %}
-      {% set location_styles = {
-      "在宅": "bg-success/10 text-success",
-      "出社": "bg-primary/10 text-primary",
-      "出張": "bg-warning/10 text-warning"
-      } %}
       {% set has_data = day.date in user_dates %}
       {% set location = user_locations[day.date] if has_data else "" %}
       {% set style_class = location_styles[location] if location in location_styles else "" %}

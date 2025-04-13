@@ -4,14 +4,33 @@ from collections import defaultdict
 import calendar
 import datetime
 import os
-from typing import Dict, List, Optional, Any, DefaultDict, Tuple
+from typing import Dict, List, Optional, Any, DefaultDict, Tuple, Set
 
-
-# 定数定義
-LOCATION_TYPES = ["在宅", "出社", "出張"]
 
 # 日本のカレンダー設定（0:月曜始まり → 6:日曜始まり）
 calendar.setfirstweekday(6)
+
+
+def get_location_types() -> List[str]:
+    """CSVから勤務場所の種類を動的に取得する関数
+
+    Returns:
+        List[str]: 勤務場所の種類のリスト
+    """
+    data = read_all_entries()
+    locations: Set[str] = set()
+
+    # すべてのユーザーデータから勤務場所を抽出
+    for user_data in data.values():
+        for location in user_data.values():
+            if location.strip():  # 空白でない場合
+                locations.add(location)
+
+    # デフォルトの勤務場所タイプがない場合の対応
+    if not locations:
+        return ["在宅", "出社", "出張"]
+
+    return sorted(list(locations))
 
 
 def get_csv_file_path() -> Path:
@@ -176,8 +195,9 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
         ValueError: 無効な月フォーマットの場合
     """
     date_entries = get_entries_by_date()
+    location_types = get_location_types()
     calendar_dict: DefaultDict[int, Dict[str, int]] = defaultdict(
-        lambda: {location_type: 0 for location_type in LOCATION_TYPES}
+        lambda: {location_type: 0 for location_type in location_types}
     )
 
     # 月データの解析
@@ -192,7 +212,7 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
             try:
                 day = int(date.split("-")[2])
                 for _, location in entries.items():
-                    if location in LOCATION_TYPES:
+                    if location in location_types:
                         calendar_dict[day][location] += 1
             except (IndexError, ValueError):
                 continue  # 無効な日付形式はスキップ
@@ -209,12 +229,27 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
                 day_data = {
                     "day": day,
                     "date": f"{month}-{day:02d}",
-                    "home": calendar_dict[day].get("在宅", 0),
-                    "office": calendar_dict[day].get("出社", 0),
-                    "trip": calendar_dict[day].get("出張", 0),
                 }
+                # 各勤務場所タイプのカウントをデータに追加
+                for loc_type in location_types:
+                    day_data[loc_type] = calendar_dict[day].get(loc_type, 0)
                 week_data.append(day_data)
         calendar_weeks.append(week_data)
+
+    # 勤務場所のスタイル情報を生成
+    # 固定の色情報を使用
+    colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
+    locations = []
+    for i, loc_type in enumerate(location_types):
+        color_index = i % len(colors)
+        locations.append(
+            {
+                "name": loc_type,
+                "color": f"text-{colors[color_index]}",
+                "key": loc_type,
+                "badge": colors[color_index],
+            }
+        )
 
     # 前月・翌月の計算
     prev_month_date = get_prev_month_date(year, month_num)
@@ -228,6 +263,7 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
         "prev_month": f"{prev_month_date.year}-{prev_month_date.month:02d}",
         "next_month": f"{next_month_date.year}-{next_month_date.month:02d}",
         "month_name": month_name,
+        "locations": locations,
     }
 
 
@@ -244,7 +280,8 @@ def get_day_data(day: str) -> Dict[str, List[str]]:
         ValueError: 無効な日付フォーマットの場合
     """
     entries_by_date = get_entries_by_date()
-    result: Dict[str, List[str]] = {loc_type: [] for loc_type in LOCATION_TYPES}
+    location_types = get_location_types()
+    result: Dict[str, List[str]] = {loc_type: [] for loc_type in location_types}
 
     # 日付の検証
     parts = day.split("-")
@@ -253,8 +290,12 @@ def get_day_data(day: str) -> Dict[str, List[str]]:
 
     # 特定の日の各ユーザーの勤務場所を集計
     for username, location in entries_by_date.get(day, {}).items():
-        if location in LOCATION_TYPES:
+        # すべての勤務場所を受け入れる
+        if location in result:
             result[location].append(username)
+        # CSVにあるが辞書にないロケーションタイプの場合は追加する
+        elif location.strip():
+            result[location] = [username]
 
     return result
 

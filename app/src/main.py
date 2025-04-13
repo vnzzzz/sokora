@@ -79,7 +79,30 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
         HTMLResponse: レンダリングされた日別詳細HTML
     """
     detail = csv_store.get_day_data(day)
-    context = {"request": request, "day": day, "data": detail}
+    location_types = csv_store.get_location_types()
+
+    # 勤務場所のスタイル情報を生成
+    colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
+    locations = []
+    for i, loc_type in enumerate(location_types):
+        color_index = i % len(colors)
+        locations.append(
+            {
+                "name": loc_type,
+                "badge": colors[color_index],
+            }
+        )
+
+    # データがあるかどうかをチェック
+    has_data = any(len(users) > 0 for users in detail.values())
+
+    context = {
+        "request": request,
+        "day": day,
+        "data": detail,
+        "locations": locations,
+        "has_data": has_data,
+    }
     return templates.TemplateResponse("partials/day_detail.html", context)
 
 
@@ -116,6 +139,16 @@ def get_user_detail(
         user_dates.append(date)
         user_locations[date] = entry["location"]
 
+    # 勤務場所のスタイル情報を生成
+    location_types = csv_store.get_location_types()
+    colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
+    location_styles = {}
+    for i, loc_type in enumerate(location_types):
+        color_index = i % len(colors)
+        location_styles[loc_type] = (
+            f"bg-{colors[color_index]}/10 text-{colors[color_index]}"
+        )
+
     # 前月と次月の設定
     year, month_num = map(int, month.split("-"))
     prev_month = csv_store.get_prev_month_date(year, month_num)
@@ -130,6 +163,7 @@ def get_user_detail(
         "calendar_data": calendar_data["weeks"],
         "user_dates": user_dates,
         "user_locations": user_locations,
+        "location_styles": location_styles,
         "prev_month": prev_month_str,
         "next_month": next_month_str,
         "last_viewed_date": last_viewed_date,
@@ -157,10 +191,36 @@ async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
         today_str = get_today_formatted()
         day_data = csv_store.get_day_data(today_str)
 
+        # 勤務場所のスタイル情報を生成
+        location_types = csv_store.get_location_types()
+        colors = [
+            "success",
+            "primary",
+            "warning",
+            "error",
+            "info",
+            "accent",
+            "secondary",
+        ]
+        locations = []
+        for i, loc_type in enumerate(location_types):
+            color_index = i % len(colors)
+            locations.append(
+                {
+                    "name": loc_type,
+                    "badge": colors[color_index],
+                }
+            )
+
+        # データがあるかどうかをチェック
+        has_data = any(len(users) > 0 for users in day_data.values())
+
         context = {
             "request": request,
             "day": today_str,
             "data": day_data,
+            "locations": locations,
+            "has_data": has_data,
             "success_message": "CSVデータが正常にインポートされました。",
         }
 

@@ -28,13 +28,7 @@
       </thead>
       <tbody>
         <!-- 勤務場所ごとの行 -->
-        {% set locations = [
-        {"name": "在宅", "color": "text-success", "key": "home"},
-        {"name": "出社", "color": "text-primary", "key": "office"},
-        {"name": "出張", "color": "text-warning", "key": "trip"}
-        ] %}
-
-        {% for location in locations %}
+        {% for location in calendar.locations %}
         <tr>
           <td class="bg-base-200 font-medium text-center sticky left-0 z-10">{{ location.name }}</td>
           {% for week in calendar.weeks %}
@@ -47,7 +41,7 @@
           ) %}
           <td class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %}"
             hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
-            <span class="{{ location.color }}">{{ day[location.key] }}</span>
+            <span class="{{ location.color }}">{{ day[location.key] if location.key in day else 0 }}</span>
           </td>
           {% endif %}
           {% endfor %}
