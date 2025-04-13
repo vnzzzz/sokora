@@ -1,87 +1,123 @@
 <!DOCTYPE html>
-<html lang="ja" x-data>
+<html lang="ja" x-data class="bg-base-100">
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>sokora</title>
   <!-- ミニファイドJSはDockerfileで取得して/static/jsに配置 -->
   <script src="/static/js/alpine.min.js" defer></script>
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/chart.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Tailwind CSS と daisyUI の CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {}
+      },
+      daisyui: {
+        themes: ["light"],
+      },
+    }
+  </script>
 </head>
 
-<body>
+<body class="min-h-screen bg-base-100">
 
-  <header>
-    <h1>Sokora</h1>
-    <button hx-get="/api/csv/export" hx-target="#detail-area">CSVダウンロード</button>
-    <button @click="$store.importModal.toggle()">CSVアップロード</button>
-    <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;">
-      <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area">
-        <input type="file" name="file">
-        <button type="submit">インポート</button>
-        <button type="button" @click="$store.importModal.toggle()">キャンセル</button>
-      </form>
+  <header class="navbar bg-base-200 shadow-sm px-4 py-2">
+    <div class="navbar-start">
+      <h1 class="text-xl font-bold">Sokora</h1>
+    </div>
+    <div class="navbar-end space-x-2">
+      <button class="btn btn-sm btn-primary" hx-get="/api/csv/export" hx-target="#detail-area">CSVダウンロード</button>
+      <button class="btn btn-sm btn-secondary" @click="$store.importModal.toggle()">CSVアップロード</button>
+    </div>
+    <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;"
+      class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full">
+        <h3 class="font-bold text-lg mb-4">CSVアップロード</h3>
+        <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area" class="space-y-4">
+          <input type="file" name="file" class="file-input file-input-bordered w-full" />
+          <div class="flex justify-end space-x-2">
+            <button type="button" class="btn btn-outline" @click="$store.importModal.toggle()">キャンセル</button>
+            <button type="submit" class="btn btn-primary">インポート</button>
+          </div>
+        </form>
+      </div>
     </div>
   </header>
 
-  <main>
+  <main class="container mx-auto p-4 space-y-6">
     <!-- カレンダー領域 -->
-    <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area">
+    <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area"
+      class="card bg-base-200 shadow-sm p-4">
       <!-- 初期ロード時に /api/calendar を呼び出し、ここに差し込み -->
     </div>
 
     <!-- 日別・ユーザー別の詳細表示領域 -->
-    <div id="detail-area">
+    <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
       <!-- デフォルトで今日のデータを表示 -->
       {% if default_day and default_data %}
       <section>
-        <h3>{{ default_day }} の詳細</h3>
+        <h3 class="text-lg font-bold mb-4">{{ default_day }} の詳細</h3>
 
         {% if default_data["在宅"]|length == 0 and default_data["出社"]|length == 0 and default_data["出張"]|length == 0 %}
-        <div class="no-data-message">
+        <div class="alert alert-info">
           この日のデータはありません
         </div>
         {% else %}
         <!-- 勤務場所データと円グラフ、社員リスト -->
-        <div class="day-detail-container">
+        <div class="flex flex-col md:flex-row gap-6">
           <!-- 左側：グラフエリア -->
-          <div class="day-chart-area">
-            <div class="location-chart-container">
+          <div class="flex justify-center">
+            <div class="w-56 h-56">
               <canvas id="location-pie-chart"></canvas>
             </div>
           </div>
 
           <!-- 右側：社員リストエリア -->
-          <div class="day-user-list-area">
-            <div class="user-lists">
-              <div class="user-category">
-                <h4>在宅</h4>
-                <ul>
-                  {% for user in default_data["在宅"] %}
-                  <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
-                  {% endfor %}
-                </ul>
+          <div class="flex-1">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="card bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                  <h4 class="card-title text-base">在宅</h4>
+                  <ul class="menu menu-sm p-0">
+                    {% for user in default_data["在宅"] %}
+                    <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
+                      <a>{{ user }}</a>
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
               </div>
 
-              <div class="user-category">
-                <h4>出社</h4>
-                <ul>
-                  {% for user in default_data["出社"] %}
-                  <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
-                  {% endfor %}
-                </ul>
+              <div class="card bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                  <h4 class="card-title text-base">出社</h4>
+                  <ul class="menu menu-sm p-0">
+                    {% for user in default_data["出社"] %}
+                    <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
+                      <a>{{ user }}</a>
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
               </div>
 
-              <div class="user-category">
-                <h4>出張</h4>
-                <ul>
-                  {% for user in default_data["出張"] %}
-                  <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
-                  {% endfor %}
-                </ul>
+              <div class="card bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                  <h4 class="card-title text-base">出張</h4>
+                  <ul class="menu menu-sm p-0">
+                    {% for user in default_data["出張"] %}
+                    <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
+                      <a>{{ user }}</a>
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -108,9 +144,9 @@
 
     // Chart.jsヘルパー関数
     const chartColors = [
-      'rgba(75, 192, 192, 0.7)', // 在宅
-      'rgba(54, 162, 235, 0.7)', // 出社
-      'rgba(255, 206, 86, 0.7)'  // 出張
+      'rgba(74, 222, 128, 0.8)', // 在宅
+      'rgba(96, 165, 250, 0.8)', // 出社
+      'rgba(251, 146, 60, 0.8)'  // 出張
     ];
 
     function createPieChart(canvasId, homeCount, officeCount, tripCount, showLegend = true) {
@@ -175,11 +211,11 @@
         const locationChart = document.getElementById('location-pie-chart');
         if (locationChart) {
           // データを直接取得
-          const containers = document.querySelectorAll('.user-category');
+          const containers = document.querySelectorAll('.card-title');
           if (containers.length >= 3) {
-            const homeCount = containers[0].querySelectorAll('li').length;
-            const officeCount = containers[1].querySelectorAll('li').length;
-            const tripCount = containers[2].querySelectorAll('li').length;
+            const homeCount = containers[0].closest('.card').querySelectorAll('li').length;
+            const officeCount = containers[1].closest('.card').querySelectorAll('li').length;
+            const tripCount = containers[2].closest('.card').querySelectorAll('li').length;
 
             createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
           }

@@ -1,51 +1,76 @@
-<section>
-  <h3>{{ day }} の詳細</h3>
+<section class="p-2">
+  <h3 class="text-lg font-bold mb-4">{{ day }} の詳細</h3>
 
   {% if data["在宅"]|length == 0 and data["出社"]|length == 0 and data["出張"]|length == 0 %}
-  <div class="no-data-message">
+  <div class="alert alert-info">
     この日のデータはありません
   </div>
   {% else %}
   <!-- 勤務場所データと円グラフ、社員リスト -->
-  <div class="day-detail-container">
+  <div class="flex flex-col md:flex-row gap-6">
     <!-- 左側：グラフエリア -->
-    <div class="day-chart-area">
-      <div class="location-chart-container">
+    <div class="flex justify-center">
+      <div class="w-56 h-56">
         <canvas id="location-pie-chart"></canvas>
       </div>
     </div>
 
     <!-- 右側：社員リストエリア -->
-    <div class="day-user-list-area">
-      <div class="user-lists">
-        <div class="user-category">
-          <h4>在宅</h4>
-          <ul>
-            {% for user in data["在宅"] %}
-            <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
-            {% endfor %}
-          </ul>
+    <div class="flex-1">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4">
+            <h4 class="card-title text-base">在宅</h4>
+            <ul class="menu menu-sm p-0">
+              {% for user in data["在宅"] %}
+              <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
+                <a>{{ user }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
         </div>
 
-        <div class="user-category">
-          <h4>出社</h4>
-          <ul>
-            {% for user in data["出社"] %}
-            <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
-            {% endfor %}
-          </ul>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4">
+            <h4 class="card-title text-base">出社</h4>
+            <ul class="menu menu-sm p-0">
+              {% for user in data["出社"] %}
+              <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
+                <a>{{ user }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
         </div>
 
-        <div class="user-category">
-          <h4>出張</h4>
-          <ul>
-            {% for user in data["出張"] %}
-            <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">{{ user }}</li>
-            {% endfor %}
-          </ul>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4">
+            <h4 class="card-title text-base">出張</h4>
+            <ul class="menu menu-sm p-0">
+              {% for user in data["出張"] %}
+              <li hx-get="/api/user/{{ user }}" hx-target="#detail-area">
+                <a>{{ user }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   </div>
   {% endif %}
+
+  <script>
+    // 日付詳細のデータを取得して円グラフを描画
+    document.addEventListener('DOMContentLoaded', function () {
+      const homeCount = parseInt('{{ data["在宅"]|length }}');
+      const officeCount = parseInt('{{ data["出社"]|length }}');
+      const tripCount = parseInt('{{ data["出張"]|length }}');
+
+      if (typeof createPieChart === 'function') {
+        createPieChart('location-pie-chart', homeCount, officeCount, tripCount);
+      }
+    });
+  </script>
 </section>

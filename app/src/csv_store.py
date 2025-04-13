@@ -177,8 +177,6 @@ def get_user_data(username: str) -> List[Dict[str, str]]:
 
     user_entries = []
     for date, location in sorted(data[username].items()):
-        user_entries.append(
-            {"user_name": username, "work_date": date, "location": location}
-        )
+        user_entries.append({"user_name": username, "date": date, "location": location})
 
     return user_entries

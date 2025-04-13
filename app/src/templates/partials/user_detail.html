@@ -1,19 +1,40 @@
-<section>
-  <h3>{{ username }} の勤務予定</h3>
-  <table border="1" cellpadding="6">
-    <thead>
-      <tr>
-        <th>日付</th>
-        <th>場所</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in entries %}
-      <tr>
-        <td>{{ row.work_date }}</td>
-        <td>{{ row.location }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<section class="p-2">
+  <div class="flex items-center gap-2 mb-4">
+    <h3 class="text-lg font-bold">{{ username }} の勤務記録</h3>
+    <button class="btn btn-sm btn-ghost" hx-get="/api/calendar" hx-target="#detail-area">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+        class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="table table-zebra">
+      <thead>
+        <tr>
+          <th class="text-center">日付</th>
+          <th class="text-center">勤務場所</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr hx-get="/api/day/{{ entry.date }}" hx-target="#detail-area" class="hover:bg-base-200 cursor-pointer">
+          <td class="text-center">{{ entry.date }}</td>
+          <td class="text-center">
+            {% if entry.location == "在宅" %}
+            <span class="badge badge-success">{{ entry.location }}</span>
+            {% elif entry.location == "出社" %}
+            <span class="badge badge-primary">{{ entry.location }}</span>
+            {% elif entry.location == "出張" %}
+            <span class="badge badge-warning">{{ entry.location }}</span>
+            {% else %}
+            <span class="badge">{{ entry.location }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
