@@ -1,18 +1,39 @@
 [tool.poetry]
 name = "sokora"
 version = "0.1.0"
-description = "A minimal FastAPI app with Poetry"
-authors = ["Your Name <you@example.com>"]
+description = "勤務状況管理のためのシンプルなWebアプリケーション"
+authors = ["Sokora Team <info@example.com>"]
 readme = "README.md"
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.13"
-fastapi = "0.95.0"
-uvicorn = "0.21.1"
-jinja2 = "3.1.2"
+fastapi = "^0.103.1"
+uvicorn = "^0.23.2"
+jinja2 = "^3.1.2"
 python-multipart = "^0.0.6"
+pydantic = "^2.4.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+isort = "^5.12.0"
+mypy = "^1.5.1"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.13"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
