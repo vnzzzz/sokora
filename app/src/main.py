@@ -12,6 +12,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from . import csv_store
+from .utils.date_utils import (
+    format_date,
+    get_today_formatted,
+    get_current_month_formatted,
+    get_last_viewed_date,
+)
 
 app = FastAPI(title="Sokora勤務管理アプリ")
 
@@ -19,37 +25,6 @@ app = FastAPI(title="Sokora勤務管理アプリ")
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 templates = Jinja2Templates(directory="src/templates")
-
-
-def format_date(date: datetime.date) -> str:
-    """日付をYYYY-MM-DD形式に整形する
-
-    Args:
-        date: 日付オブジェクト
-
-    Returns:
-        str: YYYY-MM-DD形式の文字列
-    """
-    return date.strftime("%Y-%m-%d")
-
-
-def get_today_formatted() -> str:
-    """今日の日付をYYYY-MM-DD形式で取得する
-
-    Returns:
-        str: 今日の日付（YYYY-MM-DD形式）
-    """
-    return format_date(datetime.date.today())
-
-
-def get_current_month_formatted() -> str:
-    """今月をYYYY-MM形式で取得する
-
-    Returns:
-        str: 今月（YYYY-MM形式）
-    """
-    today = datetime.date.today()
-    return f"{today.year}-{today.month:02d}"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -106,21 +81,6 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
     detail = csv_store.get_day_data(day)
     context = {"request": request, "day": day, "data": detail}
     return templates.TemplateResponse("partials/day_detail.html", context)
-
-
-def get_last_viewed_date(request: Request) -> str:
-    """最後に表示した日付を取得する
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-
-    Returns:
-        str: 最後に表示した日付（YYYY-MM-DD形式）
-    """
-    referer = request.headers.get("referer", "")
-    if "/api/day/" in referer:
-        return referer.split("/api/day/")[-1].split("?")[0]
-    return get_today_formatted()
 
 
 @app.get("/api/user/{username}", response_class=HTMLResponse)

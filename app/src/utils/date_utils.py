@@ -37,6 +37,10 @@ def get_current_month_formatted() -> str:
 def get_last_viewed_date(request: Request) -> str:
     """最後に表示した日付を取得する
 
+    リクエストのRefererヘッダーから最後に表示した日付を抽出する。
+    '/api/day/' パスの後ろに日付がある場合はその日付を、
+    そうでない場合は今日の日付を返す。
+
     Args:
         request: FastAPIリクエストオブジェクト
 

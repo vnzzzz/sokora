@@ -62,9 +62,6 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
 
     Returns:
         Dict[str, Dict[str, str]]: {user_name: {date: location}}形式のデータ
-
-    Raises:
-        FileNotFoundError: CSVファイルが存在しない場合
     """
     csv_path = get_csv_file_path()
     if not csv_path.exists():
@@ -136,6 +133,36 @@ def parse_month(month: str) -> Tuple[int, int]:
         )
 
 
+def get_prev_month_date(year: int, month: int) -> datetime.date:
+    """前月の日付を取得する
+
+    Args:
+        year: 年
+        month: 月
+
+    Returns:
+        datetime.date: 前月の日付オブジェクト
+    """
+    if month == 1:
+        return datetime.date(year - 1, 12, 1)
+    return datetime.date(year, month - 1, 1)
+
+
+def get_next_month_date(year: int, month: int) -> datetime.date:
+    """翌月の日付を取得する
+
+    Args:
+        year: 年
+        month: 月
+
+    Returns:
+        datetime.date: 翌月の日付オブジェクト
+    """
+    if month == 12:
+        return datetime.date(year + 1, 1, 1)
+    return datetime.date(year, month + 1, 1)
+
+
 def get_calendar_data(month: str) -> Dict[str, Any]:
     """月ごとのカレンダーデータを生成する
 
@@ -166,9 +193,7 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
                 day = int(date.split("-")[2])
                 for _, location in entries.items():
                     if location in LOCATION_TYPES:
-                        calendar_dict[day][location] = (
-                            calendar_dict[day].get(location, 0) + 1
-                        )
+                        calendar_dict[day][location] += 1
             except (IndexError, ValueError):
                 continue  # 無効な日付形式はスキップ
 
@@ -195,48 +220,15 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
     prev_month_date = get_prev_month_date(year, month_num)
     next_month_date = get_next_month_date(year, month_num)
 
+    # 日本語の月名取得
+    month_name = f"{year}年{month_num}月"
+
     return {
         "weeks": calendar_weeks,
         "prev_month": f"{prev_month_date.year}-{prev_month_date.month:02d}",
         "next_month": f"{next_month_date.year}-{next_month_date.month:02d}",
-        "month_name": f"{year}年{month_num}月",
+        "month_name": month_name,
     }
-
-
-def get_prev_month_date(year: int, month: int) -> datetime.date:
-    """前の月の日付を取得する
-
-    Args:
-        year: 年
-        month: 月
-
-    Returns:
-        datetime.date: 前月の日付
-    """
-    if month == 1:
-        # 1月の場合は前年の12月
-        return datetime.date(year - 1, 12, 1)
-    else:
-        # それ以外は同じ年の前月
-        return datetime.date(year, month - 1, 1)
-
-
-def get_next_month_date(year: int, month: int) -> datetime.date:
-    """次の月の日付を取得する
-
-    Args:
-        year: 年
-        month: 月
-
-    Returns:
-        datetime.date: 翌月の日付
-    """
-    if month == 12:
-        # 12月の場合は翌年の1月
-        return datetime.date(year + 1, 1, 1)
-    else:
-        # それ以外は同じ年の翌月
-        return datetime.date(year, month + 1, 1)
 
 
 def get_day_data(day: str) -> Dict[str, List[str]]:
@@ -246,35 +238,44 @@ def get_day_data(day: str) -> Dict[str, List[str]]:
         day: YYYY-MM-DD形式の日付
 
     Returns:
-        Dict[str, List[str]]: 勤務場所ごとのユーザーリスト
+        Dict[str, List[str]]: ロケーション別のユーザー一覧
+
+    Raises:
+        ValueError: 無効な日付フォーマットの場合
     """
-    date_entries = get_entries_by_date()
-    detail = {location_type: [] for location_type in LOCATION_TYPES}
+    entries_by_date = get_entries_by_date()
+    result: Dict[str, List[str]] = {loc_type: [] for loc_type in LOCATION_TYPES}
 
-    if day in date_entries:
-        for user_name, location in date_entries[day].items():
-            if location in LOCATION_TYPES:
-                detail[location].append(user_name)
+    # 日付の検証
+    parts = day.split("-")
+    if len(parts) != 3:
+        return result
 
-    return detail
+    # 特定の日の各ユーザーの勤務場所を集計
+    for username, location in entries_by_date.get(day, {}).items():
+        if location in LOCATION_TYPES:
+            result[location].append(username)
+
+    return result
 
 
 def get_user_data(username: str) -> List[Dict[str, str]]:
-    """特定ユーザーのすべての記録を取得する
+    """指定されたユーザーのデータを取得する
 
     Args:
         username: ユーザー名
 
     Returns:
-        List[Dict[str, str]]: ユーザーのエントリーリスト
+        List[Dict[str, str]]: ユーザーのエントリー一覧
     """
     data = read_all_entries()
+    entries = []
 
-    if username not in data:
-        return []
+    if username in data:
+        user_data = data[username]
+        for date, location in user_data.items():
+            entries.append({"date": date, "location": location})
 
-    user_entries = []
-    for date, location in sorted(data[username].items()):
-        user_entries.append({"user_name": username, "date": date, "location": location})
-
-    return user_entries
+    # 日付でソート
+    entries.sort(key=lambda x: x["date"])
+    return entries
