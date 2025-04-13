@@ -111,18 +111,21 @@ def edit_user_attendance(
 
 # APIエンドポイント
 @router.post("/user/add", response_class=RedirectResponse)
-async def add_user(request: Request, username: str = Form(...)) -> RedirectResponse:
+async def add_user(
+    request: Request, username: str = Form(...), user_id: str = Form(...)
+) -> RedirectResponse:
     """新しいユーザーを追加する
 
     Args:
         request: FastAPIリクエストオブジェクト
         username: 追加するユーザー名（フォームデータ）
+        user_id: ユーザーID（フォームデータ）
 
     Returns:
         RedirectResponse: 勤怠入力ページへのリダイレクト
     """
     try:
-        csv_store.add_user(username)
+        csv_store.add_user(username, user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

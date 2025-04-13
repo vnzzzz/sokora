@@ -185,17 +185,17 @@ def get_user_name_by_id(user_id: str) -> str:
     return ""
 
 
-def add_user(username: str, user_id: str = "") -> bool:
+def add_user(username: str, user_id: str) -> bool:
     """CSVファイルに新しいユーザーを追加する
 
     Args:
         username: 追加するユーザー名
-        user_id: ユーザーID（指定がない場合は自動生成）
+        user_id: ユーザーID
 
     Returns:
         bool: 追加が成功したかどうか
     """
-    if not username.strip():
+    if not username.strip() or not user_id.strip():
         return False
 
     csv_path = get_csv_file_path()
@@ -204,25 +204,7 @@ def add_user(username: str, user_id: str = "") -> bool:
         # 現在のデータを読み込む
         users = get_all_users()
 
-        # user_idが未指定の場合は自動生成
-        if not user_id:
-            # 姓のローマ字の最初の文字と名前のローマ字を組み合わせる想定
-            # 例: 山田太郎 -> t-yamada
-            first_char = username[0]
-            user_id = f"{first_char}-{username[1:]}"
-
-            # IDの重複を避ける
-            existing_ids = [u[1] for u in users]
-            if user_id in existing_ids:
-                # 重複する場合は連番を付ける
-                count = 1
-                new_user_id = f"{user_id}{count}"
-                while new_user_id in existing_ids:
-                    count += 1
-                    new_user_id = f"{user_id}{count}"
-                user_id = new_user_id
-
-        # ユーザー名にすでに同じものが存在する場合は追加しない
+        # ユーザー名またはIDにすでに同じものが存在する場合は追加しない
         for name, id in users:
             if name == username or id == user_id:
                 return False
