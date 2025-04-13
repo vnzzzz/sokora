@@ -1,0 +1,32 @@
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title_text|default('Sokora') }}</title>
+
+  <!-- スタイルとJavaScript -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+  <script src="/static/js/htmx.min.js"></script>
+
+  <!-- Tailwind設定 -->
+  <script>
+    tailwind.config = {
+      theme: { extend: {} },
+      daisyui: { themes: ["light", "dark"] }
+    }
+  </script>
+
+  <!-- テーマ切り替えボタンのスタイル -->
+  <style>
+    .theme-controller {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 100;
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
