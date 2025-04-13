@@ -1,0 +1,86 @@
+<section class="p-2">
+  <h2 class="text-xl font-bold mb-4 text-center">{{ month }}</h2>
+  <div class="overflow-x-auto">
+    <table class="table table-xs table-zebra w-full">
+      <thead>
+        <tr>
+          <th class="bg-base-200 text-center sticky left-0 z-10 w-16">勤務場所</th>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <th
+            class="bg-base-200 text-center p-1 w-10 {% if loop.index0 == 0 %}bg-opacity-90 bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-opacity-90 bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
+            <div class="font-bold text-sm">{{ day.day }}</div>
+            <div class="text-xs opacity-70">
+              {% set weekday_index = loop.index0 %}
+              {% if weekday_index == 0 %}日
+              {% elif weekday_index == 1 %}月
+              {% elif weekday_index == 2 %}火
+              {% elif weekday_index == 3 %}水
+              {% elif weekday_index == 4 %}木
+              {% elif weekday_index == 5 %}金
+              {% elif weekday_index == 6 %}土
+              {% endif %}
+            </div>
+          </th>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="bg-base-200 font-medium text-center sticky left-0 z-10">在宅</td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if loop.index0 == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
+            <span class="text-success">{{ day.home }}</span>
+          </td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="bg-base-200 font-medium text-center sticky left-0 z-10">出社</td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if loop.index0 == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
+            <span class="text-primary">{{ day.office }}</span>
+          </td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="bg-base-200 font-medium text-center sticky left-0 z-10">出張</td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day %}
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if loop.index0 == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif loop.index0 == 6 %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area">
+            <span class="text-warning">{{ day.trip }}</span>
+          </td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex justify-center mt-4 space-x-2">
+    <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.prev_month }}"
+      hx-target="#calendar-area">＜前月</button>
+    <button class="btn btn-sm" hx-get="/api/calendar" hx-target="#calendar-area">今月</button>
+    <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.next_month }}"
+      hx-target="#calendar-area">翌月＞</button>
+  </div>
+</section>

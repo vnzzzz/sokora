@@ -125,6 +125,24 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
     }
 
 
+def get_prev_month_date(year: int, month: int) -> datetime.date:
+    """前の月の日付を取得する
+
+    Args:
+        year: 年
+        month: 月
+
+    Returns:
+        datetime.date: 前月の日付
+    """
+    if month == 1:
+        # 1月の場合は前年の12月
+        return datetime.date(year - 1, 12, 1)
+    else:
+        # それ以外は同じ年の前月
+        return datetime.date(year, month - 1, 1)
+
+
 def get_next_month_date(year: int, month: int) -> datetime.date:
     """次の月の日付を取得する
 
@@ -177,8 +195,6 @@ def get_user_data(username: str) -> List[Dict[str, str]]:
 
     user_entries = []
     for date, location in sorted(data[username].items()):
-        user_entries.append(
-            {"user_name": username, "work_date": date, "location": location}
-        )
+        user_entries.append({"user_name": username, "date": date, "location": location})
 
     return user_entries

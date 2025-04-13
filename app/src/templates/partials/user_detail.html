@@ -1,0 +1,73 @@
+<section class="p-2">
+  <div class="flex items-center gap-2 mb-4">
+    <h3 class="text-lg font-bold">{{ username }} の勤務記録</h3>
+    <button class="btn btn-sm btn-ghost" hx-get="/api/day/{{ last_viewed_date }}" hx-target="#detail-area">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+        class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- カレンダー形式の表示 -->
+  <div class="overflow-x-auto">
+    <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
+      <div class="p-1">日</div>
+      <div class="p-1">月</div>
+      <div class="p-1">火</div>
+      <div class="p-1">水</div>
+      <div class="p-1">木</div>
+      <div class="p-1">金</div>
+      <div class="p-1">土</div>
+    </div>
+
+    <!-- カレンダーグリッド -->
+    <div class="grid grid-cols-7 gap-1">
+      {% for week in calendar_data %}
+      {% for day in week %}
+      {% if day.date %}
+      <div class="p-1 border rounded min-h-12 
+                      {% if day.date in user_dates %}
+                        {% if user_locations[day.date] == '在宅' %}
+                          bg-success/10 
+                        {% elif user_locations[day.date] == '出社' %}
+                          bg-primary/10 
+                        {% elif user_locations[day.date] == '出張' %}
+                          bg-warning/10 
+                        {% endif %}
+                      {% endif %}
+                      text-center
+                      {% if day.is_today %}border-accent{% endif %}" hx-get="/api/day/{{ day.date }}"
+        hx-target="#detail-area">
+        <div class="text-sm font-bold">{{ day.day }}</div>
+        {% if day.date in user_dates %}
+        <div class="text-xs mt-1">
+          {% if user_locations[day.date] == '在宅' %}
+          <span class="text-success">在宅</span>
+          {% elif user_locations[day.date] == '出社' %}
+          <span class="text-primary">出社</span>
+          {% elif user_locations[day.date] == '出張' %}
+          <span class="text-warning">出張</span>
+          {% else %}
+          <span>{{ user_locations[day.date] }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="p-1 border rounded bg-base-200/30 min-h-12"></div>
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 月移動ボタン -->
+  <div class="flex justify-center mt-4 space-x-2">
+    <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ username }}?month={{ prev_month }}"
+      hx-target="#detail-area">＜前月</button>
+    <button class="btn btn-sm" hx-get="/api/user/{{ username }}" hx-target="#detail-area">今月</button>
+    <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ username }}?month={{ next_month }}"
+      hx-target="#detail-area">翌月＞</button>
+  </div>
+</section>
