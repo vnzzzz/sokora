@@ -1,8 +1,21 @@
+/* 基本スタイル */
 body {
   margin: 16px;
   font-family: sans-serif;
 }
 
+/* ヘッダーとメインコンテナ */
+header {
+  margin-bottom: 20px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* テーブル共通スタイル */
 table {
   border-collapse: collapse;
   margin-bottom: 8px;
@@ -19,10 +32,21 @@ tr:hover {
   cursor: pointer;
 }
 
+/* ボタンスタイル */
 button {
   margin-right: 6px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: #f8f8f8;
 }
 
+button:hover {
+  background-color: #e8e8e8;
+}
+
+/* カレンダー関連スタイル */
 .calendar {
   width: 100%;
   table-layout: fixed;
@@ -54,16 +78,16 @@ button {
   margin-top: 2px;
 }
 
-/* 日曜日のスタイル */
+/* 曜日別のスタイル */
 .calendar tr td:first-child {
-  background-color: #fff0f0;
+  background-color: #fff0f0; /* 日曜日 */
 }
 
-/* 土曜日のスタイル */
 .calendar tr td:last-child {
-  background-color: #f0f0ff;
+  background-color: #f0f0ff; /* 土曜日 */
 }
 
+/* チャート関連スタイル */
 .chart-container {
   display: flex;
   justify-content: center;
@@ -83,10 +107,29 @@ button {
   flex-shrink: 0;
 }
 
+/* 日別詳細表示スタイル */
+.day-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  align-items: center;
+}
+
+.day-chart-area {
+  width: 220px;
+  margin-bottom: 20px;
+}
+
+.day-user-list-area {
+  flex: 1;
+  width: 100%;
+}
+
+/* ユーザーリスト関連スタイル */
 .user-lists {
   display: flex;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 20px;
   margin: 0;
   width: 100%;
@@ -113,6 +156,36 @@ button {
   border-radius: 4px 4px 0 0;
 }
 
+.user-category ul {
+  min-height: 120px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-left: 20px;
+  margin-bottom: 10px;
+  border-left: 3px solid #f0f0f0;
+}
+
+.user-category ul li {
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.user-category ul li:hover {
+  color: #3498db;
+  text-decoration: underline;
+}
+
+.user-count {
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #555;
+  text-align: right;
+  border-top: 1px dashed #ddd;
+  padding-top: 5px;
+  font-weight: bold;
+}
+
+/* 統計表示スタイル */
 .location-stats {
   text-align: center;
   margin: 10px 0;
@@ -128,32 +201,7 @@ button {
   border-left: 3px solid #3498db;
 }
 
-.day-detail-container {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-  align-items: center;
-}
-
-.day-chart-area {
-  width: 220px;
-  margin-bottom: 20px;
-}
-
-.day-user-list-area {
-  flex: 1;
-  width: 100%;
-}
-
-.user-category ul {
-  min-height: 120px;
-  max-height: 220px;
-  overflow-y: auto;
-  padding-left: 20px;
-  margin-bottom: 10px;
-  border-left: 3px solid #f0f0f0;
-}
-
+/* メッセージスタイル */
 .no-data-message {
   text-align: center;
   padding: 50px 0;
@@ -162,17 +210,7 @@ button {
   font-size: 1.2em;
 }
 
-.user-count {
-  margin-top: 5px;
-  font-size: 0.9em;
-  color: #555;
-  text-align: right;
-  border-top: 1px dashed #ddd;
-  padding-top: 5px;
-  font-weight: bold;
-}
-
-/* 大きめの画面サイズの場合 */
+/* レスポンシブ対応 */
 @media (min-width: 768px) {
   .day-detail-container {
     flex-direction: row;

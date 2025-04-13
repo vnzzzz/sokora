@@ -3,21 +3,32 @@ from pathlib import Path
 from collections import defaultdict
 import calendar
 import datetime
+from typing import Dict, List, Optional, Any, DefaultDict
 
+# 定数定義
 CSV_FILE = Path("work_entries.csv")
+LOCATION_TYPES = ["在宅", "出社", "出張"]
 
 
-def import_csv_data(content: str):
+def import_csv_data(content: str) -> None:
+    """CSVデータをファイルに保存する
+
+    Args:
+        content: CSVファイルの内容
+    """
     with CSV_FILE.open("w", encoding="utf-8", newline="") as f:
         f.write(content)
 
 
-def read_all_entries():
-    """新しいCSV形式からデータを読み込む"""
+def read_all_entries() -> Dict[str, Dict[str, str]]:
+    """CSVファイルからすべてのエントリーを読み込む
+
+    Returns:
+        Dict[str, Dict[str, str]]: {user_name: {date: location}}形式のデータ
+    """
     if not CSV_FILE.exists():
         return {}
 
-    # 新しい形式: {user_name: {date: location}}
     data = {}
 
     with CSV_FILE.open("r", encoding="utf-8") as f:
@@ -39,8 +50,12 @@ def read_all_entries():
     return data
 
 
-def get_entries_by_date():
-    """日付ごとのエントリーを取得する"""
+def get_entries_by_date() -> DefaultDict[str, Dict[str, str]]:
+    """日付ごとのエントリーを取得する
+
+    Returns:
+        DefaultDict[str, Dict[str, str]]: {date: {user_name: location}}形式のデータ
+    """
     data = read_all_entries()
     date_entries = defaultdict(dict)
 
@@ -52,9 +67,19 @@ def get_entries_by_date():
     return date_entries
 
 
-def get_calendar_data(month: str):
+def get_calendar_data(month: str) -> Dict[str, Any]:
+    """月ごとのカレンダーデータを生成する
+
+    Args:
+        month: YYYY-MM形式の月指定
+
+    Returns:
+        Dict: カレンダー表示に必要なデータ
+    """
     date_entries = get_entries_by_date()
-    calendar_dict = defaultdict(lambda: {"在宅": 0, "出社": 0, "出張": 0})
+    calendar_dict: DefaultDict[int, Dict[str, int]] = defaultdict(
+        lambda: {location_type: 0 for location_type in LOCATION_TYPES}
+    )
 
     # 月データの解析
     year, month_num = map(int, month.split("-"))
@@ -66,7 +91,7 @@ def get_calendar_data(month: str):
     for date, entries in date_entries.items():
         if date.startswith(month):
             day = int(date.split("-")[2])
-            for user, location in entries.items():
+            for _, location in entries.items():
                 calendar_dict[day][location] = calendar_dict[day].get(location, 0) + 1
 
     # 週ごとにまとめたカレンダーデータを作成
@@ -89,32 +114,62 @@ def get_calendar_data(month: str):
         calendar_weeks.append(week_data)
 
     # 前月・翌月の計算
-    prev_month = datetime.date(year, month_num, 1) - datetime.timedelta(days=1)
-    next_month = datetime.date(year, month_num, 28)
-    # 確実に翌月にするため28日から始めて月が変わるまで加算
-    while next_month.month == month_num:
-        next_month += datetime.timedelta(days=1)
+    prev_month_date = datetime.date(year, month_num, 1) - datetime.timedelta(days=1)
+    next_month_date = get_next_month_date(year, month_num)
 
     return {
         "weeks": calendar_weeks,
-        "prev_month": f"{prev_month.year}-{prev_month.month:02d}",
-        "next_month": f"{next_month.year}-{next_month.month:02d}",
+        "prev_month": f"{prev_month_date.year}-{prev_month_date.month:02d}",
+        "next_month": f"{next_month_date.year}-{next_month_date.month:02d}",
         "month_name": f"{year}年{month_num}月",
     }
 
 
-def get_day_data(day: str):
+def get_next_month_date(year: int, month: int) -> datetime.date:
+    """次の月の日付を取得する
+
+    Args:
+        year: 年
+        month: 月
+
+    Returns:
+        datetime.date: 翌月の日付
+    """
+    next_month = datetime.date(year, month, 28)
+    # 確実に翌月にするため28日から始めて月が変わるまで加算
+    while next_month.month == month:
+        next_month += datetime.timedelta(days=1)
+    return next_month
+
+
+def get_day_data(day: str) -> Dict[str, List[str]]:
+    """指定された日のデータを取得する
+
+    Args:
+        day: YYYY-MM-DD形式の日付
+
+    Returns:
+        Dict[str, List[str]]: 勤務場所ごとのユーザーリスト
+    """
     date_entries = get_entries_by_date()
-    detail = {"在宅": [], "出社": [], "出張": []}
+    detail = {location_type: [] for location_type in LOCATION_TYPES}
 
     if day in date_entries:
         for user_name, location in date_entries[day].items():
-            detail.setdefault(location, []).append(user_name)
+            detail[location].append(user_name)
 
     return detail
 
 
-def get_user_data(username: str):
+def get_user_data(username: str) -> List[Dict[str, str]]:
+    """特定ユーザーのすべての記録を取得する
+
+    Args:
+        username: ユーザー名
+
+    Returns:
+        List[Dict[str, str]]: ユーザーのエントリーリスト
+    """
     data = read_all_entries()
 
     if username not in data:

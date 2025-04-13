@@ -17,8 +17,8 @@
 
     <!-- 右側：社員リストエリア -->
     <div class="day-user-list-area">
-      <div class="user-lists" style="display: flex; flex-direction: row; justify-content: space-between;">
-        <div class="user-category" style="flex: 1; margin-right: 10px;">
+      <div class="user-lists">
+        <div class="user-category">
           <h4>在宅</h4>
           <ul>
             {% for user in data["在宅"] %}
@@ -28,7 +28,7 @@
           <div class="user-count">合計: {{ data["在宅"]|length }}名</div>
         </div>
 
-        <div class="user-category" style="flex: 1; margin-right: 10px;">
+        <div class="user-category">
           <h4>出社</h4>
           <ul>
             {% for user in data["出社"] %}
@@ -38,7 +38,7 @@
           <div class="user-count">合計: {{ data["出社"]|length }}名</div>
         </div>
 
-        <div class="user-category" style="flex: 1;">
+        <div class="user-category">
           <h4>出張</h4>
           <ul>
             {% for user in data["出張"] %}
@@ -52,53 +52,3 @@
   </div>
   {% endif %}
 </section>
-
-<script>
-  // パイチャートを描画
-  document.addEventListener('htmx:afterSwap', function () {
-    const locationChart = document.getElementById('location-pie-chart');
-    if (locationChart) {
-      // 既存のチャートがあれば破棄する
-      const existingChart = Chart.getChart(locationChart);
-      if (existingChart) {
-        existingChart.destroy();
-      }
-
-      // データからパイチャートを作成
-      const homeCount = parseInt('{{ data["在宅"]|length }}' || '0');
-      const officeCount = parseInt('{{ data["出社"]|length }}' || '0');
-      const tripCount = parseInt('{{ data["出張"]|length }}' || '0');
-
-      // データがある場合のみグラフを表示
-      if (homeCount > 0 || officeCount > 0 || tripCount > 0) {
-        new Chart(locationChart, {
-          type: 'pie',
-          data: {
-            labels: ['在宅', '出社', '出張'],
-            datasets: [{
-              data: [homeCount, officeCount, tripCount],
-              backgroundColor: [
-                'rgba(75, 192, 192, 0.7)',
-                'rgba(54, 162, 235, 0.7)',
-                'rgba(255, 206, 86, 0.7)'
-              ]
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: {
-                display: true,
-                position: 'bottom'
-              },
-              tooltip: {
-                enabled: true
-              }
-            }
-          }
-        });
-      }
-    }
-  });
-</script>

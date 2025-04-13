@@ -15,18 +15,18 @@
 
   <header>
     <h1>Sokora</h1>
-    <button hx-get="/api/csv/export" hx-target="#detail-area">Download CSV</button>
-    <button @click="showImport = true">Upload CSV</button>
-    <div x-data="{ showImport: false }" x-show="showImport" style="display:none;">
+    <button hx-get="/api/csv/export" hx-target="#detail-area">CSVダウンロード</button>
+    <button @click="$store.importModal.toggle()">CSVアップロード</button>
+    <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;">
       <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area">
         <input type="file" name="file">
-        <button type="submit">Import</button>
-        <button type="button" @click="showImport = false">Cancel</button>
+        <button type="submit">インポート</button>
+        <button type="button" @click="$store.importModal.toggle()">キャンセル</button>
       </form>
     </div>
   </header>
 
-  <main style="display: flex; flex-direction: column; gap: 20px;">
+  <main>
     <!-- カレンダー領域 -->
     <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area">
       <!-- 初期ロード時に /api/calendar を呼び出し、ここに差し込み -->
@@ -95,103 +95,95 @@
   </main>
 
   <script>
-    document.addEventListener('htmx:afterSwap', function (event) {
-      // カレンダーエリアが更新されたときにチャートを再初期化
-      if (event.detail.target.id === 'calendar-area') {
-        const charts = document.querySelectorAll('.day-chart');
-        charts.forEach(canvas => {
-          if (canvas.id) {
-            // 既存のチャートがあれば破棄する
-            const existingChart = Chart.getChart(canvas);
-            if (existingChart) {
-              existingChart.destroy();
-            }
+    // Alpine.jsのグローバルストア
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('importModal', {
+        open: false,
+        toggle() {
+          this.open = !this.open;
+        }
+      });
+    });
 
-            const dayData = canvas.id.replace('chart-', '').split('-');
-            const day = parseInt(dayData[2]);
+    // Chart.jsヘルパー関数
+    const chartColors = [
+      'rgba(75, 192, 192, 0.7)', // 在宅
+      'rgba(54, 162, 235, 0.7)', // 出社
+      'rgba(255, 206, 86, 0.7)'  // 出張
+    ];
 
-            const parentCell = canvas.closest('td');
-            const homeCount = parseInt(parentCell.querySelector('.day-stats').innerText.match(/在宅: (\d+)/)[1]);
-            const officeCount = parseInt(parentCell.querySelector('.day-stats').innerText.match(/出社: (\d+)/)[1]);
-            const tripCount = parseInt(parentCell.querySelector('.day-stats').innerText.match(/出張: (\d+)/)[1]);
+    function createPieChart(canvasId, homeCount, officeCount, tripCount, showLegend = true) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
 
-            new Chart(canvas, {
-              type: 'pie',
-              data: {
-                labels: ['在宅', '出社', '出張'],
-                datasets: [{
-                  data: [homeCount, officeCount, tripCount],
-                  backgroundColor: [
-                    'rgba(75, 192, 192, 0.7)',
-                    'rgba(54, 162, 235, 0.7)',
-                    'rgba(255, 206, 86, 0.7)'
-                  ]
-                }]
+      // 既存のチャートがあれば破棄する
+      const existingChart = Chart.getChart(canvas);
+      if (existingChart) {
+        existingChart.destroy();
+      }
+
+      // データがある場合のみグラフを表示
+      if (homeCount > 0 || officeCount > 0 || tripCount > 0) {
+        new Chart(canvas, {
+          type: 'pie',
+          data: {
+            labels: ['在宅', '出社', '出張'],
+            datasets: [{
+              data: [homeCount, officeCount, tripCount],
+              backgroundColor: chartColors
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: showLegend,
+                position: 'bottom'
               },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                  legend: {
-                    display: false
-                  },
-                  tooltip: {
-                    enabled: true
-                  }
-                }
+              tooltip: {
+                enabled: true
               }
-            });
+            }
           }
         });
       }
-    });
+    }
 
-    // 初期表示時に今日のデータのパイチャートを描画
-    document.addEventListener('DOMContentLoaded', function () {
-      const locationChart = document.getElementById('location-pie-chart');
-      if (locationChart) {
-        // 既存のチャートがあれば破棄する
-        const existingChart = Chart.getChart(locationChart);
-        if (existingChart) {
-          existingChart.destroy();
-        }
+    // HTMXイベントリスナー
+    document.addEventListener('htmx:afterSwap', function (event) {
+      // カレンダーエリアが更新されたときの処理
+      if (event.detail.target.id === 'calendar-area') {
+        // カレンダー内のチャートを再初期化
+      }
 
-        // データからパイチャートを作成
-        const homeCount = parseInt('{{ default_data["在宅"]|length }}' || '0');
-        const officeCount = parseInt('{{ default_data["出社"]|length }}' || '0');
-        const tripCount = parseInt('{{ default_data["出張"]|length }}' || '0');
+      // 詳細エリアが更新されたときのチャート描画
+      if (event.detail.target.id === 'detail-area') {
+        const locationChart = document.getElementById('location-pie-chart');
+        if (locationChart) {
+          // データを取得
+          const homeCountEl = document.querySelector('.user-category:nth-child(1) .user-count');
+          const officeCountEl = document.querySelector('.user-category:nth-child(2) .user-count');
+          const tripCountEl = document.querySelector('.user-category:nth-child(3) .user-count');
 
-        // データがある場合のみグラフを表示
-        if (homeCount > 0 || officeCount > 0 || tripCount > 0) {
-          new Chart(locationChart, {
-            type: 'pie',
-            data: {
-              labels: ['在宅', '出社', '出張'],
-              datasets: [{
-                data: [homeCount, officeCount, tripCount],
-                backgroundColor: [
-                  'rgba(75, 192, 192, 0.7)',
-                  'rgba(54, 162, 235, 0.7)',
-                  'rgba(255, 206, 86, 0.7)'
-                ]
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: true,
-              plugins: {
-                legend: {
-                  display: true,
-                  position: 'bottom'
-                },
-                tooltip: {
-                  enabled: true
-                }
-              }
-            }
-          });
+          if (homeCountEl && officeCountEl && tripCountEl) {
+            const homeCount = parseInt(homeCountEl.textContent.match(/\d+/) || '0');
+            const officeCount = parseInt(officeCountEl.textContent.match(/\d+/) || '0');
+            const tripCount = parseInt(tripCountEl.textContent.match(/\d+/) || '0');
+
+            createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
+          }
         }
       }
+    });
+
+    // 初期表示時のチャート描画
+    document.addEventListener('DOMContentLoaded', function () {
+      const homeCount = parseInt('{{ default_data["在宅"]|length }}' || '0');
+      const officeCount = parseInt('{{ default_data["出社"]|length }}' || '0');
+      const tripCount = parseInt('{{ default_data["出張"]|length }}' || '0');
+
+      createPieChart('location-pie-chart', homeCount, officeCount, tripCount, true);
     });
   </script>
 
