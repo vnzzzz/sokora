@@ -14,11 +14,11 @@ from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
 
-router = APIRouter()
+router = APIRouter(prefix="/api/csv", tags=["CSVデータ"])
 templates = Jinja2Templates(directory="src/templates")
 
 
-@router.post("/api/csv/import")
+@router.post("/import")
 async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResponse:
     """CSVファイルをインポートする
 
@@ -57,7 +57,7 @@ async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
         raise HTTPException(status_code=500, detail=f"CSVインポートエラー: {str(e)}")
 
 
-@router.get("/api/csv/export")
+@router.get("/export")
 def export_csv() -> FileResponse:
     """勤務データをCSV形式でエクスポートする
 

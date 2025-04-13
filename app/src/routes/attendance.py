@@ -18,11 +18,14 @@ from ..utils.date_utils import (
 )
 from ..utils.common import generate_location_styles
 
-router = APIRouter()
+# API用ルーター
+router = APIRouter(prefix="/api", tags=["勤怠管理"])
+# HTML表示用ルーター
+page_router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")
 
 
-@router.get("/attendance", response_class=HTMLResponse)
+@page_router.get("/attendance", response_class=HTMLResponse)
 def attendance_page(request: Request) -> HTMLResponse:
     """勤怠入力ページを表示する
 
@@ -38,43 +41,7 @@ def attendance_page(request: Request) -> HTMLResponse:
     )
 
 
-@router.post("/api/user/add", response_class=RedirectResponse)
-async def add_user(request: Request, username: str = Form(...)) -> RedirectResponse:
-    """新しいユーザーを追加する
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        username: 追加するユーザー名（フォームデータ）
-
-    Returns:
-        RedirectResponse: 勤怠入力ページへのリダイレクト
-    """
-    try:
-        csv_store.add_user(username)
-        return RedirectResponse(url="/attendance", status_code=303)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/api/user/delete/{username}", response_class=RedirectResponse)
-async def delete_user(request: Request, username: str) -> RedirectResponse:
-    """ユーザーを削除する
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        username: 削除するユーザー名
-
-    Returns:
-        RedirectResponse: 勤怠入力ページへのリダイレクト
-    """
-    try:
-        csv_store.delete_user(username)
-        return RedirectResponse(url="/attendance", status_code=303)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/attendance/edit/{username}", response_class=HTMLResponse)
+@page_router.get("/attendance/edit/{username}", response_class=HTMLResponse)
 def edit_user_attendance(
     request: Request, username: str, month: Optional[str] = None
 ) -> HTMLResponse:
@@ -135,7 +102,44 @@ def edit_user_attendance(
     return templates.TemplateResponse("attendance_edit.html", context)
 
 
-@router.post("/api/attendance/update", response_class=RedirectResponse)
+# APIエンドポイント
+@router.post("/user/add", response_class=RedirectResponse)
+async def add_user(request: Request, username: str = Form(...)) -> RedirectResponse:
+    """新しいユーザーを追加する
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        username: 追加するユーザー名（フォームデータ）
+
+    Returns:
+        RedirectResponse: 勤怠入力ページへのリダイレクト
+    """
+    try:
+        csv_store.add_user(username)
+        return RedirectResponse(url="/attendance", status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/user/delete/{username}", response_class=RedirectResponse)
+async def delete_user(request: Request, username: str) -> RedirectResponse:
+    """ユーザーを削除する
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        username: 削除するユーザー名
+
+    Returns:
+        RedirectResponse: 勤怠入力ページへのリダイレクト
+    """
+    try:
+        csv_store.delete_user(username)
+        return RedirectResponse(url="/attendance", status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/attendance/update", response_class=RedirectResponse)
 async def update_attendance(
     request: Request,
     username: str = Form(...),

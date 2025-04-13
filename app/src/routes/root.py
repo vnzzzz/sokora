@@ -13,7 +13,7 @@ from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
 
-router = APIRouter()
+router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")
 
 

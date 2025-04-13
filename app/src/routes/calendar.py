@@ -22,11 +22,11 @@ from ..utils.common import (
     generate_location_styles,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/api", tags=["カレンダー"])
 templates = Jinja2Templates(directory="src/templates")
 
 
-@router.get("/api/calendar", response_class=HTMLResponse)
+@router.get("/calendar", response_class=HTMLResponse)
 def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
     """指定された月のカレンダーを表示する
 
@@ -49,7 +49,7 @@ def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
     return templates.TemplateResponse("partials/calendar.html", context)
 
 
-@router.get("/api/day/{day}", response_class=HTMLResponse)
+@router.get("/day/{day}", response_class=HTMLResponse)
 def get_day_detail(request: Request, day: str) -> HTMLResponse:
     """指定された日の詳細を表示する
 
@@ -78,7 +78,7 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
     return templates.TemplateResponse("partials/day_detail.html", context)
 
 
-@router.get("/api/user/{username}", response_class=HTMLResponse)
+@router.get("/user/{username}", response_class=HTMLResponse)
 def get_user_detail(
     request: Request, username: str, month: Optional[str] = None
 ) -> HTMLResponse:
