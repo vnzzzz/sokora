@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja" x-data class="bg-base-100">
 
-{% set title_text = user_name + " の勤怠編集 - Sokora" %}
+{% set title_text = user_name + " (" + user_id + ") の勤怠編集 - Sokora" %}
 {% include "components/head.html" %}
 
 <body class="min-h-screen bg-base-100">
@@ -17,11 +17,11 @@
       <div class="card-body">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-2xl font-bold mb-1">{{ user_name }} の勤怠編集</h2>
+            <h2 class="text-2xl font-bold mb-1">{{ user_name }} ({{ user_id }}) の勤怠編集</h2>
             <div class="text-sm breadcrumbs">
               <ul>
                 <li><a href="/attendance">勤怠入力</a></li>
-                <li>{{ user_name }}</li>
+                <li>{{ user_name }} ({{ user_id }})</li>
               </ul>
             </div>
           </div>
@@ -72,7 +72,7 @@
                           <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full" @click.away="open = false"
                             @click.stop>
                             <h3 class="font-bold text-lg mb-2">{{ day.date }} の勤務場所を編集</h3>
-                            <p class="text-sm mb-4">{{ user_name }}さんの勤務場所を選択してください</p>
+                            <p class="text-sm mb-4">{{ user_name }} ({{ user_id }})さんの勤務場所を選択してください</p>
 
                             <form action="/api/attendance/update" method="post" class="space-y-4">
                               <input type="hidden" name="user_id" value="{{ user_id }}">

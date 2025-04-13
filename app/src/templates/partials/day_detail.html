@@ -17,10 +17,10 @@
   <!-- 勤務場所データと社員リスト -->
   <div class="flex flex-col gap-4">
     <div class="flex-1">
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
         <!-- 勤務場所カード -->
         {% for location in locations %}
-        <div class="card bg-base-100 shadow w-auto min-w-[7rem] max-w-[12rem]">
+        <div class="card bg-base-100 shadow w-full min-w-[16rem] max-w-full">
           <div class="card-body px-3 py-3">
             <div class="flex items-center gap-1 mb-1">
               <span class="badge badge-{{ location.badge }}"></span>
@@ -29,7 +29,7 @@
             <ul class="menu menu-sm p-0">
               {% for user in data[location.name] %}
               <li hx-get="/api/user/{{ user.user_id|e }}" hx-target="#detail-area">
-                <a class="py-1">{{ user.user_name|e }}</a>
+                <a class="py-1">{{ user.user_name|e }} ({{ user.user_id|e }})</a>
               </li>
               {% endfor %}
             </ul>
