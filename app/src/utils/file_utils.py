@@ -10,6 +10,7 @@ from pathlib import Path
 import csv
 from typing import Dict, List, Optional, Tuple
 import logging
+from ..utils.date_utils import normalize_date_format, parse_date
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -52,8 +53,34 @@ def import_csv_data(content: str) -> None:
         IOError: If file writing fails
     """
     try:
+        # Parse the CSV content
+        reader = csv.reader(content.splitlines())
+        rows = list(reader)
+
+        if not rows:
+            raise IOError("CSV content is empty")
+
+        # Get headers
+        headers = rows[0]
+
+        # Normalize date format in headers
+        if len(headers) > 2:  # Make sure there are date columns
+            for i in range(2, len(headers)):
+                if parse_date(headers[i]):
+                    # If it's a date, normalize to YYYY-MM-DD format
+                    headers[i] = normalize_date_format(headers[i])
+
+        # Create new CSV content with normalized headers
+        output = []
+        output.append(",".join(headers))
+        for row in rows[1:]:
+            output.append(",".join(row))
+
+        normalized_content = "\n".join(output)
+
+        # Write to file
         with get_csv_file_path().open("w", encoding="utf-8-sig", newline="") as f:
-            f.write(content)
+            f.write(normalized_content)
     except Exception as e:
         logger.error(f"Failed to write CSV data: {str(e)}")
         raise IOError(f"Failed to write CSV data: {str(e)}")
