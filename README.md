@@ -2,21 +2,23 @@
 
 ![image](docs/images/image1.png)
 
-A sleek attendance management app that lets you track who's working where with a calendar interface and intuitive
-controls. Instantly see who's "working from home / in office / on business trip" with daily details and personal
-schedules available at a glance.
+A sleek attendance management app that visualizes work locations through an intuitive calendar interface. Instantly
+track who's "working from home", "in office", or "on business trip" with daily details and personal schedules available
+at a glance.
 
 ## Features
 
-- Calendar UI
+- Interactive Calendar UI
   - Monthly view with aggregated stats for remote/office attendance
-- Intuitive UX: Click on dates for daily details, click on usernames to view individual schedules
-- CSV Upload & Download
-  - Perfect for bulk editing and backups
+- Intuitive UX: Single-click navigation to view daily details or individual schedules
+- Seamless CSV Import/Export
+  - Perfect for bulk editing and data backups
 
-## How to
+## How to Use
 
-1. Launch
+1. Setup
+
+   Copy `.env.sample` to create `.env`, then:
 
    ```bash
    docker compose up --build
@@ -24,10 +26,10 @@ schedules available at a glance.
 
 2. Access
 
-   Open in your browser
+   Open in your browser:
 
    ```bash
-   http://localhost:8000
+   http://localhost:[PORT]
    ```
 
 3. Shutdown
@@ -38,11 +40,10 @@ schedules available at a glance.
 
 ## Tech Stack
 
-Built with a focus on lightweight simplicity.
+Built with a focus on performance and simplicity.
 
 - Docker (Containerization)
-- Poetry (Dependency management)
-- FastAPI (API)
-- HTMX & Alpine.js (No-build UI)
-- Chart.js (Visual data representation with pie charts and more)
+- Poetry (Python dependency management)
+- FastAPI (Backend API)
+- HTMX & Alpine.js (Frontend without build steps)
 - CSV files (Data source, no database required)
