@@ -124,6 +124,10 @@ def create_calendar_weeks(
     """
     calendar_weeks = []
 
+    # Ensure month is in YYYY-MM format
+    if "/" in month:
+        month = month.replace("/", "-")
+
     for week in cal_data:
         week_data = []
         for day in week:

@@ -239,6 +239,9 @@ def update_user_entry(user_id: str, date: str, location: str) -> bool:
         bool: Whether the update was successful
     """
     try:
+        # Normalize date format to ensure it's in YYYY-MM-DD format
+        date = normalize_date_format(date)
+
         # Read file
         headers, rows = read_csv_file()
 
@@ -255,7 +258,9 @@ def update_user_entry(user_id: str, date: str, location: str) -> bool:
 
             # If the date is after existing dates, find the correct position
             for i, existing_date in enumerate(date_headers):
-                if existing_date > date:
+                # Normalize existing date for consistent comparison
+                existing_date_normalized = normalize_date_format(existing_date)
+                if existing_date_normalized > date:
                     # Found insertion position
                     insert_position = i + 2  # Add headers[0] and headers[1]
                     break
@@ -275,6 +280,15 @@ def update_user_entry(user_id: str, date: str, location: str) -> bool:
 
         # Get date index
         date_index = headers.index(date)
+
+        # If the date wasn't found directly, try to find it normalized
+        if date_index == -1:
+            for i, header in enumerate(headers):
+                if normalize_date_format(header) == date:
+                    date_index = i
+                    # Update the header to use the standard format
+                    headers[i] = date
+                    break
 
         # Check if user exists
         user_exists = False
@@ -312,6 +326,10 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
     Raises:
         ValueError: If invalid month format
     """
+    # Normalize month format to YYYY-MM
+    if "/" in month:
+        month = month.replace("/", "-")
+
     date_entries = get_entries_by_date()
     location_types = get_location_types()
     calendar_dict: DefaultDict[int, Dict[str, int]] = defaultdict(
@@ -326,9 +344,12 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
 
     # Summarize entry data
     for date, entries in date_entries.items():
-        if date.startswith(month):
+        # Normalize date for comparison
+        normalized_date = normalize_date_format(date)
+
+        if normalized_date.startswith(month):
             try:
-                day = int(date.split("-")[2])
+                day = int(normalized_date.split("-")[2])
                 for _, location in entries.items():
                     if location in location_types:
                         calendar_dict[day][location] += 1
