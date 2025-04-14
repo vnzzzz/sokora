@@ -19,7 +19,7 @@ from ..utils.date_utils import (
 from ..utils.common import generate_location_styles
 
 # Router for API
-router = APIRouter(prefix="/api", tags=["Attendance Management"])
+router = APIRouter(prefix="/api", tags=["Attendance"])
 # Router for HTML display
 page_router = APIRouter(tags=["Page Display"])
 templates = Jinja2Templates(directory="src/templates")
