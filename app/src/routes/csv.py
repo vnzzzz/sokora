@@ -5,15 +5,19 @@ CSV-Related Endpoints
 Route handlers related to CSV data import and export
 """
 
-from fastapi import APIRouter, Request, UploadFile, File, HTTPException
+from fastapi import APIRouter, Request, UploadFile, File, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import os
+import csv
+from typing import Optional
+import tempfile
+import shutil
 
 from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
-from ..utils.file_utils import get_csv_file_path
+from ..utils.file_utils import get_csv_file_path, read_csv_file
 
 router = APIRouter(prefix="/api/csv", tags=["CSV Data"])
 templates = Jinja2Templates(directory="src/templates")
@@ -74,8 +78,13 @@ async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
 
 
 @router.get("/export")
-def export_csv() -> FileResponse:
+def export_csv(
+    encoding: Optional[str] = Query("utf-8", description="CSV file encoding")
+) -> FileResponse:
     """Export attendance data as CSV
+
+    Args:
+        encoding: Encoding to use for the CSV file (utf-8 or shift-jis)
 
     Returns:
         FileResponse: CSV file download response
@@ -85,13 +94,49 @@ def export_csv() -> FileResponse:
     if not os.path.exists(csv_path):
         raise HTTPException(status_code=404, detail="CSV file not found")
 
+    # Check valid encoding
+    if encoding not in ["utf-8", "shift-jis"]:
+        encoding = "utf-8"  # Default to UTF-8
+
     filename = "work_entries.csv"
-    return FileResponse(
-        path=csv_path,
-        filename=filename,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-            "Content-Type": "text/csv; charset=utf-8-sig",
-        },
-    )
+
+    # If UTF-8 is requested, return file as is
+    if encoding == "utf-8":
+        return FileResponse(
+            path=csv_path,
+            filename=filename,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Type": "text/csv; charset=utf-8-sig",
+            },
+        )
+
+    # For Shift-JIS encoding, convert to temp file
+    else:  # encoding == "shift-jis"
+        # Read CSV content
+        headers, rows = read_csv_file()
+
+        # Create temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
+            temp_path = temp_file.name
+
+            # Write CSV with Shift-JIS encoding
+            with open(temp_path, "w", encoding="shift_jis", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(headers)
+                writer.writerows(rows)
+
+        # Return the temp file
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Type": "text/csv; charset=shift-jis",
+            },
+            background=shutil.rmtree(
+                temp_path, ignore_errors=True
+            ),  # Remove temp file after response
+        )

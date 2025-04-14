@@ -13,6 +13,9 @@
   <!-- CSV Upload Modal -->
   {% include "components/csv_upload_modal.html" %}
 
+  <!-- CSV Encoding Modal -->
+  {% include "components/csv_encoding_modal.html" %}
+
   <!-- Main Content -->
   <main class="container mx-auto p-4 space-y-6">
     <!-- Calendar Area -->
@@ -25,7 +28,7 @@
     <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
       {% if default_day and default_data %}
       <section class="p-2">
-        <h3 class="text-lg font-bold mb-4">Details for {{ default_day }}</h3>
+        <h3 class="text-lg font-bold mb-4">{{ default_day }}</h3>
 
         {% if not default_has_data %}
         <div class="alert bg-base-300 text-base-content">No record</div>
@@ -64,11 +67,22 @@
 
   <!-- JavaScript -->
   <script>
-    // Alpine.js global store
+    // Initialize Alpine.js stores during hydration
     document.addEventListener('alpine:init', () => {
+      // Store for import modal state
       Alpine.store('importModal', {
         open: false,
-        toggle() { this.open = !this.open; }
+        toggle() {
+          this.open = !this.open;
+        }
+      });
+
+      // Store for encoding modal state
+      Alpine.store('encodingModal', {
+        open: false,
+        toggle() {
+          this.open = !this.open;
+        }
       });
     });
   </script>

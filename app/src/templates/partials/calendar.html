@@ -4,7 +4,7 @@
     <table class="table table-xs table-zebra w-full">
       <thead>
         <tr>
-          <th class="bg-base-200 text-center sticky left-0 z-10 w-32">Location</th>
+          <th class="bg-base-200 text-left sticky left-0 z-10 w-32">Location</th>
           {% for week in calendar.weeks %}
           {% for day in week %}
           {% if day %}
@@ -31,7 +31,7 @@
         <!-- Work Location Rows -->
         {% for location in calendar.locations %}
         <tr>
-          <td class="bg-base-200 font-medium text-center sticky left-0 z-10 w-32 whitespace-nowrap">{{ location.name }}
+          <td class="bg-base-200 font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap">{{ location.name }}
           </td>
           {% for week in calendar.weeks %}
           {% for day in week %}

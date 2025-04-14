@@ -38,7 +38,7 @@ app.include_router(csv.router)
 # API tag definitions
 API_TAGS = [
     {
-        "name": "Attendance Management",
+        "name": "Register",
         "description": "Endpoints for managing user attendance data",
     },
     {
