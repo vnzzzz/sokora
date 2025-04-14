@@ -29,7 +29,7 @@ at a glance.
    Open in your browser:
 
    ```bash
-   http://localhost:[PORT]
+   http://localhost:[SERVICE_PORT]
    ```
 
 3. Shutdown
