@@ -4,12 +4,11 @@
       <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) Work Schedule</h3>
 
       <div class="btn-group">
-        <a href="/api/user/{{ user_id }}?month={{ prev_month }}" class="btn btn-sm"
-          hx-get="/api/user/{{ user_id }}?month={{ prev_month }}" hx-target="#detail-area">Previous</a>
-        <a href="/api/user/{{ user_id }}" class="btn btn-sm" hx-get="/api/user/{{ user_id }}"
-          hx-target="#detail-area">Current</a>
-        <a href="/api/user/{{ user_id }}?month={{ next_month }}" class="btn btn-sm"
-          hx-get="/api/user/{{ user_id }}?month={{ next_month }}" hx-target="#detail-area">Next</a>
+        <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ user_id }}?month={{ prev_month }}"
+          hx-target="#detail-area">＜Prev</button>
+        <button class="btn btn-sm" hx-get="/api/user/{{ user_id }}" hx-target="#detail-area">Current</button>
+        <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ user_id }}?month={{ next_month }}"
+          hx-target="#detail-area">Next＞</button>
       </div>
     </div>
 

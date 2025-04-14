@@ -26,9 +26,11 @@
             </div>
           </div>
           <div class="btn-group">
-            <a href="/attendance/edit/{{ user_id }}?month={{ prev_month }}" class="btn btn-outline btn-sm">Previous</a>
-            <a href="/attendance/edit/{{ user_id }}" class="btn btn-outline btn-sm">Current</a>
-            <a href="/attendance/edit/{{ user_id }}?month={{ next_month }}" class="btn btn-outline btn-sm">Next</a>
+            <button class="btn btn-sm btn-outline" hx-get="/attendance/edit/{{ user_id }}?month={{ prev_month }}"
+              hx-target="body">＜Prev</button>
+            <button class="btn btn-sm" hx-get="/attendance/edit/{{ user_id }}" hx-target="body">Current</button>
+            <button class="btn btn-sm btn-outline" hx-get="/attendance/edit/{{ user_id }}?month={{ next_month }}"
+              hx-target="body">Next＞</button>
           </div>
         </div>
 
