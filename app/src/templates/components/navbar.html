@@ -1,12 +1,12 @@
-<!-- ナビゲーションバーコンポーネント -->
+<!-- Navigation Bar Component -->
 <header class="navbar bg-base-200 shadow-sm px-4 py-2">
   <div class="navbar-start">
     <a href="/" class="text-xl font-bold">Sokora</a>
   </div>
   <div class="navbar-end space-x-2">
-    <a href="/attendance" class="btn btn-sm btn-accent">勤怠入力</a>
-    <a href="/api/csv/export" class="btn btn-sm btn-primary">CSVダウンロード</a>
-    <button class="btn btn-sm btn-secondary" @click="$store.importModal.toggle()">CSVアップロード</button>
+    <a href="/attendance" class="btn btn-sm btn-accent">Attendance</a>
+    <a href="/api/csv/export" class="btn btn-sm btn-primary">Download CSV</a>
+    <button class="btn btn-sm btn-secondary" @click="$store.importModal.toggle()">Upload CSV</button>
     <a href="/api/docs" class="btn btn-sm btn-info">API Docs</a>
   </div>
 </header>

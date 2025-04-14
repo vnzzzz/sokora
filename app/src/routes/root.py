@@ -1,8 +1,8 @@
 """
-ルート（トップページ）の表示
+Root Page Display
 ----------------
 
-メインページの表示に関連するルートハンドラー
+Route handlers related to the main page display
 """
 
 from fastapi import APIRouter, Request
@@ -13,30 +13,30 @@ from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
 
-router = APIRouter(tags=["ページ表示"])
+router = APIRouter(tags=["Page Display"])
 templates = Jinja2Templates(directory="src/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
 def root_page(request: Request) -> HTMLResponse:
-    """トップページを表示する
+    """Display the top page
 
     Args:
-        request: FastAPIリクエストオブジェクト
+        request: FastAPI request object
 
     Returns:
-        HTMLResponse: レンダリングされたHTMLページ
+        HTMLResponse: Rendered HTML page
     """
     today_str = get_today_formatted()
     day_data = csv_store.get_day_data(today_str)
 
-    # 勤務場所の種類を取得
+    # Get types of work locations
     location_types = csv_store.get_location_types()
 
-    # 勤務場所のバッジ情報を生成
+    # Generate badge information for work locations
     locations = generate_location_badges(location_types)
 
-    # データがあるかどうかをチェック
+    # Check if data exists
     has_data = has_data_for_day(day_data)
 
     context = {

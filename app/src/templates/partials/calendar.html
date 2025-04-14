@@ -4,7 +4,7 @@
     <table class="table table-xs table-zebra w-full">
       <thead>
         <tr>
-          <th class="bg-base-200 text-center sticky left-0 z-10 w-32">勤務場所</th>
+          <th class="bg-base-200 text-center sticky left-0 z-10 w-32">Location</th>
           {% for week in calendar.weeks %}
           {% for day in week %}
           {% if day %}
@@ -18,7 +18,7 @@
             onclick="highlightSelectedDate('{{ day.date }}')">
             <div class="font-bold text-sm">{{ day.day }}</div>
             <div class="text-xs opacity-70">
-              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+              {% set weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] %}
               {{ weekdays[loop.index0] }}
             </div>
           </th>
@@ -28,7 +28,7 @@
         </tr>
       </thead>
       <tbody>
-        <!-- 勤務場所ごとの行 -->
+        <!-- Work Location Rows -->
         {% for location in calendar.locations %}
         <tr>
           <td class="bg-base-200 font-medium text-center sticky left-0 z-10 w-32 whitespace-nowrap">{{ location.name }}
@@ -59,34 +59,34 @@
 
   <div class="flex justify-center mt-4 space-x-2">
     <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.prev_month }}"
-      hx-target="#calendar-area">＜前月</button>
-    <button class="btn btn-sm" hx-get="/api/calendar" hx-target="#calendar-area">今月</button>
+      hx-target="#calendar-area">＜Prev</button>
+    <button class="btn btn-sm" hx-get="/api/calendar" hx-target="#calendar-area">Current</button>
     <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.next_month }}"
-      hx-target="#calendar-area">翌月＞</button>
+      hx-target="#calendar-area">Next＞</button>
   </div>
 
   <script>
-    // 選択された日付を強調表示する関数
+    // Function to highlight the selected date
     function highlightSelectedDate(date) {
-      // 前の選択をすべて解除
+      // Clear all previous selections
       document.querySelectorAll('.calendar-cell').forEach(cell => {
         cell.classList.remove('selected-date');
       });
 
-      // 選択された日付の全てのセルに選択クラスを追加
+      // Add selected class to all cells with the selected date
       document.querySelectorAll(`.calendar-cell[data-date="${date}"]`).forEach(cell => {
         cell.classList.add('selected-date');
       });
 
-      // 選択された日付を保存
+      // Save the selected date
       localStorage.setItem('selectedDate', date);
     }
 
-    // ページ読み込み時に以前選択された日付があれば復元
+    // Restore previously selected date on page load if it exists
     document.addEventListener('DOMContentLoaded', function () {
       const savedDate = localStorage.getItem('selectedDate');
       if (savedDate) {
-        // 保存された日付が現在のカレンダーに存在するか確認
+        // Check if the saved date exists in the current calendar
         const dateExists = document.querySelector(`.calendar-cell[data-date="${savedDate}"]`);
         if (dateExists) {
           highlightSelectedDate(savedDate);
@@ -94,7 +94,7 @@
       }
     });
 
-    // htmxのイベントを監視して、カレンダーが更新されたときに選択状態を復元
+    // Monitor htmx events to restore selection state when calendar is updated
     document.addEventListener('htmx:afterSwap', function (event) {
       if (event.detail.target.id === 'calendar-area') {
         const savedDate = localStorage.getItem('selectedDate');
@@ -109,7 +109,7 @@
   </script>
 
   <style>
-    /* 選択された日付のスタイル */
+    /* Selected date style */
     .selected-date {
       border: 2px solid #ff6b6b !important;
       background-color: rgba(255, 107, 107, 0.1) !important;
@@ -117,7 +117,7 @@
       z-index: 5;
     }
 
-    /* ヘッダーの場合は太字で強調 */
+    /* Make header cells bold when selected */
     th.selected-date {
       font-weight: bold;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

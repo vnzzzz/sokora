@@ -1,7 +1,7 @@
 """
-Sokora サービスモジュール
+Sokora Service Module
 ===========================
 
-このパッケージはSokora勤務管理アプリケーションのサービス層を含みます。
-主にデータの処理と永続化を担当します。
+This package contains the service layer of the Sokora attendance management application.
+It is mainly responsible for data processing and persistence.
 """

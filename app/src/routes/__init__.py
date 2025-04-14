@@ -1,9 +1,9 @@
 """
-ルートモジュール
+Route Module
 ============
 
-このパッケージにはSokoraアプリケーションのルート（エンドポイント）が含まれています。
+This package contains the routes (endpoints) for the Sokora application.
 """
 
-# ルーティングモジュールのバージョン
+# Route module version
 __version__ = "0.1.0"

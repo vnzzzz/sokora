@@ -1,8 +1,8 @@
 """
-カレンダー関連のエンドポイント
+Calendar-Related Endpoints
 ----------------
 
-カレンダー表示や日別詳細に関連するルートハンドラー
+Route handlers related to calendar display and daily details
 """
 
 from fastapi import APIRouter, Request
@@ -23,20 +23,20 @@ from ..utils.common import (
     generate_location_styles,
 )
 
-router = APIRouter(prefix="/api", tags=["カレンダー"])
+router = APIRouter(prefix="/api", tags=["Calendar"])
 templates = Jinja2Templates(directory="src/templates")
 
 
 @router.get("/calendar", response_class=HTMLResponse)
 def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
-    """指定された月のカレンダーを表示する
+    """Display calendar for the specified month
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        month: YYYY-MM形式の月指定（未指定の場合は現在の月）
+        request: FastAPI request object
+        month: Month in YYYY-MM format (current month if not specified)
 
     Returns:
-        HTMLResponse: レンダリングされたカレンダーHTML
+        HTMLResponse: Rendered calendar HTML
     """
     if month is None:
         month = get_current_month_formatted()
@@ -52,22 +52,22 @@ def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
 
 @router.get("/day/{day}", response_class=HTMLResponse)
 def get_day_detail(request: Request, day: str) -> HTMLResponse:
-    """指定された日の詳細を表示する
+    """Display details for the specified day
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        day: YYYY-MM-DD形式の日付
+        request: FastAPI request object
+        day: Date in YYYY-MM-DD format
 
     Returns:
-        HTMLResponse: レンダリングされた日別詳細HTML
+        HTMLResponse: Rendered daily detail HTML
     """
     detail = csv_store.get_day_data(day)
 
-    # 勤務場所のバッジ情報を生成
+    # Generate badge information for work locations
     location_types = csv_store.get_location_types()
     locations = generate_location_badges(location_types)
 
-    # データがあるかどうかをチェック
+    # Check if data exists
     has_data = has_data_for_day(detail)
 
     context = {
@@ -84,33 +84,33 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
 def get_user_detail(
     request: Request, user_id: str, month: Optional[str] = None
 ) -> HTMLResponse:
-    """指定されたユーザーの詳細を表示する
+    """Display details for the specified user
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: ユーザーID
-        month: YYYY-MM形式の月指定（未指定の場合は現在の月）
+        request: FastAPI request object
+        user_id: User ID
+        month: Month in YYYY-MM format (current month if not specified)
 
     Returns:
-        HTMLResponse: レンダリングされたユーザー詳細HTML
+        HTMLResponse: Rendered user detail HTML
     """
-    # user_idをエスケープ処理
+    # Escape user_id
     user_id = html.escape(user_id)
     last_viewed_date = get_last_viewed_date(request)
 
     if month is None:
         month = get_current_month_formatted()
 
-    # ユーザー名の取得
+    # Get user name
     user_name = csv_store.get_user_name_by_id(user_id)
 
-    # 指定された月のカレンダーデータを取得
+    # Get calendar data for the specified month
     calendar_data = csv_store.get_calendar_data(month)
 
-    # ユーザーのデータを取得
+    # Get user data
     user_entries = csv_store.get_user_data(user_id)
 
-    # ユーザーの予定がある日付と勤務場所のマップを作成
+    # Create a map of dates and work locations for the user
     user_dates = []
     user_locations = {}
     for entry in user_entries:
@@ -118,11 +118,11 @@ def get_user_detail(
         user_dates.append(date)
         user_locations[date] = entry["location"]
 
-    # 勤務場所のスタイル情報を生成
+    # Generate style information for work locations
     location_types = csv_store.get_location_types()
     location_styles = generate_location_styles(location_types)
 
-    # 前月と次月の設定（utils/calendar_utils の関数を使用）
+    # Set up previous and next month (using functions from utils/calendar_utils)
     from ..utils.calendar_utils import (
         parse_month,
         get_prev_month_date,

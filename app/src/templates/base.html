@@ -1,41 +1,41 @@
 <!DOCTYPE html>
-<html lang="ja" x-data class="bg-base-100">
+<html lang="en" x-data class="bg-base-100">
 
 {% include "components/head.html" %}
 
 <body class="min-h-screen bg-base-100">
-  <!-- テーマ切り替えボタン -->
+  <!-- Theme Switcher Button -->
   {% include "components/theme_switcher.html" %}
 
-  <!-- ヘッダー -->
+  <!-- Header -->
   {% include "components/navbar.html" %}
 
-  <!-- CSVアップロードモーダル -->
+  <!-- CSV Upload Modal -->
   {% include "components/csv_upload_modal.html" %}
 
-  <!-- メインコンテンツ -->
+  <!-- Main Content -->
   <main class="container mx-auto p-4 space-y-6">
-    <!-- カレンダー領域 -->
+    <!-- Calendar Area -->
     <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area"
       class="card bg-base-200 shadow-sm p-4">
-      <!-- 初期ロード時に /api/calendar を呼び出し、ここに差し込み -->
+      <!-- Initial load calls /api/calendar and inserts result here -->
     </div>
 
-    <!-- 詳細表示領域 -->
+    <!-- Detail Display Area -->
     <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
       {% if default_day and default_data %}
       <section class="p-2">
-        <h3 class="text-lg font-bold mb-4">{{ default_day }} の詳細</h3>
+        <h3 class="text-lg font-bold mb-4">Details for {{ default_day }}</h3>
 
         {% if not default_has_data %}
-        <div class="alert bg-base-300 text-base-content">この日の出勤者はいません</div>
+        <div class="alert bg-base-300 text-base-content">No record</div>
         {% else %}
-        <!-- 勤務場所データと社員リスト -->
+        <!-- Work Location Data and Employee List -->
         <div class="flex flex-col gap-4">
           <div class="flex-1">
             <div
               class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-              <!-- 勤務場所カード -->
+              <!-- Work Location Cards -->
               {% for location in default_locations %}
               <div class="card bg-base-100 shadow w-full min-w-[16rem] max-w-full">
                 <div class="card-body px-3 py-3">
@@ -64,7 +64,7 @@
 
   <!-- JavaScript -->
   <script>
-    // Alpine.jsのグローバルストア
+    // Alpine.js global store
     document.addEventListener('alpine:init', () => {
       Alpine.store('importModal', {
         open: false,
