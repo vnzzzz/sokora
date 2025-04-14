@@ -96,7 +96,7 @@
                                       class="input input-bordered w-full location-input"
                                       placeholder="Select or enter work location"
                                       value="{% if day.date in user_locations %}{{ user_locations[day.date] }}{% endif %}"
-                                      aria-label="Work Location" aria-required="true" required>
+                                      aria-label="Work Location" aria-required="true" required autocomplete="off">
                                     <datalist id="location-options-{{ day.date }}">
                                       <option value="">Not Set</option>
                                       {% for location_type in location_types %}
@@ -149,7 +149,7 @@
                                     <input type="text" name="location" list="location-options-new-{{ day.date }}"
                                       class="input input-bordered w-full location-input"
                                       placeholder="Select or enter work location" value="" aria-label="Work Location"
-                                      aria-required="true" required>
+                                      aria-required="true" required autocomplete="off">
                                     <datalist id="location-options-new-{{ day.date }}">
                                       <option value="">Not Set</option>
                                       {% for location_type in location_types %}
@@ -283,6 +283,50 @@
             } else {
               hideError();
             }
+          });
+
+          // Add click event to make dropdown work better with existing values
+          locationInput.addEventListener('click', function () {
+            // Select all text to make it easier to replace
+            this.select();
+
+            // Force dropdown to show by removing and setting value
+            const currentValue = this.value;
+            if (currentValue) {
+              // Briefly clear and restore the value to trigger the dropdown
+              this.value = '';
+              // Use setTimeout to ensure the browser has time to process
+              setTimeout(() => {
+                this.value = currentValue;
+                this.select(); // Select text again
+              }, 10);
+            }
+          });
+
+          // Also handle focus events
+          locationInput.addEventListener('focus', function () {
+            this.select();
+          });
+        }
+      });
+    });
+
+    // Initialize modals correctly
+    document.addEventListener('DOMContentLoaded', function () {
+      // For all edit buttons in calendar cells
+      document.querySelectorAll('[x-data="{ open: false }"]').forEach(modalContainer => {
+        const editButton = modalContainer.querySelector('button');
+        const modalDialog = modalContainer.querySelector('.fixed.inset-0');
+        const locationInput = modalContainer.querySelector('input[name="location"]');
+
+        if (editButton && modalDialog && locationInput) {
+          // Ensure the input gets focus when the modal opens
+          editButton.addEventListener('click', function () {
+            // Use setTimeout to wait for Alpine.js to display the modal
+            setTimeout(() => {
+              locationInput.focus();
+              locationInput.select();
+            }, 50);
           });
         }
       });
