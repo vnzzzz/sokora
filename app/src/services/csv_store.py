@@ -16,6 +16,8 @@ from ..utils.calendar_utils import (
     create_calendar_weeks,
 )
 from ..utils.common import get_default_location_types
+from ..utils.common import generate_location_badges
+from ..utils.date_utils import parse_date, normalize_date_format
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -109,7 +111,9 @@ def get_entries_by_date() -> DefaultDict[str, Dict[str, str]]:
     # Convert user-based data to date-based data
     for user_id, user_data in data.items():
         for date, location in user_data.items():
-            date_entries[date][user_id] = location
+            # Normalize date format to YYYY-MM-DD
+            normalized_date = normalize_date_format(date)
+            date_entries[normalized_date][user_id] = location
 
     return date_entries
 
@@ -357,7 +361,7 @@ def get_day_data(day: str) -> Dict[str, List[Dict[str, str]]]:
     """Get data for a specified day
 
     Args:
-        day: Date in YYYY-MM-DD format
+        day: Date in YYYY-MM-DD or YYYY/MM/DD format
 
     Returns:
         Dict[str, List[Dict[str, str]]]: List of users by location (includes user_name and user_id)
@@ -371,13 +375,15 @@ def get_day_data(day: str) -> Dict[str, List[Dict[str, str]]]:
         loc_type: [] for loc_type in location_types
     }
 
+    # Normalize date format
+    normalized_day = normalize_date_format(day)
+
     # Date validation
-    parts = day.split("-")
-    if len(parts) != 3:
+    if not parse_date(day):
         return result
 
     # Summarize work locations for each user on the specified day
-    for user_id, location in entries_by_date.get(day, {}).items():
+    for user_id, location in entries_by_date.get(normalized_day, {}).items():
         user_name = get_user_name_by_id(user_id)
         user_data = {"user_id": user_id, "user_name": user_name}
 

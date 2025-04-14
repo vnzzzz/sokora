@@ -15,10 +15,14 @@ calendar.setfirstweekday(6)
 
 
 def parse_month(month: str) -> Tuple[int, int]:
-    """Parse a string in YYYY-MM format into year and month
+    """Parse a string into year and month
+
+    Supports formats:
+    - YYYY-MM format
+    - YYYY/MM format
 
     Args:
-        month: Month in YYYY-MM format
+        month: Month in YYYY-MM or YYYY/MM format
 
     Returns:
         Tuple[int, int]: Tuple of (year, month)
@@ -27,12 +31,22 @@ def parse_month(month: str) -> Tuple[int, int]:
         ValueError: If month format is invalid
     """
     try:
-        year, month_num = map(int, month.split("-"))
+        if "-" in month:
+            year, month_num = map(int, month.split("-"))
+        elif "/" in month:
+            year, month_num = map(int, month.split("/"))
+        else:
+            raise ValueError(
+                f"Invalid month format: {month}. Please use YYYY-MM or YYYY/MM format."
+            )
+
         if month_num < 1 or month_num > 12:
             raise ValueError(f"Invalid month number: {month_num}")
         return year, month_num
     except Exception:
-        raise ValueError(f"Invalid month format: {month}. Please use YYYY-MM format.")
+        raise ValueError(
+            f"Invalid month format: {month}. Please use YYYY-MM or YYYY/MM format."
+        )
 
 
 def get_prev_month_date(year: int, month: int) -> datetime.date:

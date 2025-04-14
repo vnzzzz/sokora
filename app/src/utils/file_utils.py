@@ -52,7 +52,7 @@ def import_csv_data(content: str) -> None:
         IOError: If file writing fails
     """
     try:
-        with get_csv_file_path().open("w", encoding="utf-8", newline="") as f:
+        with get_csv_file_path().open("w", encoding="utf-8-sig", newline="") as f:
             f.write(content)
     except Exception as e:
         logger.error(f"Failed to write CSV data: {str(e)}")
@@ -76,7 +76,7 @@ def read_csv_file() -> Tuple[List[str], List[List[str]]]:
         return headers, rows
 
     try:
-        with csv_path.open("r", encoding="utf-8") as f:
+        with csv_path.open("r", encoding="utf-8-sig") as f:
             reader = csv.reader(f)
             headers = next(
                 reader, []
@@ -102,7 +102,7 @@ def write_csv_file(headers: List[str], rows: List[List[str]]) -> None:
     csv_path = get_csv_file_path()
 
     try:
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
+        with csv_path.open("w", encoding="utf-8-sig", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(headers)
             writer.writerows(rows)

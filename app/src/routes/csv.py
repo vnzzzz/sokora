@@ -32,7 +32,19 @@ async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
     """
     try:
         contents = await file.read()
-        csv_store.import_csv_data(contents.decode("utf-8"))
+        # Try to decode with different encodings
+        try:
+            # Try UTF-8 with BOM first
+            content_str = contents.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            try:
+                # Try UTF-8 without BOM
+                content_str = contents.decode("utf-8")
+            except UnicodeDecodeError:
+                # Fallback to SHIFT-JIS (common on Windows in Japan)
+                content_str = contents.decode("shift-jis")
+
+        csv_store.import_csv_data(content_str)
 
         # Get today's data and create context
         today_str = get_today_formatted()
@@ -78,5 +90,8 @@ def export_csv() -> FileResponse:
         path=csv_path,
         filename=filename,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Type": "text/csv; charset=utf-8-sig",
+        },
     )

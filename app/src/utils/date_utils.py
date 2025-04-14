@@ -1,4 +1,5 @@
 import datetime
+import re
 from fastapi import Request
 from typing import Optional
 
@@ -54,16 +55,47 @@ def get_last_viewed_date(request: Request) -> str:
 
 
 def parse_date(date_str: str) -> Optional[datetime.date]:
-    """Convert a string in YYYY-MM-DD format to a date object
+    """Convert a date string to a date object
+
+    Supports formats:
+    - YYYY-MM-DD (2025-04-01 or 2025-4-1)
+    - YYYY/MM/DD (2025/04/01 or 2025/4/1)
 
     Args:
-        date_str: Date string in YYYY-MM-DD format
+        date_str: Date string in supported format
 
     Returns:
         Optional[datetime.date]: Converted date object, or None if conversion fails
     """
     try:
-        year, month, day = map(int, date_str.split("-"))
-        return datetime.date(year, month, day)
+        # Try YYYY-MM-DD format first
+        if "-" in date_str:
+            year, month, day = map(int, date_str.split("-"))
+            return datetime.date(year, month, day)
+        # Try YYYY/MM/DD format
+        elif "/" in date_str:
+            year, month, day = map(int, date_str.split("/"))
+            return datetime.date(year, month, day)
+        return None
     except (ValueError, IndexError):
         return None
+
+
+def normalize_date_format(date_str: str) -> str:
+    """Normalize different date formats to YYYY-MM-DD
+
+    Supports formats:
+    - YYYY-MM-DD (2025-04-01 or 2025-4-1)
+    - YYYY/MM/DD (2025/04/01 or 2025/4/1)
+
+    Args:
+        date_str: Date string in supported format
+
+    Returns:
+        str: Normalized date string in YYYY-MM-DD format or
+             original string if conversion fails
+    """
+    date_obj = parse_date(date_str)
+    if date_obj:
+        return format_date(date_obj)
+    return date_str
