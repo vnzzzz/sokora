@@ -1,23 +1,23 @@
 """
-共通ユーティリティ関数
+Common Utility Functions
 -----------------
 
-複数のモジュールで使用する共通ユーティリティ関数
+Common utility functions used across multiple modules
 """
 
 from typing import List, Dict, Any, Optional, Set
 
-# csv_storeを直接インポートしない（循環参照回避）
+# Don't import csv_store directly (avoid circular references)
 
 
 def generate_location_styles(location_types: List[str]) -> Dict[str, str]:
-    """勤務場所のスタイル情報を生成する
+    """Generate style information for work locations
 
     Args:
-        location_types: 勤務場所の種類のリスト
+        location_types: List of work location types
 
     Returns:
-        Dict[str, str]: 勤務場所とそのスタイル情報のマッピング
+        Dict[str, str]: Mapping of work locations and their style information
     """
     colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
     location_styles = {}
@@ -32,13 +32,13 @@ def generate_location_styles(location_types: List[str]) -> Dict[str, str]:
 
 
 def generate_location_badges(location_types: List[str]) -> List[Dict[str, str]]:
-    """勤務場所のバッジ情報を生成する
+    """Generate badge information for work locations
 
     Args:
-        location_types: 勤務場所の種類のリスト
+        location_types: List of work location types
 
     Returns:
-        List[Dict[str, str]]: 勤務場所とそのバッジ情報のリスト
+        List[Dict[str, str]]: List of work locations and their badge information
     """
     colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
     locations = []
@@ -56,21 +56,21 @@ def generate_location_badges(location_types: List[str]) -> List[Dict[str, str]]:
 
 
 def has_data_for_day(day_data: Dict[str, List]) -> bool:
-    """日別データに勤務情報があるかどうかを確認する
+    """Check if there is work information for a specific day
 
     Args:
-        day_data: 日別データ（勤務場所ごとのユーザーリスト）
+        day_data: Daily data (list of users by work location)
 
     Returns:
-        bool: データがあればTrue、なければFalse
+        bool: True if data exists, False otherwise
     """
     return any(len(users) > 0 for users in day_data.values())
 
 
 def get_default_location_types() -> List[str]:
-    """デフォルトの勤務場所タイプを取得する
+    """Get default work location types
 
     Returns:
-        List[str]: デフォルトの勤務場所タイプリスト
+        List[str]: List of default work location types
     """
-    return ["在宅", "出社", "出張"]
+    return ["Remote", "Office", "Business Trip"]

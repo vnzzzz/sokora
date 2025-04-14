@@ -4,48 +4,48 @@ from typing import Optional
 
 
 def format_date(date: datetime.date) -> str:
-    """日付をYYYY-MM-DD形式に整形する
+    """Format date to YYYY-MM-DD
 
     Args:
-        date: 日付オブジェクト
+        date: Date object
 
     Returns:
-        str: YYYY-MM-DD形式の文字列
+        str: String in YYYY-MM-DD format
     """
     return date.strftime("%Y-%m-%d")
 
 
 def get_today_formatted() -> str:
-    """今日の日付をYYYY-MM-DD形式で取得する
+    """Get today's date in YYYY-MM-DD format
 
     Returns:
-        str: 今日の日付（YYYY-MM-DD形式）
+        str: Today's date (YYYY-MM-DD format)
     """
     return format_date(datetime.date.today())
 
 
 def get_current_month_formatted() -> str:
-    """今月をYYYY-MM形式で取得する
+    """Get current month in YYYY-MM format
 
     Returns:
-        str: 今月（YYYY-MM形式）
+        str: Current month (YYYY-MM format)
     """
     today = datetime.date.today()
     return f"{today.year}-{today.month:02d}"
 
 
 def get_last_viewed_date(request: Request) -> str:
-    """最後に表示した日付を取得する
+    """Get the last viewed date
 
-    リクエストのRefererヘッダーから最後に表示した日付を抽出する。
-    '/api/day/' パスの後ろに日付がある場合はその日付を、
-    そうでない場合は今日の日付を返す。
+    Extracts the last viewed date from the request's Referer header.
+    If there's a date after '/api/day/' path, returns that date,
+    otherwise returns today's date.
 
     Args:
-        request: FastAPIリクエストオブジェクト
+        request: FastAPI request object
 
     Returns:
-        str: 最後に表示した日付（YYYY-MM-DD形式）
+        str: Last viewed date (YYYY-MM-DD format)
     """
     referer = request.headers.get("referer", "")
     if "/api/day/" in referer:
@@ -54,13 +54,13 @@ def get_last_viewed_date(request: Request) -> str:
 
 
 def parse_date(date_str: str) -> Optional[datetime.date]:
-    """YYYY-MM-DD形式の文字列を日付オブジェクトに変換する
+    """Convert a string in YYYY-MM-DD format to a date object
 
     Args:
-        date_str: YYYY-MM-DD形式の日付文字列
+        date_str: Date string in YYYY-MM-DD format
 
     Returns:
-        Optional[datetime.date]: 変換された日付オブジェクト、または変換失敗時はNone
+        Optional[datetime.date]: Converted date object, or None if conversion fails
     """
     try:
         year, month, day = map(int, date_str.split("-"))

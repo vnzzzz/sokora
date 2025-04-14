@@ -17,29 +17,29 @@ from ..utils.calendar_utils import (
 )
 from ..utils.common import get_default_location_types
 
-# ロガー設定
+# Logger configuration
 logger = logging.getLogger(__name__)
 
-# 日本のカレンダー設定（0:月曜始まり → 6:日曜始まり）
+# Calendar settings for Sunday as first day of week (0: Monday start → 6: Sunday start)
 calendar.setfirstweekday(6)
 
 
 def get_location_types() -> List[str]:
-    """CSVから勤務場所の種類を動的に取得する関数
+    """Function to dynamically get work location types from CSV
 
     Returns:
-        List[str]: 勤務場所の種類のリスト
+        List[str]: List of work location types
     """
     data = read_all_entries()
     locations: Set[str] = set()
 
-    # すべてのユーザーデータから勤務場所を抽出
+    # Extract work locations from all user data
     for user_data in data.values():
         for location in user_data.values():
-            if location.strip():  # 空白でない場合
+            if location.strip():  # If not blank
                 locations.add(location)
 
-    # デフォルトの勤務場所タイプがない場合の対応
+    # Handle case when there are no default work location types
     if not locations:
         return get_default_location_types()
 
@@ -47,28 +47,28 @@ def get_location_types() -> List[str]:
 
 
 def import_csv_data(content: str) -> None:
-    """CSVデータをファイルに保存する
+    """Save CSV data to a file
 
     Args:
-        content: CSVファイルの内容
+        content: Content of the CSV file
 
     Raises:
-        IOError: ファイルの書き込みに失敗した場合
+        IOError: If file writing fails
     """
     from ..utils.file_utils import import_csv_data as file_import_csv_data
 
     try:
         file_import_csv_data(content)
     except IOError as e:
-        logger.error(f"CSVデータのインポートに失敗しました: {str(e)}")
+        logger.error(f"Failed to import CSV data: {str(e)}")
         raise
 
 
 def read_all_entries() -> Dict[str, Dict[str, str]]:
-    """CSVファイルからすべてのエントリーを読み込む
+    """Read all entries from CSV file
 
     Returns:
-        Dict[str, Dict[str, str]]: {user_id: {date: location}}形式のデータ
+        Dict[str, Dict[str, str]]: Data in {user_id: {date: location}} format
     """
     headers, rows = read_csv_file()
     data: Dict[str, Dict[str, str]] = {}
@@ -76,10 +76,10 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
     if not headers:
         return data
 
-    dates = headers[2:]  # 最初の列はuser_name、2列目はuser_id
+    dates = headers[2:]  # First column is user_name, second is user_id
 
     for row in rows:
-        if len(row) < 2:  # user_nameとuser_idが最低限必要
+        if len(row) < 2:  # At minimum, user_name and user_id are required
             continue
 
         user_id = row[1]
@@ -88,7 +88,7 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
         for i, location in enumerate(row[2:], 2):
             if (
                 i < len(headers) and location.strip()
-            ):  # 空欄でない場合かつインデックスが有効な場合のみ登録
+            ):  # Only register if not blank and index is valid
                 date = headers[i]
                 user_data[date] = location
 
@@ -98,15 +98,15 @@ def read_all_entries() -> Dict[str, Dict[str, str]]:
 
 
 def get_entries_by_date() -> DefaultDict[str, Dict[str, str]]:
-    """日付ごとのエントリーを取得する
+    """Get entries organized by date
 
     Returns:
-        DefaultDict[str, Dict[str, str]]: {date: {user_id: location}}形式のデータ
+        DefaultDict[str, Dict[str, str]]: Data in {date: {user_id: location}} format
     """
     data = read_all_entries()
     date_entries: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
 
-    # ユーザーごとのデータを日付ごとのデータに変換
+    # Convert user-based data to date-based data
     for user_id, user_data in data.items():
         for date, location in user_data.items():
             date_entries[date][user_id] = location
@@ -115,29 +115,29 @@ def get_entries_by_date() -> DefaultDict[str, Dict[str, str]]:
 
 
 def get_all_users() -> List[Tuple[str, str]]:
-    """CSVファイルからすべてのユーザー名とIDを取得する
+    """Get all user names and IDs from CSV file
 
     Returns:
-        List[Tuple[str, str]]: (user_name, user_id)のリスト
+        List[Tuple[str, str]]: List of (user_name, user_id) tuples
     """
     headers, rows = read_csv_file()
     users = []
 
     for row in rows:
         if len(row) >= 2 and row[0].strip() and row[1].strip():
-            users.append((row[0], row[1]))  # (user_name, user_id)のタプル
+            users.append((row[0], row[1]))  # Tuple of (user_name, user_id)
 
-    return sorted(users, key=lambda x: x[0])  # user_nameでソート
+    return sorted(users, key=lambda x: x[0])  # Sort by user_name
 
 
 def get_user_name_by_id(user_id: str) -> str:
-    """ユーザーIDからユーザー名を取得する
+    """Get username from user ID
 
     Args:
-        user_id: ユーザーID
+        user_id: User ID
 
     Returns:
-        str: ユーザー名（見つからない場合は空文字）
+        str: Username (empty string if not found)
     """
     headers, rows = read_csv_file()
 
@@ -149,164 +149,164 @@ def get_user_name_by_id(user_id: str) -> str:
 
 
 def add_user(username: str, user_id: str) -> bool:
-    """CSVファイルに新しいユーザーを追加する
+    """Add a new user to CSV file
 
     Args:
-        username: 追加するユーザー名
-        user_id: ユーザーID
+        username: Username to add
+        user_id: User ID
 
     Returns:
-        bool: 追加が成功したかどうか
+        bool: Whether the addition was successful
     """
     if not username.strip() or not user_id.strip():
         return False
 
     try:
-        # 現在のデータを読み込む
+        # Read current data
         users = get_all_users()
 
-        # ユーザー名またはIDにすでに同じものが存在する場合は追加しない
+        # Don't add if username or ID already exists
         for name, id in users:
             if name == username or id == user_id:
                 return False
 
-        # ファイルを読み込み、ヘッダーを取得
+        # Read file and get headers
         headers, rows = read_csv_file()
 
         if not headers:
-            # ファイルが存在しない場合は新規作成
+            # Create new file if it doesn't exist
             headers = ["user_name", "user_id"]
 
-        # 新しいユーザーを追加
+        # Add new user
         new_row = [username, user_id] + [""] * (len(headers) - 2)
         rows.append(new_row)
 
-        # ファイルに書き込む
+        # Write to file
         write_csv_file(headers, rows)
 
         return True
     except Exception as e:
-        logger.error(f"ユーザーの追加に失敗しました: {str(e)}")
-        raise IOError(f"ユーザーの追加に失敗しました: {str(e)}")
+        logger.error(f"Failed to add user: {str(e)}")
+        raise IOError(f"Failed to add user: {str(e)}")
 
 
 def delete_user(user_id: str) -> bool:
-    """CSVファイルからユーザーを削除する
+    """Delete user from CSV file
 
     Args:
-        user_id: 削除するユーザーID
+        user_id: User ID to delete
 
     Returns:
-        bool: 削除が成功したかどうか
+        bool: Whether the deletion was successful
     """
     try:
-        # ファイルを読み込む
+        # Read file
         headers, rows = read_csv_file()
 
         if not headers:
             return False
 
         original_row_count = len(rows)
-        # user_idに一致しない行だけを残す
+        # Keep rows that don't match user_id
         filtered_rows = [row for row in rows if len(row) < 2 or row[1] != user_id]
 
-        # 行が削除されなかった場合（該当するユーザーがいない場合）
+        # If no rows are removed (no matching user)
         if len(filtered_rows) == original_row_count:
             return False
 
-        # ファイルに書き込む
+        # Write to file
         write_csv_file(headers, filtered_rows)
 
         return True
     except Exception as e:
-        logger.error(f"ユーザーの削除に失敗しました: {str(e)}")
-        raise IOError(f"ユーザーの削除に失敗しました: {str(e)}")
+        logger.error(f"Failed to delete user: {str(e)}")
+        raise IOError(f"Failed to delete user: {str(e)}")
 
 
 def update_user_entry(user_id: str, date: str, location: str) -> bool:
-    """ユーザーの特定の日付の勤務場所を更新する
+    """Update work location for a specific date for a user
 
     Args:
-        user_id: ユーザーID
-        date: YYYY-MM-DD形式の日付
-        location: 勤務場所
+        user_id: User ID
+        date: Date in YYYY-MM-DD format
+        location: Work location
 
     Returns:
-        bool: 更新が成功したかどうか
+        bool: Whether the update was successful
     """
     try:
-        # ファイルを読み込む
+        # Read file
         headers, rows = read_csv_file()
 
         if not headers:
             return False
 
-        # 日付が存在するかチェック
+        # Check if date exists
         if date not in headers[2:]:
-            # 日付が存在しない場合は適切な位置に挿入する
+            # If date doesn't exist, insert it in the correct position
             date_headers = headers[2:]
 
-            # 適切な挿入位置を探す
-            insert_position = 2  # デフォルトは最初の日付位置
+            # Find the correct insertion position
+            insert_position = 2  # Default is the first date position
 
-            # 日付が既存の日付より未来の場合、適切な位置を探す
+            # If the date is after existing dates, find the correct position
             for i, existing_date in enumerate(date_headers):
                 if existing_date > date:
-                    # 挿入位置を見つけた
-                    insert_position = i + 2  # headers[0]とheaders[1]の分を加算
+                    # Found insertion position
+                    insert_position = i + 2  # Add headers[0] and headers[1]
                     break
                 else:
-                    # 最後まで到達した場合、末尾に追加
+                    # If reached the end, add to the end
                     insert_position = len(headers)
 
-            # 新しい日付をヘッダーに挿入
+            # Insert new date into headers
             headers.insert(insert_position, date)
 
-            # すべての行に新しい列を挿入
+            # Insert new column into all rows
             for row in rows:
-                # 行が短い場合は必要な長さまで拡張
+                # If row is short, extend to the required length
                 while len(row) < insert_position:
                     row.append("")
                 row.insert(insert_position, "")
 
-        # 日付のインデックスを取得
+        # Get date index
         date_index = headers.index(date)
 
-        # ユーザーが存在するかチェック
+        # Check if user exists
         user_exists = False
         for row in rows:
             if len(row) >= 2 and row[1] == user_id:
                 user_exists = True
-                # 行が短い場合は拡張
+                # If row is short, extend
                 while len(row) <= date_index:
                     row.append("")
                 row[date_index] = location
                 break
 
-        # ユーザーが存在しない場合は何もしない
+        # If user doesn't exist, do nothing
         if not user_exists:
             return False
 
-        # ファイルに書き込む
+        # Write to file
         write_csv_file(headers, rows)
 
         return True
     except Exception as e:
-        logger.error(f"エントリーの更新に失敗しました: {str(e)}")
-        raise IOError(f"エントリーの更新に失敗しました: {str(e)}")
+        logger.error(f"Failed to update entry: {str(e)}")
+        raise IOError(f"Failed to update entry: {str(e)}")
 
 
 def get_calendar_data(month: str) -> Dict[str, Any]:
-    """月ごとのカレンダーデータを生成する
+    """Generate calendar data for each month
 
     Args:
-        month: YYYY-MM形式の月指定
+        month: Month specified in YYYY-MM format
 
     Returns:
-        Dict: カレンダー表示に必要なデータ
+        Dict: Data needed for calendar display
 
     Raises:
-        ValueError: 無効な月フォーマットの場合
+        ValueError: If invalid month format
     """
     date_entries = get_entries_by_date()
     location_types = get_location_types()
@@ -314,13 +314,13 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
         lambda: {location_type: 0 for location_type in location_types}
     )
 
-    # 月データの解析
+    # Parse month data
     year, month_num = parse_month(month)
 
-    # カレンダー用のデータ
+    # Calendar data
     cal = calendar.monthcalendar(year, month_num)
 
-    # エントリーデータの集計
+    # Summarize entry data
     for date, entries in date_entries.items():
         if date.startswith(month):
             try:
@@ -329,20 +329,20 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
                     if location in location_types:
                         calendar_dict[day][location] += 1
             except (IndexError, ValueError):
-                continue  # 無効な日付形式はスキップ
+                continue  # Skip invalid date format
 
-    # 週ごとにまとめたカレンダーデータを作成
+    # Create calendar data summarized by week
     calendar_weeks = create_calendar_weeks(cal, month, calendar_dict, location_types)
 
-    # 勤務場所のスタイル情報を生成
+    # Generate work location style information
     locations = generate_location_data(location_types)
 
-    # 前月・翌月の計算
+    # Calculate previous and next month
     prev_month_date = get_prev_month_date(year, month_num)
     next_month_date = get_next_month_date(year, month_num)
 
-    # 日本語の月名取得
-    month_name = f"{year}年{month_num}月"
+    # Get English month name
+    month_name = f"{year}-{month_num:02d}"
 
     return {
         "weeks": calendar_weeks,
@@ -354,16 +354,16 @@ def get_calendar_data(month: str) -> Dict[str, Any]:
 
 
 def get_day_data(day: str) -> Dict[str, List[Dict[str, str]]]:
-    """指定された日のデータを取得する
+    """Get data for a specified day
 
     Args:
-        day: YYYY-MM-DD形式の日付
+        day: Date in YYYY-MM-DD format
 
     Returns:
-        Dict[str, List[Dict[str, str]]]: ロケーション別のユーザー一覧（user_nameとuser_idを含む）
+        Dict[str, List[Dict[str, str]]]: List of users by location (includes user_name and user_id)
 
     Raises:
-        ValueError: 無効な日付フォーマットの場合
+        ValueError: If invalid date format
     """
     entries_by_date = get_entries_by_date()
     location_types = get_location_types()
@@ -371,20 +371,20 @@ def get_day_data(day: str) -> Dict[str, List[Dict[str, str]]]:
         loc_type: [] for loc_type in location_types
     }
 
-    # 日付の検証
+    # Date validation
     parts = day.split("-")
     if len(parts) != 3:
         return result
 
-    # 特定の日の各ユーザーの勤務場所を集計
+    # Summarize work locations for each user on the specified day
     for user_id, location in entries_by_date.get(day, {}).items():
         user_name = get_user_name_by_id(user_id)
         user_data = {"user_id": user_id, "user_name": user_name}
 
-        # すべての勤務場所を受け入れる
+        # Accept all work locations
         if location in result:
             result[location].append(user_data)
-        # CSVにあるが辞書にないロケーションタイプの場合は追加する
+        # If location type exists in CSV but not in dictionary, add it
         elif location.strip():
             result[location] = [user_data]
 
@@ -392,13 +392,13 @@ def get_day_data(day: str) -> Dict[str, List[Dict[str, str]]]:
 
 
 def get_user_data(user_id: str) -> List[Dict[str, str]]:
-    """指定されたユーザーのデータを取得する
+    """Get data for a specified user
 
     Args:
-        user_id: ユーザーID
+        user_id: User ID
 
     Returns:
-        List[Dict[str, str]]: ユーザーのエントリー一覧
+        List[Dict[str, str]]: List of user entries
     """
     data = read_all_entries()
     entries = []
@@ -408,6 +408,6 @@ def get_user_data(user_id: str) -> List[Dict[str, str]]:
         for date, location in user_data.items():
             entries.append({"date": date, "location": location})
 
-    # 日付でソート
+    # Sort by date
     entries.sort(key=lambda x: x["date"])
     return entries

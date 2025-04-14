@@ -1,8 +1,8 @@
 """
-ファイル操作ユーティリティ
+File Operation Utilities
 -----------------
 
-ファイル操作に関連するユーティリティ関数
+Utility functions related to file operations
 """
 
 import os
@@ -11,62 +11,62 @@ import csv
 from typing import Dict, List, Optional, Tuple
 import logging
 
-# ロガー設定
+# Logger configuration
 logger = logging.getLogger(__name__)
 
 
 def get_csv_file_path() -> Path:
-    """CSV_FILEの場所を特定する関数
+    """Function to locate the CSV_FILE
 
     Returns:
-        Path: CSVファイルのパス
+        Path: Path to the CSV file
     """
     possible_paths = [
-        "work_entries.csv",  # 基本パス
-        os.path.join(os.getcwd(), "work_entries.csv"),  # カレントディレクトリ
-        os.path.join(os.getcwd(), "data", "work_entries.csv"),  # data/ディレクトリ
+        "work_entries.csv",  # Base path
+        os.path.join(os.getcwd(), "work_entries.csv"),  # Current directory
+        os.path.join(os.getcwd(), "data", "work_entries.csv"),  # data/ directory
         os.path.join(
             os.path.dirname(os.getcwd()), "data", "work_entries.csv"
-        ),  # 親ディレクトリのdata/
-        os.path.join(os.getcwd(), "app", "work_entries.csv"),  # Docker環境用
+        ),  # data/ in parent directory
+        os.path.join(os.getcwd(), "app", "work_entries.csv"),  # For Docker environment
         os.path.join(
             os.getcwd(), "app", "data", "work_entries.csv"
-        ),  # Docker環境用data/
+        ),  # data/ for Docker environment
     ]
 
     for path in possible_paths:
         if os.path.exists(path):
             return Path(path)
 
-    # 存在しない場合は基本パスを返す（新規作成用）
+    # Return base path if not found (for new file creation)
     return Path("work_entries.csv")
 
 
 def import_csv_data(content: str) -> None:
-    """CSVデータをファイルに保存する
+    """Save CSV data to a file
 
     Args:
-        content: CSVファイルの内容
+        content: Content of the CSV file
 
     Raises:
-        IOError: ファイルの書き込みに失敗した場合
+        IOError: If file writing fails
     """
     try:
         with get_csv_file_path().open("w", encoding="utf-8", newline="") as f:
             f.write(content)
     except Exception as e:
-        logger.error(f"CSVデータの書き込みに失敗しました: {str(e)}")
-        raise IOError(f"CSVデータの書き込みに失敗しました: {str(e)}")
+        logger.error(f"Failed to write CSV data: {str(e)}")
+        raise IOError(f"Failed to write CSV data: {str(e)}")
 
 
 def read_csv_file() -> Tuple[List[str], List[List[str]]]:
-    """CSVファイルからヘッダーと行データを読み込む
+    """Read headers and row data from a CSV file
 
     Returns:
-        Tuple[List[str], List[List[str]]]: (ヘッダーのリスト, 行データのリスト)
+        Tuple[List[str], List[List[str]]]: (List of headers, List of row data)
 
     Raises:
-        IOError: ファイルの読み込みに失敗した場合
+        IOError: If file reading fails
     """
     csv_path = get_csv_file_path()
     headers = []
@@ -80,24 +80,24 @@ def read_csv_file() -> Tuple[List[str], List[List[str]]]:
             reader = csv.reader(f)
             headers = next(
                 reader, []
-            )  # ヘッダー行を読み込み、ファイルが空の場合は空リストを返す
+            )  # Read header row, return empty list if file is empty
             rows = list(reader)
     except Exception as e:
-        logger.error(f"CSVデータの読み込みに失敗しました: {str(e)}")
-        raise IOError(f"CSVデータの読み込みに失敗しました: {str(e)}")
+        logger.error(f"Failed to read CSV data: {str(e)}")
+        raise IOError(f"Failed to read CSV data: {str(e)}")
 
     return headers, rows
 
 
 def write_csv_file(headers: List[str], rows: List[List[str]]) -> None:
-    """ヘッダーと行データをCSVファイルに書き込む
+    """Write headers and row data to a CSV file
 
     Args:
-        headers: ヘッダー行のリスト
-        rows: データ行のリスト
+        headers: List of header rows
+        rows: List of data rows
 
     Raises:
-        IOError: ファイルの書き込みに失敗した場合
+        IOError: If file writing fails
     """
     csv_path = get_csv_file_path()
 
@@ -107,5 +107,5 @@ def write_csv_file(headers: List[str], rows: List[List[str]]) -> None:
             writer.writerow(headers)
             writer.writerows(rows)
     except Exception as e:
-        logger.error(f"CSVデータの書き込みに失敗しました: {str(e)}")
-        raise IOError(f"CSVデータの書き込みに失敗しました: {str(e)}")
+        logger.error(f"Failed to write CSV data: {str(e)}")
+        raise IOError(f"Failed to write CSV data: {str(e)}")

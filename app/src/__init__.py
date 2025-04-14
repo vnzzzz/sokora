@@ -1,30 +1,30 @@
 """
-Sokora - 勤務管理アプリケーション
+Sokora - Attendance Management Application
 ================================
 
-このパッケージはSokora勤務管理アプリケーションのソースコードを含みます。
-FastAPIを使用したシンプルな勤務状況管理ツールです。
+This package contains the source code for the Sokora attendance management application.
+A simple attendance tracking tool built with FastAPI.
 
-機能:
-- 日別の勤務状況表示
-- 月別カレンダー表示
-- ユーザー別データ閲覧
-- CSVデータのインポート/エクスポート
+Features:
+- Daily attendance status display
+- Monthly calendar view
+- User-specific data viewing
+- CSV data import/export
 """
 
 import logging
 import os
 from .services import csv_store
 
-# アプリケーションのバージョン
+# Application version
 APP_VERSION = "1.0.0"
 
-# ログレベルの設定（環境変数から取得するか、デフォルトでINFOを使用）
+# Set log level (get from environment variable or use INFO as default)
 log_level = os.environ.get("SOKORA_LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
-# ルートロガーの取得
+# Get root logger
 logger = logging.getLogger("sokora")
