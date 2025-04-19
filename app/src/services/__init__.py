@@ -1,7 +1,10 @@
 """
-Sokora Service Module
-===========================
+Services Module
+==============
 
-This package contains the service layer of the Sokora attendance management application.
-It is mainly responsible for data processing and persistence.
+Business logic services for the application.
 """
+
+# Import services
+from . import db_service
+from . import db_init

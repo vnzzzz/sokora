@@ -1,6 +1,6 @@
 import datetime
 import re
-from fastapi import Request  # type: ignore
+from fastapi import Request
 from typing import Optional
 
 

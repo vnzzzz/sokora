@@ -5,12 +5,14 @@
 勤怠入力と編集に関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request, Form, HTTPException
+from fastapi import APIRouter, Request, Form, HTTPException, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
+from sqlalchemy.orm import Session
 
-from ...services import csv_store
+from ...db.session import get_db
+from ...services import db_service
 from ...utils.date_utils import (
     get_today_formatted,
     get_current_month_formatted,
@@ -26,16 +28,17 @@ templates = Jinja2Templates(directory="src/templates")
 
 
 @page_router.get("/attendance", response_class=HTMLResponse)
-def attendance_page(request: Request) -> HTMLResponse:
+def attendance_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     """Display the attendance management page
 
     Args:
         request: FastAPI request object
+        db: Database session
 
     Returns:
         HTMLResponse: Rendered HTML page
     """
-    users = csv_store.get_all_users()
+    users = db_service.get_all_users(db)
     return templates.TemplateResponse(
         "attendance.html", {"request": request, "users": users}
     )
@@ -43,7 +46,10 @@ def attendance_page(request: Request) -> HTMLResponse:
 
 @page_router.get("/attendance/edit/{user_id}", response_class=HTMLResponse)
 def edit_user_attendance(
-    request: Request, user_id: str, month: Optional[str] = None
+    request: Request,
+    user_id: str,
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Display page to edit user attendance
 
@@ -51,6 +57,7 @@ def edit_user_attendance(
         request: FastAPI request object
         user_id: User ID to edit
         month: Month in YYYY-MM format (current month if not specified)
+        db: Database session
 
     Returns:
         HTMLResponse: Rendered HTML page
@@ -59,14 +66,14 @@ def edit_user_attendance(
         month = get_current_month_formatted()
 
     # Get calendar data for the specified month
-    calendar_data = csv_store.get_calendar_data(month)
+    calendar_data = db_service.get_calendar_data(db, month)
 
     # Get user name
-    user_name = csv_store.get_user_name_by_id(user_id)
+    user_name = db_service.get_user_name_by_id(db, user_id)
 
     # Get user data
-    user_entries = csv_store.get_user_data(user_id)
-    all_users = csv_store.get_all_users()
+    user_entries = db_service.get_user_data(db, user_id)
+    all_users = db_service.get_all_users(db)
     all_user_ids = [user[1] for user in all_users]
 
     if not user_entries and user_id not in all_user_ids:
@@ -81,7 +88,7 @@ def edit_user_attendance(
         user_locations[date] = entry["location"]
 
     # Get types of work locations
-    location_types = csv_store.get_location_types()
+    location_types = db_service.get_location_types(db)
 
     # Generate style information for work locations
     location_styles = generate_location_styles(location_types)
@@ -119,7 +126,10 @@ def edit_user_attendance(
 # API endpoints
 @router.post("/user/add", response_class=RedirectResponse)
 async def add_user(
-    request: Request, username: str = Form(...), user_id: str = Form(...)
+    request: Request,
+    username: str = Form(...),
+    user_id: str = Form(...),
+    db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Add a new user
 
@@ -127,30 +137,34 @@ async def add_user(
         request: FastAPI request object
         username: Username to add (form data)
         user_id: User ID (form data)
+        db: Database session
 
     Returns:
         RedirectResponse: Redirect to attendance page
     """
     try:
-        csv_store.add_user(username, user_id)
+        db_service.add_user(db, username, user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/user/delete/{user_id}", response_class=RedirectResponse)
-async def delete_user(request: Request, user_id: str) -> RedirectResponse:
+async def delete_user(
+    request: Request, user_id: str, db: Session = Depends(get_db)
+) -> RedirectResponse:
     """Delete a user
 
     Args:
         request: FastAPI request object
         user_id: User ID to delete
+        db: Database session
 
     Returns:
         RedirectResponse: Redirect to attendance page
     """
     try:
-        csv_store.delete_user(user_id)
+        db_service.delete_user(db, user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -162,6 +176,7 @@ async def update_attendance(
     user_id: str = Form(...),
     date: str = Form(...),
     location: str = Form(...),
+    db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Update a user's work location
 
@@ -170,12 +185,13 @@ async def update_attendance(
         user_id: User ID to update (form data)
         date: Date to update (form data)
         location: Work location to update (form data)
+        db: Database session
 
     Returns:
         RedirectResponse: Redirect to user edit page
     """
     try:
-        csv_store.update_user_entry(user_id, date, location)
+        db_service.update_user_entry(db, user_id, date, location)
         return RedirectResponse(url=f"/attendance/edit/{user_id}", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

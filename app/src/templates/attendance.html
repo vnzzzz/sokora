@@ -11,9 +11,6 @@
   <!-- ヘッダー -->
   {% include "components/navbar.html" %}
 
-  <!-- CSVアップロードモーダル -->
-  {% include "components/csv_upload_modal.html" %}
-
   <!-- メインコンテンツ -->
   <main class="container mx-auto p-4 space-y-6">
     <div class="card bg-base-200 shadow-sm p-4">
@@ -124,17 +121,6 @@
       {% endif %}
     </div>
   </main>
-
-  <!-- JavaScript -->
-  <script>
-    // Alpine.jsグローバルストア
-    document.addEventListener('alpine:init', () => {
-      Alpine.store('importModal', {
-        open: false,
-        toggle() { this.open = !this.open; }
-      });
-    });
-  </script>
 </body>
 
 </html>

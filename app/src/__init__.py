@@ -9,7 +9,6 @@ Features:
 - Daily attendance status display
 - Monthly calendar view
 - User-specific data viewing
-- CSV data import/export
 """
 
 from .core.config import APP_VERSION, logger

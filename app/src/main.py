@@ -1,14 +1,18 @@
-from fastapi import FastAPI, Request  # type: ignore
-from fastapi.staticfiles import StaticFiles  # type: ignore
-from fastapi.responses import HTMLResponse  # type: ignore
-from fastapi.openapi.utils import get_openapi  # type: ignore
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.openapi.utils import get_openapi
 import logging
 
 # 設定ファイルのインポート
 from .core.config import APP_VERSION, logger
 
 # ルートモジュールのインポート
-from .api.v1 import root, attendance, calendar, csv
+from .api.v1 import root, attendance, calendar
+
+# DBモジュールとサービスをインポート
+from .db import init_db
+from .services import db_init
 
 # FastAPIアプリの作成（デフォルトのドキュメントを無効化）
 app = FastAPI(
@@ -26,7 +30,6 @@ app.include_router(root.router)
 app.include_router(attendance.page_router)  # ページ表示用ルーター
 app.include_router(attendance.router)  # API用ルーター
 app.include_router(calendar.router)
-app.include_router(csv.router)
 
 
 # APIタグ定義
@@ -40,14 +43,19 @@ API_TAGS = [
         "description": "カレンダー表示と日別詳細情報のエンドポイント",
     },
     {
-        "name": "CSVデータ",
-        "description": "CSVデータのインポートとエクスポート用エンドポイント",
-    },
-    {
         "name": "ページ表示",
         "description": "アプリケーションUIページ表示用エンドポイント",
     },
 ]
+
+
+# アプリケーション起動時の初期化処理
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時の初期化処理を実行"""
+    # データベースの初期化
+    logger.info("Initializing database")
+    db_init.initialize_database()
 
 
 # カスタムOpenAPIスキーマ定義

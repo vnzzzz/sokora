@@ -7,8 +7,6 @@ Common utility functions used across multiple modules
 
 from typing import List, Dict, Any, Optional, Set
 
-# Don't import csv_store directly (avoid circular references)
-
 
 def generate_location_styles(location_types: List[str]) -> Dict[str, str]:
     """Generate style information for work locations
@@ -59,12 +57,12 @@ def has_data_for_day(day_data: Dict[str, List]) -> bool:
     """Check if there is work information for a specific day
 
     Args:
-        day_data: Daily data (list of users by work location)
+        day_data: Daily data (dictionary with work locations as keys and user lists as values)
 
     Returns:
         bool: True if data exists, False otherwise
     """
-    return any(len(users) > 0 for users in day_data.values())
+    return bool(day_data)
 
 
 def get_default_location_types() -> List[str]:

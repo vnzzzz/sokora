@@ -5,13 +5,15 @@
 カレンダー表示と日別詳細に関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 import html
+from sqlalchemy.orm import Session
 
-from ...services import csv_store
+from ...db.session import get_db
+from ...services import db_service
 from ...utils.date_utils import (
     get_today_formatted,
     get_current_month_formatted,
@@ -28,12 +30,15 @@ templates = Jinja2Templates(directory="src/templates")
 
 
 @router.get("/calendar", response_class=HTMLResponse)
-def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
+def get_calendar(
+    request: Request, month: Optional[str] = None, db: Session = Depends(get_db)
+) -> HTMLResponse:
     """Display calendar for the specified month
 
     Args:
         request: FastAPI request object
         month: Month in YYYY-MM format (current month if not specified)
+        db: Database session
 
     Returns:
         HTMLResponse: Rendered calendar HTML
@@ -41,7 +46,7 @@ def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
     if month is None:
         month = get_current_month_formatted()
 
-    calendar_data = csv_store.get_calendar_data(month)
+    calendar_data = db_service.get_calendar_data(db, month)
     context = {
         "request": request,
         "month": calendar_data["month_name"],
@@ -51,20 +56,23 @@ def get_calendar(request: Request, month: Optional[str] = None) -> HTMLResponse:
 
 
 @router.get("/day/{day}", response_class=HTMLResponse)
-def get_day_detail(request: Request, day: str) -> HTMLResponse:
+def get_day_detail(
+    request: Request, day: str, db: Session = Depends(get_db)
+) -> HTMLResponse:
     """Display details for the specified day
 
     Args:
         request: FastAPI request object
         day: Date in YYYY-MM-DD format
+        db: Database session
 
     Returns:
         HTMLResponse: Rendered daily detail HTML
     """
-    detail = csv_store.get_day_data(day)
+    detail = db_service.get_day_data(db, day)
 
     # Generate badge information for work locations
-    location_types = csv_store.get_location_types()
+    location_types = db_service.get_location_types(db)
     locations = generate_location_badges(location_types)
 
     # Check if data exists
@@ -82,7 +90,10 @@ def get_day_detail(request: Request, day: str) -> HTMLResponse:
 
 @router.get("/user/{user_id}", response_class=HTMLResponse)
 def get_user_detail(
-    request: Request, user_id: str, month: Optional[str] = None
+    request: Request,
+    user_id: str,
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Display details for the specified user
 
@@ -90,6 +101,7 @@ def get_user_detail(
         request: FastAPI request object
         user_id: User ID
         month: Month in YYYY-MM format (current month if not specified)
+        db: Database session
 
     Returns:
         HTMLResponse: Rendered user detail HTML
@@ -102,13 +114,13 @@ def get_user_detail(
         month = get_current_month_formatted()
 
     # Get user name
-    user_name = csv_store.get_user_name_by_id(user_id)
+    user_name = db_service.get_user_name_by_id(db, user_id)
 
     # Get calendar data for the specified month
-    calendar_data = csv_store.get_calendar_data(month)
+    calendar_data = db_service.get_calendar_data(db, month)
 
     # Get user data
-    user_entries = csv_store.get_user_data(user_id)
+    user_entries = db_service.get_user_data(db, user_id)
 
     # Create a map of dates and work locations for the user
     user_dates = []
@@ -119,7 +131,7 @@ def get_user_detail(
         user_locations[date] = entry["location"]
 
     # Generate style information for work locations
-    location_types = csv_store.get_location_types()
+    location_types = db_service.get_location_types(db)
     location_styles = generate_location_styles(location_types)
 
     # Set up previous and next month (using functions from utils/calendar_utils)

@@ -10,12 +10,6 @@
   <!-- ヘッダー -->
   {% include "components/navbar.html" %}
 
-  <!-- CSVアップロードモーダル -->
-  {% include "components/csv_upload_modal.html" %}
-
-  <!-- CSVエンコーディングモーダル -->
-  {% include "components/csv_encoding_modal.html" %}
-
   <!-- メインコンテンツ -->
   <main class="container mx-auto p-4 space-y-6">
     <!-- カレンダーエリア -->
@@ -69,21 +63,7 @@
   <script>
     // Alpine.jsストアをhydration時に初期化
     document.addEventListener('alpine:init', () => {
-      // インポートモーダル用のストア
-      Alpine.store('importModal', {
-        open: false,
-        toggle() {
-          this.open = !this.open;
-        }
-      });
-
-      // エンコーディングモーダル用のストア
-      Alpine.store('encodingModal', {
-        open: false,
-        toggle() {
-          this.open = !this.open;
-        }
-      });
+      // ストアの初期化（必要に応じて）
     });
   </script>
 </body>

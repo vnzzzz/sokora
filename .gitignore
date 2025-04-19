@@ -1,8 +1,6 @@
-# git
-**/!.gitkeep
-
 # data
-data/*
+app/data/*
+!/app/data/.gitkeep
 
 # env
 .env

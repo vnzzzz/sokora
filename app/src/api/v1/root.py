@@ -5,45 +5,51 @@
 メインページ表示に関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
-from ...services import csv_store
+from ...db.session import get_db
+from ...crud.location import location as location_crud
 from ...utils.date_utils import get_today_formatted
 from ...utils.common import generate_location_badges, has_data_for_day
+from ...services import db_service
 
 router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def root_page(request: Request) -> HTMLResponse:
+def root_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     """Display the top page
 
     Args:
         request: FastAPI request object
+        db: Database session
 
     Returns:
         HTMLResponse: Rendered HTML page
     """
     today_str = get_today_formatted()
-    day_data = csv_store.get_day_data(today_str)
 
-    # Get types of work locations
-    location_types = csv_store.get_location_types()
+    # 今日の日付のデータを取得
+    default_data = db_service.get_day_data(db, today_str)
 
-    # Generate badge information for work locations
-    locations = generate_location_badges(location_types)
+    # 全ての勤務場所を取得
+    locations = location_crud.get_all_locations(db)
 
-    # Check if data exists
-    has_data = has_data_for_day(day_data)
+    # バッジを生成
+    location_badges = generate_location_badges(locations)
+
+    # データの有無を確認
+    default_has_data = has_data_for_day(default_data)
 
     context = {
         "request": request,
         "default_day": today_str,
-        "default_data": day_data,
-        "default_locations": locations,
-        "default_has_data": has_data,
+        "default_data": default_data,
+        "default_locations": location_badges,
+        "default_has_data": default_has_data,
     }
     return templates.TemplateResponse("base.html", context)

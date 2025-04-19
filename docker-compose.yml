@@ -7,4 +7,4 @@ services:
     ports:
       - ${SERVICE_PORT}:8000
     volumes:
-      - ./data/work_entries.csv:/app/work_entries.csv
+      - ./app/data:/app/data
