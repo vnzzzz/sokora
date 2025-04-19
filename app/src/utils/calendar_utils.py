@@ -7,8 +7,7 @@
 
 import datetime
 import calendar
-from collections import defaultdict
-from typing import Dict, List, Any, Tuple, DefaultDict
+from typing import Dict, List, Any, Tuple
 
 # 日曜日を週の最初の日とするカレンダー設定（0: 月曜始まり → 6: 日曜始まり）
 calendar.setfirstweekday(6)
@@ -77,29 +76,3 @@ def get_next_month_date(year: int, month: int) -> datetime.date:
     if month == 12:
         return datetime.date(year + 1, 1, 1)
     return datetime.date(year, month + 1, 1)
-
-
-def generate_location_data(location_types: List[str]) -> List[Dict[str, str]]:
-    """勤務場所のスタイル情報を生成します
-
-    Args:
-        location_types: 勤務場所タイプのリスト
-
-    Returns:
-        List[Dict[str, str]]: 勤務場所とそのスタイル情報のリスト
-    """
-    colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
-    locations = []
-
-    for i, loc_type in enumerate(location_types):
-        color_index = i % len(colors)
-        locations.append(
-            {
-                "name": loc_type,
-                "color": f"text-{colors[color_index]}",
-                "key": loc_type,
-                "badge": colors[color_index],
-            }
-        )
-
-    return locations

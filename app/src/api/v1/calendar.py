@@ -25,16 +25,16 @@ from ...utils.date_utils import (
     get_current_month_formatted,
     get_last_viewed_date,
 )
-from ...utils.common import (
+from ...utils.ui_utils import (
     generate_location_badges,
     has_data_for_day,
     generate_location_styles,
+    generate_location_data,
 )
 from ...utils.calendar_utils import (
     parse_month,
     get_prev_month_date,
     get_next_month_date,
-    generate_location_data,
 )
 from ...core.config import logger
 

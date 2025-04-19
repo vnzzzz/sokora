@@ -14,7 +14,7 @@ from ...db.session import get_db
 from ...crud.location import location as location_crud
 from ...crud.attendance import attendance
 from ...utils.date_utils import get_today_formatted
-from ...utils.common import generate_location_badges, has_data_for_day
+from ...utils.ui_utils import generate_location_badges, has_data_for_day
 
 router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")

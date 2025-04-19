@@ -21,7 +21,7 @@ from ...utils.date_utils import (
     get_current_month_formatted,
     get_last_viewed_date,
 )
-from ...utils.common import generate_location_styles
+from ...utils.ui_utils import generate_location_styles
 from ...utils.calendar_utils import (
     parse_month,
     get_prev_month_date,

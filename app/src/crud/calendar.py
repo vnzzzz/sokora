@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from ..models.attendance import Attendance
 from ..models.user import User
 from ..crud.location import location as location_crud
-from ..utils.calendar_utils import parse_month, generate_location_data
+from ..utils.calendar_utils import parse_month
+from ..utils.ui_utils import generate_location_data
 from ..core.config import logger
 
 
