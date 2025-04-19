@@ -1,8 +1,8 @@
 """
-Attendance-Related Endpoints
+勤怠管理関連エンドポイント
 ----------------
 
-Route handlers related to attendance input and editing
+勤怠入力と編集に関連するルートハンドラー
 """
 
 from fastapi import APIRouter, Request, Form, HTTPException
@@ -18,10 +18,10 @@ from ..utils.date_utils import (
 )
 from ..utils.common import generate_location_styles
 
-# Router for API
-router = APIRouter(prefix="/api", tags=["Attendance"])
-# Router for HTML display
-page_router = APIRouter(tags=["Page Display"])
+# API用ルーター
+router = APIRouter(prefix="/api", tags=["勤怠管理"])
+# ページ表示用ルーター
+page_router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")
 
 

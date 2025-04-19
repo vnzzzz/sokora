@@ -1,8 +1,8 @@
 """
-Root Page Display
+ルートページ表示
 ----------------
 
-Route handlers related to the main page display
+メインページ表示に関連するルートハンドラー
 """
 
 from fastapi import APIRouter, Request
@@ -13,7 +13,7 @@ from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
 
-router = APIRouter(tags=["Page Display"])
+router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")
 
 

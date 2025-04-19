@@ -1,8 +1,8 @@
 """
-CSV-Related Endpoints
+CSV関連エンドポイント
 ----------------
 
-Route handlers related to CSV data import and export
+CSVデータのインポートとエクスポートに関連するルートハンドラー
 """
 
 from fastapi import APIRouter, Request, UploadFile, File, HTTPException, Query
@@ -19,7 +19,7 @@ from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
 from ..utils.file_utils import get_csv_file_path, read_csv_file
 
-router = APIRouter(prefix="/api/csv", tags=["CSV Data"])
+router = APIRouter(prefix="/api/csv", tags=["CSVデータ"])
 templates = Jinja2Templates(directory="src/templates")
 
 

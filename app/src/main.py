@@ -64,7 +64,7 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title="Sokora API",
         version=APP_VERSION,
-        description="Sokora API ドキュメント",
+        description="勤怠管理システムSokora APIのドキュメント",
         routes=app.routes,
     )
 

@@ -1,8 +1,8 @@
 """
-Calendar-Related Endpoints
+カレンダー関連エンドポイント
 ----------------
 
-Route handlers related to calendar display and daily details
+カレンダー表示と日別詳細に関連するルートハンドラー
 """
 
 from fastapi import APIRouter, Request
@@ -23,7 +23,7 @@ from ..utils.common import (
     generate_location_styles,
 )
 
-router = APIRouter(prefix="/api", tags=["Calendar"])
+router = APIRouter(prefix="/api", tags=["カレンダー"])
 templates = Jinja2Templates(directory="src/templates")
 
 
