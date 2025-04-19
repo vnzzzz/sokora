@@ -1,8 +1,8 @@
 """
-File Operation Utilities
+ファイル操作ユーティリティ
 -----------------
 
-Utility functions related to file operations
+ファイル操作に関連するユーティリティ関数
 """
 
 import os
@@ -12,65 +12,65 @@ from typing import Dict, List, Optional, Tuple
 import logging
 from ..utils.date_utils import normalize_date_format, parse_date
 
-# Logger configuration
+# ロガー設定
 logger = logging.getLogger(__name__)
 
 
 def get_csv_file_path() -> Path:
-    """Function to locate the CSV_FILE
+    """CSVファイルの場所を特定する関数
 
     Returns:
-        Path: Path to the CSV file
+        Path: CSVファイルへのパス
     """
     possible_paths = [
-        "work_entries.csv",  # Base path
-        os.path.join(os.getcwd(), "work_entries.csv"),  # Current directory
-        os.path.join(os.getcwd(), "data", "work_entries.csv"),  # data/ directory
+        "work_entries.csv",  # 基本パス
+        os.path.join(os.getcwd(), "work_entries.csv"),  # 現在のディレクトリ
+        os.path.join(os.getcwd(), "data", "work_entries.csv"),  # data/ディレクトリ
         os.path.join(
             os.path.dirname(os.getcwd()), "data", "work_entries.csv"
-        ),  # data/ in parent directory
-        os.path.join(os.getcwd(), "app", "work_entries.csv"),  # For Docker environment
+        ),  # 親ディレクトリのdata/
+        os.path.join(os.getcwd(), "app", "work_entries.csv"),  # Docker環境用
         os.path.join(
             os.getcwd(), "app", "data", "work_entries.csv"
-        ),  # data/ for Docker environment
+        ),  # Docker環境用のdata/
     ]
 
     for path in possible_paths:
         if os.path.exists(path):
             return Path(path)
 
-    # Return base path if not found (for new file creation)
+    # 見つからない場合は基本パスを返す（新しいファイル作成用）
     return Path("work_entries.csv")
 
 
 def import_csv_data(content: str) -> None:
-    """Save CSV data to a file
+    """CSVデータをファイルに保存します
 
     Args:
-        content: Content of the CSV file
+        content: CSVファイルの内容
 
     Raises:
-        IOError: If file writing fails
+        IOError: ファイル書き込みに失敗した場合
     """
     try:
-        # Parse the CSV content
+        # CSV内容を解析
         reader = csv.reader(content.splitlines())
         rows = list(reader)
 
         if not rows:
-            raise IOError("CSV content is empty")
+            raise IOError("CSV内容が空です")
 
-        # Get headers
+        # ヘッダー取得
         headers = rows[0]
 
-        # Normalize date format in headers
-        if len(headers) > 2:  # Make sure there are date columns
+        # ヘッダーの日付形式を正規化
+        if len(headers) > 2:  # 日付列があることを確認
             for i in range(2, len(headers)):
                 if parse_date(headers[i]):
-                    # If it's a date, normalize to YYYY-MM-DD format
+                    # 日付の場合、YYYY-MM-DD形式に正規化
                     headers[i] = normalize_date_format(headers[i])
 
-        # Create new CSV content with normalized headers
+        # 正規化されたヘッダーで新しいCSV内容を作成
         output = []
         output.append(",".join(headers))
         for row in rows[1:]:
@@ -78,22 +78,22 @@ def import_csv_data(content: str) -> None:
 
         normalized_content = "\n".join(output)
 
-        # Write to file
+        # ファイルに書き込み
         with get_csv_file_path().open("w", encoding="utf-8-sig", newline="") as f:
             f.write(normalized_content)
     except Exception as e:
-        logger.error(f"Failed to write CSV data: {str(e)}")
-        raise IOError(f"Failed to write CSV data: {str(e)}")
+        logger.error(f"CSVデータの書き込みに失敗しました: {str(e)}")
+        raise IOError(f"CSVデータの書き込みに失敗しました: {str(e)}")
 
 
 def read_csv_file() -> Tuple[List[str], List[List[str]]]:
-    """Read headers and row data from a CSV file
+    """CSVファイルからヘッダーと行データを読み込みます
 
     Returns:
-        Tuple[List[str], List[List[str]]]: (List of headers, List of row data)
+        Tuple[List[str], List[List[str]]]: (ヘッダーのリスト, 行データのリスト)
 
     Raises:
-        IOError: If file reading fails
+        IOError: ファイル読み込みに失敗した場合
     """
     csv_path = get_csv_file_path()
     headers = []
@@ -107,24 +107,24 @@ def read_csv_file() -> Tuple[List[str], List[List[str]]]:
             reader = csv.reader(f)
             headers = next(
                 reader, []
-            )  # Read header row, return empty list if file is empty
+            )  # ヘッダー行を読み込み、ファイルが空の場合は空リストを返す
             rows = list(reader)
     except Exception as e:
-        logger.error(f"Failed to read CSV data: {str(e)}")
-        raise IOError(f"Failed to read CSV data: {str(e)}")
+        logger.error(f"CSVデータの読み込みに失敗しました: {str(e)}")
+        raise IOError(f"CSVデータの読み込みに失敗しました: {str(e)}")
 
     return headers, rows
 
 
 def write_csv_file(headers: List[str], rows: List[List[str]]) -> None:
-    """Write headers and row data to a CSV file
+    """ヘッダーと行データをCSVファイルに書き込みます
 
     Args:
-        headers: List of header rows
-        rows: List of data rows
+        headers: ヘッダー行のリスト
+        rows: データ行のリスト
 
     Raises:
-        IOError: If file writing fails
+        IOError: ファイル書き込みに失敗した場合
     """
     csv_path = get_csv_file_path()
 
@@ -134,5 +134,5 @@ def write_csv_file(headers: List[str], rows: List[List[str]]) -> None:
             writer.writerow(headers)
             writer.writerows(rows)
     except Exception as e:
-        logger.error(f"Failed to write CSV data: {str(e)}")
-        raise IOError(f"Failed to write CSV data: {str(e)}")
+        logger.error(f"CSVデータの書き込みに失敗しました: {str(e)}")
+        raise IOError(f"CSVデータの書き込みに失敗しました: {str(e)}")

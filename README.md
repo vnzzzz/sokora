@@ -2,48 +2,45 @@
 
 ![image](docs/images/image1.png)
 
-A sleek attendance management app that visualizes work locations through an intuitive calendar interface. Instantly
-track who's "working from home", "in office", or "on business trip" with daily details and personal schedules available
-at a glance.
+直感的なカレンダーインターフェースで勤務場所を可視化するアプリです。
 
-## Features
+## 機能
 
-- Interactive Calendar UI
-  - Monthly view with aggregated stats for remote/office attendance
-- Intuitive UX: Single-click navigation to view daily details or individual schedules
-- Seamless CSV Import/Export
-  - Perfect for bulk editing and data backups
+- インタラクティブなカレンダー UI
+  - リモート/オフィス勤務の集計データを含む月間ビュー
+- 日別詳細や個人スケジュールを表示
+- CSV インポート/エクスポート
 
-## How to Use
+## 使い方
 
-1. Setup
+1. セットアップ
 
-   Copy `.env.sample` to create `.env`, then:
+   `.env.sample`をコピーして`.env`を作成し、以下を実行:
 
    ```bash
    docker compose up --build
    ```
 
-2. Access
+2. アクセス
 
-   Open in your browser:
+   ブラウザで以下の URL にアクセス:
 
    ```bash
    http://localhost:[SERVICE_PORT]
    ```
 
-3. Shutdown
+3. シャットダウン
 
    ```bash
    docker compose down
    ```
 
-## Tech Stack
+## 技術スタック
 
-Built with a focus on performance and simplicity.
+パフォーマンスとシンプルさを重視しました。
 
-- Docker (Containerization)
-- Poetry (Python dependency management)
-- FastAPI (Backend API)
-- HTMX & Alpine.js (Frontend without build steps)
-- CSV files (Data source, no database required)
+- Docker (コンテナ化)
+- Poetry (Python 依存関係管理)
+- FastAPI (バックエンド API)
+- HTMX & Alpine.js (ビルドステップ不要のフロントエンド)
+- CSV ファイル (データベース不要のデータソース)

@@ -1,9 +1,9 @@
-<!-- CSV Encoding Modal Component -->
+<!-- CSVエンコーディングモーダルコンポーネント -->
 <div x-data="{ showEncoding: false }" x-show="$store.encodingModal.open" style="display:none;"
   class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
   <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full">
-    <h3 class="font-bold text-lg mb-4">CSV Encoding</h3>
-    <p class="text-sm mb-4">Select character encoding for the CSV file</p>
+    <h3 class="font-bold text-lg mb-4">CSV文字コード</h3>
+    <p class="text-sm mb-4">CSVファイルの文字コードを選択してください</p>
 
     <div class="flex flex-col gap-3">
       <a href="/api/csv/export?encoding=utf-8" class="btn btn-outline" @click="$store.encodingModal.toggle()">
@@ -14,20 +14,20 @@
         Shift-JIS
         <span class="text-xs opacity-70 ml-2">(Windows)</span>
       </a>
-      <button type="button" class="btn btn-sm mt-2" @click="$store.encodingModal.toggle()">Cancel</button>
+      <button type="button" class="btn btn-sm mt-2" @click="$store.encodingModal.toggle()">キャンセル</button>
     </div>
   </div>
 </div>
 
 <script>
-  // Function to close the modal
+  // モーダルを閉じる関数
   function closeEncodingModal() {
     if (typeof Alpine !== 'undefined') {
       Alpine.store('encodingModal').open = false;
     }
   }
 
-  // Initialize Alpine store if not already initialized
+  // Alpine storeが初期化されていない場合は初期化する
   document.addEventListener('alpine:init', () => {
     Alpine.store('encodingModal', {
       open: false,

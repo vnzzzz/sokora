@@ -6,57 +6,57 @@ import logging
 import os
 import json
 
-# Logger configuration
+# ロガー設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import route modules
+# ルートモジュールのインポート
 from .routes import root, attendance, calendar, csv
 
-# Application version
+# アプリケーションバージョン
 APP_VERSION = "1.0.0"
 
-# Create FastAPI app (disable default documentation)
+# FastAPIアプリの作成（デフォルトのドキュメントを無効化）
 app = FastAPI(
     title="Sokora API",
-    docs_url=None,  # Disable default /docs
-    redoc_url=None,  # Disable default /redoc
+    docs_url=None,  # デフォルトの/docsを無効化
+    redoc_url=None,  # デフォルトの/redocを無効化
     version=APP_VERSION,
 )
 
-# Serve static files from /static
+# /staticから静的ファイルを提供
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-# Include routers from each module
+# 各モジュールからルーターを組み込む
 app.include_router(root.router)
-app.include_router(attendance.page_router)  # Router for page display
-app.include_router(attendance.router)  # Router for API
+app.include_router(attendance.page_router)  # ページ表示用ルーター
+app.include_router(attendance.router)  # API用ルーター
 app.include_router(calendar.router)
 app.include_router(csv.router)
 
 
-# API tag definitions
+# APIタグ定義
 API_TAGS = [
     {
-        "name": "Attendance",
-        "description": "Endpoints for managing user attendance data",
+        "name": "勤怠管理",
+        "description": "ユーザーの勤怠データを管理するエンドポイント",
     },
     {
-        "name": "Calendar",
-        "description": "Endpoints for calendar display and daily detail information",
+        "name": "カレンダー",
+        "description": "カレンダー表示と日別詳細情報のエンドポイント",
     },
     {
-        "name": "CSV Data",
-        "description": "Endpoints for importing and exporting CSV data",
+        "name": "CSVデータ",
+        "description": "CSVデータのインポートとエクスポート用エンドポイント",
     },
     {
-        "name": "Page Display",
-        "description": "Endpoints for displaying application UI pages",
+        "name": "ページ表示",
+        "description": "アプリケーションUIページ表示用エンドポイント",
     },
 ]
 
 
-# Custom OpenAPI schema definition
+# カスタムOpenAPIスキーマ定義
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -64,14 +64,14 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title="Sokora API",
         version=APP_VERSION,
-        description="Sokora API Documentation",
+        description="Sokora API ドキュメント",
         routes=app.routes,
     )
 
-    # Explicitly set OpenAPI version
+    # OpenAPIバージョンを明示的に設定
     openapi_schema["openapi"] = "3.0.2"
 
-    # Add tag order and custom descriptions
+    # タグの順序とカスタム説明を追加
     openapi_schema["tags"] = API_TAGS
 
     app.openapi_schema = openapi_schema
@@ -81,10 +81,10 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 
-# Provide custom Swagger UI page
+# カスタムSwagger UIページの提供
 @app.get("/api/docs", include_in_schema=False)
 async def custom_swagger_ui_html(request: Request):
-    """Provide Swagger UI at a custom path"""
+    """カスタムパスでSwagger UIを提供する"""
     swagger_js = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"
     swagger_css = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
     openapi_url = app.openapi_url or "/openapi.json"
@@ -93,7 +93,7 @@ async def custom_swagger_ui_html(request: Request):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>{app.title} - API Documentation</title>
+        <title>{app.title} - APIドキュメント</title>
         <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" type="text/css" href="{swagger_css}">
@@ -122,5 +122,5 @@ async def custom_swagger_ui_html(request: Request):
 
 @app.get("/openapi.json", include_in_schema=False)
 async def get_openapi_endpoint():
-    """Provide OpenAPI JSON schema"""
+    """OpenAPI JSONスキーマを提供する"""
     return app.openapi()

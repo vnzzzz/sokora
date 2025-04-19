@@ -1,52 +1,52 @@
 <!DOCTYPE html>
-<html lang="en" x-data class="bg-base-100">
+<html lang="ja" x-data class="bg-base-100">
 
-{% set title_text = user_name + " (" + user_id + ") - Register - Sokora" %}
+{% set title_text = user_name + " (" + user_id + ") - 登録 - Sokora" %}
 {% include "components/head.html" %}
 
 <body class="min-h-screen bg-base-100">
-  <!-- Theme Switcher Button -->
+  <!-- テーマ切替ボタン -->
   {% include "components/theme_switcher.html" %}
 
-  <!-- Header -->
+  <!-- ヘッダー -->
   {% include "components/navbar.html" %}
 
-  <!-- Main Content -->
+  <!-- メインコンテンツ -->
   <main class="container mx-auto p-4 space-y-6">
     <div class="card bg-base-200 shadow-sm">
       <div class="card-body">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-2xl font-bold mb-1">{{ user_name }} ({{ user_id }}) - Register</h2>
+            <h2 class="text-2xl font-bold mb-1">{{ user_name }} ({{ user_id }}) - 登録</h2>
             <div class="text-sm breadcrumbs">
               <ul>
-                <li><a href="/attendance">Attendance</a></li>
+                <li><a href="/attendance">勤怠</a></li>
                 <li>{{ user_name }} ({{ user_id }})</li>
               </ul>
             </div>
           </div>
           <div class="btn-group">
             <button class="btn btn-sm btn-outline" hx-get="/attendance/edit/{{ user_id }}?month={{ prev_month }}"
-              hx-target="body">＜Prev</button>
-            <button class="btn btn-sm" hx-get="/attendance/edit/{{ user_id }}" hx-target="body">Current</button>
+              hx-target="body">＜前月</button>
+            <button class="btn btn-sm" hx-get="/attendance/edit/{{ user_id }}" hx-target="body">今月</button>
             <button class="btn btn-sm btn-outline" hx-get="/attendance/edit/{{ user_id }}?month={{ next_month }}"
-              hx-target="body">Next＞</button>
+              hx-target="body">次月＞</button>
           </div>
         </div>
 
-        <!-- Attendance Calendar -->
+        <!-- 勤怠カレンダー -->
         <div class="overflow-x-auto mt-4">
           <h3 class="text-xl font-bold text-center mb-4">{{ month_name }}</h3>
           <table class="table table-bordered">
             <thead>
               <tr>
-                <th class="text-center">Sun</th>
-                <th class="text-center">Mon</th>
-                <th class="text-center">Tue</th>
-                <th class="text-center">Wed</th>
-                <th class="text-center">Thu</th>
-                <th class="text-center">Fri</th>
-                <th class="text-center">Sat</th>
+                <th class="text-center">日</th>
+                <th class="text-center">月</th>
+                <th class="text-center">火</th>
+                <th class="text-center">水</th>
+                <th class="text-center">木</th>
+                <th class="text-center">金</th>
+                <th class="text-center">土</th>
               </tr>
             </thead>
             <tbody>
@@ -78,13 +78,13 @@
                             </svg>
                           </button>
 
-                          <!-- Edit Modal -->
+                          <!-- 編集モーダル -->
                           <div x-show="open" style="display:none;"
                             class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
                             <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full" @click.away="open = false"
                               @click.stop>
-                              <h3 class="font-bold text-lg mb-2">Edit Work Location for {{ day.date }}</h3>
-                              <p class="text-sm mb-4">Select a work location for {{ user_name }} ({{ user_id }})</p>
+                              <h3 class="font-bold text-lg mb-2">{{ day.date }}の勤務場所を編集</h3>
+                              <p class="text-sm mb-4">{{ user_name }} ({{ user_id }})の勤務場所を選択してください</p>
 
                               <form action="/api/attendance/update" method="post" class="space-y-4">
                                 <input type="hidden" name="user_id" value="{{ user_id }}">
@@ -93,27 +93,25 @@
                                 <div class="form-control">
                                   <div class="relative">
                                     <input type="text" name="location" list="location-options-{{ day.date }}"
-                                      class="input input-bordered w-full location-input"
-                                      placeholder="Select or enter work location"
+                                      class="input input-bordered w-full location-input" placeholder="勤務場所を選択または入力"
                                       value="{% if day.date in user_locations %}{{ user_locations[day.date] }}{% endif %}"
-                                      aria-label="Work Location" aria-required="true" required autocomplete="off">
+                                      aria-label="勤務場所" aria-required="true" required autocomplete="off">
                                     <datalist id="location-options-{{ day.date }}">
-                                      <option value="">Not Set</option>
+                                      <option value="">未設定</option>
                                       {% for location_type in location_types %}
                                       <option value="{{ location_type }}">{{ location_type }}</option>
                                       {% endfor %}
                                     </datalist>
                                   </div>
-                                  <p class="text-xs text-base-content/70 mt-1">Select from existing locations or enter a
-                                    new one</p>
+                                  <p class="text-xs text-base-content/70 mt-1">既存の勤務場所から選択するか、新しい勤務場所を入力してください</p>
                                   <div class="error-message text-error text-sm mt-1" style="display: none;">
-                                    Please enter a work location</div>
+                                    勤務場所を入力してください</div>
                                 </div>
 
                                 <div class="flex justify-end space-x-2">
                                   <button type="button" class="btn btn-outline btn-sm"
-                                    @click="open = false">Cancel</button>
-                                  <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                    @click="open = false">キャンセル</button>
+                                  <button type="submit" class="btn btn-primary btn-sm">保存</button>
                                 </div>
                               </form>
                             </div>
@@ -132,13 +130,13 @@
                             </svg>
                           </button>
 
-                          <!-- Edit Modal -->
+                          <!-- 編集モーダル -->
                           <div x-show="open" style="display:none;"
                             class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
                             <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full" @click.away="open = false"
                               @click.stop>
-                              <h3 class="font-bold text-lg mb-2">Edit Work Location for {{ day.date }}</h3>
-                              <p class="text-sm mb-4">Select a work location for {{ user_name }} ({{ user_id }})</p>
+                              <h3 class="font-bold text-lg mb-2">{{ day.date }}の勤務場所を編集</h3>
+                              <p class="text-sm mb-4">{{ user_name }} ({{ user_id }})の勤務場所を選択してください</p>
 
                               <form action="/api/attendance/update" method="post" class="space-y-4">
                                 <input type="hidden" name="user_id" value="{{ user_id }}">
@@ -147,26 +145,24 @@
                                 <div class="form-control">
                                   <div class="relative">
                                     <input type="text" name="location" list="location-options-new-{{ day.date }}"
-                                      class="input input-bordered w-full location-input"
-                                      placeholder="Select or enter work location" value="" aria-label="Work Location"
-                                      aria-required="true" required autocomplete="off">
+                                      class="input input-bordered w-full location-input" placeholder="勤務場所を選択または入力"
+                                      value="" aria-label="勤務場所" aria-required="true" required autocomplete="off">
                                     <datalist id="location-options-new-{{ day.date }}">
-                                      <option value="">Not Set</option>
+                                      <option value="">未設定</option>
                                       {% for location_type in location_types %}
                                       <option value="{{ location_type }}">{{ location_type }}</option>
                                       {% endfor %}
                                     </datalist>
                                   </div>
-                                  <p class="text-xs text-base-content/70 mt-1">Select from existing locations or enter a
-                                    new one</p>
+                                  <p class="text-xs text-base-content/70 mt-1">既存の勤務場所から選択するか、新しい勤務場所を入力してください</p>
                                   <div class="error-message text-error text-sm mt-1" style="display: none;">
-                                    Please enter a work location</div>
+                                    勤務場所を入力してください</div>
                                 </div>
 
                                 <div class="flex justify-end space-x-2">
                                   <button type="button" class="btn btn-outline btn-sm"
-                                    @click="open = false">Cancel</button>
-                                  <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                    @click="open = false">キャンセル</button>
+                                  <button type="submit" class="btn btn-primary btn-sm">保存</button>
                                 </div>
                               </form>
                             </div>
@@ -193,14 +189,14 @@
               stroke="currentColor" class="w-5 h-5 mr-1">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
             </svg>
-            Back
+            戻る
           </a>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Calendar Styles -->
+  <!-- カレンダースタイル -->
   <style>
     .calendar-day {
       transition: all 0.2s ease;
@@ -215,7 +211,7 @@
       background-color: rgba(var(--color-primary) / 0.05);
     }
 
-    /* Work Location Input Styles */
+    /* 勤務場所入力スタイル */
     .location-input:focus {
       border-color: hsl(var(--p));
       box-shadow: 0 0 0 1px hsla(var(--p) / 30%);
@@ -228,16 +224,16 @@
 
   <!-- JavaScript -->
   <script>
-    // Work Location Input Validation
+    // 勤務場所入力の検証
     document.addEventListener('DOMContentLoaded', function () {
-      // Get all location forms
+      // すべての勤務場所フォームを取得
       const forms = document.querySelectorAll('form[action="/api/attendance/update"]');
 
       forms.forEach(form => {
         const locationInput = form.querySelector('input[name="location"]');
         const errorMessage = form.querySelector('.error-message');
 
-        // Function to show error message
+        // エラーメッセージを表示する関数
         const showError = () => {
           if (errorMessage) {
             errorMessage.style.display = 'block';
@@ -245,7 +241,7 @@
           }
         };
 
-        // Function to hide error message
+        // エラーメッセージを非表示にする関数
         const hideError = () => {
           if (errorMessage) {
             errorMessage.style.display = 'none';
@@ -254,10 +250,10 @@
         };
 
         form.addEventListener('submit', function (e) {
-          // Remove whitespace from input value
+          // 入力値の前後の空白を削除
           locationInput.value = locationInput.value.trim();
 
-          // Check for empty value
+          // 空の値をチェック
           if (locationInput.value === '') {
             e.preventDefault();
             showError();
@@ -268,14 +264,14 @@
         });
 
         if (locationInput) {
-          // Hide error on input
+          // 入力時にエラーを非表示
           locationInput.addEventListener('input', function () {
             if (this.value.trim() !== '') {
               hideError();
             }
           });
 
-          // Remove whitespace when focus is lost
+          // フォーカスが外れたときに空白を削除
           locationInput.addEventListener('blur', function () {
             this.value = this.value.trim();
             if (this.value === '') {
@@ -285,25 +281,25 @@
             }
           });
 
-          // Add click event to make dropdown work better with existing values
+          // ドロップダウンを既存の値でより良く動作させるためのクリックイベント
           locationInput.addEventListener('click', function () {
-            // Select all text to make it easier to replace
+            // 置き換えを容易にするためにすべてのテキストを選択
             this.select();
 
-            // Force dropdown to show by removing and setting value
+            // ドロップダウンを強制的に表示するために値を削除して設定
             const currentValue = this.value;
             if (currentValue) {
-              // Briefly clear and restore the value to trigger the dropdown
+              // ドロップダウンをトリガーするために一時的に消去して復元
               this.value = '';
-              // Use setTimeout to ensure the browser has time to process
+              // ブラウザが処理する時間を確保するためにsetTimeoutを使用
               setTimeout(() => {
                 this.value = currentValue;
-                this.select(); // Select text again
+                this.select(); // テキストを再度選択
               }, 10);
             }
           });
 
-          // Also handle focus events
+          // フォーカスイベントも処理
           locationInput.addEventListener('focus', function () {
             this.select();
           });
@@ -311,18 +307,18 @@
       });
     });
 
-    // Initialize modals correctly
+    // モーダルを正しく初期化
     document.addEventListener('DOMContentLoaded', function () {
-      // For all edit buttons in calendar cells
+      // カレンダーセル内のすべての編集ボタン
       document.querySelectorAll('[x-data="{ open: false }"]').forEach(modalContainer => {
         const editButton = modalContainer.querySelector('button');
         const modalDialog = modalContainer.querySelector('.fixed.inset-0');
         const locationInput = modalContainer.querySelector('input[name="location"]');
 
         if (editButton && modalDialog && locationInput) {
-          // Ensure the input gets focus when the modal opens
+          // モーダルが開いたときに入力にフォーカスを設定
           editButton.addEventListener('click', function () {
-            // Use setTimeout to wait for Alpine.js to display the modal
+            // Alpine.jsがモーダルを表示するのを待つためにsetTimeoutを使用
             setTimeout(() => {
               locationInput.focus();
               locationInput.select();

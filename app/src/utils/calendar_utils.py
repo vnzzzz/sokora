@@ -1,8 +1,8 @@
 """
-Calendar Utilities
+カレンダーユーティリティ
 -----------------
 
-Utility functions for calendar processing
+カレンダー処理のためのユーティリティ関数
 """
 
 import datetime
@@ -10,25 +10,25 @@ import calendar
 from collections import defaultdict
 from typing import Dict, List, Any, Tuple, DefaultDict
 
-# Calendar settings for Sunday as first day of week (0: Monday start → 6: Sunday start)
+# 日曜日を週の最初の日とするカレンダー設定（0: 月曜始まり → 6: 日曜始まり）
 calendar.setfirstweekday(6)
 
 
 def parse_month(month: str) -> Tuple[int, int]:
-    """Parse a string into year and month
+    """文字列を年と月に解析します
 
-    Supports formats:
-    - YYYY-MM format
-    - YYYY/MM format
+    対応フォーマット:
+    - YYYY-MM形式
+    - YYYY/MM形式
 
     Args:
-        month: Month in YYYY-MM or YYYY/MM format
+        month: YYYY-MMまたはYYYY/MM形式の月
 
     Returns:
-        Tuple[int, int]: Tuple of (year, month)
+        Tuple[int, int]: (年, 月)のタプル
 
     Raises:
-        ValueError: If month format is invalid
+        ValueError: 月のフォーマットが無効な場合
     """
     try:
         if "-" in month:
@@ -37,27 +37,27 @@ def parse_month(month: str) -> Tuple[int, int]:
             year, month_num = map(int, month.split("/"))
         else:
             raise ValueError(
-                f"Invalid month format: {month}. Please use YYYY-MM or YYYY/MM format."
+                f"無効な月フォーマット: {month}。YYYY-MMまたはYYYY/MM形式を使用してください。"
             )
 
         if month_num < 1 or month_num > 12:
-            raise ValueError(f"Invalid month number: {month_num}")
+            raise ValueError(f"無効な月番号: {month_num}")
         return year, month_num
     except Exception:
         raise ValueError(
-            f"Invalid month format: {month}. Please use YYYY-MM or YYYY/MM format."
+            f"無効な月フォーマット: {month}。YYYY-MMまたはYYYY/MM形式を使用してください。"
         )
 
 
 def get_prev_month_date(year: int, month: int) -> datetime.date:
-    """Get the date for the previous month
+    """前月の日付を取得します
 
     Args:
-        year: Year
-        month: Month
+        year: 年
+        month: 月
 
     Returns:
-        datetime.date: Date object for the previous month
+        datetime.date: 前月の日付オブジェクト
     """
     if month == 1:
         return datetime.date(year - 1, 12, 1)
@@ -65,14 +65,14 @@ def get_prev_month_date(year: int, month: int) -> datetime.date:
 
 
 def get_next_month_date(year: int, month: int) -> datetime.date:
-    """Get the date for the next month
+    """翌月の日付を取得します
 
     Args:
-        year: Year
-        month: Month
+        year: 年
+        month: 月
 
     Returns:
-        datetime.date: Date object for the next month
+        datetime.date: 翌月の日付オブジェクト
     """
     if month == 12:
         return datetime.date(year + 1, 1, 1)
@@ -80,13 +80,13 @@ def get_next_month_date(year: int, month: int) -> datetime.date:
 
 
 def generate_location_data(location_types: List[str]) -> List[Dict[str, str]]:
-    """Generate style information for work locations
+    """勤務場所のスタイル情報を生成します
 
     Args:
-        location_types: List of work location types
+        location_types: 勤務場所タイプのリスト
 
     Returns:
-        List[Dict[str, str]]: List of work locations and their style information
+        List[Dict[str, str]]: 勤務場所とそのスタイル情報のリスト
     """
     colors = ["success", "primary", "warning", "error", "info", "accent", "secondary"]
     locations = []
@@ -111,34 +111,34 @@ def create_calendar_weeks(
     calendar_dict: DefaultDict[int, Dict[str, int]],
     location_types: List[str],
 ) -> List[List[Dict]]:
-    """Create calendar data organized by weeks
+    """週ごとに整理されたカレンダーデータを作成します
 
     Args:
-        cal_data: Result of calendar.monthcalendar
-        month: Month in YYYY-MM format
-        calendar_dict: Count of work locations by day
-        location_types: List of work location types
+        cal_data: calendar.monthcalendarの結果
+        month: YYYY-MM形式の月
+        calendar_dict: 日ごとの勤務場所の数
+        location_types: 勤務場所タイプのリスト
 
     Returns:
-        List[List[Dict]]: Calendar data by week
+        List[List[Dict]]: 週ごとのカレンダーデータ
     """
     calendar_weeks = []
 
-    # Ensure month is in YYYY-MM format
+    # 月がYYYY-MM形式であることを確認
     if "/" in month:
         month = month.replace("/", "-")
 
     for week in cal_data:
         week_data = []
         for day in week:
-            if day == 0:  # 0 is a day outside the month range
+            if day == 0:  # 0は月の範囲外の日
                 week_data.append(None)
             else:
                 day_data = {
                     "day": day,
                     "date": f"{month}-{day:02d}",
                 }
-                # Add count for each work location type to the data
+                # 各勤務場所タイプの数をデータに追加
                 for loc_type in location_types:
                     day_data[loc_type] = calendar_dict[day].get(loc_type, 0)
                 week_data.append(day_data)

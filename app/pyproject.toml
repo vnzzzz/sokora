@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "sokora"
 version = "0.1.0"
-description = "A simple web application for managing work attendance"
+description = "勤怠管理のためのシンプルなWebアプリケーション"
 authors = ["Sokora Team <info@example.com>"]
 readme = "README.md"
 packages = [{ include = "src" }]

@@ -1,35 +1,35 @@
-<!-- CSV Upload Modal Component -->
+<!-- CSVアップロードモーダルコンポーネント -->
 <div x-data="{ showImport: false, fileSelected: false }" x-show="$store.importModal.open" style="display:none;"
   class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
   <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full">
-    <h3 class="font-bold text-lg mb-4">CSV Upload</h3>
+    <h3 class="font-bold text-lg mb-4">CSVアップロード</h3>
     <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area"
       hx-on::after-request="closeImportModal()" class="space-y-4" id="csvUploadForm">
       <div class="form-control w-full">
         <input type="file" name="file" id="csvFileInput" class="file-input file-input-bordered w-full" required
           accept=".csv" @change="fileSelected = $event.target.files.length > 0" />
         <label class="label" x-show="!fileSelected">
-          <span class="label-text-alt text-error">Please select a CSV file</span>
+          <span class="label-text-alt text-error">CSVファイルを選択してください</span>
         </label>
       </div>
       <div class="flex justify-end space-x-2">
-        <button type="button" class="btn btn-outline" @click="$store.importModal.toggle()">Cancel</button>
-        <button type="submit" class="btn btn-primary" :disabled="!fileSelected">Import</button>
+        <button type="button" class="btn btn-outline" @click="$store.importModal.toggle()">キャンセル</button>
+        <button type="submit" class="btn btn-primary" :disabled="!fileSelected">インポート</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  // Function to close the modal
+  // モーダルを閉じる関数
   function closeImportModal() {
     if (typeof Alpine !== 'undefined') {
       Alpine.store('importModal').open = false;
 
-      // Reset file input when modal is closed
+      // モーダルが閉じられたらファイル入力をリセット
       document.getElementById('csvFileInput').value = '';
 
-      // If using Alpine.js to track file selection state
+      // Alpine.jsでファイル選択状態を追跡している場合
       if (typeof Alpine.raw === 'function') {
         const component = Alpine.raw(document.getElementById('csvUploadForm')._x_dataStack[0]);
         if (component) {
