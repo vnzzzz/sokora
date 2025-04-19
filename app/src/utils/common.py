@@ -63,12 +63,3 @@ def has_data_for_day(day_data: Dict[str, List]) -> bool:
         bool: True if data exists, False otherwise
     """
     return bool(day_data)
-
-
-def get_default_location_types() -> List[str]:
-    """Get default work location types
-
-    Returns:
-        List[str]: List of default work location types
-    """
-    return ["Remote", "Office", "Business Trip"]
