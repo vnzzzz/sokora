@@ -15,13 +15,18 @@ from ...db.session import get_db
 from ...crud.user import user
 from ...crud.attendance import attendance
 from ...crud.location import location
-from ...crud.calendar import calendar_crud
+from ..v1.calendar import build_calendar_data
 from ...utils.date_utils import (
     get_today_formatted,
     get_current_month_formatted,
     get_last_viewed_date,
 )
 from ...utils.common import generate_location_styles
+from ...utils.calendar_utils import (
+    parse_month,
+    get_prev_month_date,
+    get_next_month_date,
+)
 
 # API用ルーター
 router = APIRouter(prefix="/api", tags=["勤怠管理"])
@@ -69,7 +74,7 @@ def edit_user_attendance(
         month = get_current_month_formatted()
 
     # Get calendar data for the specified month
-    calendar_data = calendar_crud.get_calendar_data(db, month=month)
+    calendar_data = build_calendar_data(db, month)
 
     # Get user name
     user_name = user.get_user_name_by_id(db, user_id=user_id)
@@ -96,18 +101,9 @@ def edit_user_attendance(
     # Generate style information for work locations
     location_styles = generate_location_styles(location_types)
 
-    # Set up previous and next month
-    from ...utils.calendar_utils import (
-        parse_month,
-        get_prev_month_date,
-        get_next_month_date,
-    )
-
-    year, month_num = parse_month(month)
-    prev_month = get_prev_month_date(year, month_num)
-    prev_month_str = f"{prev_month.year}-{prev_month.month:02d}"
-    next_month = get_next_month_date(year, month_num)
-    next_month_str = f"{next_month.year}-{next_month.month:02d}"
+    # 前月と翌月の情報はcalendar_dataから取得可能
+    prev_month = calendar_data["prev_month"]
+    next_month = calendar_data["next_month"]
 
     context = {
         "request": request,
@@ -118,8 +114,8 @@ def edit_user_attendance(
         "user_locations": user_locations,
         "location_styles": location_styles,
         "location_types": location_types,
-        "prev_month": prev_month_str,
-        "next_month": next_month_str,
+        "prev_month": prev_month,
+        "next_month": next_month,
         "month_name": calendar_data["month_name"],
     }
 
