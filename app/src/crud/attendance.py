@@ -7,12 +7,14 @@ Create, Read, Update, Delete operations for Attendance model.
 
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, date
+from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
 from ..models.attendance import Attendance
 from ..models.user import User
 from ..schemas.attendance import AttendanceCreate, AttendanceUpdate
+from ..core.config import logger
 
 
 class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
@@ -91,6 +93,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             try:
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError:
+                logger.error(f"Invalid date format: {date_str}")
                 return False
 
             # 出席レコードを更新
@@ -98,8 +101,9 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 db, user_id=user.id, date_obj=date_obj, location=location
             )
             return True
-        except Exception:
+        except Exception as e:
             db.rollback()
+            logger.error(f"Error updating user entry: {str(e)}")
             return False
 
     def get_user_data(self, db: Session, *, user_id: str) -> List[Dict[str, str]]:
@@ -135,7 +139,8 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 )
 
             return entries
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error getting user data: {str(e)}")
             return []
 
     def get_day_data(self, db: Session, *, day: str) -> Dict[str, List[Dict[str, str]]]:
@@ -147,14 +152,15 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             day: 日付文字列 (YYYY-MM-DD)
 
         Returns:
-            Dict[str, List[Dict[str, str]]]: 出席データ
+            Dict[str, List[Dict[str, str]]]: 勤務場所ごとにグループ化された出席データ
         """
         try:
             # 日付を変換
             try:
                 date_obj = datetime.strptime(day, "%Y-%m-%d").date()
             except ValueError:
-                return {"users": []}
+                logger.error(f"Invalid date format: {day}")
+                return {}
 
             # 指定した日の出席レコードを取得
             results = (
@@ -164,20 +170,24 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 .all()
             )
 
-            # ユーザーごとにデータを整形
-            users = []
+            # 勤務場所ごとにユーザーをグループ化
+            location_groups = {}
             for attendance, user in results:
-                users.append(
+                location = attendance.location
+                if location not in location_groups:
+                    location_groups[location] = []
+
+                location_groups[location].append(
                     {
-                        "name": user.username,
+                        "user_name": user.username,
                         "user_id": user.user_id,
-                        "location": attendance.location,
                     }
                 )
 
-            return {"users": users}
-        except Exception:
-            return {"users": []}
+            return location_groups
+        except Exception as e:
+            logger.error(f"Error getting day data: {str(e)}")
+            return {}
 
 
 attendance = CRUDAttendance(Attendance)

@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 
 from ...db.session import get_db
 from ...crud.location import location as location_crud
+from ...crud.attendance import attendance
 from ...utils.date_utils import get_today_formatted
 from ...utils.common import generate_location_badges, has_data_for_day
-from ...services import db_service
 
 router = APIRouter(tags=["ページ表示"])
 templates = Jinja2Templates(directory="src/templates")
@@ -34,7 +34,7 @@ def root_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     today_str = get_today_formatted()
 
     # 今日の日付のデータを取得
-    default_data = db_service.get_day_data(db, today_str)
+    default_data = attendance.get_day_data(db, day=today_str)
 
     # 全ての勤務場所を取得
     locations = location_crud.get_all_locations(db)

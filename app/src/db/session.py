@@ -44,3 +44,20 @@ def init_db():
     # テーブルを作成（存在していなければ）
     logger.info(f"Initializing database at {DB_PATH}")
     Base.metadata.create_all(bind=engine)
+
+
+def initialize_database():
+    """
+    データベースを初期化し、必要なテーブルを作成する
+
+    Returns:
+        bool: 成功したかどうか
+    """
+    try:
+        # データベースの初期化
+        init_db()
+        logger.info("Database initialized successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        return False

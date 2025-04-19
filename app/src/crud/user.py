@@ -11,7 +11,9 @@ from sqlalchemy.orm import Session
 
 from .base import CRUDBase
 from ..models.user import User
+from ..models.attendance import Attendance
 from ..schemas.user import UserCreate, UserUpdate
+from ..core.config import logger
 
 
 class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
@@ -90,8 +92,9 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             user_in = UserCreate(username=username, user_id=user_id)
             self.create(db, obj_in=user_in)
             return True
-        except Exception:
+        except Exception as e:
             db.rollback()
+            logger.error(f"Error adding user: {str(e)}")
             return False
 
     def delete_user(self, db: Session, *, user_id: str) -> bool:
@@ -110,12 +113,16 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             if not user:
                 return False
 
-            # ユーザーを削除（関連データはモデルのcascadeで処理）
+            # 関連する出席レコードも削除
+            db.query(Attendance).filter(Attendance.user_id == user.id).delete()
+
+            # ユーザーを削除
             db.delete(user)
             db.commit()
             return True
-        except Exception:
+        except Exception as e:
             db.rollback()
+            logger.error(f"Error deleting user: {str(e)}")
             return False
 
     def get_all_users(self, db: Session) -> List[Tuple[str, str]]:

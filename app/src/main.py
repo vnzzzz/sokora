@@ -10,9 +10,8 @@ from .core.config import APP_VERSION, logger
 # ルートモジュールのインポート
 from .api.v1 import root, attendance, calendar
 
-# DBモジュールとサービスをインポート
-from .db import init_db
-from .services import db_init
+# DBモジュールのインポート
+from .db.session import initialize_database
 
 # FastAPIアプリの作成（デフォルトのドキュメントを無効化）
 app = FastAPI(
@@ -55,7 +54,7 @@ async def startup_event():
     """アプリケーション起動時の初期化処理を実行"""
     # データベースの初期化
     logger.info("Initializing database")
-    db_init.initialize_database()
+    initialize_database()
 
 
 # カスタムOpenAPIスキーマ定義

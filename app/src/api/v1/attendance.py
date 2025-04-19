@@ -12,7 +12,10 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from ...db.session import get_db
-from ...services import db_service
+from ...crud.user import user
+from ...crud.attendance import attendance
+from ...crud.location import location
+from ...crud.calendar import calendar_crud
 from ...utils.date_utils import (
     get_today_formatted,
     get_current_month_formatted,
@@ -38,7 +41,7 @@ def attendance_page(request: Request, db: Session = Depends(get_db)) -> HTMLResp
     Returns:
         HTMLResponse: Rendered HTML page
     """
-    users = db_service.get_all_users(db)
+    users = user.get_all_users(db)
     return templates.TemplateResponse(
         "attendance.html", {"request": request, "users": users}
     )
@@ -66,15 +69,15 @@ def edit_user_attendance(
         month = get_current_month_formatted()
 
     # Get calendar data for the specified month
-    calendar_data = db_service.get_calendar_data(db, month)
+    calendar_data = calendar_crud.get_calendar_data(db, month=month)
 
     # Get user name
-    user_name = db_service.get_user_name_by_id(db, user_id)
+    user_name = user.get_user_name_by_id(db, user_id=user_id)
 
     # Get user data
-    user_entries = db_service.get_user_data(db, user_id)
-    all_users = db_service.get_all_users(db)
-    all_user_ids = [user[1] for user in all_users]
+    user_entries = attendance.get_user_data(db, user_id=user_id)
+    all_users = user.get_all_users(db)
+    all_user_ids = [user_id for user_name, user_id in all_users]
 
     if not user_entries and user_id not in all_user_ids:
         raise HTTPException(status_code=404, detail=f"User ID '{user_id}' not found")
@@ -88,7 +91,7 @@ def edit_user_attendance(
         user_locations[date] = entry["location"]
 
     # Get types of work locations
-    location_types = db_service.get_location_types(db)
+    location_types = location.get_all_locations(db)
 
     # Generate style information for work locations
     location_styles = generate_location_styles(location_types)
@@ -143,7 +146,7 @@ async def add_user(
         RedirectResponse: Redirect to attendance page
     """
     try:
-        db_service.add_user(db, username, user_id)
+        user.create_user(db, username=username, user_id=user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -164,7 +167,7 @@ async def delete_user(
         RedirectResponse: Redirect to attendance page
     """
     try:
-        db_service.delete_user(db, user_id)
+        user.delete_user(db, user_id=user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -191,7 +194,9 @@ async def update_attendance(
         RedirectResponse: Redirect to user edit page
     """
     try:
-        db_service.update_user_entry(db, user_id, date, location)
+        attendance.update_user_entry(
+            db, user_id=user_id, date_str=date, location=location
+        )
         return RedirectResponse(url=f"/attendance/edit/{user_id}", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

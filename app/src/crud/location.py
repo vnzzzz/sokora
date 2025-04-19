@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from .base import CRUDBase
 from ..models.location import Location
 from ..schemas.location import LocationCreate, LocationUpdate
+from ..core.config import logger
 
 
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
@@ -62,8 +63,12 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         Returns:
             List[str]: 勤務場所名のリスト
         """
-        locations = db.query(Location).all()
-        return [loc.name for loc in locations]
+        try:
+            locations = db.query(Location).all()
+            return [loc.name for loc in locations]
+        except Exception as e:
+            logger.error(f"Error getting location types: {str(e)}")
+            return []
 
     def get_or_create_multiple(
         self, db: Session, *, location_names: List[str]
