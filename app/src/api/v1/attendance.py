@@ -10,13 +10,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 
-from .. import csv_store
-from ..utils.date_utils import (
+from ...services import csv_store
+from ...utils.date_utils import (
     get_today_formatted,
     get_current_month_formatted,
     get_last_viewed_date,
 )
-from ..utils.common import generate_location_styles
+from ...utils.common import generate_location_styles
 
 # API用ルーター
 router = APIRouter(prefix="/api", tags=["勤怠管理"])
@@ -87,7 +87,7 @@ def edit_user_attendance(
     location_styles = generate_location_styles(location_types)
 
     # Set up previous and next month
-    from ..utils.calendar_utils import (
+    from ...utils.calendar_utils import (
         parse_month,
         get_prev_month_date,
         get_next_month_date,
