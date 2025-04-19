@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi.openapi.utils import get_openapi
+from fastapi import FastAPI, Request  # type: ignore
+from fastapi.staticfiles import StaticFiles  # type: ignore
+from fastapi.responses import HTMLResponse  # type: ignore
+from fastapi.openapi.utils import get_openapi  # type: ignore
 import logging
 import os
 import json
