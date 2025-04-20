@@ -87,17 +87,42 @@ def employee_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
 
 @router.get("/attendance", response_class=HTMLResponse)
-def attendance_page(request: Request, db: Session = Depends(get_db)) -> Any:
+def attendance_page(
+    request: Request, 
+    search_query: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> Any:
     """勤怠登録ページを表示します
 
     Args:
         request: FastAPIリクエストオブジェクト
+        search_query: 検索クエリ（従業員名またはID）
         db: データベースセッション
 
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    users = user.get_all_users(db)
+    # 全ユーザー取得
+    all_users = user.get_all_users(db)
+    
+    # 検索クエリがある場合、フィルタリング
+    if search_query and search_query.strip():
+        search_term = search_query.lower().strip()
+        filtered_users = [
+            (user_name, user_id) for user_name, user_id in all_users
+            if search_term in user_name.lower() or search_term in user_id.lower()
+        ]
+        users = filtered_users
+    else:
+        users = all_users
+    
+    # HTMXリクエストの場合はテーブル部分のみを返す
+    if request.headers.get("HX-Request") == "true":
+        return templates.TemplateResponse(
+            "partials/attendance_table.html", {"request": request, "users": users}
+        )
+    
+    # 通常のリクエストの場合は完全なページを返す
     return templates.TemplateResponse(
         "attendance.html", {"request": request, "users": users}
     )

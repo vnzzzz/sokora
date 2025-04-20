@@ -402,6 +402,18 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jpholiday"
+version = "1.0.1"
+description = "Pure-Python Japan Public Holiday Generate"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "jpholiday-1.0.1-py3-none-any.whl", hash = "sha256:098074d749d3630d23167152ea4c419653d4c26b1134268a7681c59fb07d30ed"},
+    {file = "jpholiday-1.0.1.tar.gz", hash = "sha256:62438d1bf7ddb3e3d12edaab7a640e3434d08b87a84bffdb6f2eeef0410f1cef"},
+]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -1259,4 +1271,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "8c10a3acdfa166b83758fe558523e76dca6ed260e5bb2e492e66c020db1e9fef"
+content-hash = "59fc2de9774bd048f2a16b3045b39eaaf54bfd6537dc97e137887dcb240240f0"

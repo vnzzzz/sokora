@@ -40,7 +40,42 @@
                 <span>従業員情報がありません。従業員管理ページから従業員を追加してください。</span>
               </div>
               {% else %}
-              <div class="overflow-x-auto rounded-lg">
+              <!-- 検索フォーム -->
+              <div class="mb-6">
+                <div class="form-control">
+                  <div class="input-group">
+                    <input
+                      type="text"
+                      placeholder="従業員名またはIDを検索..."
+                      class="input input-bordered w-full"
+                      hx-get="/attendance"
+                      hx-trigger="keyup changed delay:300ms"
+                      hx-target="#employee-table-container"
+                      hx-include="[name='search_query']"
+                      name="search_query"
+                    />
+                    <button class="btn btn-square">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- テーブル -->
+              <div id="employee-table-container" class="overflow-x-auto rounded-lg">
                 <table class="table table-zebra w-full">
                   <thead class="bg-base-300 text-base-content">
                     <tr>
