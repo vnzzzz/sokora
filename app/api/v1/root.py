@@ -54,3 +54,20 @@ def root_page(request: Request, db: Session = Depends(get_db)) -> Any:
         "default_has_data": default_has_data,
     }
     return templates.TemplateResponse("base.html", context)
+
+
+@router.get("/locations", response_class=HTMLResponse, tags=["Pages"])
+def location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
+    """勤務場所管理ページを表示します
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: レンダリングされたHTMLページ
+    """
+    context = {
+        "request": request,
+    }
+    return templates.TemplateResponse("location_manage.html", context)

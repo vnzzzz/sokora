@@ -9,7 +9,7 @@ from typing import Dict, Any
 from .core.config import APP_VERSION, logger
 
 # ルートモジュールのインポート
-from .api.v1 import root, attendance, calendar
+from .api.v1 import root, attendance, calendar, location
 
 # DBモジュールのインポート
 from .db.session import initialize_database
@@ -31,6 +31,7 @@ app.include_router(root.router)
 app.include_router(attendance.page_router)  # ページ表示用ルーター
 app.include_router(attendance.router)  # API用ルーター
 app.include_router(calendar.router)
+app.include_router(location.router, prefix="/api/locations")
 
 
 # APIタグ定義
@@ -46,6 +47,10 @@ API_TAGS = [
     {
         "name": "Pages",
         "description": "アプリケーションUIページ表示用エンドポイント",
+    },
+    {
+        "name": "locations",
+        "description": "勤務場所を管理するエンドポイント",
     },
 ]
 

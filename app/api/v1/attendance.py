@@ -35,9 +35,26 @@ page_router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+@page_router.get("/employee", response_class=HTMLResponse)
+def employee_page(request: Request, db: Session = Depends(get_db)) -> Any:
+    """従業員管理ページを表示します
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: レンダリングされたHTMLページ
+    """
+    users = user.get_all_users(db)
+    return templates.TemplateResponse(
+        "employee.html", {"request": request, "users": users}
+    )
+
+
 @page_router.get("/attendance", response_class=HTMLResponse)
 def attendance_page(request: Request, db: Session = Depends(get_db)) -> Any:
-    """勤怠管理ページを表示します
+    """勤怠登録ページを表示します
 
     Args:
         request: FastAPIリクエストオブジェクト
@@ -139,11 +156,41 @@ async def add_user(
         db: データベースセッション
 
     Returns:
-        RedirectResponse: 勤怠ページへのリダイレクト
+        RedirectResponse: 従業員管理ページへのリダイレクト
     """
     try:
         user.create_user(db, username=username, user_id=user_id)
-        return RedirectResponse(url="/attendance", status_code=303)
+        return RedirectResponse(url="/employee", status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/user/update/{user_id}", response_class=RedirectResponse)
+async def update_user(
+    request: Request,
+    user_id: str,
+    username: str = Form(...),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    """ユーザー情報を更新します
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_id: 更新するユーザーID
+        username: 新しいユーザー名（フォームデータ）
+        db: データベースセッション
+
+    Returns:
+        RedirectResponse: 従業員管理ページへのリダイレクト
+    """
+    try:
+        success = user.update_user(db, user_id=user_id, username=username)
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ユーザー '{user_id}' の更新に失敗しました。"
+            )
+        return RedirectResponse(url="/employee", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -160,11 +207,11 @@ async def delete_user(
         db: データベースセッション
 
     Returns:
-        RedirectResponse: 勤怠ページへのリダイレクト
+        RedirectResponse: 従業員管理ページへのリダイレクト
     """
     try:
         user.delete_user(db, user_id=user_id)
-        return RedirectResponse(url="/attendance", status_code=303)
+        return RedirectResponse(url="/employee", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -190,9 +237,14 @@ async def update_attendance(
         RedirectResponse: ユーザー編集ページへのリダイレクト
     """
     try:
-        attendance.update_user_entry(
+        success = attendance.update_user_entry(
             db, user_id=user_id, date_str=date, location=location
         )
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail="勤怠データの更新に失敗しました。ユーザーIDまたは日付が無効である可能性があります。"
+            )
         return RedirectResponse(url=f"/attendance/edit/{user_id}", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

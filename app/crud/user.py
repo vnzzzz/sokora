@@ -97,6 +97,33 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             logger.error(f"Error adding user: {str(e)}")
             return False
 
+    def update_user(self, db: Session, *, user_id: str, username: str) -> bool:
+        """
+        ユーザー情報を更新
+
+        Args:
+            db: データベースセッション
+            user_id: 更新するユーザーID
+            username: 新しいユーザー名
+
+        Returns:
+            bool: 成功したかどうか
+        """
+        try:
+            db_obj = self.get_by_user_id(db, user_id=user_id)
+            if not db_obj:
+                return False
+                
+            setattr(db_obj, "username", username)
+            db.add(db_obj)
+            db.commit()
+            db.refresh(db_obj)
+            return True
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error updating user: {str(e)}")
+            return False
+
     def delete_user(self, db: Session, *, user_id: str) -> bool:
         """
         ユーザーを削除
