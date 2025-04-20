@@ -1,8 +1,8 @@
 """
-Calendar operations
+カレンダー操作
 ===============
 
-Calendar data manipulation operations.
+カレンダーデータ操作機能を提供します。
 """
 
 import calendar
@@ -19,7 +19,7 @@ from ..utils.ui_utils import generate_location_data
 from ..core.config import logger
 
 
-# Calendar settings for Sunday as first day of week (0: Monday start → 6: Sunday start)
+# 日曜日を週の最初の日として設定 (0: 月曜始まり → 6: 日曜始まり)
 calendar.setfirstweekday(6)
 
 

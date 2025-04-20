@@ -1,8 +1,8 @@
 """
-User CRUD operations
+ユーザーCRUD操作
 ==================
 
-Create, Read, Update, Delete operations for User model.
+ユーザーモデルの作成、読取、更新、削除操作を提供します。
 """
 
 from typing import Any, Dict, Optional, Union, List, Tuple

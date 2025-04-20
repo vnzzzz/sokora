@@ -1,8 +1,8 @@
 """
-Attendance CRUD operations
+勤怠記録CRUD操作
 =======================
 
-Create, Read, Update, Delete operations for Attendance model.
+勤怠記録モデルの作成、読取、更新、削除操作を提供します。
 """
 
 from typing import Any, Dict, List, Optional, Union

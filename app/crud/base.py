@@ -1,8 +1,8 @@
 """
-Base CRUD class
+CRUDベースクラス
 ==============
 
-Generic CRUD operations that can be used by any model.
+どのモデルでも使用できる汎用CRUD操作を提供します。
 """
 
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union

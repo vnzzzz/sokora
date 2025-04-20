@@ -1,8 +1,8 @@
 """
-Location CRUD operations
+勤務場所CRUD操作
 =====================
 
-Create, Read, Update, Delete operations for Location model.
+勤務場所モデルの作成、読取、更新、削除操作を提供します。
 """
 
 from typing import Any, Dict, List, Optional, Union
