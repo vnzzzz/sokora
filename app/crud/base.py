@@ -75,7 +75,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             ModelType: 作成されたオブジェクト
         """
-        obj_in_data = jsonable_encoder(obj_in)
+        # jsonable_encoderを使用せず、直接dictに変換
+        obj_in_data = obj_in.dict()
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
         db.commit()

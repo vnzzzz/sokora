@@ -79,7 +79,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
         # 勤務場所ごとのカウントを集計
         for attendance in attendances:
             day = attendance.date.day
-            location_name = str(attendance.location)
+            location_name = str(attendance.location)  # 勤務場所の文字列表現を取得
             location_counts[day][location_name] += 1
 
         # 各週と日に勤怠情報を付与

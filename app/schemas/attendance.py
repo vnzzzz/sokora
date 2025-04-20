@@ -5,9 +5,9 @@
 勤怠データのバリデーションとシリアライゼーションのためのPydanticスキーマ。
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import date
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any, Union
+from datetime import date, datetime
+from pydantic import BaseModel, Field, validator
 
 
 class AttendanceBase(BaseModel):
@@ -21,6 +21,21 @@ class AttendanceCreate(AttendanceBase):
     """新規勤怠記録作成用スキーマ"""
 
     user_id: int  # データベースユーザーID
+
+    @validator('date')
+    def validate_date(cls, v: Union[str, date]) -> date:
+        if isinstance(v, str):
+            try:
+                return datetime.strptime(v, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError("日付形式が無効です。YYYY-MM-DD形式で入力してください。")
+        return v
+
+    class Config:
+        json_encoders = {
+            date: lambda v: v.isoformat()  # dateオブジェクトをISO形式の文字列に変換
+        }
+        from_attributes = True  # Pydantic V2の新しい設定
 
 
 class AttendanceUpdate(BaseModel):

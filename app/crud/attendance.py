@@ -49,7 +49,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         Args:
             db: データベースセッション
             user_id: ユーザーID（データベースID）
-            date_obj: 日付
+            date_obj: 日付オブジェクト
             location: 勤務場所
 
         Returns:
@@ -64,7 +64,9 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         else:
             # 新しい記録を作成
             attendance_in = AttendanceCreate(
-                user_id=user_id, date=date_obj, location=location
+                user_id=user_id,
+                date=date_obj,  # dateオブジェクトを直接渡す
+                location=location
             )
             return self.create(db, obj_in=attendance_in)
 
@@ -84,26 +86,33 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             bool: 成功したかどうか
         """
         try:
+            logger.debug(f"勤怠更新開始: user_id={user_id}, date={date_str}, location={location}")
+            
             # ユーザーを取得
             user = db.query(User).filter(User.user_id == user_id).first()
             if not user:
+                logger.error(f"ユーザーが見つかりません: user_id={user_id}")
                 return False
 
             # 日付を変換
             try:
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+                logger.debug(f"日付変換成功: {date_obj}")
             except ValueError:
-                logger.error(f"Invalid date format: {date_str}")
+                logger.error(f"日付形式が無効です: {date_str}")
                 return False
 
             # 勤怠レコードを更新
+            logger.debug(f"勤怠レコード更新開始: user_id={user.id}, date={date_obj}, location={location}")
             self.update_attendance(
                 db, user_id=int(user.id), date_obj=date_obj, location=location
             )
+            db.commit()
+            logger.debug("勤怠レコード更新成功")
             return True
         except Exception as e:
             db.rollback()
-            logger.error(f"Error updating user entry: {str(e)}")
+            logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
             return False
 
     def get_user_data(self, db: Session, *, user_id: str) -> List[Dict[str, str]]:

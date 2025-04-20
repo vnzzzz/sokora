@@ -31,7 +31,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return db.query(Location).filter(Location.name == name).first()
 
     def create_with_name(
-        self, db: Session, *, name: str, color_code: Optional[str] = None
+        self, db: Session, *, name: str
     ) -> Location:
         """
         名前を指定して新しい勤務場所を作成
@@ -39,7 +39,6 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         Args:
             db: データベースセッション
             name: 勤務場所名
-            color_code: 色コード（オプション）
 
         Returns:
             Location: 作成された勤務場所
@@ -50,7 +49,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             return existing
 
         # 新しい勤務場所を作成
-        location_in = LocationCreate(name=name, color_code=color_code)
+        location_in = LocationCreate(name=name)
         return self.create(db, obj_in=location_in)
 
     def get_all_locations(self, db: Session) -> List[str]:
