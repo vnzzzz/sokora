@@ -89,7 +89,18 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
             for day in week:
                 if day == 0:
                     # 月の範囲外の日
-                    week_data.append({"day": 0, "date": "", "has_data": False})
+                    # 同じデータ構造で日の値だけ0に
+                    day_data = {
+                        "day": 0,  # 0日
+                        "date": "",
+                        "has_data": False,
+                    }
+                    
+                    # 各勤務場所のカウントを0で追加
+                    for loc_type in location_types:
+                        day_data[loc_type] = 0
+                        
+                    week_data.append(day_data)
                 else:
                     current_date = date(year, month_num, day)
                     date_str = current_date.strftime("%Y-%m-%d")
@@ -155,11 +166,15 @@ def get_calendar(
     if month is None:
         month = get_current_month_formatted()
 
+    # 今日の日付をフォーマットして取得
+    today_date = get_today_formatted()
+
     calendar_data = build_calendar_data(db, month)
     context = {
         "request": request,
         "month": calendar_data["month_name"],
         "calendar": calendar_data,
+        "today_date": today_date  # テンプレートに今日の日付を渡す
     }
     return templates.TemplateResponse("partials/calendar.html", context)
 
