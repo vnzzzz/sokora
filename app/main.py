@@ -9,7 +9,8 @@ from typing import Dict, Any
 from .core.config import APP_VERSION, logger
 
 # ルートモジュールのインポート
-from .api.v1 import attendance, location, user, pages
+from .api.v1 import pages
+from .api.v1 import api_router
 
 # DBモジュールのインポート
 from .db.session import initialize_database
@@ -28,10 +29,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # 各モジュールからルーターを組み込む
 app.include_router(pages.router)  # ページ表示用統合ルーター
-app.include_router(attendance.router)  # 勤怠API用ルーター
-app.include_router(location.router, prefix="/api/locations")  # 勤務場所API用ルーター
-app.include_router(user.router)  # ユーザー管理API用ルーター
-
+app.include_router(api_router)  # API用ルーター
 
 # APIタグ定義
 API_TAGS = [

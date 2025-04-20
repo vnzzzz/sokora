@@ -4,50 +4,25 @@
       <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) 勤務スケジュール</h3>
 
       <div class="btn-group">
-        <button class="btn btn-sm btn-outline" hx-get="/user/{{ user_id }}?month={{ prev_month }}"
-          hx-target="#detail-area">＜前月</button>
+        <button
+          class="btn btn-sm btn-outline"
+          hx-get="/user/{{ user_id }}?month={{ prev_month }}"
+          hx-target="#detail-area"
+        >
+          ＜前月
+        </button>
         <button class="btn btn-sm" hx-get="/user/{{ user_id }}" hx-target="#detail-area">今月</button>
-        <button class="btn btn-sm btn-outline" hx-get="/user/{{ user_id }}?month={{ next_month }}"
-          hx-target="#detail-area">次月＞</button>
+        <button
+          class="btn btn-sm btn-outline"
+          hx-get="/user/{{ user_id }}?month={{ next_month }}"
+          hx-target="#detail-area"
+        >
+          次月＞
+        </button>
       </div>
     </div>
 
     <!-- カレンダービュー -->
-    <div class="overflow-x-auto">
-      <!-- 曜日ヘッダー -->
-      <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
-        {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
-        {% for day in weekdays %}
-        <div class="p-1">{{ day }}</div>
-        {% endfor %}
-      </div>
-
-      <!-- カレンダーグリッド -->
-      <div class="grid grid-cols-7 gap-1">
-        {% for week in calendar_data %}
-          {% for day in week %}
-            {% if day and day.day != 0 %}
-              {% set has_data = day.date in user_dates %}
-              {% set location = user_locations[day.date] if has_data else "" %}
-              {% set style_class = location_styles[location] if location in location_styles else "" %}
-
-              <div class="p-1 border rounded min-h-12 
-                          {% if has_data %}{{ style_class.split(" ")[0] }}{% endif %}
-                          text-center
-                          {% if day.date == last_viewed_date %}border-accent{% endif %}">
-                <div class="text-sm font-bold">{{ day.day }}</div>
-                {% if has_data %}
-                <div class="text-xs mt-1">
-                  <span class="{{ style_class.split(" ")[1] if style_class else "" }}">{{ location }}</span>
-                </div>
-                {% endif %}
-              </div>
-            {% else %}
-              <div class="p-1 border rounded bg-base-200/30 min-h-12"></div>
-            {% endif %}
-          {% endfor %}
-        {% endfor %}
-      </div>
-    </div>
+    <div class="overflow-x-auto">{% include "partials/calendar_component.html" %}</div>
   </div>
 </section>

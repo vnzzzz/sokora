@@ -168,6 +168,7 @@ def edit_user_attendance(
         "prev_month": prev_month,
         "next_month": next_month,
         "month_name": calendar_data["month_name"],
+        "editable": True,  # 編集可能モード
     }
 
     return templates.TemplateResponse("attendance_edit.html", context)
@@ -318,6 +319,9 @@ def get_user_detail(
             "prev_month": calendar_data["prev_month"],
             "next_month": calendar_data["next_month"],
             "last_viewed_date": last_viewed_date,
+            "month_name": calendar_data["month_name"],  # 月名を追加
+            "location_types": location_types,  # 勤務場所の種類も追加
+            "editable": False,  # 閲覧専用モード
         }
         
         return templates.TemplateResponse("partials/user_detail.html", context)

@@ -1,0 +1,74 @@
+/* メインスタイルシート */
+
+/* カレンダー関連のスタイル */
+.calendar-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.calendar-cell {
+  width: calc(100% / 7);
+  box-sizing: border-box;
+}
+
+.calendar-day {
+  transition: all 0.2s ease;
+  min-height: 5rem;
+  border-radius: 0.25rem;
+  width: 100%;
+  overflow: hidden;
+}
+
+.calendar-day:hover {
+  background-color: rgba(var(--color-base-content) / 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--color-base-content) / 0.2);
+}
+
+.has-data {
+  background-color: rgba(var(--color-base-content) / 0.03);
+}
+
+/* 勤怠表示用スタイル */
+.bg-remote {
+  background-color: rgba(var(--color-success) / 0.15);
+}
+
+.bg-office {
+  background-color: rgba(var(--color-primary) / 0.15);
+}
+
+.bg-business-trip {
+  background-color: rgba(var(--color-secondary) / 0.15);
+}
+
+.bg-vacation {
+  background-color: rgba(var(--color-warning) / 0.15);
+}
+
+.text-remote {
+  color: hsl(var(--s));
+}
+
+.text-office {
+  color: hsl(var(--p));
+}
+
+.text-business-trip {
+  color: hsl(var(--su));
+}
+
+.text-vacation {
+  color: hsl(var(--wa));
+}
+
+/* コンテンツレイアウト */
+.card {
+  transition: all 0.3s ease;
+}
+
+.theme-controller {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
+}

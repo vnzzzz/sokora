@@ -174,6 +174,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             for attendance in attendances:
                 entries.append(
                     {
+                        "id": attendance.id,  # 勤怠IDを追加
                         "date": attendance.date.strftime("%Y-%m-%d"),
                         "location": attendance.location,
                     }
