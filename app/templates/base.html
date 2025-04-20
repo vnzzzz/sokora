@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja" x-data class="bg-base-100">
+
+{% include "components/head.html" %}
+
+<body class="min-h-screen bg-base-100">
+  <!-- テーマ切替ボタン -->
+  {% include "components/theme_switcher.html" %}
+
+  <!-- レイアウト -->
+  <div class="flex">
+    <!-- サイドバー -->
+    {% include "components/sidebar.html" %}
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 container mx-auto p-4 space-y-6">
+      <!-- カレンダーエリア -->
+      <div id="calendar-area" hx-get="/api/calendar" hx-trigger="load" hx-target="#calendar-area"
+        class="card bg-base-200 shadow-sm p-4">
+        <!-- 初期ロード時に/api/calendarを呼び出し、結果をここに挿入 -->
+      </div>
+
+      <!-- 詳細表示エリア -->
+      <div id="detail-area" class="card bg-base-200 shadow-sm p-4">
+        {% if default_day and default_data %}
+        <section class="p-2">
+          <h3 class="text-lg font-bold mb-4">{{ default_day }}</h3>
+
+          {% if not default_has_data %}
+          <div class="alert bg-base-300 text-base-content">記録なし</div>
+          {% else %}
+          <!-- 勤務場所データと従業員リスト -->
+          <div class="flex flex-col gap-4">
+            <div class="flex-1">
+              <div
+                class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                <!-- 勤務場所カード -->
+                {% for location in default_locations %}
+                <div class="card bg-base-100 shadow w-full min-w-[16rem] max-w-full">
+                  <div class="card-body px-3 py-3">
+                    <div class="flex items-center gap-1 mb-1">
+                      <span class="badge badge-{{ location.badge }}"></span>
+                      <h4 class="card-title text-sm">{{ location.name }}</h4>
+                    </div>
+                    <ul class="menu menu-sm p-0">
+                      {% for user in default_data[location.name] %}
+                      <li hx-get="/api/user/{{ user.user_id|e }}" hx-target="#detail-area">
+                        <a class="py-1">{{ user.user_name|e }} ({{ user.user_id|e }})</a>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </section>
+        {% endif %}
+      </div>
+    </main>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // Alpine.jsストアをhydration時に初期化
+    document.addEventListener('alpine:init', () => {
+      // ストアの初期化（必要に応じて）
+    });
+
+    // 初期カレンダー読み込み後に選択処理を行うためのHTMXイベントリスナー
+    document.addEventListener('htmx:afterSwap', function (event) {
+      if (event.detail.target.id === 'calendar-area') {
+        // カレンダーエリアが読み込まれた後、選択処理が行われたかチェック
+        setTimeout(function () {
+          const hasSelection = document.querySelector('.calendar-cell.selected-date');
+          if (!hasSelection) {
+            // カスタムイベントを発火して今日の日付をハイライト
+            document.dispatchEvent(new CustomEvent('sokora:highlightToday'));
+          }
+        }, 100); // カレンダー内のスクリプトの実行より少し遅らせる
+      }
+    });
+
+    // カレンダー初期化時にも確認
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        // カレンダーがロードされてからさらに少し待機
+        setTimeout(function () {
+          const hasSelection = document.querySelector('.calendar-cell.selected-date');
+          if (!hasSelection) {
+            document.dispatchEvent(new CustomEvent('sokora:highlightToday'));
+          }
+        }, 300);
+      }, 100);
+    });
+  </script>
+</body>
+
+</html>

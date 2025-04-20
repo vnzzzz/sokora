@@ -1,8 +1,6 @@
-# git
-**/!.gitkeep
-
 # data
 data/*
+!/data/.gitkeep
 
 # env
 .env
@@ -17,3 +15,7 @@ __pycache__/
 
 # vscode
 .vscode
+.devcontainer
+
+# .cursor
+.cursor

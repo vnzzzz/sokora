@@ -1,0 +1,171 @@
+<section class="p-2">
+  <h2 class="text-xl font-bold mb-4 text-center">{{ month }}</h2>
+  <div class="overflow-x-auto">
+    <table class="table table-xs table-zebra w-full">
+      <thead>
+        <tr>
+          <th class="bg-base-200 text-left sticky left-0 z-10 w-32">勤務場所</th>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day and day.day != 0 %}
+          {% set is_weekend = loop.index0 == 0 or loop.index0 == 6 %}
+          {% set weekend_class = "bg-opacity-90 " ~ (
+          "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 else
+          "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else ""
+          ) %}
+          <th class="bg-base-200 text-center p-1 w-10 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" data-date="{{ day.date }}"
+            onclick="highlightSelectedDate('{{ day.date }}')">
+            <div class="font-bold text-sm">{{ day.day }}</div>
+            <div class="text-xs opacity-70">
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+              {{ weekdays[loop.index0] }}
+            </div>
+          </th>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 勤務場所の行 -->
+        {% for location in calendar.locations %}
+        <tr>
+          <td class="bg-base-200 font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap">{{ location.name }}
+          </td>
+          {% for week in calendar.weeks %}
+          {% for day in week %}
+          {% if day and day.day != 0 %}
+          {% set is_weekend = loop.index0 == 0 or loop.index0 == 6 %}
+          {% set weekend_class = "bg-opacity-90 " ~ (
+          "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 else
+          "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else ""
+          ) %}
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
+            hx-get="/api/day/{{ day.date }}" hx-target="#detail-area" data-date="{{ day.date }}"
+            onclick="highlightSelectedDate('{{ day.date }}')">
+            <span class="{{ location.color }} whitespace-nowrap">{{ day[location.key] if day and location.key in day
+              else 0
+              }}</span>
+          </td>
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex justify-center mt-4 space-x-2">
+    <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.prev_month }}"
+      hx-target="#calendar-area">＜前月</button>
+    <button class="btn btn-sm" hx-get="/api/calendar" hx-target="#calendar-area">今月</button>
+    <button class="btn btn-sm btn-outline" hx-get="/api/calendar?month={{ calendar.next_month }}"
+      hx-target="#calendar-area">次月＞</button>
+  </div>
+
+  <script>
+    // サーバーから渡された今日の日付
+    const serverTodayDate = "{{ today_date }}";
+
+    // 選択された日付をハイライトする関数
+    function highlightSelectedDate(date) {
+      // 以前の選択をすべてクリア
+      document.querySelectorAll('.calendar-cell').forEach(cell => {
+        cell.classList.remove('selected-date');
+      });
+
+      // 選択した日付を持つすべてのセルに選択クラスを追加
+      document.querySelectorAll(`.calendar-cell[data-date="${date}"]`).forEach(cell => {
+        cell.classList.add('selected-date');
+      });
+
+      // 選択した日付を保存
+      localStorage.setItem('selectedDate', date);
+    }
+
+    // 今日の日付を取得する関数
+    function getTodayDate() {
+      // サーバーから渡された日付があればそれを使用、なければブラウザで計算
+      if (serverTodayDate) {
+        return serverTodayDate;
+      }
+
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // カレンダーの選択を設定する関数
+    function setupCalendarSelection() {
+      const savedDate = localStorage.getItem('selectedDate');
+      const todayDate = getTodayDate();
+
+      if (savedDate) {
+        // 保存された日付が現在のカレンダーに存在するか確認
+        const dateExists = document.querySelector(`.calendar-cell[data-date="${savedDate}"]`);
+        if (dateExists) {
+          highlightSelectedDate(savedDate);
+          return;
+        }
+      }
+
+      // 保存された日付がない場合または現在のカレンダーに存在しない場合は、今日の日付をハイライト
+      const todayExists = document.querySelector(`.calendar-cell[data-date="${todayDate}"]`);
+      if (todayExists) {
+        highlightSelectedDate(todayDate);
+      }
+    }
+
+    // 外部からハイライト関数を呼び出すためのカスタムイベントリスナー
+    document.addEventListener('sokora:highlightToday', function () {
+      const todayDate = getTodayDate();
+      const todayExists = document.querySelector(`.calendar-cell[data-date="${todayDate}"]`);
+      if (todayExists) {
+        highlightSelectedDate(todayDate);
+      }
+    });
+
+    // HTMX読み込み完了後に初期化
+    document.addEventListener('htmx:afterSwap', function (event) {
+      if (event.detail.target.id === 'calendar-area') {
+        // カレンダーが読み込まれた直後に実行
+        setupCalendarSelection();
+
+        // このイベントでカレンダーが選択されたことを通知
+        document.dispatchEvent(new CustomEvent('sokora:calendarLoaded'));
+      }
+    });
+
+    // 初期読み込み時やHTMXの処理が完了していない場合のために、
+    // DOMContentLoaded後にも一度実行 (タイミング問題に対応)
+    document.addEventListener('DOMContentLoaded', function () {
+      // ごく短い遅延を入れることで、HTMXの非同期読み込みにも対応
+      setTimeout(setupCalendarSelection, 50);
+    });
+
+    // このスクリプトが読み込まれた時点で既にカレンダーがDOMに存在する場合のために
+    // 即時実行も追加（特に高速ページ読み込み用）
+    setTimeout(setupCalendarSelection, 0);
+  </script>
+
+  <style>
+    /* 選択された日付のスタイル */
+    .selected-date {
+      border: 2px solid #ff6b6b !important;
+      background-color: rgba(255, 107, 107, 0.1) !important;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* 選択時にヘッダーセルを太字にする */
+    th.selected-date {
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</section>
