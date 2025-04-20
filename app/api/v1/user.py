@@ -5,13 +5,14 @@
 ユーザーの取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
-from typing import Any, List
+from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from ...db.session import get_db
 from ...crud.user import user
+from ...crud.group import group
 from ...schemas.user import User, UserCreate, UserList, UserUpdate
 
 # API用ルーター
@@ -26,7 +27,7 @@ def get_users(db: Session = Depends(get_db)) -> Any:
     users_data = user.get_all_users(db)
     users_list = []
     
-    for user_name, user_id_str in users_data:
+    for user_name, user_id_str, is_contractor in users_data:
         user_obj = user.get_by_user_id(db, user_id=user_id_str)
         if user_obj:
             users_list.append(user_obj)
@@ -34,33 +35,68 @@ def get_users(db: Session = Depends(get_db)) -> Any:
     return {"users": users_list}
 
 
+@router.get("/{user_id}", response_model=User)
+def get_user(user_id: str, db: Session = Depends(get_db)) -> Any:
+    """
+    指定したIDのユーザーを取得します。
+    """
+    user_obj = user.get_by_user_id(db, user_id=user_id)
+    if not user_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"ユーザー '{user_id}' が見つかりません"
+        )
+    return user_obj
+
+
 @router.post("/", response_model=User)
 async def create_user(
     username: str = Form(...),
     user_id: str = Form(...),
+    group_id: str = Form(...),
+    is_contractor: bool = Form(False),
     db: Session = Depends(get_db),
 ) -> Any:
     """
     新しいユーザーを作成します。
     """
     try:
-        # create_userメソッドはbooleanを返すので、成功した場合にUserオブジェクトを取得して返す
-        success = user.create_user(db, username=username, user_id=user_id)
-        if not success:
+        # グループIDを整数型に変換
+        try:
+            group_id_int = int(group_id)
+        except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="ユーザーの作成に失敗しました。IDが既に使用されている可能性があります。"
+                detail="無効なグループIDが指定されました"
             )
-        
-        # 作成したユーザーオブジェクトを取得して返す
-        created_user = user.get_by_user_id(db, user_id=user_id)
-        if not created_user:
+            
+        # グループ存在確認
+        group_obj = group.get_by_id(db, group_id=group_id_int)
+        if not group_obj:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="ユーザーは作成されましたが、取得できませんでした。"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"グループID '{group_id_int}' が存在しません"
             )
+                
+        # UserCreateオブジェクトを作成
+        user_data = {
+            "username": username,
+            "user_id": user_id,
+            "group_id": group_id_int,
+            "is_contractor": is_contractor
+        }
         
-        return created_user
+        # 既存ユーザーチェックと新規作成
+        existing_user = user.get_by_user_id(db, user_id=user_id)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="このユーザーIDは既に使用されています"
+            )
+            
+        # ユーザーを作成
+        user_obj = user.create_with_id(db, obj_in=user_data)
+        return user_obj
     except HTTPException:
         raise
     except Exception as e:
@@ -71,6 +107,8 @@ async def create_user(
 async def update_user(
     user_id: str,
     username: str = Form(...),
+    group_id: str = Form(...),
+    is_contractor: bool = Form(False),
     db: Session = Depends(get_db),
 ) -> Any:
     """
@@ -84,7 +122,30 @@ async def update_user(
                 detail=f"ユーザー '{user_id}' が見つかりません"
             )
             
-        success = user.update_user(db, user_id=user_id, username=username)
+        # グループIDを整数型に変換
+        try:
+            group_id_int = int(group_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="無効なグループIDが指定されました"
+            )
+        
+        # グループ存在確認
+        group_obj = group.get_by_id(db, group_id=group_id_int)
+        if not group_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"グループID '{group_id_int}' が存在しません"
+            )
+        
+        success = user.update_user(
+            db, 
+            user_id=user_id, 
+            username=username, 
+            group_id=group_id_int,
+            is_contractor=is_contractor
+        )
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

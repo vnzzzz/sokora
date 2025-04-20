@@ -21,7 +21,7 @@
               </div>
 
               <!-- 新規追加ボタン -->
-              <div x-data="{ showAddModal: false }" @close-add-modal.window="showAddModal = false">
+              <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
                 <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -31,9 +31,13 @@
                     stroke="currentColor"
                     class="w-4 h-4 mr-1"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
+                    />
                   </svg>
-                  勤務場所
+                  勤務場所追加
                 </button>
 
                 <!-- 新規追加モーダル -->
@@ -47,7 +51,7 @@
                     @click.away="showAddModal = false"
                     @click.stop
                   >
-                    <h3 class="font-bold text-lg mb-4 text-base-content">新規勤務場所を追加</h3>
+                    <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所追加</h3>
                     <form id="new-location-form" class="space-y-4">
                       <div class="form-control">
                         <label class="label">
@@ -152,14 +156,30 @@
               const container = document.getElementById('locations-container')
 
               if (data.locations.length === 0) {
-                container.innerHTML =
-                  '<div class="alert alert-info shadow-sm mt-4"><span>勤務場所が登録されていません。新規追加ボタンから勤務場所を追加してください。</span></div>'
+                container.innerHTML = `
+                <div class="alert alert-info shadow-sm">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    class="stroke-current shrink-0 w-6 h-6"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                  <span>勤務場所が登録されていません。新しい勤務場所を追加してください。</span>
+                </div>
+                `
                 return
               }
 
               // 表形式で表示
               let html = `
-              <div class="overflow-x-auto mt-4 rounded-lg">
+              <div class="overflow-x-auto rounded-lg">
                 <table class="table table-zebra w-full">
                   <thead class="bg-base-300 text-base-content">
                     <tr>
@@ -172,39 +192,116 @@
 
               data.locations.forEach((location) => {
                 html += `
-                <tr class="hover:bg-base-200">
-                  <td>
-                    <span id="location-name-${location.id}" class="font-medium">${location.name}</span>
-                    <form id="edit-form-${location.id}" class="hidden mt-2">
-                      <div class="join shadow-sm">
-                        <input type="text" name="name" value="${location.name}" class="input input-bordered input-sm join-item focus:border-neutral" required />
-                        <button 
-                          type="button"
-                          class="btn btn-sm btn-neutral join-item edit-location-button" 
-                          data-location-id="${location.id}">
-                          保存
-                        </button>
-                        <button 
-                          type="button" 
-                          class="btn btn-sm btn-ghost join-item cancel-edit-button"
-                          data-location-id="${location.id}">
-                          キャンセル
-                        </button>
-                      </div>
-                    </form>
-                  </td>
+                <tr class="hover:bg-base-200" id="location-row-${location.location_id}">
+                  <td class="font-medium">${location.name}</td>
                   <td class="text-right">
-                    <div class="flex justify-end space-x-2">
-                      <button 
-                        class="btn btn-sm btn-outline shadow-sm hover:shadow show-edit-form-button"
-                        data-location-id="${location.id}">
-                        編集
-                      </button>
-                      <button 
-                        class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow delete-location-button"
-                        data-location-id="${location.id}">
-                        削除
-                      </button>
+                    <div class="flex justify-end gap-2">
+                      <div x-data="{ showEditModal: false }">
+                        <button 
+                          @click="showEditModal = true"
+                          class="btn btn-sm btn-outline shadow-sm hover:shadow"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-4 h-4 mr-1"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                            />
+                          </svg>
+                          編集
+                        </button>
+                        
+                        <!-- 編集モーダル -->
+                        <div
+                          x-show="showEditModal"
+                          @click.away="showEditModal = false"
+                          style="display: none"
+                          class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+                        >
+                          <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
+                            <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所編集</h3>
+                            <form id="edit-form-${location.location_id}" class="space-y-4">
+                              <div class="form-control">
+                                <label class="label">
+                                  <span class="label-text">勤務場所名</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  name="name"
+                                  value="${location.name}"
+                                  class="input input-bordered focus:border-neutral"
+                                  required
+                                />
+                              </div>
+                              <div class="flex justify-end space-x-3 mt-6">
+                                <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
+                                <button 
+                                  type="button" 
+                                  class="btn btn-neutral shadow-sm edit-location-button" 
+                                  data-location-id="${location.location_id}">
+                                  保存
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                      <div x-data="{ showDeleteConfirm: false }">
+                        <button 
+                          @click="showDeleteConfirm = true"
+                          class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-4 h-4 mr-1"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                            />
+                          </svg>
+                          削除
+                        </button>
+
+                        <!-- 削除確認モーダル -->
+                        <div
+                          x-show="showDeleteConfirm"
+                          @click.away="showDeleteConfirm = false"
+                          style="display: none"
+                          class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+                        >
+                          <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
+                            <h3 class="font-bold text-lg mb-4 text-error">削除の確認</h3>
+                            <p class="mb-5">
+                              「${location.name}」を削除してもよろしいですか？この操作は元に戻せません。
+                            </p>
+                            <div class="flex justify-end space-x-3">
+                              <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">
+                                キャンセル
+                              </button>
+                              <button 
+                                type="button" 
+                                class="btn btn-error shadow-sm delete-location-button" 
+                                data-location-id="${location.location_id}"
+                                data-location-name="${location.name}">
+                                削除
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -217,24 +314,6 @@
               </div>
             `
               container.innerHTML = html
-
-              // 編集フォーム表示ボタンのイベントリスナー
-              document.querySelectorAll('.show-edit-form-button').forEach((button) => {
-                button.addEventListener('click', function () {
-                  const locationId = this.getAttribute('data-location-id')
-                  document.getElementById(`location-name-${locationId}`).classList.add('hidden')
-                  document.getElementById(`edit-form-${locationId}`).classList.remove('hidden')
-                })
-              })
-
-              // 編集キャンセルボタンのイベントリスナー
-              document.querySelectorAll('.cancel-edit-button').forEach((button) => {
-                button.addEventListener('click', function () {
-                  const locationId = this.getAttribute('data-location-id')
-                  document.getElementById(`edit-form-${locationId}`).classList.add('hidden')
-                  document.getElementById(`location-name-${locationId}`).classList.remove('hidden')
-                })
-              })
 
               // 編集ボタンのイベントリスナー
               document.querySelectorAll('.edit-location-button').forEach((button) => {
@@ -267,7 +346,7 @@
                       }
                       return response.json()
                     })
-                    .then((data) => {
+                    .then(() => {
                       // 編集フォームを閉じて一覧を更新
                       htmx.trigger('body', 'locationChanged')
                     })
@@ -281,27 +360,23 @@
               document.querySelectorAll('.delete-location-button').forEach((button) => {
                 button.addEventListener('click', function () {
                   const locationId = this.getAttribute('data-location-id')
-                  const locationName = document.getElementById(`location-name-${locationId}`).textContent
 
-                  // 削除確認
-                  if (confirm(`「${locationName}」を削除してもよろしいですか？この操作は元に戻せません。`)) {
-                    // APIにDELETEリクエスト
-                    fetch(`/api/locations/${locationId}`, {
-                      method: 'DELETE'
+                  // APIにDELETEリクエスト
+                  fetch(`/api/locations/${locationId}`, {
+                    method: 'DELETE'
+                  })
+                    .then((response) => {
+                      if (!response.ok) {
+                        return response.json().then((data) => {
+                          throw new Error(data.detail || 'エラーが発生しました')
+                        })
+                      }
+                      // 削除成功したら一覧を更新
+                      htmx.trigger('body', 'locationChanged')
                     })
-                      .then((response) => {
-                        if (!response.ok) {
-                          return response.json().then((data) => {
-                            throw new Error(data.detail || 'エラーが発生しました')
-                          })
-                        }
-                        // 削除成功したら一覧を更新
-                        htmx.trigger('body', 'locationChanged')
-                      })
-                      .catch((error) => {
-                        alert(error.message || 'エラーが発生しました')
-                      })
-                  }
+                    .catch((error) => {
+                      alert(error.message || 'エラーが発生しました')
+                    })
                 })
               })
             })

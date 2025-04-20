@@ -1,7 +1,10 @@
 <section class="p-2" hx-swap-oob="true" id="detail-area">
   <div class="space-y-4">
     <div class="flex justify-between items-center">
-      <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) 勤務スケジュール</h3>
+      <h3 class="text-lg font-bold">
+        {{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span>{% endif %}
+        勤務スケジュール
+      </h3>
 
       <div class="btn-group">
         <button

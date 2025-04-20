@@ -69,7 +69,7 @@
                 </p>
               </template>
 
-              <form action="/api/attendances" method="post" class="space-y-4" 
+              <form action="/api/attendances/" method="post" class="space-y-4" 
                     x-data="{ attendanceId: '' }" x-init="
                     fetch('/api/attendances/user/{{ user_id }}')
                       .then(response => response.json())
@@ -84,13 +84,14 @@
                 <input type="hidden" name="is_holiday" value="{{ is_holiday|lower }}">
 
                 <div class="form-control">
-                  <select name="location" class="select select-bordered w-full focus:border-neutral" required>
+                  <select name="location_id" class="select select-bordered w-full focus:border-neutral" required>
                     <option value="">勤務場所を選択</option>
-                    <option value="delete" class="text-error font-medium">-- 予定を削除 --</option>
-                    {% for location_type in location_types %}
-                    <option value="{{ location_type }}" {% if location == location_type %}selected{% endif %}>
-                      {{ location_type }}
-                    </option>
+                    <option value="-1" class="text-error font-medium">-- 予定を削除 --</option>
+                    {% for loc in location_types %}
+                      {% set location_id = loop.index %}
+                      <option value="{{ location_id }}" {% if location == loc %}selected{% endif %}>
+                        {{ loc }}
+                      </option>
                     {% endfor %}
                   </select>
                   <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択、または予定を削除できます</p>
@@ -148,10 +149,10 @@
     }
 
     // すべての勤務場所フォームを取得
-    const forms = document.querySelectorAll('form[action="/api/attendances"]');
+    const forms = document.querySelectorAll('form[action="/api/attendances/"]');
 
     forms.forEach(form => {
-      const locationSelect = form.querySelector('select[name="location"]');
+      const locationSelect = form.querySelector('select[name="location_id"]');
       const errorMessage = form.querySelector('.error-message');
 
       // エラーメッセージを表示する関数
@@ -175,7 +176,7 @@
         event.preventDefault();
         
         // 削除オプションの場合は検証をスキップ
-        if (locationSelect.value === 'delete') {
+        if (locationSelect.value === '-1') {
           hideError();
           handleDelete(form);
           return;
@@ -192,7 +193,7 @@
       // 入力値が変わった時に検証
       locationSelect.addEventListener('change', function () {
         // 削除オプションの場合は検証をスキップ
-        if (locationSelect.value === 'delete') {
+        if (locationSelect.value === '-1') {
           hideError();
           return;
         }
@@ -253,7 +254,7 @@
         });
       } else {
         // 新規データの作成
-        fetch('/api/attendances', {
+        fetch('/api/attendances/', {
           method: 'POST',
           body: formData
         })
@@ -333,7 +334,7 @@
       } else {
         // データIDが分からなければ通常のPOSTで削除フラグ付きで送信
         const formData = new FormData(form);
-        fetch('/api/attendances', {
+        fetch('/api/attendances/', {
           method: 'POST',
           body: formData
         })

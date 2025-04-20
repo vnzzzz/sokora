@@ -27,9 +27,11 @@
         </div>
       </td>
     </tr>
-    {% else %} {% for user_name, user_id in users %}
+    {% else %} {% for user_name, user_id, is_contractor in users %}
     <tr class="hover:bg-base-200">
-      <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
+      <td class="font-medium">
+        {{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span>{% endif %}
+      </td>
       <td class="text-right">
         <div class="flex justify-end gap-2">
           <a href="/attendance/edit/{{ user_id }}" class="btn btn-sm btn-outline shadow-sm hover:shadow">

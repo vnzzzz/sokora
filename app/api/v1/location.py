@@ -58,7 +58,7 @@ def update_location(
     """
     勤務場所を更新します。
     """
-    location_obj = location.get(db=db, id=location_id)
+    location_obj = location.get_by_id(db=db, location_id=location_id)
     if not location_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="勤務場所が見つかりません"
@@ -81,7 +81,7 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
     """
     勤務場所を削除します。
     """
-    location_obj = location.get(db=db, id=location_id)
+    location_obj = location.get_by_id(db=db, location_id=location_id)
     if not location_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="勤務場所が見つかりません"
@@ -89,7 +89,7 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
     
     # 勤務場所が使用されているかチェック
     from ...models.attendance import Attendance
-    attendance_count = db.query(Attendance).filter(Attendance.location == location_obj.name).count()
+    attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
     if attendance_count > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
