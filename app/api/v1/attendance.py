@@ -8,7 +8,7 @@
 from fastapi import APIRouter, Request, Form, HTTPException, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from typing import Optional
+from typing import Optional, Any
 from sqlalchemy.orm import Session
 
 from ...db.session import get_db
@@ -36,7 +36,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @page_router.get("/attendance", response_class=HTMLResponse)
-def attendance_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+def attendance_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """勤怠管理ページを表示します
 
     Args:
@@ -58,7 +58,7 @@ def edit_user_attendance(
     user_id: str,
     month: Optional[str] = None,
     db: Session = Depends(get_db),
-) -> HTMLResponse:
+) -> Any:
     """ユーザーの勤怠編集ページを表示します
 
     Args:

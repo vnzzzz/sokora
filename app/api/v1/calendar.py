@@ -9,7 +9,7 @@ import calendar
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable, DefaultDict
 import html
 from collections import defaultdict
 from datetime import date, timedelta
@@ -65,7 +65,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
         location_types = location.get_all_locations(db)
 
         # 日ごとの勤務場所カウントを初期化
-        location_counts = defaultdict(lambda: defaultdict(int))
+        location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         # 月の初日と末日を取得
         first_day = date(year, month_num, 1)
@@ -79,7 +79,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
         # 勤務場所ごとのカウントを集計
         for attendance in attendances:
             day = attendance.date.day
-            location_name = attendance.location
+            location_name = str(attendance.location)
             location_counts[day][location_name] += 1
 
         # 各週と日に勤怠情報を付与
@@ -141,7 +141,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
 @router.get("/calendar", response_class=HTMLResponse)
 def get_calendar(
     request: Request, month: Optional[str] = None, db: Session = Depends(get_db)
-) -> HTMLResponse:
+) -> Any:
     """指定された月のカレンダーを表示します
 
     Args:
@@ -167,7 +167,7 @@ def get_calendar(
 @router.get("/day/{day}", response_class=HTMLResponse)
 def get_day_detail(
     request: Request, day: str, db: Session = Depends(get_db)
-) -> HTMLResponse:
+) -> Any:
     """指定された日の詳細を表示します
 
     Args:
@@ -203,7 +203,7 @@ def get_user_detail(
     user_id: str,
     month: Optional[str] = None,
     db: Session = Depends(get_db),
-) -> HTMLResponse:
+) -> Any:
     """指定されたユーザーの詳細を表示します
 
     Args:

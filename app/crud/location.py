@@ -65,7 +65,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         """
         try:
             locations = db.query(Location).all()
-            return [loc.name for loc in locations]
+            return [str(loc.name) for loc in locations]
         except Exception as e:
             logger.error(f"Error getting location types: {str(e)}")
             return []

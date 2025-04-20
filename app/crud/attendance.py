@@ -98,7 +98,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
             # 勤怠レコードを更新
             self.update_attendance(
-                db, user_id=user.id, date_obj=date_obj, location=location
+                db, user_id=int(user.id), date_obj=date_obj, location=location
             )
             return True
         except Exception as e:
@@ -171,7 +171,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             )
 
             # 勤務場所ごとにユーザーをグループ化
-            location_groups = {}
+            location_groups: Dict[str, List[Dict[str, str]]] = {}
             for attendance, user in results:
                 location = attendance.location
                 if location not in location_groups:

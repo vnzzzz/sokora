@@ -8,7 +8,7 @@
 from sqlalchemy import Column, String, Integer
 from sqlalchemy.orm import relationship
 
-from ..db.base_class import Base
+from ..db.session import Base
 
 
 class User(Base):

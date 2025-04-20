@@ -7,7 +7,7 @@
 
 from sqlalchemy import Column, String, Integer
 
-from ..db.base_class import Base
+from ..db.session import Base
 
 
 class Location(Base):

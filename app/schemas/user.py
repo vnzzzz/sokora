@@ -12,8 +12,8 @@ from pydantic import BaseModel, Field
 class UserBase(BaseModel):
     """ユーザーデータの基本スキーマ"""
 
-    username: str
-    user_id: str
+    username: Optional[str]
+    user_id: Optional[str]
 
 
 class UserCreate(UserBase):

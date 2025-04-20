@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 class LocationBase(BaseModel):
     """勤務場所データの基本スキーマ"""
 
-    name: str
+    name: Optional[str]
     color_code: Optional[str] = None
 
 

@@ -44,7 +44,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             str: ユーザー名（見つからない場合は空文字）
         """
         user = self.get_by_user_id(db, user_id=user_id)
-        return user.username if user else ""
+        return str(user.username) if user else ""
 
     def create_with_id(
         self, db: Session, *, obj_in: Union[UserCreate, Dict[str, Any]]
@@ -136,7 +136,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             List[Tuple[str, str]]: (username, user_id) のタプルリスト
         """
         users = db.query(User).all()
-        return [(user.username, user.user_id) for user in users]
+        return [(str(user.username), str(user.user_id)) for user in users]
 
 
 user = CRUDUser(User)

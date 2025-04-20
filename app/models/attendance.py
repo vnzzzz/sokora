@@ -7,11 +7,12 @@
 
 from sqlalchemy import Column, String, Integer, Date, ForeignKey
 from sqlalchemy.orm import relationship
+from typing import Any, ClassVar
 
-from ..db.base_class import Base
+from ..db.session import Base
 
 
-class Attendance(Base):
+class Attendance(Base):  # type: ignore
     """ユーザーの日々の勤務場所を表す勤怠モデル"""
 
     __tablename__ = "attendance"

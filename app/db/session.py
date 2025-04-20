@@ -8,9 +8,10 @@ SQLAlchemyを使用したデータベース操作の基盤となるモジュー�
 
 import os
 from pathlib import Path
+from typing import Generator, Any
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 from ..core.config import logger
 
@@ -24,8 +25,11 @@ engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 # セッション生成用のファクトリを設定
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# モデル定義のベースクラスを作成
+Base = declarative_base()
 
-def get_db():
+
+def get_db() -> Generator[Session, None, None]:
     """
     依存性注入用のデータベースセッションを提供するジェネレータ
 
@@ -39,15 +43,15 @@ def get_db():
         db.close()
 
 
-def init_db():
+def init_db() -> None:
     """
     データベースを初期化してテーブルを作成します
 
     モデル定義に基づいてデータベーススキーマを構築し、
     必要なディレクトリ構造を確保します。
     """
+    # モデルのインポートを遅延させて循環参照を防ぐ
     from ..models import User, Attendance, Location
-    from .base_class import Base
 
     # データ用ディレクトリの存在確認と作成
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -57,7 +61,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-def initialize_database():
+def initialize_database() -> bool:
     """
     アプリケーション起動時のデータベース初期化処理を実行します
 

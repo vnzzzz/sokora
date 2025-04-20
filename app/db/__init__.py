@@ -6,4 +6,3 @@ sokoraデータベースモジュール
 """
 
 from .session import init_db, get_db, SessionLocal, engine
-from .base_class import Base
