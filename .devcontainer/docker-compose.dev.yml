@@ -1,0 +1,17 @@
+services:
+  sokora:
+    container_name: sokora-dev
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.dev
+    ports:
+      - '${SERVICE_PORT:-8000}:8000'
+    volumes:
+      - ..:/app:cached
+      - ../data:/app/data
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=development
+    # ホットリロード用の設定
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
