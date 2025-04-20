@@ -48,7 +48,7 @@
                 >
                   <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
                     <h3 class="font-bold text-lg mb-4 text-base-content">従業員追加</h3>
-                    <form action="/api/user/add" method="post" class="space-y-4">
+                    <form action="/api/users" method="post" class="space-y-4">
                       <div class="form-control">
                         <label class="label">
                           <span class="label-text">従業員名</span>
@@ -105,9 +105,10 @@
                         <span id="user-name-{{ user_id }}">{{ user_name }} ({{ user_id }})</span>
                         <form
                           id="edit-form-{{ user_id }}"
-                          action="/api/user/update/{{ user_id }}"
+                          action="/api/users/{{ user_id }}"
                           method="post"
                           class="hidden mt-2"
+                          onsubmit="this.method='PUT';"
                         >
                           <div class="join shadow-sm">
                             <input
@@ -189,7 +190,11 @@
                                   <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">
                                     キャンセル
                                   </button>
-                                  <form action="/api/user/delete/{{ user_id }}" method="post">
+                                  <form
+                                    action="/api/users/{{ user_id }}"
+                                    method="post"
+                                    onsubmit="this.method='DELETE';"
+                                  >
                                     <button type="submit" class="btn btn-error shadow-sm">削除</button>
                                   </form>
                                 </div>
@@ -228,6 +233,56 @@
             const userId = this.getAttribute('data-user-id')
             document.getElementById(`edit-form-${userId}`).classList.add('hidden')
             document.getElementById(`user-name-${userId}`).classList.remove('hidden')
+          })
+        })
+
+        // PUTメソッドのフォーム送信処理
+        document.querySelectorAll('form[onsubmit*="PUT"]').forEach((form) => {
+          form.addEventListener('submit', function (event) {
+            event.preventDefault()
+            const formData = new FormData(this)
+            const url = this.action
+
+            fetch(url, {
+              method: 'PUT',
+              body: formData
+            })
+              .then((response) => {
+                if (response.ok) {
+                  window.location.reload()
+                } else {
+                  return response.json().then((data) => {
+                    alert('エラーが発生しました: ' + (data.detail || '不明なエラー'))
+                  })
+                }
+              })
+              .catch((error) => {
+                alert('エラーが発生しました: ' + error)
+              })
+          })
+        })
+
+        // DELETEメソッドのフォーム送信処理
+        document.querySelectorAll('form[onsubmit*="DELETE"]').forEach((form) => {
+          form.addEventListener('submit', function (event) {
+            event.preventDefault()
+            const url = this.action
+
+            fetch(url, {
+              method: 'DELETE'
+            })
+              .then((response) => {
+                if (response.ok) {
+                  window.location.reload()
+                } else {
+                  return response.json().then((data) => {
+                    alert('エラーが発生しました: ' + (data.detail || '不明なエラー'))
+                  })
+                }
+              })
+              .catch((error) => {
+                alert('エラーが発生しました: ' + error)
+              })
           })
         })
       })

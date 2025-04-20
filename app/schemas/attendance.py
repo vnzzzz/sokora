@@ -71,4 +71,4 @@ class UserAttendance(BaseModel):
 
     user_id: str
     user_name: str
-    dates: List[Dict[str, Any]]  # 日付/勤務場所のペアリスト
+    dates: List[Dict[str, Any]]  # 日付、勤務場所、勤怠IDのリスト

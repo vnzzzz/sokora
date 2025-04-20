@@ -1,306 +1,66 @@
 <!DOCTYPE html>
 <html lang="ja" x-data class="bg-base-100">
+  {% set title_text = user_name + " (" + user_id + ") - 登録 - Sokora" %} {% include "components/head.html" %}
 
-{% set title_text = user_name + " (" + user_id + ") - 登録 - Sokora" %}
-{% include "components/head.html" %}
+  <body class="min-h-screen bg-base-100">
+    <!-- テーマ切替ボタン -->
+    {% include "components/theme_switcher.html" %}
 
-<body class="min-h-screen bg-base-100">
-  <!-- テーマ切替ボタン -->
-  {% include "components/theme_switcher.html" %}
+    <!-- レイアウト -->
+    <div class="flex">
+      <!-- サイドバー -->
+      {% include "components/sidebar.html" %}
 
-  <!-- レイアウト -->
-  <div class="flex">
-    <!-- サイドバー -->
-    {% include "components/sidebar.html" %}
-
-    <!-- メインコンテンツ -->
-    <main class="flex-1 container mx-auto py-6 px-5 space-y-8">
-      <div class="card bg-base-200 shadow-lg rounded-lg">
-        <div class="card-body p-6">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-2xl font-bold text-base-content">{{ user_name }} ({{ user_id }}) - 登録</h2>
-              <div class="text-sm breadcrumbs">
-                <ul>
-                  <li><a href="/attendance" class="text-base-content/70 hover:text-base-content">勤怠</a></li>
-                  <li class="text-base-content/90">{{ user_name }} ({{ user_id }})</li>
-                </ul>
+      <!-- メインコンテンツ -->
+      <main class="flex-1 container mx-auto py-6 px-5 space-y-8">
+        <div class="card bg-base-200 shadow-lg rounded-lg">
+          <div class="card-body p-6">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-2xl font-bold text-base-content">勤怠登録</h2>
+              </div>
+              <div class="btn-group shadow-sm">
+                <button
+                  class="btn btn-sm btn-outline"
+                  hx-get="/attendance/edit/{{ user_id }}?month={{ prev_month }}"
+                  hx-target="body"
+                >
+                  ＜前月
+                </button>
+                <button class="btn btn-sm btn-neutral" hx-get="/attendance/edit/{{ user_id }}" hx-target="body">
+                  今月
+                </button>
+                <button
+                  class="btn btn-sm btn-outline"
+                  hx-get="/attendance/edit/{{ user_id }}?month={{ next_month }}"
+                  hx-target="body"
+                >
+                  次月＞
+                </button>
               </div>
             </div>
-            <div class="btn-group shadow-sm">
-              <button class="btn btn-sm btn-outline" hx-get="/attendance/edit/{{ user_id }}?month={{ prev_month }}"
-                hx-target="body">＜前月</button>
-              <button class="btn btn-sm btn-neutral" hx-get="/attendance/edit/{{ user_id }}" hx-target="body">今月</button>
-              <button class="btn btn-sm btn-outline" hx-get="/attendance/edit/{{ user_id }}?month={{ next_month }}"
-                hx-target="body">次月＞</button>
+
+            <!-- 勤怠カレンダー -->
+            <div class="overflow-x-auto mt-6">{% include "partials/calendar_component.html" %}</div>
+
+            <div class="flex justify-between items-center mt-6">
+              <a href="/attendance" class="btn btn-outline shadow-sm hover:shadow">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="w-5 h-5 mr-1"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                </svg>
+                戻る
+              </a>
             </div>
           </div>
-
-          <!-- 勤怠カレンダー -->
-          <div class="overflow-x-auto mt-6">
-            <h3 class="text-xl font-bold text-center mb-5 text-base-content">{{ month_name }}</h3>
-            <table class="table table-bordered w-full calendar-table">
-              <thead class="bg-base-300 text-base-content">
-                <tr>
-                  <th class="text-center calendar-cell">日</th>
-                  <th class="text-center calendar-cell">月</th>
-                  <th class="text-center calendar-cell">火</th>
-                  <th class="text-center calendar-cell">水</th>
-                  <th class="text-center calendar-cell">木</th>
-                  <th class="text-center calendar-cell">金</th>
-                  <th class="text-center calendar-cell">土</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for week in calendar_data %}
-                <tr>
-                  {% for day in week %}
-                  {% if day and day.day != 0 %}
-                  <td class="p-0 calendar-cell">
-                    <div
-                      class="calendar-day p-2 min-h-16 flex flex-col h-full {% if day.date in user_dates %}has-data{% endif %}">
-                      <div class="flex justify-between items-start mb-1">
-                        <span class="font-semibold">{{ day.day }}</span>
-                      </div>
-
-                      <div class="flex-grow flex items-center justify-center">
-                        {% if day.date in user_locations %}
-                        <div class="flex items-center justify-between w-full">
-                          <div
-                            class="flex-grow text-center py-2 font-medium text-base bg-opacity-20 rounded-md {{ location_styles[user_locations[day.date]] }}">
-                            {{ user_locations[day.date] }}
-                          </div>
-                          <div x-data="{ open: false }" class="ml-1">
-                            <button @click="open = true"
-                              class="btn btn-xs btn-ghost btn-circle opacity-60 hover:opacity-100 hover:bg-base-300">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                stroke="currentColor" class="w-3 h-3">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                              </svg>
-                            </button>
-
-                            <!-- 編集モーダル -->
-                            <div x-show="open" style="display:none;"
-                              class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                              <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full"
-                                @click.away="open = false" @click.stop>
-                                <h3 class="font-bold text-lg mb-2 text-base-content">{{ day.date }}の勤務場所を編集</h3>
-                                <p class="text-sm mb-4">{{ user_name }} ({{ user_id }})の勤務場所を選択してください</p>
-
-                                <form action="/api/attendance/update" method="post" class="space-y-4">
-                                  <input type="hidden" name="user_id" value="{{ user_id }}">
-                                  <input type="hidden" name="date" value="{{ day.date }}">
-
-                                  <div class="form-control">
-                                    <select name="location" class="select select-bordered w-full focus:border-neutral" required>
-                                      <option value="">勤務場所を選択</option>
-                                      <option value="delete" class="text-error font-medium">-- 予定を削除 --</option>
-                                      {% for location_type in location_types %}
-                                      <option value="{{ location_type }}" {% if user_locations[day.date] == location_type %}selected{% endif %}>
-                                        {{ location_type }}
-                                      </option>
-                                      {% endfor %}
-                                    </select>
-                                    <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択、または予定を削除できます</p>
-                                    <div class="error-message text-error text-sm mt-1" style="display: none;">
-                                      勤務場所を選択してください</div>
-                                  </div>
-
-                                  <div class="flex justify-end space-x-3 mt-2">
-                                    <button type="button" class="btn btn-outline btn-sm"
-                                      @click="open = false">キャンセル</button>
-                                    <button type="submit" class="btn btn-neutral btn-sm shadow-sm">保存</button>
-                                  </div>
-                                </form>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {% else %}
-                        <div class="flex items-center justify-end w-full">
-                          <div x-data="{ open: false }">
-                            <button @click="open = true"
-                              class="btn btn-xs btn-ghost btn-circle opacity-60 hover:opacity-100 hover:bg-base-300">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                stroke="currentColor" class="w-3 h-3">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                              </svg>
-                            </button>
-
-                            <!-- 編集モーダル -->
-                            <div x-show="open" style="display:none;"
-                              class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                              <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full"
-                                @click.away="open = false" @click.stop>
-                                <h3 class="font-bold text-lg mb-2 text-base-content">{{ day.date }}の勤務場所を編集</h3>
-                                <p class="text-sm mb-4">{{ user_name }} ({{ user_id }})の勤務場所を選択してください</p>
-
-                                <form action="/api/attendance/update" method="post" class="space-y-4">
-                                  <input type="hidden" name="user_id" value="{{ user_id }}">
-                                  <input type="hidden" name="date" value="{{ day.date }}">
-
-                                  <div class="form-control">
-                                    <select name="location" class="select select-bordered w-full focus:border-neutral" required>
-                                      <option value="">勤務場所を選択</option>
-                                      <option value="delete" class="text-error font-medium">-- 予定を削除 --</option>
-                                      {% for location_type in location_types %}
-                                      <option value="{{ location_type }}">{{ location_type }}</option>
-                                      {% endfor %}
-                                    </select>
-                                    <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択、または予定を削除できます</p>
-                                    <div class="error-message text-error text-sm mt-1" style="display: none;">
-                                      勤務場所を選択してください</div>
-                                  </div>
-
-                                  <div class="flex justify-end space-x-3 mt-2">
-                                    <button type="button" class="btn btn-outline btn-sm"
-                                      @click="open = false">キャンセル</button>
-                                    <button type="submit" class="btn btn-neutral btn-sm shadow-sm">保存</button>
-                                  </div>
-                                </form>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {% endif %}
-                      </div>
-                    </div>
-                  </td>
-                  {% else %}
-                  <td class="calendar-cell"></td>
-                  {% endif %}
-                  {% endfor %}
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <div class="flex justify-between items-center mt-6">
-            <a href="/attendance" class="btn btn-outline shadow-sm hover:shadow">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                stroke="currentColor" class="w-5 h-5 mr-1">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-              </svg>
-              戻る
-            </a>
-          </div>
         </div>
-      </div>
-    </main>
-  </div>
-
-  <!-- カレンダースタイル -->
-  <style>
-    .calendar-table {
-      table-layout: fixed;
-      width: 100%;
-    }
-    
-    .calendar-cell {
-      width: calc(100% / 7);
-      box-sizing: border-box;
-    }
-    
-    .calendar-day {
-      transition: all 0.2s ease;
-      min-height: 5rem;
-      border-radius: 0.25rem;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .calendar-day:hover {
-      background-color: rgba(var(--color-base-content) / 0.05);
-    }
-
-    .has-data {
-      background-color: rgba(var(--color-base-content) / 0.03);
-    }
-  </style>
-
-  <!-- JavaScript -->
-  <script>
-    // 勤務場所入力の検証
-    document.addEventListener('DOMContentLoaded', function () {
-      // すべての勤務場所フォームを取得
-      const forms = document.querySelectorAll('form[action="/api/attendance/update"]');
-
-      forms.forEach(form => {
-        const locationSelect = form.querySelector('select[name="location"]');
-        const errorMessage = form.querySelector('.error-message');
-
-        // エラーメッセージを表示する関数
-        const showError = () => {
-          if (errorMessage) {
-            errorMessage.style.display = 'block';
-            locationSelect.classList.add('select-error');
-          }
-        };
-
-        // エラーメッセージを非表示にする関数
-        const hideError = () => {
-          if (errorMessage) {
-            errorMessage.style.display = 'none';
-            locationSelect.classList.remove('select-error');
-          }
-        };
-
-        // 送信前の検証
-        form.addEventListener('submit', function (event) {
-          // 削除オプションの場合は検証をスキップ
-          if (locationSelect.value === 'delete') {
-            hideError();
-            return;
-          }
-          
-          if (!locationSelect.value.trim()) {
-            event.preventDefault();
-            showError();
-          } else {
-            hideError();
-          }
-        });
-
-        // 入力値が変わった時に検証
-        locationSelect.addEventListener('change', function () {
-          // 削除オプションの場合は検証をスキップ
-          if (locationSelect.value === 'delete') {
-            hideError();
-            return;
-          }
-          
-          if (!locationSelect.value.trim()) {
-            showError();
-          } else {
-            hideError();
-          }
-        });
-      });
-    });
-
-    // 初期化処理
-    document.addEventListener('DOMContentLoaded', function() {
-      // 初回ロード時に今日の日付を初期選択状態にする
-      setTimeout(function() {
-        // 今日のセルを探す
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const todayDate = `${year}-${month}-${day}`;
-        
-        // 現在のカレンダーに今日の日付があれば強調表示
-        const todayCell = document.querySelector(`[data-date="${todayDate}"]`);
-        if (todayCell) {
-          todayCell.classList.add('border-accent');
-          todayCell.classList.add('border-2');
-        }
-      }, 200);
-    });
-  </script>
-</body>
-
+      </main>
+    </div>
+  </body>
 </html>

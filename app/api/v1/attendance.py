@@ -5,37 +5,87 @@
 勤怠入力と編集に関連するAPIエンドポイント
 """
 
-from fastapi import APIRouter, Request, Form, HTTPException, Depends
+from typing import Any, List, Optional, Dict
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Form
 from fastapi.responses import RedirectResponse
-from typing import Any
 from sqlalchemy.orm import Session
+from datetime import date, datetime
 
 from ...db.session import get_db
 from ...crud.attendance import attendance
+from ...schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate, UserAttendance
 
 # API用ルーター
-router = APIRouter(prefix="/api", tags=["Attendance"])
+router = APIRouter(tags=["Attendance"])
 
 
-@router.post("/attendance/update", response_class=RedirectResponse)
-async def update_attendance(
-    request: Request,
+@router.get("/", response_model=AttendanceList)
+def get_attendances(db: Session = Depends(get_db)) -> Any:
+    """
+    全ての勤怠データを取得します。
+    """
+    attendances = db.query(attendance.model).all()
+    return {"records": attendances}
+
+
+@router.get("/user/{user_id}", response_model=UserAttendance)
+def get_user_attendance(user_id: str, db: Session = Depends(get_db)) -> Any:
+    """
+    特定ユーザーの勤怠データを取得します。
+    """
+    from ...crud.user import user
+    
+    user_obj = user.get_by_user_id(db, user_id=user_id)
+    if not user_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"ユーザー '{user_id}' が見つかりません"
+        )
+    
+    user_entries = attendance.get_user_data(db, user_id=user_id)
+    user_name = user.get_user_name_by_id(db, user_id=user_id)
+    
+    # UserAttendanceスキーマに合わせてデータを整形
+    dates = []
+    for entry in user_entries:
+        entry_data = {
+            "date": entry["date"],
+            "location": entry["location"]
+        }
+        
+        # attendance_idが存在する場合は追加
+        if "id" in entry:
+            entry_data["attendance_id"] = entry["id"]
+            
+        dates.append(entry_data)
+    
+    return {
+        "user_id": user_id,
+        "user_name": user_name,
+        "dates": dates
+    }
+
+
+@router.get("/day/{day}")
+def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
+    """
+    指定した日の全ユーザーの勤怠データを取得します。
+    """
+    detail = attendance.get_day_data(db, day=day)
+    if not detail:
+        return {}
+    return detail
+
+
+@router.post("/", response_model=Attendance)
+async def create_attendance(
     user_id: str = Form(...),
     date: str = Form(...),
     location: str = Form(...),
     db: Session = Depends(get_db),
-) -> RedirectResponse:
-    """ユーザーの勤務場所を更新します
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 更新するユーザーID（フォームデータ）
-        date: 更新する日付（フォームデータ）
-        location: 更新する勤務場所（フォームデータ）
-        db: データベースセッション
-
-    Returns:
-        RedirectResponse: ユーザー編集ページへのリダイレクト
+) -> Any:
+    """
+    勤怠データを作成します。
     """
     try:
         success = attendance.update_user_entry(
@@ -43,9 +93,79 @@ async def update_attendance(
         )
         if not success:
             raise HTTPException(
-                status_code=400,
-                detail="勤怠データの更新に失敗しました。ユーザーIDまたは日付が無効である可能性があります。"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="勤怠データの作成に失敗しました。ユーザーIDまたは日付が無効である可能性があります。"
             )
-        return RedirectResponse(url=f"/attendance/edit/{user_id}", status_code=303)
+        
+        # 作成したデータを返す
+        from ...crud.user import user
+        user_obj = user.get_by_user_id(db, user_id=user_id)
+        if not user_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"ユーザー '{user_id}' が見つかりません"
+            )
+        
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        attendance_obj = attendance.get_by_user_and_date(db, user_id=int(user_obj.id), date=date_obj)
+        
+        return attendance_obj
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.put("/{attendance_id}", response_model=Attendance)
+async def update_attendance(
+    attendance_id: int,
+    location: str = Form(...),
+    db: Session = Depends(get_db),
+) -> Any:
+    """
+    勤怠データを更新します。
+    """
+    try:
+        attendance_obj = attendance.get(db=db, id=attendance_id)
+        if not attendance_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="勤怠データが見つかりません"
+            )
+        
+        if location == "delete":
+            # 削除の場合はDeleteエンドポイントへのリダイレクト
+            attendance.remove(db=db, id=attendance_id)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        else:
+            # 更新
+            attendance_update = AttendanceUpdate(location=location)
+            return attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_update)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.delete("/{attendance_id}")
+async def delete_attendance(
+    attendance_id: int,
+    db: Session = Depends(get_db),
+) -> Any:
+    """
+    勤怠データを削除します。
+    """
+    try:
+        attendance_obj = attendance.get(db=db, id=attendance_id)
+        if not attendance_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="勤怠データが見つかりません"
+            )
+        
+        attendance.remove(db=db, id=attendance_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
