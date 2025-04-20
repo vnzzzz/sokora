@@ -1,7 +1,15 @@
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ title_text|default('Sokora') }}</title>
+
+  <!-- favicon -->
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+
+  <!-- フォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
 
   <!-- スタイルとJavaScript -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
@@ -13,20 +21,28 @@
   <!-- Tailwind設定 -->
   <script>
     tailwind.config = {
-      theme: { extend: {} },
-      daisyui: { themes: ["light", "dark"] }
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans JP"', 'sans-serif']
+          }
+        }
+      },
+      daisyui: {
+        themes: ['light', 'dark']
+      }
     }
   </script>
 
-  <!-- テーマ切り替えボタンのスタイル -->
+  <!-- 共通スタイル -->
   <style>
-    .theme-controller {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      z-index: 100;
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
     }
   </style>
+
+  <!-- メインCSS -->
+  <link href="/static/css/main.css" rel="stylesheet" />
 
   {% block extra_head %}{% endblock %}
 </head>

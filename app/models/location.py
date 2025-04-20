@@ -6,6 +6,7 @@
 """
 
 from sqlalchemy import Column, String, Integer
+from sqlalchemy.orm import relationship
 
 from ..db.session import Base
 
@@ -15,6 +16,12 @@ class Location(Base):  # type: ignore
 
     __tablename__ = "locations"
 
-    id = Column(Integer, primary_key=True, index=True)
+    location_id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
-    color_code = Column(String, nullable=True)  # UIのためのオプションの色コード
+    
+    # 関連する勤怠記録
+    attendances = relationship("Attendance", back_populates="location_info")
+    
+    def __str__(self) -> str:
+        """文字列表現としてname属性を返します"""
+        return str(self.name) if self.name is not None else ""

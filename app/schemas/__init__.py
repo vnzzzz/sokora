@@ -14,3 +14,4 @@ from .attendance import (
     UserAttendance,
 )
 from .location import Location, LocationCreate, LocationUpdate, LocationList
+from .group import Group, GroupCreate, GroupUpdate, GroupList
