@@ -13,6 +13,8 @@ __version__ = "0.1.0"
 from . import pages
 # データ操作API関連
 from . import attendance, location, user, group
+# CSV機能関連
+from . import csv
 
 # APIルーターの設定
 from fastapi import APIRouter

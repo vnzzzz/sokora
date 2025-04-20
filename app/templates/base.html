@@ -13,6 +13,7 @@
 
       <!-- メインコンテンツ -->
       <main class="flex-1 container mx-auto py-6 px-5 space-y-8">
+        {% block content %}
         <!-- カレンダーエリア -->
         <div
           id="calendar-area"
@@ -70,6 +71,7 @@
           </section>
           {% endif %}
         </div>
+        {% endblock %}
       </main>
     </div>
 

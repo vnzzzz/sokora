@@ -11,6 +11,7 @@ from .core.config import APP_VERSION, logger
 # ルートモジュールのインポート
 from .api.v1 import pages
 from .api.v1 import api_router
+from .api.v1 import csv
 
 # DBモジュールのインポート
 from .db.session import initialize_database
@@ -30,6 +31,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # 各モジュールからルーターを組み込む
 app.include_router(pages.router)  # ページ表示用統合ルーター
 app.include_router(api_router)  # API用ルーター
+app.include_router(csv.router)  # CSV機能用ルーター
 
 # APIタグ定義
 API_TAGS = [
