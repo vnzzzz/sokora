@@ -16,20 +16,20 @@ from ...crud.attendance import attendance
 from ...utils.date_utils import get_today_formatted
 from ...utils.ui_utils import generate_location_badges, has_data_for_day
 
-router = APIRouter(tags=["ページ表示"])
+router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)
 def root_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    """Display the top page
+    """トップページを表示します
 
     Args:
-        request: FastAPI request object
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        db: データベースセッション
 
     Returns:
-        HTMLResponse: Rendered HTML page
+        HTMLResponse: レンダリングされたHTMLページ
     """
     today_str = get_today_formatted()
 

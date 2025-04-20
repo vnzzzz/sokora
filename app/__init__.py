@@ -1,14 +1,14 @@
 """
-Sokora - Attendance Management Application
-================================
+sokora - 勤怠管理アプリケーション
+===========================
 
-This package contains the source code for the Sokora attendance management application.
-A simple attendance tracking tool built with FastAPI.
+このパッケージにはsokora勤怠管理アプリケーションのソースコードが含まれています。
+FastAPIで構築されたシンプルな勤怠記録ツールです。
 
-Features:
-- Daily attendance status display
-- Monthly calendar view
-- User-specific data viewing
+機能:
+- 日次の勤怠状況表示
+- 月間カレンダービュー
+- ユーザーごとのデータ閲覧
 """
 
 from .core.config import APP_VERSION, logger

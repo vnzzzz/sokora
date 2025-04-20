@@ -1,6 +1,6 @@
 """
-Sokora Core Module
-================================
+sokoraコアモジュール
+================
 
-This module contains core functionality for the Sokora application.
+このモジュールにはsokoraアプリケーションのコア機能が含まれています。
 """

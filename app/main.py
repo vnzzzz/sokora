@@ -34,15 +34,15 @@ app.include_router(calendar.router)
 # APIタグ定義
 API_TAGS = [
     {
-        "name": "勤怠管理",
+        "name": "Attendance",
         "description": "ユーザーの勤怠データを管理するエンドポイント",
     },
     {
-        "name": "カレンダー",
+        "name": "Calendar",
         "description": "カレンダー表示と日別詳細情報のエンドポイント",
     },
     {
-        "name": "ページ表示",
+        "name": "Pages",
         "description": "アプリケーションUIページ表示用エンドポイント",
     },
 ]

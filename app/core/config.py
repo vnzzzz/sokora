@@ -1,22 +1,22 @@
 """
-Application Configuration
-========================
+アプリケーション設定
+==============
 
-Load and manage application configuration from environment variables.
+環境変数からアプリケーション設定を読み込み管理します。
 """
 
 import os
 import logging
 
-# Application version
+# アプリケーションバージョン
 APP_VERSION = "1.0.0"
 
-# Set log level (get from environment variable or use INFO as default)
+# ログレベル設定（環境変数から取得、デフォルトはINFO）
 log_level = os.environ.get("SOKORA_LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
-# Get root logger
+# ルートロガーの取得
 logger = logging.getLogger("sokora")

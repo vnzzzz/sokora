@@ -1,8 +1,9 @@
 """
-Database Session Management
+データベースセッション管理
 ========================
 
-Database connection and session management functions.
+データベース接続とセッション管理のための機能を提供します。
+SQLAlchemyを使用したデータベース操作の基盤となるモジュールです。
 """
 
 import os
@@ -13,19 +14,24 @@ from sqlalchemy.orm import sessionmaker
 
 from ..core.config import logger
 
-# データベースファイルのパスを設定
+# SQLiteデータベースファイルのパスとURL設定
 DB_PATH = Path("data/sokora.sqlite")
 DB_URL = f"sqlite:///{DB_PATH.absolute()}"
 
-# エンジンを作成
+# SQLAlchemyエンジンを作成（SQLiteの同時接続に対応）
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 
-# セッションファクトリを作成
+# セッション生成用のファクトリを設定
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():
-    """データベースセッションを取得するヘルパー関数"""
+    """
+    依存性注入用のデータベースセッションを提供するジェネレータ
+
+    FastAPIのDependsで使用され、リクエスト毎に新しいセッションを生成し、
+    リクエスト完了時に確実にセッションをクローズします。
+    """
     db = SessionLocal()
     try:
         yield db
@@ -34,27 +40,34 @@ def get_db():
 
 
 def init_db():
-    """データベースの初期化と必要なテーブルの作成"""
+    """
+    データベースを初期化してテーブルを作成します
+
+    モデル定義に基づいてデータベーススキーマを構築し、
+    必要なディレクトリ構造を確保します。
+    """
     from ..models import User, Attendance, Location
     from .base_class import Base
 
-    # DBディレクトリが存在しない場合は作成
+    # データ用ディレクトリの存在確認と作成
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-    # テーブルを作成（存在していなければ）
+    # モデル定義に基づくテーブル作成
     logger.info(f"Initializing database at {DB_PATH}")
     Base.metadata.create_all(bind=engine)
 
 
 def initialize_database():
     """
-    データベースを初期化し、必要なテーブルを作成する
+    アプリケーション起動時のデータベース初期化処理を実行します
+
+    データベースの初期化を安全に行い、失敗時にはエラーログを記録します。
 
     Returns:
-        bool: 成功したかどうか
+        bool: 初期化処理の成功・失敗
     """
     try:
-        # データベースの初期化
+        # データベース初期化を実行
         init_db()
         logger.info("Database initialized successfully")
         return True

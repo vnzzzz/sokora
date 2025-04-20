@@ -1,8 +1,8 @@
 """
-CRUD operations
-==============
+CRUD操作モジュール
+===============
 
-Create, Read, Update, Delete operations for database models.
+データベースモデルに対する作成・読取・更新・削除操作を提供します。
 """
 
 from . import user

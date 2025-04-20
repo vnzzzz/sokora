@@ -18,13 +18,13 @@ from ..core.config import logger
 
 
 class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
-    """出席記録モデルのCRUD操作クラス"""
+    """勤怠記録モデルのCRUD操作クラス"""
 
     def get_by_user_and_date(
         self, db: Session, *, user_id: int, date: date
     ) -> Optional[Attendance]:
         """
-        ユーザーIDと日付で出席記録を取得
+        ユーザーIDと日付で勤怠記録を取得
 
         Args:
             db: データベースセッション
@@ -32,7 +32,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             date: 日付
 
         Returns:
-            Optional[Attendance]: 見つかった出席記録、またはNone
+            Optional[Attendance]: 見つかった勤怠記録、またはNone
         """
         return (
             db.query(Attendance)
@@ -44,7 +44,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         self, db: Session, *, user_id: int, date_obj: date, location: str
     ) -> Attendance:
         """
-        出席記録を作成または更新
+        勤怠記録を作成または更新
 
         Args:
             db: データベースセッション
@@ -53,7 +53,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             location: 勤務場所
 
         Returns:
-            Attendance: 作成または更新された出席記録
+            Attendance: 作成または更新された勤怠記録
         """
         # 既存の記録を確認
         attendance = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
@@ -72,7 +72,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         self, db: Session, *, user_id: str, date_str: str, location: str
     ) -> bool:
         """
-        ユーザーの出席情報を更新
+        ユーザーの勤怠情報を更新
 
         Args:
             db: データベースセッション
@@ -96,7 +96,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 logger.error(f"Invalid date format: {date_str}")
                 return False
 
-            # 出席レコードを更新
+            # 勤怠レコードを更新
             self.update_attendance(
                 db, user_id=user.id, date_obj=date_obj, location=location
             )
@@ -108,14 +108,14 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
     def get_user_data(self, db: Session, *, user_id: str) -> List[Dict[str, str]]:
         """
-        ユーザーの全出席データを取得
+        ユーザーの全勤怠データを取得
 
         Args:
             db: データベースセッション
             user_id: ユーザーID文字列
 
         Returns:
-            List[Dict[str, str]]: 出席データリスト
+            List[Dict[str, str]]: 勤怠データリスト
         """
         try:
             # ユーザーを取得
@@ -123,7 +123,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             if not user:
                 return []
 
-            # ユーザーの出席レコードを取得
+            # ユーザーの勤怠レコードを取得
             attendances = (
                 db.query(Attendance).filter(Attendance.user_id == user.id).all()
             )
@@ -145,14 +145,14 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
     def get_day_data(self, db: Session, *, day: str) -> Dict[str, List[Dict[str, str]]]:
         """
-        指定した日の全ユーザーの出席データを取得
+        指定した日の全ユーザーの勤怠データを取得
 
         Args:
             db: データベースセッション
             day: 日付文字列 (YYYY-MM-DD)
 
         Returns:
-            Dict[str, List[Dict[str, str]]]: 勤務場所ごとにグループ化された出席データ
+            Dict[str, List[Dict[str, str]]]: 勤務場所ごとにグループ化された勤怠データ
         """
         try:
             # 日付を変換
@@ -162,7 +162,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 logger.error(f"Invalid date format: {day}")
                 return {}
 
-            # 指定した日の出席レコードを取得
+            # 指定した日の勤怠レコードを取得
             results = (
                 db.query(Attendance, User)
                 .join(User, Attendance.user_id == User.id)

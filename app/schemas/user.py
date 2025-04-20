@@ -1,8 +1,8 @@
 """
-User schemas
-===========
+ユーザースキーマ
+============
 
-Pydantic schemas for user data validation and serialization.
+ユーザーデータのバリデーションとシリアライゼーションのためのPydanticスキーマ。
 """
 
 from typing import List, Optional
@@ -10,27 +10,27 @@ from pydantic import BaseModel, Field
 
 
 class UserBase(BaseModel):
-    """Base schema for user data"""
+    """ユーザーデータの基本スキーマ"""
 
     username: str
     user_id: str
 
 
 class UserCreate(UserBase):
-    """Schema for creating a new user"""
+    """新規ユーザー作成用スキーマ"""
 
     pass
 
 
 class UserUpdate(UserBase):
-    """Schema for updating user data"""
+    """ユーザーデータ更新用スキーマ"""
 
     username: Optional[str] = None
     user_id: Optional[str] = None
 
 
 class UserInDBBase(UserBase):
-    """Base schema for user with DB ID"""
+    """データベースIDを持つユーザーの基本スキーマ"""
 
     id: int
 
@@ -39,12 +39,12 @@ class UserInDBBase(UserBase):
 
 
 class User(UserInDBBase):
-    """Schema for user data response"""
+    """ユーザーデータレスポンス用スキーマ"""
 
     pass
 
 
 class UserList(BaseModel):
-    """Schema for list of users"""
+    """ユーザーリスト用スキーマ"""
 
     users: List[User]

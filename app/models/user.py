@@ -1,8 +1,8 @@
 """
-User model definitions
-=====================
+ユーザーモデル定義
+================
 
-SQLAlchemy models for users.
+ユーザーのSQLAlchemyモデル。
 """
 
 from sqlalchemy import Column, String, Integer
@@ -12,7 +12,7 @@ from ..db.base_class import Base
 
 
 class User(Base):
-    """User model representing employees in the system"""
+    """システム内の従業員を表すユーザーモデル"""
 
     __tablename__ = "users"
 
@@ -20,5 +20,5 @@ class User(Base):
     username = Column(String, nullable=False, index=True)
     user_id = Column(String, unique=True, nullable=False, index=True)
 
-    # Relationship to attendance records
+    # 勤怠記録との関連
     attendance_records = relationship("Attendance", back_populates="user")

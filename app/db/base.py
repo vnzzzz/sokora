@@ -1,8 +1,9 @@
 """
-Database base imports
+データベースベースインポート
 ====================
 
-Import all models here to ensure they are registered with SQLAlchemy.
+SQLAlchemyに全モデルを登録するためのインポート定義です。
+新しいモデルを追加した場合は、ここにインポート文を追加してください。
 """
 
 from .base_class import Base

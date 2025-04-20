@@ -1,8 +1,8 @@
 """
-Sokora Database Models
-================================
+sokoraデータベースモデル
+=================
 
-This module contains SQLAlchemy models for database interactions.
+データベース操作のためのSQLAlchemyモデルを提供します。
 """
 
 from .user import User

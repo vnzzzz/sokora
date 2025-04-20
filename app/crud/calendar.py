@@ -30,7 +30,7 @@ class CRUDCalendar:
         self, db: Session, *, first_day: date, last_day: date
     ) -> List[Attendance]:
         """
-        指定した期間内の出席データを取得
+        指定した期間内の勤怠データを取得
 
         Args:
             db: データベースセッション
@@ -38,7 +38,7 @@ class CRUDCalendar:
             last_day: 期間の終了日
 
         Returns:
-            List[Attendance]: 出席データのリスト
+            List[Attendance]: 勤怠データのリスト
         """
         try:
             return (
@@ -52,14 +52,14 @@ class CRUDCalendar:
 
     def count_day_attendances(self, db: Session, *, target_date: date) -> int:
         """
-        指定した日の出席データ数を取得
+        指定した日の勤怠データ数を取得
 
         Args:
             db: データベースセッション
             target_date: 対象日
 
         Returns:
-            int: 出席データ数
+            int: 勤怠データ数
         """
         try:
             return db.query(Attendance).filter(Attendance.date == target_date).count()

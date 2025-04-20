@@ -1,8 +1,8 @@
 """
-Location model definitions
-========================
+勤務場所モデル定義
+================
 
-SQLAlchemy models for work location types.
+勤務場所タイプのSQLAlchemyモデル。
 """
 
 from sqlalchemy import Column, String, Integer
@@ -11,10 +11,10 @@ from ..db.base_class import Base
 
 
 class Location(Base):
-    """Location model representing work location types"""
+    """勤務場所タイプを表すモデル"""
 
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
-    color_code = Column(String, nullable=True)  # Optional color code for UI
+    color_code = Column(String, nullable=True)  # UIのためのオプションの色コード

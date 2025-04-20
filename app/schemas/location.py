@@ -1,8 +1,8 @@
 """
-Location schemas
-==============
+勤務場所スキーマ
+============
 
-Pydantic schemas for location data validation and serialization.
+勤務場所データのバリデーションとシリアライゼーションのためのPydanticスキーマ。
 """
 
 from typing import List, Optional
@@ -10,26 +10,26 @@ from pydantic import BaseModel, Field
 
 
 class LocationBase(BaseModel):
-    """Base schema for location data"""
+    """勤務場所データの基本スキーマ"""
 
     name: str
     color_code: Optional[str] = None
 
 
 class LocationCreate(LocationBase):
-    """Schema for creating a new location type"""
+    """新規勤務場所タイプ作成用スキーマ"""
 
     pass
 
 
 class LocationUpdate(LocationBase):
-    """Schema for updating location data"""
+    """勤務場所データ更新用スキーマ"""
 
     name: Optional[str] = None
 
 
 class LocationInDBBase(LocationBase):
-    """Base schema for location with DB ID"""
+    """データベースIDを持つ勤務場所の基本スキーマ"""
 
     id: int
 
@@ -38,12 +38,12 @@ class LocationInDBBase(LocationBase):
 
 
 class Location(LocationInDBBase):
-    """Schema for location data response"""
+    """勤務場所データレスポンス用スキーマ"""
 
     pass
 
 
 class LocationList(BaseModel):
-    """Schema for list of locations"""
+    """勤務場所リスト用スキーマ"""
 
     locations: List[Location]

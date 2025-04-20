@@ -1,8 +1,8 @@
 """
-Attendance model definitions
-===========================
+勤怠記録モデル定義
+===============
 
-SQLAlchemy models for attendance records.
+ユーザーの勤怠記録を管理するSQLAlchemyモデル。
 """
 
 from sqlalchemy import Column, String, Integer, Date, ForeignKey
@@ -12,7 +12,7 @@ from ..db.base_class import Base
 
 
 class Attendance(Base):
-    """Attendance model representing daily work locations for users"""
+    """ユーザーの日々の勤務場所を表す勤怠モデル"""
 
     __tablename__ = "attendance"
 
@@ -21,9 +21,9 @@ class Attendance(Base):
     date = Column(Date, nullable=False, index=True)
     location = Column(String, nullable=False)
 
-    # Relationship to user
+    # ユーザーとの関連付け
     user = relationship("User", back_populates="attendance_records")
 
     class Config:
-        # Make this model have a unique constraint on user_id and date
+        # ユーザーIDと日付の組み合わせに対する一意制約
         unique_together = ("user_id", "date")

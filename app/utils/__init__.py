@@ -1,8 +1,8 @@
 """
-Sokora Utility Module
-===========================
+そこらユーティリティモジュール
+======================
 
-This package contains common utilities for the Sokora attendance management application.
+このパッケージには、そこら勤怠管理アプリケーションの共通ユーティリティが含まれています。
 """
 
 from . import date_utils

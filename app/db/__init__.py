@@ -1,8 +1,8 @@
 """
-Sokora Database Module
-================================
+sokoraデータベースモジュール
+===================
 
-This module contains database connection and session management.
+データベース接続とセッション管理機能を提供します。
 """
 
 from .session import init_db, get_db, SessionLocal, engine

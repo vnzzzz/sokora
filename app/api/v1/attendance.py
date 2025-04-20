@@ -29,22 +29,22 @@ from ...utils.calendar_utils import (
 )
 
 # API用ルーター
-router = APIRouter(prefix="/api", tags=["勤怠管理"])
+router = APIRouter(prefix="/api", tags=["Attendance"])
 # ページ表示用ルーター
-page_router = APIRouter(tags=["ページ表示"])
+page_router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
 @page_router.get("/attendance", response_class=HTMLResponse)
 def attendance_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    """Display the attendance management page
+    """勤怠管理ページを表示します
 
     Args:
-        request: FastAPI request object
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        db: データベースセッション
 
     Returns:
-        HTMLResponse: Rendered HTML page
+        HTMLResponse: レンダリングされたHTMLページ
     """
     users = user.get_all_users(db)
     return templates.TemplateResponse(
@@ -59,16 +59,16 @@ def edit_user_attendance(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    """Display page to edit user attendance
+    """ユーザーの勤怠編集ページを表示します
 
     Args:
-        request: FastAPI request object
-        user_id: User ID to edit
-        month: Month in YYYY-MM format (current month if not specified)
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        user_id: 編集対象のユーザーID
+        month: 月（YYYY-MM形式、指定がない場合は現在の月）
+        db: データベースセッション
 
     Returns:
-        HTMLResponse: Rendered HTML page
+        HTMLResponse: レンダリングされたHTMLページ
     """
     if month is None:
         month = get_current_month_formatted()
@@ -130,16 +130,16 @@ async def add_user(
     user_id: str = Form(...),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    """Add a new user
+    """新しいユーザーを追加します
 
     Args:
-        request: FastAPI request object
-        username: Username to add (form data)
-        user_id: User ID (form data)
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        username: 追加するユーザー名（フォームデータ）
+        user_id: ユーザーID（フォームデータ）
+        db: データベースセッション
 
     Returns:
-        RedirectResponse: Redirect to attendance page
+        RedirectResponse: 勤怠ページへのリダイレクト
     """
     try:
         user.create_user(db, username=username, user_id=user_id)
@@ -152,15 +152,15 @@ async def add_user(
 async def delete_user(
     request: Request, user_id: str, db: Session = Depends(get_db)
 ) -> RedirectResponse:
-    """Delete a user
+    """ユーザーを削除します
 
     Args:
-        request: FastAPI request object
-        user_id: User ID to delete
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        user_id: 削除するユーザーID
+        db: データベースセッション
 
     Returns:
-        RedirectResponse: Redirect to attendance page
+        RedirectResponse: 勤怠ページへのリダイレクト
     """
     try:
         user.delete_user(db, user_id=user_id)
@@ -177,17 +177,17 @@ async def update_attendance(
     location: str = Form(...),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    """Update a user's work location
+    """ユーザーの勤務場所を更新します
 
     Args:
-        request: FastAPI request object
-        user_id: User ID to update (form data)
-        date: Date to update (form data)
-        location: Work location to update (form data)
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        user_id: 更新するユーザーID（フォームデータ）
+        date: 更新する日付（フォームデータ）
+        location: 更新する勤務場所（フォームデータ）
+        db: データベースセッション
 
     Returns:
-        RedirectResponse: Redirect to user edit page
+        RedirectResponse: ユーザー編集ページへのリダイレクト
     """
     try:
         attendance.update_user_entry(

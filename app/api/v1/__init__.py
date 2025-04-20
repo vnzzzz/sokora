@@ -1,11 +1,11 @@
 """
-Sokora API V1
-================================
+sokoraAPI V1
+==========
 
-Version 1 of the Sokora API endpoints.
+sokoraAPIエンドポイントのバージョン1です。
 """
 
-# API version
+# APIバージョン
 __version__ = "0.1.0"
 
 from . import root, attendance, calendar

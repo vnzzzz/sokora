@@ -1,8 +1,8 @@
 """
-Attendance schemas
-================
+勤怠スキーマ
+=========
 
-Pydantic schemas for attendance data validation and serialization.
+勤怠データのバリデーションとシリアライゼーションのためのPydanticスキーマ。
 """
 
 from typing import List, Optional, Dict, Any
@@ -11,26 +11,26 @@ from pydantic import BaseModel, Field
 
 
 class AttendanceBase(BaseModel):
-    """Base schema for attendance data"""
+    """勤怠データの基本スキーマ"""
 
     date: date
     location: str
 
 
 class AttendanceCreate(AttendanceBase):
-    """Schema for creating a new attendance record"""
+    """新規勤怠記録作成用スキーマ"""
 
-    user_id: int  # Database user ID
+    user_id: int  # データベースユーザーID
 
 
 class AttendanceUpdate(BaseModel):
-    """Schema for updating attendance data"""
+    """勤怠データ更新用スキーマ"""
 
     location: Optional[str] = None
 
 
 class AttendanceInDBBase(AttendanceBase):
-    """Base schema for attendance with DB ID"""
+    """データベースIDを持つ勤怠の基本スキーマ"""
 
     id: int
     user_id: int
@@ -40,20 +40,20 @@ class AttendanceInDBBase(AttendanceBase):
 
 
 class Attendance(AttendanceInDBBase):
-    """Schema for attendance data response"""
+    """勤怠データレスポンス用スキーマ"""
 
     pass
 
 
 class AttendanceList(BaseModel):
-    """Schema for list of attendance records"""
+    """勤怠記録リスト用スキーマ"""
 
     records: List[Attendance]
 
 
 class UserAttendance(BaseModel):
-    """Schema for user-specific attendance data"""
+    """ユーザー固有の勤怠データ用スキーマ"""
 
     user_id: str
     user_name: str
-    dates: List[Dict[str, Any]]  # List of date/location pairs
+    dates: List[Dict[str, Any]]  # 日付/勤務場所のペアリスト

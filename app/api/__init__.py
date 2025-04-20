@@ -1,6 +1,6 @@
 """
-Sokora API Module
-================================
+sokoraAPIモジュール
+================
 
-This module contains all API endpoints for the Sokora application.
+このモジュールにはsokoraアプリケーションのすべてのAPIエンドポイントが含まれています。
 """

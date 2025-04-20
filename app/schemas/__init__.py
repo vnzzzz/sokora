@@ -1,8 +1,8 @@
 """
-Sokora Schemas Module
-================================
+そこらスキーマモジュール
+=================
 
-This module contains Pydantic data schemas for validation and serialization.
+このモジュールには、バリデーションとシリアライゼーションのためのPydanticデータスキーマが含まれています。
 """
 
 from .user import User, UserCreate, UserUpdate, UserList

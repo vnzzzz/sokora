@@ -38,7 +38,7 @@ from ...utils.calendar_utils import (
 )
 from ...core.config import logger
 
-router = APIRouter(prefix="/api", tags=["カレンダー"])
+router = APIRouter(prefix="/api", tags=["Calendar"])
 templates = Jinja2Templates(directory="app/templates")
 
 
@@ -71,7 +71,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
         first_day = date(year, month_num, 1)
         last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
 
-        # この月の全出席レコードを取得
+        # この月の全勤怠レコードを取得
         attendances = calendar_crud.get_month_attendances(
             db, first_day=first_day, last_day=last_day
         )
@@ -82,7 +82,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
             location_name = attendance.location
             location_counts[day][location_name] += 1
 
-        # 各週と日に出席情報を付与
+        # 各週と日に勤怠情報を付与
         weeks = []
         for week in cal:
             week_data = []
@@ -94,7 +94,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
                     current_date = date(year, month_num, day)
                     date_str = current_date.strftime("%Y-%m-%d")
 
-                    # この日の出席データをカウント
+                    # この日の勤怠データをカウント
                     attendance_count = calendar_crud.count_day_attendances(
                         db, target_date=current_date
                     )
@@ -142,15 +142,15 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
 def get_calendar(
     request: Request, month: Optional[str] = None, db: Session = Depends(get_db)
 ) -> HTMLResponse:
-    """Display calendar for the specified month
+    """指定された月のカレンダーを表示します
 
     Args:
-        request: FastAPI request object
-        month: Month in YYYY-MM format (current month if not specified)
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        month: 月（YYYY-MM形式、指定がない場合は現在の月）
+        db: データベースセッション
 
     Returns:
-        HTMLResponse: Rendered calendar HTML
+        HTMLResponse: レンダリングされたカレンダーHTML
     """
     if month is None:
         month = get_current_month_formatted()
@@ -168,15 +168,15 @@ def get_calendar(
 def get_day_detail(
     request: Request, day: str, db: Session = Depends(get_db)
 ) -> HTMLResponse:
-    """Display details for the specified day
+    """指定された日の詳細を表示します
 
     Args:
-        request: FastAPI request object
-        day: Date in YYYY-MM-DD format
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        day: 日付（YYYY-MM-DD形式）
+        db: データベースセッション
 
     Returns:
-        HTMLResponse: Rendered daily detail HTML
+        HTMLResponse: レンダリングされた日別詳細HTML
     """
     detail = attendance.get_day_data(db, day=day)
 
@@ -204,16 +204,16 @@ def get_user_detail(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    """Display details for the specified user
+    """指定されたユーザーの詳細を表示します
 
     Args:
-        request: FastAPI request object
-        user_id: User ID
-        month: Month in YYYY-MM format (current month if not specified)
-        db: Database session
+        request: FastAPIリクエストオブジェクト
+        user_id: ユーザーID
+        month: 月（YYYY-MM形式、指定がない場合は現在の月）
+        db: データベースセッション
 
     Returns:
-        HTMLResponse: Rendered user detail HTML
+        HTMLResponse: レンダリングされたユーザー詳細HTML
     """
     # Escape user_id
     user_id = html.escape(user_id)
@@ -251,14 +251,14 @@ def get_user_detail(
         "request": request,
         "user_id": user_id,
         "user_name": user_name,
-        "entries": user_entries,
         "calendar_data": calendar_data["weeks"],
         "user_dates": user_dates,
         "user_locations": user_locations,
         "location_styles": location_styles,
+        "location_types": location_types,
         "prev_month": prev_month,
         "next_month": next_month,
-        "last_viewed_date": last_viewed_date,
+        "month_name": calendar_data["month_name"],
     }
 
     return templates.TemplateResponse("partials/user_detail.html", context)

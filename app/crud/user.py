@@ -113,7 +113,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             if not user:
                 return False
 
-            # 関連する出席レコードも削除
+            # 関連する勤怠レコードも削除
             db.query(Attendance).filter(Attendance.user_id == user.id).delete()
 
             # ユーザーを削除
