@@ -40,6 +40,26 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             .first()
         )
 
+    def delete_attendance(
+        self, db: Session, *, user_id: int, date_obj: date
+    ) -> bool:
+        """
+        勤怠記録を削除
+
+        Args:
+            db: データベースセッション
+            user_id: ユーザーID（データベースID）
+            date_obj: 日付オブジェクト
+
+        Returns:
+            bool: 削除に成功したかどうか
+        """
+        attendance = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
+        if attendance:
+            db.delete(attendance)
+            return True
+        return False
+
     def update_attendance(
         self, db: Session, *, user_id: int, date_obj: date, location: str
     ) -> Attendance:
@@ -102,14 +122,26 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 logger.error(f"日付形式が無効です: {date_str}")
                 return False
 
-            # 勤怠レコードを更新
-            logger.debug(f"勤怠レコード更新開始: user_id={user.id}, date={date_obj}, location={location}")
-            self.update_attendance(
-                db, user_id=int(user.id), date_obj=date_obj, location=location
-            )
-            db.commit()
-            logger.debug("勤怠レコード更新成功")
-            return True
+            # 削除オプションの場合
+            if location == "delete":
+                logger.debug(f"勤怠レコード削除開始: user_id={user.id}, date={date_obj}")
+                result = self.delete_attendance(db, user_id=int(user.id), date_obj=date_obj)
+                if result:
+                    db.commit()
+                    logger.debug("勤怠レコード削除成功")
+                    return True
+                else:
+                    logger.debug("削除対象のレコードがありませんでした")
+                    return True  # レコードがない場合も正常終了とする
+            else:
+                # 勤怠レコードを更新
+                logger.debug(f"勤怠レコード更新開始: user_id={user.id}, date={date_obj}, location={location}")
+                self.update_attendance(
+                    db, user_id=int(user.id), date_obj=date_obj, location=location
+                )
+                db.commit()
+                logger.debug("勤怠レコード更新成功")
+                return True
         except Exception as e:
             db.rollback()
             logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)

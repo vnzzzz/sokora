@@ -13,10 +13,10 @@ from ...db.session import get_db
 from ...crud.location import location
 from ...schemas.location import Location, LocationCreate, LocationList, LocationUpdate
 
-router = APIRouter()
+router = APIRouter(tags=["Locations"])
 
 
-@router.get("/", response_model=LocationList, tags=["locations"])
+@router.get("/", response_model=LocationList)
 def get_locations(db: Session = Depends(get_db)) -> Any:
     """
     全ての勤務場所を取得します。名前順でソートされます。
@@ -25,7 +25,7 @@ def get_locations(db: Session = Depends(get_db)) -> Any:
     return {"locations": locations}
 
 
-@router.post("/", response_model=Location, tags=["locations"])
+@router.post("/", response_model=Location)
 def create_location(
     *, db: Session = Depends(get_db), location_in: LocationCreate
 ) -> Any:
@@ -48,7 +48,7 @@ def create_location(
     return location.create(db=db, obj_in=location_in)
 
 
-@router.put("/{location_id}", response_model=Location, tags=["locations"])
+@router.put("/{location_id}", response_model=Location)
 def update_location(
     *,
     db: Session = Depends(get_db),
@@ -76,7 +76,7 @@ def update_location(
     return location.update(db=db, db_obj=location_obj, obj_in=location_in)
 
 
-@router.delete("/{location_id}", tags=["locations"])
+@router.delete("/{location_id}")
 def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
     """
     勤務場所を削除します。

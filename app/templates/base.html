@@ -16,12 +16,12 @@
         <!-- カレンダーエリア -->
         <div
           id="calendar-area"
-          hx-get="/api/calendar"
+          hx-get="/calendar"
           hx-trigger="load"
           hx-target="#calendar-area"
           class="card bg-base-200 shadow-lg rounded-lg p-5"
         >
-          <!-- 初期ロード時に/api/calendarを呼び出し、結果をここに挿入 -->
+          <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->
         </div>
 
         <!-- 詳細表示エリア -->
@@ -52,7 +52,7 @@
                       <ul class="menu menu-sm p-0">
                         {% for user in default_data[location.name] %}
                         <li
-                          hx-get="/api/user/{{ user.user_id|e }}"
+                          hx-get="/user/{{ user.user_id|e }}"
                           hx-target="#detail-area"
                           class="hover:bg-base-200 rounded-md"
                         >
@@ -124,7 +124,7 @@
                 const date = selectedDate.getAttribute('data-date')
                 if (date) {
                   // HTMX経由で日付詳細を取得
-                  htmx.ajax('GET', `/api/day/${date}`, { target: '#detail-area' })
+                  htmx.ajax('GET', `/day/${date}`, { target: '#detail-area' })
                 }
               }
             }
