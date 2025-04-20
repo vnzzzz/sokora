@@ -14,13 +14,13 @@ class AttendanceBase(BaseModel):
     """勤怠データの基本スキーマ"""
 
     date: date
-    location: str
+    location_id: int
 
 
 class AttendanceCreate(AttendanceBase):
     """新規勤怠記録作成用スキーマ"""
 
-    user_id: int  # データベースユーザーID
+    user_id: str  # ユーザーID
 
     @validator('date')
     def validate_date(cls, v: Union[str, date]) -> date:
@@ -41,14 +41,14 @@ class AttendanceCreate(AttendanceBase):
 class AttendanceUpdate(BaseModel):
     """勤怠データ更新用スキーマ"""
 
-    location: Optional[str] = None
+    location_id: Optional[int] = None
 
 
 class AttendanceInDBBase(AttendanceBase):
     """データベースIDを持つ勤怠の基本スキーマ"""
 
     id: int
-    user_id: int
+    user_id: str
 
     class Config:
         orm_mode = True

@@ -23,7 +23,7 @@ class LocationUpdate(LocationBase):
 
 class LocationInDBBase(LocationBase):
     """データベース内の勤務場所スキーマ"""
-    id: int
+    location_id: int
     name: str
 
     model_config = ConfigDict(from_attributes=True)

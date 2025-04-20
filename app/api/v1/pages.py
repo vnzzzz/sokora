@@ -16,6 +16,7 @@ from ...db.session import get_db
 from ...crud.user import user
 from ...crud.attendance import attendance
 from ...crud.location import location
+from ...crud.group import group
 from ...utils.date_utils import (
     get_today_formatted,
     get_current_month_formatted,
@@ -80,9 +81,18 @@ def employee_page(request: Request, db: Session = Depends(get_db)) -> Any:
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    users = user.get_all_users(db)
+    users_data = user.get_all_users(db)
+    users = []
+    
+    # ユーザーオブジェクトも含める
+    for user_name, user_id, is_contractor in users_data:
+        user_obj = user.get_by_user_id(db, user_id=user_id)
+        if user_obj:
+            users.append((user_name, user_id, is_contractor, user_obj))
+    
+    groups = group.get_multi(db)
     return templates.TemplateResponse(
-        "employee.html", {"request": request, "users": users}
+        "employee.html", {"request": request, "users": users, "groups": groups}
     )
 
 
@@ -109,7 +119,7 @@ def attendance_page(
     if search_query and search_query.strip():
         search_term = search_query.lower().strip()
         filtered_users = [
-            (user_name, user_id) for user_name, user_id in all_users
+            (user_name, user_id, is_contractor) for user_name, user_id, is_contractor in all_users
             if search_term in user_name.lower() or search_term in user_id.lower()
         ]
         users = filtered_users
@@ -157,8 +167,9 @@ def edit_user_attendance(
 
     # Get user data
     user_entries = attendance.get_user_data(db, user_id=user_id)
+    # ユーザーリストを取得（全ユーザー）
     all_users = user.get_all_users(db)
-    all_user_ids = [user_id for user_name, user_id in all_users]
+    all_user_ids = [user_id for user_name, user_id, is_contractor in all_users]
 
     if not user_entries and user_id not in all_user_ids:
         raise HTTPException(status_code=404, detail=f"User ID '{user_id}' not found")
@@ -169,7 +180,7 @@ def edit_user_attendance(
     for entry in user_entries:
         date = entry["date"]
         user_dates.append(date)
-        user_locations[date] = entry["location"]
+        user_locations[date] = entry["location_name"]
 
     # Get types of work locations
     location_types = location.get_all_locations(db)
@@ -210,10 +221,27 @@ def location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    context = {
-        "request": request,
-    }
-    return templates.TemplateResponse("location_manage.html", context)
+    locations = location.get_all_locations(db)
+    return templates.TemplateResponse(
+        "location.html", {"request": request, "locations": locations}
+    )
+
+
+@router.get("/groups", response_class=HTMLResponse)
+def group_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
+    """グループ管理ページを表示します
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: レンダリングされたHTMLページ
+    """
+    groups = group.get_multi(db)
+    return templates.TemplateResponse(
+        "group.html", {"request": request, "groups": groups}
+    )
 
 
 # カレンダー関連ページエンドポイント
@@ -313,6 +341,10 @@ def get_user_detail(
         if not user_name:
             return HTMLResponse(f"ユーザー '{html.escape(user_id)}' が見つかりません", status_code=404)
         
+        # ユーザーオブジェクトから派遣フラグを取得
+        user_obj = user.get_by_user_id(db, user_id=user_id)
+        is_contractor = user_obj.is_contractor if user_obj else False
+        
         # ユーザーの勤怠データ取得
         user_entries = attendance.get_user_data(db, user_id=user_id)
         
@@ -322,7 +354,7 @@ def get_user_detail(
         for entry in user_entries:
             date = entry["date"]
             user_dates.append(date)
-            user_locations[date] = entry["location"]
+            user_locations[date] = entry["location_name"]
         
         # 勤務場所の種類を取得
         location_types = location.get_all_locations(db)
@@ -347,6 +379,7 @@ def get_user_detail(
             "month_name": calendar_data["month_name"],  # 月名を追加
             "location_types": location_types,  # 勤務場所の種類も追加
             "editable": False,  # 閲覧専用モード
+            "is_contractor": is_contractor,
         }
         
         return templates.TemplateResponse("partials/user_detail.html", context)

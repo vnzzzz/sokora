@@ -13,6 +13,7 @@ from datetime import date, datetime
 
 from ...db.session import get_db
 from ...crud.attendance import attendance
+from ...crud.location import location
 from ...schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate, UserAttendance
 
 # API用ルーター
@@ -50,7 +51,8 @@ def get_user_attendance(user_id: str, db: Session = Depends(get_db)) -> Any:
     for entry in user_entries:
         entry_data = {
             "date": entry["date"],
-            "location": entry["location"]
+            "location_id": entry["location_id"],
+            "location": entry["location_name"]
         }
         
         # attendance_idが存在する場合は追加
@@ -81,15 +83,24 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
 async def create_attendance(
     user_id: str = Form(...),
     date: str = Form(...),
-    location: str = Form(...),
+    location_id: int = Form(...),
     db: Session = Depends(get_db),
 ) -> Any:
     """
     勤怠データを作成します。
     """
     try:
+        # 勤務場所IDの確認
+        if location_id != -1:  # -1は削除用特殊値
+            loc = location.get_by_id(db, location_id=location_id)
+            if not loc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"勤務場所ID '{location_id}' が見つかりません"
+                )
+        
         success = attendance.update_user_entry(
-            db, user_id=user_id, date_str=date, location=location
+            db, user_id=user_id, date_str=date, location_id=location_id
         )
         if not success:
             raise HTTPException(
@@ -107,7 +118,7 @@ async def create_attendance(
             )
         
         date_obj = datetime.strptime(date, "%Y-%m-%d").date()
-        attendance_obj = attendance.get_by_user_and_date(db, user_id=int(user_obj.id), date=date_obj)
+        attendance_obj = attendance.get_by_user_and_date(db, user_id=str(user_obj.user_id), date=date_obj)
         
         return attendance_obj
     except HTTPException:
@@ -119,7 +130,7 @@ async def create_attendance(
 @router.put("/{attendance_id}", response_model=Attendance)
 async def update_attendance(
     attendance_id: int,
-    location: str = Form(...),
+    location_id: int = Form(...),
     db: Session = Depends(get_db),
 ) -> Any:
     """
@@ -133,13 +144,21 @@ async def update_attendance(
                 detail="勤怠データが見つかりません"
             )
         
-        if location == "delete":
+        if location_id == -1:  # 削除用特殊値
             # 削除の場合はDeleteエンドポイントへのリダイレクト
             attendance.remove(db=db, id=attendance_id)
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         else:
+            # 勤務場所IDの確認
+            loc = location.get_by_id(db, location_id=location_id)
+            if not loc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"勤務場所ID '{location_id}' が見つかりません"
+                )
+                
             # 更新
-            attendance_update = AttendanceUpdate(location=location)
+            attendance_update = AttendanceUpdate(location_id=location_id)
             return attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_update)
     except HTTPException:
         raise

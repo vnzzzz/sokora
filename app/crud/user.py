@@ -70,7 +70,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         db.refresh(db_obj)
         return db_obj
 
-    def create_user(self, db: Session, *, username: str, user_id: str) -> bool:
+    def create_user(self, db: Session, *, username: str, user_id: str, group_id: int, is_contractor: bool = False) -> bool:
         """
         新しいユーザーを作成（簡易インターフェース）
 
@@ -78,6 +78,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             db: データベースセッション
             username: ユーザー名
             user_id: ユーザーID
+            group_id: グループID
+            is_contractor: 派遣社員かどうか
 
         Returns:
             bool: 成功したかどうか
@@ -89,7 +91,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
                 return False
 
             # 新しいユーザーを作成
-            user_in = UserCreate(username=username, user_id=user_id)
+            user_in = UserCreate(username=username, user_id=user_id, group_id=group_id, is_contractor=is_contractor)
             self.create(db, obj_in=user_in)
             return True
         except Exception as e:
@@ -97,7 +99,15 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             logger.error(f"Error adding user: {str(e)}")
             return False
 
-    def update_user(self, db: Session, *, user_id: str, username: str) -> bool:
+    def update_user(
+        self, 
+        db: Session, 
+        *, 
+        user_id: str, 
+        username: str, 
+        group_id: int,
+        is_contractor: Optional[bool] = None
+    ) -> bool:
         """
         ユーザー情報を更新
 
@@ -105,6 +115,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             db: データベースセッション
             user_id: 更新するユーザーID
             username: 新しいユーザー名
+            group_id: 新しいグループID
+            is_contractor: 新しい派遣社員フラグ（省略可）
 
         Returns:
             bool: 成功したかどうか
@@ -115,6 +127,11 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
                 return False
                 
             setattr(db_obj, "username", username)
+            setattr(db_obj, "group_id", group_id)
+                    
+            if is_contractor is not None:
+                setattr(db_obj, "is_contractor", is_contractor)
+                
             db.add(db_obj)
             db.commit()
             db.refresh(db_obj)
@@ -141,7 +158,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
                 return False
 
             # 関連する勤怠レコードも削除
-            db.query(Attendance).filter(Attendance.user_id == user.id).delete()
+            db.query(Attendance).filter(Attendance.user_id == user.user_id).delete()
 
             # ユーザーを削除
             db.delete(user)
@@ -152,7 +169,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             logger.error(f"Error deleting user: {str(e)}")
             return False
 
-    def get_all_users(self, db: Session) -> List[Tuple[str, str]]:
+    def get_all_users(self, db: Session) -> List[Tuple[str, str, bool]]:
         """
         すべてのユーザーを取得
 
@@ -160,10 +177,10 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             db: データベースセッション
 
         Returns:
-            List[Tuple[str, str]]: (username, user_id) のタプルリスト
+            List[Tuple[str, str, bool]]: (username, user_id, is_contractor) のタプルリスト
         """
         users = db.query(User).all()
-        return [(str(user.username), str(user.user_id)) for user in users]
+        return [(str(user.username), str(user.user_id), bool(user.is_contractor)) for user in users]
 
 
 user = CRUDUser(User)
