@@ -21,7 +21,7 @@
    docker build -t sokora:latest .
 
    # コンテナを起動
-   docker compose up
+   docker compose up -d
    ```
 
 2. アクセス
@@ -37,20 +37,6 @@
    ```bash
    docker compose down
    ```
-
-## 開発環境
-
-### VSCode DevContainer
-
-このプロジェクトは VSCode DevContainer に対応しており、開発環境を簡単に構築できます。
-
-1. VSCode と Docker をインストール
-2. VSCode の拡張機能
-   [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) をイン
-   ストール
-3. プロジェクトを VSCode で開き、`Remote-Containers: Reopen in Container`を実行
-
-詳細は`.devcontainer/README.md`を参照してください。
 
 ## 技術スタック
 
