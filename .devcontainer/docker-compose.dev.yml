@@ -7,11 +7,26 @@ services:
     ports:
       - '${SERVICE_PORT:-8000}:8000'
     volumes:
-      - ..:/app:cached
+      # app/static/js ディレクトリを除外したマウント設定
+      - ../app:/app/app:cached
+      - ../app/static:/app/app/static:cached
+      - ../app/static/js/main.js:/app/app/static/js/main.js:cached
+      # static/jsディレクトリは除外（コンテナ内のファイルを保持）
       - ../data:/app/data
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../poetry.lock:/app/poetry.lock
+      - ../README.md:/app/README.md
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - ENVIRONMENT=development
-    # ホットリロード用の設定
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # コンテナ起動時にライブラリファイルの存在を確認し、ない場合はダウンロード
+    command: >
+      bash -c "
+        if [ ! -f /app/app/static/js/htmx.min.js ] || [ ! -f /app/app/static/js/alpine.min.js ]; then
+          mkdir -p /app/app/static/js &&
+          curl -Lo /app/app/static/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx.min.js &&
+          curl -Lo /app/app/static/js/alpine.min.js https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js
+        fi &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "

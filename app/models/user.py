@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship
 from ..db.session import Base
 
 
-class User(Base):
+class User(Base):  # type: ignore
     """システム内の従業員を表すユーザーモデル"""
 
     __tablename__ = "users"

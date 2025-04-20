@@ -14,10 +14,14 @@
 
 1. セットアップ
 
-   `.env.sample`をコピーして`.env`を作成し、以下を実行:
+   `.env.sample`をコピーして`.env`を作成し、以下の手順でイメージをビルドしてコンテナを実行します:
 
    ```bash
-   docker compose up --build
+   # イメージをビルド
+   docker build -t sokora:latest .
+
+   # コンテナを起動
+   docker compose up
    ```
 
 2. アクセス
