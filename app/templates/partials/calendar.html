@@ -11,7 +11,7 @@
           ) %}
           <th
             class="bg-base-200 text-center p-1 w-10 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
-            hx-get="/api/day/{{ day.date }}"
+            hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
             onclick="highlightSelectedDate('{{ day.date }}')"
@@ -21,6 +21,8 @@
               {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[loop.index0] }}
             </div>
           </th>
+          {% else %}
+          <th class="bg-base-200 text-center p-1 w-10"></th>
           {% endif %} {% endfor %} {% endfor %}
         </tr>
       </thead>
@@ -37,15 +39,17 @@
           ) %}
           <td
             class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
-            hx-get="/api/day/{{ day.date }}"
+            hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
             onclick="highlightSelectedDate('{{ day.date }}')"
           >
-            <span class="{{ location.color }} whitespace-nowrap"
-              >{{ day[location.key] if day and location.key in day else 0 }}</span
-            >
+            <span class="{{ location.color }} whitespace-nowrap">
+              {% if day and location.key in day and day[location.key] != 0 %} {{ day[location.key] }} {% endif %}
+            </span>
           </td>
+          {% else %}
+          <td class="p-1"></td>
           {% endif %} {% endfor %} {% endfor %}
         </tr>
         {% endfor %}
@@ -56,15 +60,15 @@
   <div class="flex justify-center mt-4 space-x-2">
     <button
       class="btn btn-sm btn-outline"
-      hx-get="/api/calendar?month={{ calendar.prev_month }}"
+      hx-get="/calendar?month={{ calendar.prev_month }}"
       hx-target="#calendar-area"
     >
       ＜前月
     </button>
-    <button class="btn btn-sm" hx-get="/api/calendar" hx-target="#calendar-area">今月</button>
+    <button class="btn btn-sm" hx-get="/calendar" hx-target="#calendar-area">今月</button>
     <button
       class="btn btn-sm btn-outline"
-      hx-get="/api/calendar?month={{ calendar.next_month }}"
+      hx-get="/calendar?month={{ calendar.next_month }}"
       hx-target="#calendar-area"
     >
       次月＞
@@ -99,7 +103,7 @@
     // 日付の詳細情報を取得する関数（新規追加）
     function loadDayDetail(date) {
       // HTMX経由で日付詳細を取得
-      htmx.ajax('GET', `/api/day/${date}`, { target: '#detail-area' })
+      htmx.ajax('GET', `/day/${date}`, { target: '#detail-area' })
     }
 
     // 今日の日付を取得する関数

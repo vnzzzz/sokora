@@ -9,7 +9,7 @@ from typing import Dict, Any
 from .core.config import APP_VERSION, logger
 
 # ルートモジュールのインポート
-from .api.v1 import root, attendance, calendar, location
+from .api.v1 import attendance, location, user, pages
 
 # DBモジュールのインポート
 from .db.session import initialize_database
@@ -27,30 +27,29 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # 各モジュールからルーターを組み込む
-app.include_router(root.router)
-app.include_router(attendance.page_router)  # ページ表示用ルーター
-app.include_router(attendance.router)  # API用ルーター
-app.include_router(calendar.router)
-app.include_router(location.router, prefix="/api/locations")
+app.include_router(pages.router)  # ページ表示用統合ルーター
+app.include_router(attendance.router)  # 勤怠API用ルーター
+app.include_router(location.router, prefix="/api/locations")  # 勤務場所API用ルーター
+app.include_router(user.router)  # ユーザー管理API用ルーター
 
 
 # APIタグ定義
 API_TAGS = [
     {
+        "name": "Pages",
+        "description": "アプリケーションUIページとカレンダー表示用エンドポイント",
+    },
+    {
         "name": "Attendance",
         "description": "ユーザーの勤怠データを管理するエンドポイント",
     },
     {
-        "name": "Calendar",
-        "description": "カレンダー表示と日別詳細情報のエンドポイント",
-    },
-    {
-        "name": "Pages",
-        "description": "アプリケーションUIページ表示用エンドポイント",
-    },
-    {
-        "name": "locations",
+        "name": "Locations",
         "description": "勤務場所を管理するエンドポイント",
+    },
+    {
+        "name": "Users",
+        "description": "ユーザーを管理するエンドポイント",
     },
 ]
 

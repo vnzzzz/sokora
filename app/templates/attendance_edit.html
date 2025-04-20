@@ -39,16 +39,16 @@
           <!-- 勤怠カレンダー -->
           <div class="overflow-x-auto mt-6">
             <h3 class="text-xl font-bold text-center mb-5 text-base-content">{{ month_name }}</h3>
-            <table class="table table-bordered w-full">
+            <table class="table table-bordered w-full calendar-table">
               <thead class="bg-base-300 text-base-content">
                 <tr>
-                  <th class="text-center">日</th>
-                  <th class="text-center">月</th>
-                  <th class="text-center">火</th>
-                  <th class="text-center">水</th>
-                  <th class="text-center">木</th>
-                  <th class="text-center">金</th>
-                  <th class="text-center">土</th>
+                  <th class="text-center calendar-cell">日</th>
+                  <th class="text-center calendar-cell">月</th>
+                  <th class="text-center calendar-cell">火</th>
+                  <th class="text-center calendar-cell">水</th>
+                  <th class="text-center calendar-cell">木</th>
+                  <th class="text-center calendar-cell">金</th>
+                  <th class="text-center calendar-cell">土</th>
                 </tr>
               </thead>
               <tbody>
@@ -56,7 +56,7 @@
                 <tr>
                   {% for day in week %}
                   {% if day and day.day != 0 %}
-                  <td class="p-0">
+                  <td class="p-0 calendar-cell">
                     <div
                       class="calendar-day p-2 min-h-16 flex flex-col h-full {% if day.date in user_dates %}has-data{% endif %}">
                       <div class="flex justify-between items-start mb-1">
@@ -95,13 +95,14 @@
                                   <div class="form-control">
                                     <select name="location" class="select select-bordered w-full focus:border-neutral" required>
                                       <option value="">勤務場所を選択</option>
+                                      <option value="delete" class="text-error font-medium">-- 予定を削除 --</option>
                                       {% for location_type in location_types %}
                                       <option value="{{ location_type }}" {% if user_locations[day.date] == location_type %}selected{% endif %}>
                                         {{ location_type }}
                                       </option>
                                       {% endfor %}
                                     </select>
-                                    <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択してください</p>
+                                    <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択、または予定を削除できます</p>
                                     <div class="error-message text-error text-sm mt-1" style="display: none;">
                                       勤務場所を選択してください</div>
                                   </div>
@@ -143,11 +144,12 @@
                                   <div class="form-control">
                                     <select name="location" class="select select-bordered w-full focus:border-neutral" required>
                                       <option value="">勤務場所を選択</option>
+                                      <option value="delete" class="text-error font-medium">-- 予定を削除 --</option>
                                       {% for location_type in location_types %}
                                       <option value="{{ location_type }}">{{ location_type }}</option>
                                       {% endfor %}
                                     </select>
-                                    <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択してください</p>
+                                    <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択、または予定を削除できます</p>
                                     <div class="error-message text-error text-sm mt-1" style="display: none;">
                                       勤務場所を選択してください</div>
                                   </div>
@@ -167,7 +169,7 @@
                     </div>
                   </td>
                   {% else %}
-                  <td></td>
+                  <td class="calendar-cell"></td>
                   {% endif %}
                   {% endfor %}
                 </tr>
@@ -192,10 +194,22 @@
 
   <!-- カレンダースタイル -->
   <style>
+    .calendar-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    
+    .calendar-cell {
+      width: calc(100% / 7);
+      box-sizing: border-box;
+    }
+    
     .calendar-day {
       transition: all 0.2s ease;
       min-height: 5rem;
       border-radius: 0.25rem;
+      width: 100%;
+      overflow: hidden;
     }
 
     .calendar-day:hover {
@@ -236,6 +250,12 @@
 
         // 送信前の検証
         form.addEventListener('submit', function (event) {
+          // 削除オプションの場合は検証をスキップ
+          if (locationSelect.value === 'delete') {
+            hideError();
+            return;
+          }
+          
           if (!locationSelect.value.trim()) {
             event.preventDefault();
             showError();
@@ -246,6 +266,12 @@
 
         // 入力値が変わった時に検証
         locationSelect.addEventListener('change', function () {
+          // 削除オプションの場合は検証をスキップ
+          if (locationSelect.value === 'delete') {
+            hideError();
+            return;
+          }
+          
           if (!locationSelect.value.trim()) {
             showError();
           } else {
