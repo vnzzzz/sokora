@@ -7,6 +7,7 @@
 
 import datetime
 import calendar
+import jpholiday
 from typing import Dict, List, Any, Tuple, DefaultDict
 from collections import defaultdict
 from datetime import date, timedelta
@@ -79,6 +80,31 @@ def get_next_month_date(year: int, month: int) -> datetime.date:
     if month == 12:
         return datetime.date(year + 1, 1, 1)
     return datetime.date(year, month + 1, 1)
+
+
+def is_holiday(date_obj: date) -> bool:
+    """与えられた日付が祝日かどうかを判定します
+
+    Args:
+        date_obj: 判定する日付
+
+    Returns:
+        bool: 祝日の場合はTrue、そうでない場合はFalse
+    """
+    return jpholiday.is_holiday(date_obj)
+
+
+def get_holiday_name(date_obj: date) -> str:
+    """与えられた日付の祝日名を取得します
+
+    Args:
+        date_obj: 判定する日付
+
+    Returns:
+        str: 祝日名（祝日でない場合は空文字列）
+    """
+    holiday = jpholiday.is_holiday_name(date_obj)
+    return holiday if holiday else ""
 
 
 def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
@@ -155,10 +181,16 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
                         db, target_date=current_date
                     )
 
+                    # 祝日情報を取得
+                    is_holiday_flag = is_holiday(current_date)
+                    holiday_name = get_holiday_name(current_date)
+
                     day_data = {
                         "day": day,
                         "date": date_str,
                         "has_data": attendance_count > 0,
+                        "is_holiday": is_holiday_flag,
+                        "holiday_name": holiday_name
                     }
 
                     # 各勤務場所のカウントを追加

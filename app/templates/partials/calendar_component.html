@@ -32,15 +32,21 @@
         {% set has_data = day.date in user_dates %}
         {% set location = user_locations[day.date] if has_data else "" %}
         {% set style_class = location_styles[location] if location in location_styles else "" %}
+        {% set weekday_index = loop.index0 %}
+        {% set is_weekend = weekday_index == 0 or weekday_index == 6 %}
+        {% set is_holiday = day.is_holiday|default(false) %}
 
         {% if editable %}
-        <div x-data="{ open: false }"
+        <div x-data="{ open: false, holiday: '{{ day.holiday_name|default('') }}' }"
           class="p-1 border rounded min-h-12 
-                {% if has_data %}{{ style_class.split(' ')[0] }}{% endif %}
+                {% if is_holiday %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend and weekday_index == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}
                 text-center cursor-pointer hover:bg-base-200 hover:shadow-sm transition-all
                 {% if day.date == last_viewed_date %}border-accent{% endif %}"
-          @click="open = true" data-date="{{ day.date }}">
-          <div class="text-sm font-bold">{{ day.day }}</div>
+          @click="open = true" data-date="{{ day.date }}" data-is-holiday="{{ is_holiday|lower }}">
+          <div class="text-sm font-bold {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">{{ day.day }}</div>
+          {% if day.holiday_name|default('') %}
+          <div class="text-xs text-red-600 dark:text-red-400 mt-0.5">{{ day.holiday_name }}</div>
+          {% endif %}
           {% if has_data %}
           <div class="text-xs mt-1">
             <span class="{{ style_class.split(' ')[1] if style_class else '' }}">{{ location }}</span>
@@ -48,13 +54,20 @@
           {% endif %}
 
           <!-- 編集モーダル -->
-          <div x-show="open" style="display:none;"
+          <div x-show="open" style="display:none;" x-cloak
             class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" 
             @click="open = false">
             <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full"
               @click.stop>
               <h3 class="font-bold text-lg mb-2 text-base-content">{{ day.date }}の勤務場所を編集</h3>
               <p class="text-sm mb-4">勤務場所を選択してください</p>
+              <!-- 祝日表示 -->
+              <template x-if="holiday">
+                <p class="text-sm text-red-600 mb-3 font-medium">
+                  <span class="mr-1">📅</span>
+                  <span x-text="holiday"></span>
+                </p>
+              </template>
 
               <form action="/api/attendances" method="post" class="space-y-4" 
                     x-data="{ attendanceId: '' }" x-init="
@@ -68,6 +81,7 @@
                       })">
                 <input type="hidden" name="user_id" value="{{ user_id }}">
                 <input type="hidden" name="date" value="{{ day.date }}">
+                <input type="hidden" name="is_holiday" value="{{ is_holiday|lower }}">
 
                 <div class="form-control">
                   <select name="location" class="select select-bordered w-full focus:border-neutral" required>
@@ -96,11 +110,14 @@
         {% else %}
         <!-- 閲覧専用モード -->
         <div class="p-1 border rounded min-h-12 
-                  {% if has_data %}{{ style_class.split(' ')[0] }}{% endif %}
+                  {% if is_holiday %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend and weekday_index == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}
                   text-center
                   {% if day.date == last_viewed_date %}border-accent{% endif %}"
              data-date="{{ day.date }}">
-          <div class="text-sm font-bold">{{ day.day }}</div>
+          <div class="text-sm font-bold {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">{{ day.day }}</div>
+          {% if day.holiday_name|default('') %}
+          <div class="text-xs text-red-600 dark:text-red-400 mt-0.5">{{ day.holiday_name }}</div>
+          {% endif %}
           {% if has_data %}
           <div class="text-xs mt-1">
             <span class="{{ style_class.split(' ')[1] if style_class else '' }}">{{ location }}</span>
@@ -120,6 +137,16 @@
 <script>
   // 勤務場所入力の検証
   document.addEventListener('DOMContentLoaded', function () {
+    // Alpine.jsの初期化が確実に行われたことを確認
+    document.addEventListener('alpine:initialized', () => {
+      console.log('Alpine.js initialized');
+    });
+
+    // イベントリスナーのクリーンアップ
+    function clearExistingListeners() {
+      // 古いリスナーのクリーンアップ（必要に応じて実装）
+    }
+
     // すべての勤務場所フォームを取得
     const forms = document.querySelectorAll('form[action="/api/attendances"]');
 
@@ -182,6 +209,15 @@
     function handleSubmit(form) {
       const formData = new FormData(form);
       const attendanceId = form._x_dataStack ? form._x_dataStack[0].attendanceId : '';
+      const isHoliday = form.querySelector('input[name="is_holiday"]')?.value === 'true';
+      
+      // 送信ボタンを無効化して二重送信防止
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('btn-disabled');
+        submitBtn.textContent = '送信中...';
+      }
       
       if (attendanceId) {
         // 既存データの更新
@@ -191,15 +227,29 @@
         })
         .then(response => {
           if (response.ok) {
-            window.location.reload();
+            // 短い遅延を設けてからリロード
+            setTimeout(() => {
+              // より確実な遷移のためにlocation.hrefを使用
+              window.location.href = window.location.pathname + window.location.search;
+            }, 100);
           } else {
             return response.json().then(data => {
               alert('エラーが発生しました: ' + (data.detail || '不明なエラー'));
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-disabled');
+                submitBtn.textContent = '保存';
+              }
             });
           }
         })
         .catch(error => {
           alert('エラーが発生しました: ' + error);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-disabled');
+            submitBtn.textContent = '保存';
+          }
         });
       } else {
         // 新規データの作成
@@ -209,15 +259,29 @@
         })
         .then(response => {
           if (response.ok) {
-            window.location.reload();
+            // 短い遅延を設けてからリロード
+            setTimeout(() => {
+              // より確実な遷移のためにlocation.hrefを使用
+              window.location.href = window.location.pathname + window.location.search;
+            }, 100);
           } else {
             return response.json().then(data => {
               alert('エラーが発生しました: ' + (data.detail || '不明なエラー'));
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-disabled');
+                submitBtn.textContent = '保存';
+              }
             });
           }
         })
         .catch(error => {
           alert('エラーが発生しました: ' + error);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-disabled');
+            submitBtn.textContent = '保存';
+          }
         });
       }
     }
@@ -225,6 +289,15 @@
     // 削除処理
     function handleDelete(form) {
       const attendanceId = form._x_dataStack ? form._x_dataStack[0].attendanceId : '';
+      const isHoliday = form.querySelector('input[name="is_holiday"]')?.value === 'true';
+      
+      // 削除ボタンを無効化して二重送信防止
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('btn-disabled');
+        submitBtn.textContent = '削除中...';
+      }
       
       if (attendanceId) {
         // データIDが分かっていれば削除
@@ -233,15 +306,29 @@
         })
         .then(response => {
           if (response.ok) {
-            window.location.reload();
+            // 短い遅延を設けてからリロード
+            setTimeout(() => {
+              // より確実な遷移のためにlocation.hrefを使用
+              window.location.href = window.location.pathname + window.location.search;
+            }, 100);
           } else {
             return response.json().then(data => {
               alert('エラーが発生しました: ' + (data.detail || '不明なエラー'));
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-disabled');
+                submitBtn.textContent = '保存';
+              }
             });
           }
         })
         .catch(error => {
           alert('エラーが発生しました: ' + error);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-disabled');
+            submitBtn.textContent = '保存';
+          }
         });
       } else {
         // データIDが分からなければ通常のPOSTで削除フラグ付きで送信
@@ -252,15 +339,29 @@
         })
         .then(response => {
           if (response.ok) {
-            window.location.reload();
+            // 短い遅延を設けてからリロード
+            setTimeout(() => {
+              // より確実な遷移のためにlocation.hrefを使用
+              window.location.href = window.location.pathname + window.location.search;
+            }, 100);
           } else {
             return response.json().then(data => {
               alert('エラーが発生しました: ' + (data.detail || '不明なエラー'));
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-disabled');
+                submitBtn.textContent = '保存';
+              }
             });
           }
         })
         .catch(error => {
           alert('エラーが発生しました: ' + error);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-disabled');
+            submitBtn.textContent = '保存';
+          }
         });
       }
     }

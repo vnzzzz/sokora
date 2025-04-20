@@ -6,20 +6,31 @@
         <tr>
           <th class="bg-base-200 text-left sticky left-0 z-10 w-32">勤務場所</th>
           {% for week in calendar.weeks %} {% for day in week %} {% if day and day.day != 0 %} {% set is_weekend =
-          loop.index0 == 0 or loop.index0 == 6 %} {% set weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10
-          dark:bg-red-300/10" if loop.index0 == 0 else "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else ""
-          ) %}
+          loop.index0 == 0 or loop.index0 == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set
+          weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 or is_holiday else
+          "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else "" ) %}
           <th
-            class="bg-base-200 text-center p-1 w-10 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
+            class="bg-base-200 text-center p-1 w-10 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
             hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
             onclick="highlightSelectedDate('{{ day.date }}')"
           >
-            <div class="font-bold text-sm">{{ day.day }}</div>
+            <div
+              class="font-bold text-sm {% if is_holiday or loop.index0 == 0 %}text-red-600 dark:text-red-400{% elif loop.index0 == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+            >
+              {{ day.day }}
+            </div>
+            {% if day.holiday_name|default('') %}
+            <div class="text-xs opacity-70 custom-tooltip holiday-tooltip">
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[loop.index0] }}
+              <span class="tooltip-text">{{ day.holiday_name }}</span>
+            </div>
+            {% else %}
             <div class="text-xs opacity-70">
               {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[loop.index0] }}
             </div>
+            {% endif %}
           </th>
           {% else %}
           <th class="bg-base-200 text-center p-1 w-10"></th>
@@ -34,11 +45,11 @@
             {{ location.name }}
           </td>
           {% for week in calendar.weeks %} {% for day in week %} {% if day and day.day != 0 %} {% set is_weekend =
-          loop.index0 == 0 or loop.index0 == 6 %} {% set weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10
-          dark:bg-red-300/10" if loop.index0 == 0 else "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else ""
-          ) %}
+          loop.index0 == 0 or loop.index0 == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set
+          weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 or is_holiday else
+          "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else "" ) %}
           <td
-            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend %}{{ weekend_class }}{% endif %} calendar-cell"
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
             hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
@@ -203,6 +214,59 @@
     th.selected-date {
       font-weight: bold;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 祝日ツールチップのスタイル */
+    .holiday-tooltip {
+      cursor: help;
+      text-decoration: underline dotted rgba(255, 107, 107, 0.5);
+      position: relative;
+    }
+
+    .holiday-tooltip:hover {
+      text-decoration: underline dotted rgba(255, 107, 107, 1);
+    }
+
+    /* カスタムツールチップ */
+    .custom-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      width: auto;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+      padding: 3px 8px;
+      position: absolute;
+      z-index: 100;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .custom-tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* 三角形の矢印 */
+    .tooltip-text::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
     }
   </style>
 </section>
