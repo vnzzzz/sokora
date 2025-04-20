@@ -22,7 +22,7 @@ app = FastAPI(
 )
 
 # /staticから静的ファイルを提供
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # 各モジュールからルーターを組み込む
 app.include_router(root.router)

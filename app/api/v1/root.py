@@ -17,7 +17,7 @@ from ...utils.date_utils import get_today_formatted
 from ...utils.ui_utils import generate_location_badges, has_data_for_day
 
 router = APIRouter(tags=["ページ表示"])
-templates = Jinja2Templates(directory="src/templates")
+templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)

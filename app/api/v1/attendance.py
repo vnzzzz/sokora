@@ -32,7 +32,7 @@ from ...utils.calendar_utils import (
 router = APIRouter(prefix="/api", tags=["勤怠管理"])
 # ページ表示用ルーター
 page_router = APIRouter(tags=["ページ表示"])
-templates = Jinja2Templates(directory="src/templates")
+templates = Jinja2Templates(directory="app/templates")
 
 
 @page_router.get("/attendance", response_class=HTMLResponse)

@@ -39,7 +39,7 @@ from ...utils.calendar_utils import (
 from ...core.config import logger
 
 router = APIRouter(prefix="/api", tags=["カレンダー"])
-templates = Jinja2Templates(directory="src/templates")
+templates = Jinja2Templates(directory="app/templates")
 
 
 def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:

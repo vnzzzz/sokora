@@ -1,6 +1,6 @@
 # data
-app/data/*
-!/app/data/.gitkeep
+data/*
+!/data/.gitkeep
 
 # env
 .env
