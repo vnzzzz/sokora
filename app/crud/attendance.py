@@ -14,6 +14,7 @@ from .base import CRUDBase
 from ..models.attendance import Attendance
 from ..models.user import User
 from ..models.location import Location
+from ..models.user_type import UserType
 from ..schemas.attendance import AttendanceCreate, AttendanceUpdate
 from ..core.config import logger
 
@@ -211,16 +212,17 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
             # 指定した日の勤怠レコードを取得
             results = (
-                db.query(Attendance, User, Location)
+                db.query(Attendance, User, Location, UserType)
                 .join(User, Attendance.user_id == User.user_id)
                 .join(Location, Attendance.location_id == Location.location_id)
+                .outerjoin(UserType, User.user_type_id == UserType.user_type_id)
                 .filter(Attendance.date == date_obj)
                 .all()
             )
 
             # 勤務場所ごとにユーザーをグループ化
             location_groups: Dict[str, List[Dict[str, str]]] = {}
-            for attendance, user, location in results:
+            for attendance, user, location, user_type in results:
                 location_name = location.name
                 if location_name not in location_groups:
                     location_groups[location_name] = []
@@ -229,7 +231,8 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                     {
                         "user_name": user.username,
                         "user_id": user.user_id,
-                        "is_contractor": user.is_contractor,
+                        "user_type_id": user.user_type_id,
+                        "user_type_name": user_type.name if user_type else ""
                     }
                 )
 

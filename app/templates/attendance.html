@@ -37,7 +37,7 @@
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   ></path>
                 </svg>
-                <span>従業員情報がありません。従業員管理ページから従業員を追加してください。</span>
+                <span>社員情報がありません。社員管理ページから社員を追加してください。</span>
               </div>
               {% else %}
               <!-- 検索フォーム -->
@@ -46,7 +46,7 @@
                   <div class="input-group">
                     <input
                       type="text"
-                      placeholder="従業員名またはIDを検索..."
+                      placeholder="社員名またはIDを検索..."
                       class="input input-bordered w-full"
                       hx-get="/attendance"
                       hx-trigger="keyup changed delay:300ms"
@@ -79,17 +79,14 @@
                 <table class="table table-zebra w-full">
                   <thead class="bg-base-300 text-base-content">
                     <tr>
-                      <th class="rounded-tl-lg">従業員名</th>
+                      <th class="rounded-tl-lg">社員名</th>
                       <th class="text-right rounded-tr-lg">勤怠登録</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {% for user_name, user_id, is_contractor in users %}
+                    {% for user_name, user_id, user_type_id in users %}
                     <tr class="hover:bg-base-200">
-                      <td class="font-medium">
-                        {{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span
-                        >{% endif %}
-                      </td>
+                      <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
                       <td class="text-right">
                         <div class="flex justify-end gap-2">
                           <a

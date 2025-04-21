@@ -18,35 +18,38 @@
   {% if not has_data %}
   <div class="alert bg-base-300 text-base-content">記録なし</div>
   {% else %}
-  <!-- 勤務場所データと従業員リスト -->
-  <div class="flex flex-col gap-4">
-    <div class="flex-1">
-      <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-        <!-- 勤務場所カード -->
-        {% for location in locations %}
-        <div class="card bg-base-100 shadow w-full min-w-[16rem] max-w-full">
-          <div class="card-body px-3 py-3">
-            <div class="flex items-center gap-1 mb-1">
-              <span class="badge badge-{{ location.badge }}"></span>
-              <h4 class="card-title text-sm">{{ location.name }}</h4>
-            </div>
-            <ul class="menu menu-sm p-0">
-              {% for user in data[location.name] %}
-              <li hx-get="/user/{{ user.user_id|e }}" hx-target="#detail-area">
-                <a class="py-1"
-                  >{{ user.user_name|e }} ({{ user.user_id|e }}) {% if user.is_contractor %}<span
-                    class="badge badge-neutral"
-                    >派</span
-                  >{% endif %}</a
-                >
-              </li>
+  <!-- 勤務場所データと社員リスト -->
+  <div class="card card-compact bg-base-100 shadow-md mb-2">
+    <div class="card-body">
+      <h2 class="card-title text-base">勤務場所別社員リスト</h2>
+      <div class="flex flex-col gap-2">
+        {% for location, users in attendance_data.items() %}
+        <div class="card card-compact bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title text-sm">{{ location }}</h3>
+            <div class="flex flex-wrap gap-1">
+              {% for user in users %}
+              <div
+                class="avatar placeholder cursor-pointer"
+                hx-get="/day/{{ target_date }}/user/{{ user.user_id }}"
+                hx-target="#user-detail"
+                hx-swap="innerHTML"
+              >
+                <div class="bg-neutral text-neutral-content rounded-full w-12">
+                  <span class="text-xs">{{ user.user_name }}</span>
+                </div>
+                {% if user.user_type_name %}
+                <span class="badge badge-sm badge-primary">{{ user.user_type_name }}</span>
+                {% endif %}
+              </div>
               {% endfor %}
-            </ul>
+            </div>
           </div>
         </div>
         {% endfor %}
       </div>
     </div>
   </div>
+  <div id="user-detail"></div>
   {% endif %}
 </section>

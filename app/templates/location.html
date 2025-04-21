@@ -21,7 +21,7 @@
               </div>
 
               <!-- 新規追加ボタン -->
-              <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
+              <div x-data="{ showAddModal: false }" x-ref="addLocationModal" @click.away="showAddModal = false">
                 <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -52,7 +52,7 @@
                     @click.stop
                   >
                     <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所追加</h3>
-                    <form id="new-location-form" class="space-y-4">
+                    <form id="new-location-form" action="/api/locations/" method="post" class="space-y-4">
                       <div class="form-control">
                         <label class="label">
                           <span class="label-text">勤務場所名</span>
@@ -66,7 +66,7 @@
                       </div>
                       <div class="flex justify-end space-x-3 mt-6">
                         <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
-                        <button type="button" class="btn btn-neutral shadow-sm" id="add-location-button">追加</button>
+                        <button type="submit" class="btn btn-neutral shadow-sm">追加</button>
                       </div>
                     </form>
                   </div>
@@ -97,18 +97,16 @@
         })
 
         // 新規追加フォームの処理
-        document.getElementById('add-location-button').addEventListener('click', function () {
-          const form = document.getElementById('new-location-form')
-          const nameInput = form.querySelector('input[name="name"]')
+        document.getElementById('new-location-form').addEventListener('submit', function (event) {
+          event.preventDefault()
+          const formData = new FormData(this)
 
-          // 必須入力チェック
-          if (!nameInput.value.trim()) {
-            alert('勤務場所名を入力してください')
-            return
+          // 送信ボタンを無効化
+          const submitBtn = this.querySelector('button[type="submit"]')
+          if (submitBtn) {
+            submitBtn.disabled = true
+            submitBtn.textContent = '送信中...'
           }
-
-          // フォームデータの作成
-          const formData = new FormData(form)
 
           // APIにPOSTリクエスト
           fetch('/api/locations/', {
@@ -130,20 +128,36 @@
             })
             .then((data) => {
               // 成功したらフォームをリセットしてモーダルを閉じる
-              form.reset()
-              // Alpineのshowモーダルステートを変更
-              const modalEl = document.querySelector('[x-data="{ showAddModal: false }"]')
-              if (modalEl && modalEl.__x) {
-                modalEl.__x.$data.showAddModal = false
-              } else {
-                // Alpine.jsのクロージャを使ってモーダルを閉じる代替方法
-                window.dispatchEvent(new CustomEvent('close-add-modal'))
+              this.reset()
+
+              // モーダルを閉じる
+              const addModalElement = document.querySelector('[x-data*="showAddModal"]')
+              if (addModalElement) {
+                // Alpine.jsの変数を直接操作
+                if (typeof addModalElement.__x !== 'undefined') {
+                  addModalElement.__x.$data.showAddModal = false
+                } else {
+                  // フォールバック: キャンセルボタンをクリック
+                  addModalElement.querySelector('button[type="button"][class*="btn-outline"]').click()
+                }
               }
+
               // 一覧を更新
               htmx.trigger('body', 'locationChanged')
+
+              // ボタンを元に戻す（実際には閉じるので見えない）
+              if (submitBtn) {
+                submitBtn.disabled = false
+                submitBtn.textContent = '追加'
+              }
             })
             .catch((error) => {
               alert(error.message || 'エラーが発生しました')
+              // エラー時はボタンを元に戻す
+              if (submitBtn) {
+                submitBtn.disabled = false
+                submitBtn.textContent = '追加'
+              }
             })
         })
 
