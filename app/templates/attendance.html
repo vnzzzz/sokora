@@ -50,7 +50,7 @@
                       class="input input-bordered w-full"
                       hx-get="/attendance"
                       hx-trigger="keyup changed delay:300ms"
-                      hx-target="#employee-table-container"
+                      hx-target="#user-table-container"
                       hx-include="[name='search_query']"
                       name="search_query"
                     />
@@ -75,18 +75,26 @@
               </div>
 
               <!-- テーブル -->
-              <div id="employee-table-container" class="overflow-x-auto rounded-lg">
+              <div id="user-table-container" class="overflow-x-auto rounded-lg">
                 <table class="table table-zebra w-full">
                   <thead class="bg-base-300 text-base-content">
                     <tr>
                       <th class="rounded-tl-lg">社員名</th>
+                      <th>グループ</th>
+                      <th>社員種別</th>
                       <th class="text-right rounded-tr-lg">勤怠登録</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {% for user_name, user_id, user_type_id in users %}
-                    <tr class="hover:bg-base-200">
+                    {% for group_name in group_names %}
+                    <tr class="bg-base-200">
+                      <td colspan="4" class="font-semibold text-xs uppercase text-base-content/80">{{ group_name }}</td>
+                    </tr>
+                    {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %}
+                    <tr class="hover:bg-base-300">
                       <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
+                      <td>{% if user_obj.group %} {{ user_obj.group.name }} {% else %} - {% endif %}</td>
+                      <td>{% if user_obj.user_type %} {{ user_obj.user_type.name }} {% else %} - {% endif %}</td>
                       <td class="text-right">
                         <div class="flex justify-end gap-2">
                           <a
@@ -112,7 +120,7 @@
                         </div>
                       </td>
                     </tr>
-                    {% endfor %}
+                    {% endfor %} {% endfor %}
                   </tbody>
                 </table>
               </div>

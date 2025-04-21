@@ -41,7 +41,7 @@
           class="p-1 border rounded min-h-12 
                 {% if is_holiday %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend and weekday_index == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}
                 text-center cursor-pointer hover:bg-base-200 hover:shadow-sm transition-all
-                {% if day.date == last_viewed_date %}border-accent{% endif %}"
+                {% if day.date == last_viewed_date %}border-gray-500 border-2{% endif %}"
           @click="open = true" data-date="{{ day.date }}" data-is-holiday="{{ is_holiday|lower }}">
           <div class="text-sm font-bold {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">{{ day.day }}</div>
           {% if day.holiday_name|default('') %}
@@ -113,7 +113,7 @@
         <div class="p-1 border rounded min-h-12 
                   {% if is_holiday %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend and weekday_index == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}
                   text-center
-                  {% if day.date == last_viewed_date %}border-accent{% endif %}"
+                  {% if day.date == last_viewed_date %}border-gray-500 border-2{% endif %}"
              data-date="{{ day.date }}">
           <div class="text-sm font-bold {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">{{ day.day }}</div>
           {% if day.holiday_name|default('') %}
@@ -382,7 +382,7 @@
       // 現在のカレンダーに今日の日付があれば強調表示
       const todayCell = document.querySelector(`[data-date="${todayDate}"]`);
       if (todayCell) {
-        todayCell.classList.add('border-accent');
+        todayCell.classList.add('border-gray-500');
         todayCell.classList.add('border-2');
       }
     }, 200);
