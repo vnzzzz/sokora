@@ -103,20 +103,23 @@ def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str
         date_headers.sort()
     
     # ヘッダー行を書き込み
-    headers = ["user_name", "user_id", "group_name", "is_contractor"] + date_headers
+    headers = ["user_name", "user_id", "group_name", "user_type"] + date_headers
     csv_writer.writerow(headers)
     
     # ユーザーデータを取得
     users_data = user.get_all_users(db)
     
     # 各ユーザーについて行を作成
-    for user_name, user_id, is_contractor in users_data:
+    for user_name, user_id, user_type_id in users_data:
         user_obj = user.get_by_user_id(db, user_id=user_id)
         if not user_obj:
             continue
             
         # ユーザーの所属グループを取得
         group_name = user_obj.group.name if user_obj.group else ""
+        
+        # ユーザーの社員種別を取得
+        user_type_name = user_obj.user_type.name if user_obj.user_type else ""
         
         # ユーザーの勤怠データを取得
         user_entries = attendance.get_user_data(db, user_id=user_id)
@@ -129,7 +132,7 @@ def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str
             user_locations[date_key] = location_name
         
         # 行データ作成
-        row_data = [user_name, user_id, group_name, "true" if is_contractor else "false"]
+        row_data = [user_name, user_id, group_name, user_type_name]
         
         # 各日付列のデータを追加
         for date_str in date_headers:

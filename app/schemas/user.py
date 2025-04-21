@@ -8,13 +8,14 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from .group import Group
+from .user_type import UserType
 
 
 class UserBase(BaseModel):
     """ユーザーの基本スキーマ"""
     username: str
     group_id: int
-    is_contractor: bool = False
+    user_type_id: int
 
 
 class UserCreate(UserBase):
@@ -26,13 +27,14 @@ class UserUpdate(BaseModel):
     """ユーザー更新用スキーマ"""
     username: Optional[str] = None
     group_id: int
-    is_contractor: Optional[bool] = None
+    user_type_id: int
 
 
 class User(UserBase):
     """ユーザー取得用スキーマ"""
     user_id: str
     group: Optional[Group] = None
+    user_type: Optional[UserType] = None
 
     class Config:
         """設定クラス"""

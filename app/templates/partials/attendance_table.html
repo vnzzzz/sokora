@@ -1,14 +1,16 @@
 <table class="table table-zebra w-full">
   <thead class="bg-base-300 text-base-content">
     <tr>
-      <th class="rounded-tl-lg">従業員名</th>
+      <th class="rounded-tl-lg">社員名</th>
+      <th>グループ</th>
+      <th>社員種別</th>
       <th class="text-right rounded-tr-lg">勤怠登録</th>
     </tr>
   </thead>
   <tbody>
     {% if users|length == 0 %}
     <tr>
-      <td colspan="2" class="text-center py-4">
+      <td colspan="4" class="text-center py-4">
         <div class="alert alert-warning shadow-sm">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -23,15 +25,19 @@
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <span>検索条件に一致する従業員が見つかりません。</span>
+          <span>検索条件に一致する社員が見つかりません。</span>
         </div>
       </td>
     </tr>
-    {% else %} {% for user_name, user_id, is_contractor in users %}
-    <tr class="hover:bg-base-200">
-      <td class="font-medium">
-        {{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span>{% endif %}
-      </td>
+    {% else %} {% for group_name in group_names %}
+    <tr class="bg-base-200">
+      <td colspan="4" class="font-semibold text-xs uppercase text-base-content/80">{{ group_name }}</td>
+    </tr>
+    {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %}
+    <tr class="hover:bg-base-300">
+      <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
+      <td>{% if user_obj.group %} {{ user_obj.group.name }} {% else %} - {% endif %}</td>
+      <td>{% if user_obj.user_type %} {{ user_obj.user_type.name }} {% else %} - {% endif %}</td>
       <td class="text-right">
         <div class="flex justify-end gap-2">
           <a href="/attendance/edit/{{ user_id }}" class="btn btn-sm btn-outline shadow-sm hover:shadow">
@@ -54,6 +60,6 @@
         </div>
       </td>
     </tr>
-    {% endfor %} {% endif %}
+    {% endfor %} {% endfor %} {% endif %}
   </tbody>
 </table>

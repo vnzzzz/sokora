@@ -13,13 +13,14 @@ from sqlalchemy.orm import Session
 from ...db.session import get_db
 from ...crud.user import user
 from ...crud.group import group
+from ...crud.user_type import user_type
 from ...schemas.user import User, UserCreate, UserList, UserUpdate
 
 # API用ルーター
 router = APIRouter(tags=["Users"])
 
 
-@router.get("/", response_model=UserList)
+@router.get("", response_model=UserList)
 def get_users(db: Session = Depends(get_db)) -> Any:
     """
     全てのユーザーを取得します。
@@ -27,7 +28,7 @@ def get_users(db: Session = Depends(get_db)) -> Any:
     users_data = user.get_all_users(db)
     users_list = []
     
-    for user_name, user_id_str, is_contractor in users_data:
+    for user_name, user_id_str, user_type_id in users_data:
         user_obj = user.get_by_user_id(db, user_id=user_id_str)
         if user_obj:
             users_list.append(user_obj)
@@ -49,12 +50,12 @@ def get_user(user_id: str, db: Session = Depends(get_db)) -> Any:
     return user_obj
 
 
-@router.post("/", response_model=User)
+@router.post("", response_model=User)
 async def create_user(
     username: str = Form(...),
     user_id: str = Form(...),
     group_id: str = Form(...),
-    is_contractor: bool = Form(False),
+    user_type_id: str = Form(...),
     db: Session = Depends(get_db),
 ) -> Any:
     """
@@ -77,13 +78,30 @@ async def create_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"グループID '{group_id_int}' が存在しません"
             )
+        
+        # 社員種別IDを整数型に変換
+        try:
+            user_type_id_int = int(user_type_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="無効な社員種別IDが指定されました"
+            )
+            
+        # 社員種別存在確認
+        user_type_obj = user_type.get_by_id(db, user_type_id=user_type_id_int)
+        if not user_type_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"社員種別ID '{user_type_id_int}' が存在しません"
+            )
                 
         # UserCreateオブジェクトを作成
         user_data = {
             "username": username,
             "user_id": user_id,
             "group_id": group_id_int,
-            "is_contractor": is_contractor
+            "user_type_id": user_type_id_int
         }
         
         # 既存ユーザーチェックと新規作成
@@ -108,7 +126,7 @@ async def update_user(
     user_id: str,
     username: str = Form(...),
     group_id: str = Form(...),
-    is_contractor: bool = Form(False),
+    user_type_id: str = Form(...),
     db: Session = Depends(get_db),
 ) -> Any:
     """
@@ -139,12 +157,29 @@ async def update_user(
                 detail=f"グループID '{group_id_int}' が存在しません"
             )
         
+        # 社員種別IDを整数型に変換
+        try:
+            user_type_id_int = int(user_type_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="無効な社員種別IDが指定されました"
+            )
+            
+        # 社員種別存在確認
+        user_type_obj = user_type.get_by_id(db, user_type_id=user_type_id_int)
+        if not user_type_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"社員種別ID '{user_type_id_int}' が存在しません"
+            )
+        
         success = user.update_user(
             db, 
             user_id=user_id, 
             username=username, 
             group_id=group_id_int,
-            is_contractor=is_contractor
+            user_type_id=user_type_id_int
         )
         if not success:
             raise HTTPException(

@@ -51,6 +51,14 @@ API_TAGS = [
         "name": "Users",
         "description": "ユーザーを管理するエンドポイント",
     },
+    {
+        "name": "Groups",
+        "description": "グループを管理するエンドポイント",
+    },
+    {
+        "name": "UserTypes",
+        "description": "社員種別を管理するエンドポイント",
+    },
 ]
 
 

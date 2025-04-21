@@ -98,10 +98,24 @@
       document.querySelectorAll('.calendar-cell').forEach((cell) => {
         cell.classList.remove('selected-date')
       })
+      document.querySelectorAll('.selected-column').forEach((cell) => {
+        cell.classList.remove('selected-column')
+      })
 
-      // 選択した日付を持つすべてのセルに選択クラスを追加
-      document.querySelectorAll(`.calendar-cell[data-date="${date}"]`).forEach((cell) => {
-        cell.classList.add('selected-date')
+      // 選択した日付の列を取得
+      const selectedDateCells = document.querySelectorAll(`.calendar-cell[data-date="${date}"]`)
+
+      // ヘッダーセルにはselected-dateクラスを追加
+      const headerCell = document.querySelector(`th.calendar-cell[data-date="${date}"]`)
+      if (headerCell) {
+        headerCell.classList.add('selected-date')
+      }
+
+      // それ以外のセルにはselected-columnクラスを追加
+      selectedDateCells.forEach((cell) => {
+        if (cell.tagName.toLowerCase() !== 'th') {
+          cell.classList.add('selected-column')
+        }
       })
 
       // 選択した日付を保存
@@ -202,12 +216,28 @@
   </script>
 
   <style>
-    /* 選択された日付のスタイル */
+    /* 選択された日付ヘッダーのスタイル */
     .selected-date {
-      border: 2px solid #ff6b6b !important;
-      background-color: rgba(255, 107, 107, 0.1) !important;
+      border-top: 2px solid #888888 !important;
+      border-left: 2px solid #888888 !important;
+      border-right: 2px solid #888888 !important;
+      background-color: rgba(136, 136, 136, 0.1) !important;
       position: relative;
       z-index: 5;
+    }
+
+    /* 選択された列のスタイル */
+    .selected-column {
+      border-left: 2px solid #888888 !important;
+      border-right: 2px solid #888888 !important;
+      background-color: rgba(136, 136, 136, 0.1) !important;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* 最後の行のセルに下線を追加 */
+    tr:last-child .selected-column {
+      border-bottom: 2px solid #888888 !important;
     }
 
     /* 選択時にヘッダーセルを太字にする */
