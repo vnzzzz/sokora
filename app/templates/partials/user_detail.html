@@ -2,8 +2,9 @@
   <div class="space-y-4">
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-bold">
-        {{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span>{% endif %}
-        勤務スケジュール
+        {{ user_name }} ({{ user_id }}) {% if user_type_name %}<span class="badge badge-accent"
+          >{{ user_type_name }}</span
+        >{% endif %} 勤務スケジュール
       </h3>
 
       <div class="btn-group">

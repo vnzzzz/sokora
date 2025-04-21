@@ -1,7 +1,7 @@
 <table class="table table-zebra w-full">
   <thead class="bg-base-300 text-base-content">
     <tr>
-      <th class="rounded-tl-lg">従業員名</th>
+      <th class="rounded-tl-lg">社員名</th>
       <th class="text-right rounded-tr-lg">勤怠登録</th>
     </tr>
   </thead>
@@ -23,15 +23,13 @@
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <span>検索条件に一致する従業員が見つかりません。</span>
+          <span>検索条件に一致する社員が見つかりません。</span>
         </div>
       </td>
     </tr>
-    {% else %} {% for user_name, user_id, is_contractor in users %}
+    {% else %} {% for user_name, user_id, user_type_id in users %}
     <tr class="hover:bg-base-200">
-      <td class="font-medium">
-        {{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span>{% endif %}
-      </td>
+      <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
       <td class="text-right">
         <div class="flex justify-end gap-2">
           <a href="/attendance/edit/{{ user_id }}" class="btn btn-sm btn-outline shadow-sm hover:shadow">

@@ -80,7 +80,7 @@ def download_csv(
         logger.error(f"CSVダウンロードエラー: {str(e)}", exc_info=True)
         # エラーが発生した場合も空のCSVを返す
         return StreamingResponse(
-            iter([b"user_name,user_id,group_name,is_contractor"]),
+            iter([b"user_name,user_id,group_name,is_contractor,is_manager"]),
             media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=work_entries_error.csv"}
         ) 

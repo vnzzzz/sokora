@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja" x-data class="bg-base-100">
-  {% set title_text = "従業員管理 - Sokora" %} {% include "components/head.html" %}
+  {% set title_text = "社員管理 - Sokora" %} {% include "components/head.html" %}
 
   <body class="min-h-screen bg-base-100">
     <!-- テーマ切替ボタン -->
@@ -17,10 +17,10 @@
           <div class="card-body p-6">
             <div class="flex justify-between items-center">
               <div>
-                <h2 class="text-2xl font-bold text-base-content">従業員管理</h2>
+                <h2 class="text-2xl font-bold text-base-content">社員管理</h2>
               </div>
 
-              <!-- 従業員追加ボタン -->
+              <!-- 社員追加ボタン -->
               <div x-data="{ showAddUser: false }" @click.away="showAddUser = false">
                 <button @click="showAddUser = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
                   <svg
@@ -37,27 +37,27 @@
                       d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z"
                     />
                   </svg>
-                  従業員追加
+                  社員追加
                 </button>
 
-                <!-- 従業員追加モーダル -->
+                <!-- 社員追加モーダル -->
                 <div
                   x-show="showAddUser"
                   style="display: none"
                   class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
                 >
                   <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                    <h3 class="font-bold text-lg mb-4 text-base-content">従業員追加</h3>
+                    <h3 class="font-bold text-lg mb-4 text-base-content">社員追加</h3>
                     <form action="/api/users" method="post" class="space-y-4" id="add-user-form">
                       <div class="form-control">
                         <label class="label">
-                          <span class="label-text">従業員名</span>
+                          <span class="label-text">社員名</span>
                         </label>
                         <input type="text" name="username" class="input input-bordered focus:border-neutral" required />
                       </div>
                       <div class="form-control">
                         <label class="label">
-                          <span class="label-text">従業員ID</span>
+                          <span class="label-text">社員ID</span>
                         </label>
                         <input type="text" name="user_id" class="input input-bordered focus:border-neutral" required />
                       </div>
@@ -74,10 +74,16 @@
                         </select>
                       </div>
                       <div class="form-control">
-                        <label class="label cursor-pointer">
-                          <span class="label-text">派遣社員</span>
-                          <input type="checkbox" name="is_contractor" class="checkbox" />
+                        <label class="label">
+                          <span class="label-text">社員種別</span>
+                          <span class="label-text-alt text-error">*</span>
                         </label>
+                        <select name="user_type_id" class="select select-bordered focus:border-neutral" required>
+                          <option value="">選択してください</option>
+                          {% for user_type in user_types %}
+                          <option value="{{ user_type.user_type_id }}">{{ user_type.name }}</option>
+                          {% endfor %}
+                        </select>
                       </div>
                       <div class="flex justify-end space-x-3 mt-6">
                         <button type="button" class="btn btn-outline" @click="showAddUser = false">キャンセル</button>
@@ -105,24 +111,24 @@
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   ></path>
                 </svg>
-                <span>従業員情報がありません。新しい従業員を追加してください。</span>
+                <span>社員情報がありません。新しい社員を追加してください。</span>
               </div>
               {% else %}
               <div class="overflow-x-auto rounded-lg">
                 <table class="table table-zebra w-full">
                   <thead class="bg-base-300 text-base-content">
                     <tr>
-                      <th class="rounded-tl-lg">従業員名</th>
+                      <th class="rounded-tl-lg">社員名</th>
                       <th>グループ</th>
-                      <th>派遣社員</th>
+                      <th>社員種別</th>
                       <th class="text-right rounded-tr-lg">操作</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {% for user_name, user_id, is_contractor, user_obj in users %}
+                    {% for user_name, user_id, user_type_id, user_obj in users %}
                     <tr class="hover:bg-base-200">
                       <td class="font-medium">
-                        <span id="user-name-{{ user_id }}">{{ user_name }} ({{ user_id }}) {% if is_contractor %}<span class="badge badge-neutral">派</span>{% endif %}</span>
+                        <span id="user-name-{{ user_id }}">{{ user_name }} ({{ user_id }})</span>
                       </td>
                       <td>
                         {% if user_obj.group %}
@@ -132,10 +138,10 @@
                         {% endif %}
                       </td>
                       <td>
-                        {% if is_contractor %}
-                          <span class="badge badge-neutral">派遣社員</span>
+                        {% if user_obj.user_type %}
+                          {{ user_obj.user_type.name }}
                         {% else %}
-                          <span class="badge badge-ghost">正社員</span>
+                          -
                         {% endif %}
                       </td>
                       <td class="text-right">
@@ -170,7 +176,7 @@
                               class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
                             >
                               <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                                <h3 class="font-bold text-lg mb-4 text-base-content">従業員編集</h3>
+                                <h3 class="font-bold text-lg mb-4 text-base-content">社員編集</h3>
                                 <form
                                   id="edit-modal-form-{{ user_id }}"
                                   action="/api/users/{{ user_id }}"
@@ -180,7 +186,7 @@
                                 >
                                   <div class="form-control">
                                     <label class="label">
-                                      <span class="label-text">従業員名</span>
+                                      <span class="label-text">社員名</span>
                                     </label>
                                     <input
                                       type="text"
@@ -203,10 +209,16 @@
                                     </select>
                                   </div>
                                   <div class="form-control">
-                                    <label class="label cursor-pointer">
-                                      <span class="label-text">派遣社員</span>
-                                      <input type="checkbox" name="is_contractor" class="checkbox" {% if is_contractor %}checked{% endif %} />
+                                    <label class="label">
+                                      <span class="label-text">社員種別</span>
+                                      <span class="label-text-alt text-error">*</span>
                                     </label>
+                                    <select name="user_type_id" class="select select-bordered focus:border-neutral" required>
+                                      <option value="">選択なし</option>
+                                      {% for user_type in user_types %}
+                                      <option value="{{ user_type.user_type_id }}" {% if user_obj and user_obj.user_type_id == user_type.user_type_id %}selected{% endif %}>{{ user_type.name }}</option>
+                                      {% endfor %}
+                                    </select>
                                   </div>
                                   <div class="flex justify-end space-x-3 mt-6">
                                     <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
@@ -283,17 +295,12 @@
     <!-- 編集フォーム用スクリプト -->
     <script>
       document.addEventListener('DOMContentLoaded', function () {
-        // 従業員追加フォームの送信処理
+        // 社員追加フォームの送信処理
         const addUserForm = document.getElementById('add-user-form')
         if (addUserForm) {
           addUserForm.addEventListener('submit', function (event) {
             event.preventDefault()
             const formData = new FormData(this)
-            
-            // チェックボックスが未チェックの場合はfalseを明示的に設定
-            if (!formData.has('is_contractor')) {
-              formData.append('is_contractor', 'false')
-            }
 
             // 送信ボタンを無効化
             const submitBtn = this.querySelector('button[type="submit"]')
@@ -334,12 +341,6 @@
           form.addEventListener('submit', function (event) {
             event.preventDefault()
             const formData = new FormData(this)
-            
-            // チェックボックスが未チェックの場合はfalseを明示的に設定
-            if (!formData.has('is_contractor')) {
-              formData.append('is_contractor', 'false')
-            }
-            
             const url = this.action
 
             fetch(url, {
