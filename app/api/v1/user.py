@@ -20,7 +20,7 @@ from ...schemas.user import User, UserCreate, UserList, UserUpdate
 router = APIRouter(tags=["Users"])
 
 
-@router.get("/", response_model=UserList)
+@router.get("", response_model=UserList)
 def get_users(db: Session = Depends(get_db)) -> Any:
     """
     全てのユーザーを取得します。
@@ -50,7 +50,7 @@ def get_user(user_id: str, db: Session = Depends(get_db)) -> Any:
     return user_obj
 
 
-@router.post("/", response_model=User)
+@router.post("", response_model=User)
 async def create_user(
     username: str = Form(...),
     user_id: str = Form(...),

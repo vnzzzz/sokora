@@ -20,7 +20,7 @@ from ...schemas.attendance import Attendance, AttendanceCreate, AttendanceList, 
 router = APIRouter(tags=["Attendance"])
 
 
-@router.get("/", response_model=AttendanceList)
+@router.get("", response_model=AttendanceList)
 def get_attendances(db: Session = Depends(get_db)) -> Any:
     """
     全ての勤怠データを取得します。
@@ -79,7 +79,7 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
     return detail
 
 
-@router.post("/", response_model=Attendance)
+@router.post("", response_model=Attendance)
 async def create_attendance(
     user_id: str = Form(...),
     date: str = Form(...),

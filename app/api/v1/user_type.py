@@ -16,7 +16,7 @@ from ...schemas.user_type import UserType, UserTypeCreate, UserTypeList, UserTyp
 router = APIRouter(tags=["UserTypes"])
 
 
-@router.get("/", response_model=UserTypeList)
+@router.get("", response_model=UserTypeList)
 def get_user_types(db: Session = Depends(get_db)) -> Any:
     """
     全ての社員種別を取得します。名前順でソートされます。
@@ -25,7 +25,7 @@ def get_user_types(db: Session = Depends(get_db)) -> Any:
     return {"user_types": user_types}
 
 
-@router.post("/", response_model=UserType)
+@router.post("", response_model=UserType)
 def create_user_type(
     *, db: Session = Depends(get_db), user_type_in: UserTypeCreate
 ) -> Any:
