@@ -2,13 +2,15 @@
   <thead class="bg-base-300 text-base-content">
     <tr>
       <th class="rounded-tl-lg">社員名</th>
+      <th>グループ</th>
+      <th>社員種別</th>
       <th class="text-right rounded-tr-lg">勤怠登録</th>
     </tr>
   </thead>
   <tbody>
     {% if users|length == 0 %}
     <tr>
-      <td colspan="2" class="text-center py-4">
+      <td colspan="4" class="text-center py-4">
         <div class="alert alert-warning shadow-sm">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -27,9 +29,15 @@
         </div>
       </td>
     </tr>
-    {% else %} {% for user_name, user_id, user_type_id in users %}
-    <tr class="hover:bg-base-200">
+    {% else %} {% for group_name in group_names %}
+    <tr class="bg-base-200">
+      <td colspan="4" class="font-semibold text-xs uppercase text-base-content/80">{{ group_name }}</td>
+    </tr>
+    {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %}
+    <tr class="hover:bg-base-300">
       <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
+      <td>{% if user_obj.group %} {{ user_obj.group.name }} {% else %} - {% endif %}</td>
+      <td>{% if user_obj.user_type %} {{ user_obj.user_type.name }} {% else %} - {% endif %}</td>
       <td class="text-right">
         <div class="flex justify-end gap-2">
           <a href="/attendance/edit/{{ user_id }}" class="btn btn-sm btn-outline shadow-sm hover:shadow">
@@ -52,6 +60,6 @@
         </div>
       </td>
     </tr>
-    {% endfor %} {% endif %}
+    {% endfor %} {% endfor %} {% endif %}
   </tbody>
 </table>

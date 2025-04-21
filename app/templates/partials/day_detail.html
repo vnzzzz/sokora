@@ -1,4 +1,4 @@
-<section class="p-2">
+<section class="p-2" id="day-detail-container">
   {% if success_message %}
   <div class="alert alert-success mb-4">
     <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -22,34 +22,40 @@
   <div class="card card-compact bg-base-100 shadow-md mb-2">
     <div class="card-body">
       <h2 class="card-title text-base">勤務場所別社員リスト</h2>
-      <div class="flex flex-col gap-2">
-        {% for location, users in attendance_data.items() %}
-        <div class="card card-compact bg-base-200">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for location, location_data in organized_data.items() %}
+        <div class="card card-compact bg-base-200 h-full">
           <div class="card-body">
             <h3 class="card-title text-sm">{{ location }}</h3>
-            <div class="flex flex-wrap gap-1">
-              {% for user in users %}
-              <div
-                class="avatar placeholder cursor-pointer"
-                hx-get="/day/{{ target_date }}/user/{{ user.user_id }}"
-                hx-target="#user-detail"
-                hx-swap="innerHTML"
-              >
-                <div class="bg-neutral text-neutral-content rounded-full w-12">
-                  <span class="text-xs">{{ user.user_name }}</span>
-                </div>
-                {% if user.user_type_name %}
-                <span class="badge badge-sm badge-primary">{{ user.user_type_name }}</span>
-                {% endif %}
-              </div>
-              {% endfor %}
+
+            {% for group_name in location_data.group_names %}
+            <div class="mt-3">
+              <h4 class="text-xs font-semibold uppercase text-base-content/70 px-1 mb-1">{{ group_name }}</h4>
+              <ul class="space-y-1 mt-1">
+                {% for user in location_data.groups[group_name] %}
+                <li
+                  class="flex items-center p-2 bg-base-100 rounded cursor-pointer hover:bg-base-300 transition-colors"
+                  hx-get="/day/{{ target_date }}/user/{{ user.user_id }}"
+                  hx-target="#day-detail-container"
+                  hx-swap="outerHTML"
+                >
+                  <div class="flex-1">
+                    <span class="font-medium">{{ user.user_name }}</span>
+                    <span class="text-sm text-base-content/70">({{ user.user_id }})</span>
+                    {% if user.user_type_name %}
+                    <span class="badge badge-sm badge-primary ml-2">{{ user.user_type_name }}</span>
+                    {% endif %}
+                  </div>
+                </li>
+                {% endfor %}
+              </ul>
             </div>
+            {% endfor %}
           </div>
         </div>
         {% endfor %}
       </div>
     </div>
   </div>
-  <div id="user-detail"></div>
   {% endif %}
 </section>
