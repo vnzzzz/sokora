@@ -16,7 +16,7 @@ from ...schemas.location import Location, LocationCreate, LocationList, Location
 router = APIRouter(tags=["Locations"])
 
 
-@router.get("/", response_model=LocationList)
+@router.get("", response_model=LocationList)
 def get_locations(db: Session = Depends(get_db)) -> Any:
     """
     全ての勤務場所を取得します。名前順でソートされます。
@@ -25,7 +25,7 @@ def get_locations(db: Session = Depends(get_db)) -> Any:
     return {"locations": locations}
 
 
-@router.post("/", response_model=Location)
+@router.post("", response_model=Location)
 def create_location(
     *, db: Session = Depends(get_db), location_in: LocationCreate
 ) -> Any:

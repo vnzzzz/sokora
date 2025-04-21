@@ -16,7 +16,7 @@ from ...schemas.group import Group, GroupCreate, GroupList, GroupUpdate
 router = APIRouter(tags=["Groups"])
 
 
-@router.get("/", response_model=GroupList)
+@router.get("", response_model=GroupList)
 def get_groups(db: Session = Depends(get_db)) -> Any:
     """
     全てのグループを取得します。名前順でソートされます。
@@ -25,7 +25,7 @@ def get_groups(db: Session = Depends(get_db)) -> Any:
     return {"groups": groups}
 
 
-@router.post("/", response_model=Group)
+@router.post("", response_model=Group)
 def create_group(
     *, db: Session = Depends(get_db), group_in: GroupCreate
 ) -> Any:
