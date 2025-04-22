@@ -1,39 +1,47 @@
 <section class="p-2">
   <h2 class="text-xl font-bold mb-4 text-center">{{ month }}</h2>
   <div class="overflow-x-auto">
-    <table class="table table-xs table-zebra w-full">
+    <table class="table table-xs table-zebra w-full" style="table-layout: fixed">
       <thead>
         <tr>
-          <th class="bg-base-200 text-left sticky left-0 z-10 w-32">勤務場所</th>
-          {% for week in calendar.weeks %} {% for day in week %} {% if day and day.day != 0 %} {% set is_weekend =
-          loop.index0 == 0 or loop.index0 == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set
-          weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 or is_holiday else
-          "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else "" ) %}
+          <th class="bg-base-200 text-left sticky left-0 z-10 w-32" style="width: 130px; min-width: 130px">勤務場所</th>
+
+          {# 1日〜末日のデータを集めるための配列 #} {% set day_numbers = [] %} {% set weekday_indices = [] %} {% set
+          day_data = [] %} {# 日付データの収集 #} {% for week in calendar.weeks %} {% for day_idx in range(7) %} {% if
+          week[day_idx] and week[day_idx].day != 0 %} {% set _ = day_numbers.append(week[day_idx].day) %} {% set _ =
+          weekday_indices.append(day_idx) %} {% set _ = day_data.append(week[day_idx]) %} {% endif %} {% endfor %} {%
+          endfor %} {# 日付ごとのインデックスを取得するヘルパー #} {% set day_count = day_numbers|length %} {#
+          1日から順に並べる #} {% for i in range(1, 32) %} {% for j in range(day_count) %} {% if day_numbers[j] == i %}
+          {% set day = day_data[j] %} {% set day_idx = weekday_indices[j] %} {% set is_weekend = day_idx == 0 or day_idx
+          == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ (
+          "bg-red-900/10 dark:bg-red-300/10" if day_idx == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if
+          day_idx == 6 else "" ) %}
+
           <th
             class="bg-base-200 text-center p-1 w-10 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
             hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
+            data-day="{{ day.day }}"
             onclick="highlightSelectedDate('{{ day.date }}')"
+            style="width: 20px; min-width: 20px; max-width: 20px"
           >
             <div
-              class="font-bold text-sm {% if is_holiday or loop.index0 == 0 %}text-red-600 dark:text-red-400{% elif loop.index0 == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+              class="font-bold text-sm {% if is_holiday or day_idx == 0 %}text-red-600 dark:text-red-400{% elif day_idx == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
             >
               {{ day.day }}
             </div>
             {% if day.holiday_name|default('') %}
             <div class="text-xs opacity-70 custom-tooltip holiday-tooltip">
-              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[loop.index0] }}
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[day_idx] }}
               <span class="tooltip-text">{{ day.holiday_name }}</span>
             </div>
             {% else %}
             <div class="text-xs opacity-70">
-              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[loop.index0] }}
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[day_idx] }}
             </div>
             {% endif %}
           </th>
-          {% else %}
-          <th class="bg-base-200 text-center p-1 w-10"></th>
           {% endif %} {% endfor %} {% endfor %}
         </tr>
       </thead>
@@ -41,26 +49,32 @@
         <!-- 勤務場所の行 -->
         {% for location in calendar.locations %}
         <tr>
-          <td class="bg-base-200 font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap">
+          <td
+            class="bg-base-200 font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap"
+            style="width: 130px; min-width: 130px"
+          >
             {{ location.name }}
           </td>
-          {% for week in calendar.weeks %} {% for day in week %} {% if day and day.day != 0 %} {% set is_weekend =
-          loop.index0 == 0 or loop.index0 == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set
-          weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if loop.index0 == 0 or is_holiday else
-          "bg-blue-900/10 dark:bg-blue-300/10" if loop.index0 == 6 else "" ) %}
+
+          {# 各勤務場所のデータを1日から順に表示 #} {% for i in range(1, 32) %} {% for j in range(day_count) %} {% if
+          day_numbers[j] == i %} {% set day = day_data[j] %} {% set day_idx = weekday_indices[j] %} {% set is_weekend =
+          day_idx == 0 or day_idx == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class =
+          "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if day_idx == 0 or is_holiday else "bg-blue-900/10
+          dark:bg-blue-300/10" if day_idx == 6 else "" ) %}
+
           <td
             class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
             hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
+            data-day="{{ day.day }}"
             onclick="highlightSelectedDate('{{ day.date }}')"
+            style="width: 40px; min-width: 40px; max-width: 40px"
           >
             <span class="{{ location.color }} whitespace-nowrap">
               {% if day and location.key in day and day[location.key] != 0 %} {{ day[location.key] }} {% endif %}
             </span>
           </td>
-          {% else %}
-          <td class="p-1"></td>
           {% endif %} {% endfor %} {% endfor %}
         </tr>
         {% endfor %}
@@ -216,6 +230,19 @@
   </script>
 
   <style>
+    /* カレンダーテーブルの固定レイアウト */
+    table {
+      table-layout: fixed !important;
+    }
+
+    /* 日付セルの幅を固定 */
+    .calendar-cell {
+      width: 20px !important;
+      min-width: 20px !important;
+      max-width: 20px !important;
+      box-sizing: border-box;
+    }
+
     /* 選択された日付ヘッダーのスタイル */
     .selected-date {
       border-top: 2px solid #888888 !important;
