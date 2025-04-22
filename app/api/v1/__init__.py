@@ -1,12 +1,16 @@
 """
-sokoraAPI V1
+Sokora API V1
 ==========
 
-sokoraAPIエンドポイントのバージョン1です。
+Sokora APIエンドポイントのバージョン1です。
+すべてのルーターをまとめて、APIマウントポイントを管理します。
 """
 
 # APIバージョン
 __version__ = "0.1.0"
+
+# FastAPIルーター設定
+from fastapi import APIRouter
 
 # モジュールのインポート
 # ページ・UI関連
@@ -16,14 +20,41 @@ from . import attendance, location, user, group, user_type
 # CSV機能関連
 from . import csv
 
-# APIルーターの設定
-from fastapi import APIRouter
-
+# メインAPIルーターの作成（すべてのAPIエンドポイントを統合）
 api_router = APIRouter(prefix="/api")
 
 # 各APIをマウント
-api_router.include_router(user.router, prefix="/users")
-api_router.include_router(attendance.router, prefix="/attendances")
-api_router.include_router(location.router, prefix="/locations")
-api_router.include_router(group.router, prefix="/groups")
-api_router.include_router(user_type.router, prefix="/user_types")
+# ユーザー関連API
+api_router.include_router(
+    user.router, 
+    prefix="/users", 
+    tags=["Users"]
+)
+
+# 勤怠データ関連API
+api_router.include_router(
+    attendance.router, 
+    prefix="/attendances", 
+    tags=["Attendance"]
+)
+
+# 勤務場所関連API
+api_router.include_router(
+    location.router, 
+    prefix="/locations", 
+    tags=["Locations"]
+)
+
+# グループ関連API
+api_router.include_router(
+    group.router, 
+    prefix="/groups", 
+    tags=["Groups"]
+)
+
+# 社員種別関連API
+api_router.include_router(
+    user_type.router, 
+    prefix="/user_types", 
+    tags=["UserTypes"]
+)

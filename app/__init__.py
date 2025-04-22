@@ -9,6 +9,18 @@ FastAPIで構築されたシンプルな勤怠記録ツールです。
 - 日次の勤怠状況表示
 - 月間カレンダービュー
 - ユーザーごとのデータ閲覧
+- ユーザー、勤務場所、グループ管理
+- CSVによるデータエクスポート
+
+技術スタック:
+- FastAPI (バックエンド)
+- HTMX, Alpine.js (フロントエンド)
+- SQLAlchemy (ORM)
+- SQLite (データベース)
+- Jinja2 (テンプレート)
 """
 
 from .core.config import APP_VERSION, logger
+
+__version__ = APP_VERSION
+__author__ = "Sokora Team"

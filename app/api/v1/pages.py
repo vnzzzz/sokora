@@ -68,7 +68,7 @@ def root_page(request: Request, db: Session = Depends(get_db)) -> Any:
         "default_locations": location_badges,
         "default_has_data": default_has_data,
     }
-    return templates.TemplateResponse("base.html", context)
+    return templates.TemplateResponse("pages/index.html", context)
 
 
 @router.get("/user", response_class=HTMLResponse)
@@ -121,7 +121,7 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
         grouped_users[g_name].sort(key=lambda u: u[2])  # user_type_id でソート
     
     return templates.TemplateResponse(
-        "user.html", {
+        "pages/user/index.html", {
             "request": request, 
             "users": users, 
             "groups": groups, 
@@ -211,7 +211,7 @@ def attendance_page(
     
     # 通常のリクエストの場合は完全なページを返す
     return templates.TemplateResponse(
-        "attendance.html", {
+        "pages/attendance/index.html", {
             "request": request, 
             "users": users, 
             "groups": groups, 
@@ -291,7 +291,7 @@ def edit_user_attendance(
         "editable": True,  # 編集可能モード
     }
 
-    return templates.TemplateResponse("attendance_edit.html", context)
+    return templates.TemplateResponse("pages/attendance/edit.html", context)
 
 
 @router.get("/locations", response_class=HTMLResponse)
@@ -307,7 +307,7 @@ def location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any
     """
     locations = location.get_all_locations(db)
     return templates.TemplateResponse(
-        "location.html", {"request": request, "locations": locations}
+        "pages/location/index.html", {"request": request, "locations": locations}
     )
 
 
@@ -324,7 +324,7 @@ def group_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """
     groups = group.get_multi(db)
     return templates.TemplateResponse(
-        "group.html", {"request": request, "groups": groups}
+        "pages/group/index.html", {"request": request, "groups": groups}
     )
 
 
@@ -341,7 +341,7 @@ def user_type_manage_page(request: Request, db: Session = Depends(get_db)) -> An
     """
     user_types = user_type.get_multi(db)
     return templates.TemplateResponse(
-        "user_type.html", {"request": request, "user_types": user_types}
+        "pages/user_type/index.html", {"request": request, "user_types": user_types}
     )
 
 
