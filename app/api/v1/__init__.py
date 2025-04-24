@@ -12,13 +12,8 @@ __version__ = "0.1.0"
 # FastAPIルーター設定
 from fastapi import APIRouter
 
-# モジュールのインポート
-# ページ・UI関連
-from . import pages
 # データ操作API関連
-from . import attendance, location, user, group, user_type
-# CSV機能関連
-from . import csv
+from app.api.v1 import attendance, location, user, group, user_type, csv
 
 # メインAPIルーターの作成（すべてのAPIエンドポイントを統合）
 api_router = APIRouter(prefix="/api")
@@ -58,3 +53,12 @@ api_router.include_router(
     prefix="/user_types", 
     tags=["UserTypes"]
 )
+
+# CSVデータダウンロードAPI
+api_router.include_router(
+    csv.router,
+    tags=["Data"]
+)
+
+# v1 APIルーター
+router = api_router

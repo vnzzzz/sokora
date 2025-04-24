@@ -16,7 +16,8 @@ from .core.config import APP_VERSION, logger
 # DBモジュールのインポート
 from .db.session import initialize_database
 # ルートモジュールのインポート
-from .api.v1 import pages, api_router, csv
+from .api.pages import router as pages_router  # UIページ用ルーター
+from .api.v1 import router as api_v1_router    # API v1用ルーター
 
 
 # APIタグ定義
@@ -45,6 +46,10 @@ API_TAGS: List[Dict[str, str]] = [
         "name": "UserTypes",
         "description": "社員種別を管理するエンドポイント",
     },
+    {
+        "name": "Data",
+        "description": "CSVを管理するエンドポイント",
+    },
 ]
 
 
@@ -65,10 +70,11 @@ def create_application() -> FastAPI:
     # /staticから静的ファイルを提供
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-    # 各モジュールからルーターを組み込む
-    app.include_router(pages.router)  # ページ表示用統合ルーター
-    app.include_router(api_router)  # API用ルーター
-    app.include_router(csv.router)  # CSV機能用ルーター
+    # UIページ用ルーターを組み込み
+    app.include_router(pages_router)
+    
+    # API v1用ルーターを組み込み
+    app.include_router(api_v1_router)
 
     return app
 

@@ -1,43 +1,21 @@
 """
-CSVダウンロードエンドポイント
+CSVデータダウンロードAPI
 =====================
 
-CSVデータのダウンロードに関連するエンドポイントを提供します。
+CSVデータのダウンロードに関連するAPIエンドポイントを提供します。
 """
 
-from fastapi import APIRouter, Request, Depends, Query
-from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
-from io import StringIO
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from typing import Any, Optional
 from sqlalchemy.orm import Session
 
-from ...db.session import get_db
-from ...utils.csv_utils import get_work_entries_csv, get_available_months
-from ...core.config import logger
+from app.db.session import get_db
+from app.utils.csv_utils import get_work_entries_csv
+from app.core.config import logger
 
 # ルーター定義
-router = APIRouter(prefix="/csv", tags=["Pages"])
-templates = Jinja2Templates(directory="app/templates")
-
-@router.get("", response_class=HTMLResponse)
-def csv_page(request: Request) -> Any:
-    """
-    CSVダウンロードページを表示します
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
-    """
-    # 利用可能な月リストを取得
-    months = get_available_months()
-    
-    return templates.TemplateResponse(
-        "pages/csv/index.html", 
-        {"request": request, "months": months}
-    )
+router = APIRouter(prefix="/csv", tags=["Data"])
 
 @router.get("/download")
 def download_csv(
