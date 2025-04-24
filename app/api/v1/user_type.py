@@ -9,9 +9,9 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from ...db.session import get_db
-from ...crud.user_type import user_type
-from ...schemas.user_type import UserType, UserTypeCreate, UserTypeList, UserTypeUpdate
+from app.db.session import get_db
+from app.crud.user_type import user_type
+from app.schemas.user_type import UserType, UserTypeCreate, UserTypeList, UserTypeUpdate
 
 router = APIRouter(tags=["UserTypes"])
 
@@ -88,7 +88,7 @@ def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any
         )
     
     # 社員種別が使用されているかチェック
-    from ...models.user import User
+    from app.models.user import User
     user_count = db.query(User).filter(User.user_type_id == user_type_id).count()
     if user_count > 0:
         raise HTTPException(

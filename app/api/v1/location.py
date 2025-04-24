@@ -9,9 +9,9 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from ...db.session import get_db
-from ...crud.location import location
-from ...schemas.location import Location, LocationCreate, LocationList, LocationUpdate
+from app.db.session import get_db
+from app.crud.location import location
+from app.schemas.location import Location, LocationCreate, LocationList, LocationUpdate
 
 router = APIRouter(tags=["Locations"])
 
@@ -88,7 +88,7 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
         )
     
     # 勤務場所が使用されているかチェック
-    from ...models.attendance import Attendance
+    from app.models.attendance import Attendance
     attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
     if attendance_count > 0:
         raise HTTPException(

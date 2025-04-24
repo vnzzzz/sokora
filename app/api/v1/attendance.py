@@ -11,10 +11,10 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 
-from ...db.session import get_db
-from ...crud.attendance import attendance
-from ...crud.location import location
-from ...schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate, UserAttendance
+from app.db.session import get_db
+from app.crud.attendance import attendance
+from app.crud.location import location
+from app.schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate, UserAttendance
 
 # API用ルーター
 router = APIRouter(tags=["Attendance"])
@@ -34,7 +34,7 @@ def get_user_attendance(user_id: str, db: Session = Depends(get_db)) -> Any:
     """
     特定ユーザーの勤怠データを取得します。
     """
-    from ...crud.user import user
+    from app.crud.user import user
     
     user_obj = user.get_by_user_id(db, user_id=user_id)
     if not user_obj:
@@ -109,7 +109,7 @@ async def create_attendance(
             )
         
         # 作成したデータを返す
-        from ...crud.user import user
+        from app.crud.user import user
         user_obj = user.get_by_user_id(db, user_id=user_id)
         if not user_obj:
             raise HTTPException(

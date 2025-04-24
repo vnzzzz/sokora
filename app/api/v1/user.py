@@ -10,11 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from ...db.session import get_db
-from ...crud.user import user
-from ...crud.group import group
-from ...crud.user_type import user_type
-from ...schemas.user import User, UserCreate, UserList, UserUpdate
+from app.db.session import get_db
+from app.crud.user import user
+from app.crud.group import group
+from app.crud.user_type import user_type
+from app.schemas.user import User, UserCreate, UserList, UserUpdate
 
 # API用ルーター
 router = APIRouter(tags=["Users"])

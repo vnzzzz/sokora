@@ -9,9 +9,9 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from ...db.session import get_db
-from ...crud.group import group
-from ...schemas.group import Group, GroupCreate, GroupList, GroupUpdate
+from app.db.session import get_db
+from app.crud.group import group
+from app.schemas.group import Group, GroupCreate, GroupList, GroupUpdate
 
 router = APIRouter(tags=["Groups"])
 
@@ -88,7 +88,7 @@ def delete_group(*, db: Session = Depends(get_db), group_id: int) -> Any:
         )
     
     # グループが使用されているかチェック
-    from ...models.user import User
+    from app.models.user import User
     user_count = db.query(User).filter(User.group_id == group_id).count()
     if user_count > 0:
         raise HTTPException(
