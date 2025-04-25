@@ -9,7 +9,7 @@ from sqlalchemy import Column, String, Integer, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from typing import Any, ClassVar
 
-from ..db.session import Base
+from app.db.session import Base
 
 
 class Attendance(Base):  # type: ignore

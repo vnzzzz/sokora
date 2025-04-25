@@ -39,23 +39,23 @@
             <h3 class="font-bold text-lg mb-4 text-base-content">社員追加</h3>
             <form action="/api/users" method="post" class="space-y-4" id="add-user-form">
               <div class="form-control">
-                <label class="label">
+                <label class="label" for="add-username">
                   <span class="label-text">社員名</span>
                 </label>
-                <input type="text" name="username" class="input input-bordered focus:border-neutral" required />
+                <input type="text" id="add-username" name="username" class="input input-bordered focus:border-neutral" required autocomplete="name" />
               </div>
               <div class="form-control">
-                <label class="label">
+                <label class="label" for="add-user-id">
                   <span class="label-text">社員ID</span>
                 </label>
-                <input type="text" name="user_id" class="input input-bordered focus:border-neutral" required />
+                <input type="text" id="add-user-id" name="user_id" class="input input-bordered focus:border-neutral" required autocomplete="off" />
               </div>
               <div class="form-control">
-                <label class="label">
+                <label class="label" for="add-group-id">
                   <span class="label-text">グループ</span>
                   <span class="label-text-alt text-error">*</span>
                 </label>
-                <select name="group_id" class="select select-bordered focus:border-neutral" required>
+                <select id="add-group-id" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
                   <option value="">選択してください</option>
                   {% for group in groups %}
                   <option value="{{ group.group_id }}">{{ group.name }}</option>
@@ -63,11 +63,11 @@
                 </select>
               </div>
               <div class="form-control">
-                <label class="label">
+                <label class="label" for="add-user-type-id">
                   <span class="label-text">社員種別</span>
                   <span class="label-text-alt text-error">*</span>
                 </label>
-                <select name="user_type_id" class="select select-bordered focus:border-neutral" required>
+                <select id="add-user-type-id" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
                   <option value="">選択してください</option>
                   {% for user_type in user_types %}
                   <option value="{{ user_type.user_type_id }}">{{ user_type.name }}</option>
@@ -170,23 +170,25 @@
                             onsubmit="this.method='PUT';"
                           >
                             <div class="form-control">
-                              <label class="label">
+                              <label class="label" for="edit-username-{{ user_id }}">
                                 <span class="label-text">社員名</span>
                               </label>
                               <input
                                 type="text"
+                                id="edit-username-{{ user_id }}"
                                 name="username"
                                 value="{{ user_name }}"
                                 class="input input-bordered focus:border-neutral"
                                 required
+                                autocomplete="name"
                               />
                             </div>
                             <div class="form-control">
-                              <label class="label">
+                              <label class="label" for="edit-group-id-{{ user_id }}">
                                 <span class="label-text">グループ</span>
                                 <span class="label-text-alt text-error">*</span>
                               </label>
-                              <select name="group_id" class="select select-bordered focus:border-neutral" required>
+                              <select id="edit-group-id-{{ user_id }}" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
                                 <option value="">選択なし</option>
                                 {% for group in groups %}
                                 <option value="{{ group.group_id }}" {% if user_obj and user_obj.group_id == group.group_id %}selected{% endif %}>{{ group.name }}</option>
@@ -194,11 +196,11 @@
                               </select>
                             </div>
                             <div class="form-control">
-                              <label class="label">
+                              <label class="label" for="edit-user-type-id-{{ user_id }}">
                                 <span class="label-text">社員種別</span>
                                 <span class="label-text-alt text-error">*</span>
                               </label>
-                              <select name="user_type_id" class="select select-bordered focus:border-neutral" required>
+                              <select id="edit-user-type-id-{{ user_id }}" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
                                 <option value="">選択なし</option>
                                 {% for user_type in user_types %}
                                 <option value="{{ user_type.user_type_id }}" {% if user_obj and user_obj.user_type_id == user_type.user_type_id %}selected{% endif %}>{{ user_type.name }}</option>
@@ -243,10 +245,11 @@
                         class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
                       >
                         <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 text-error">削除の確認</h3>
-                          <p class="mb-5">
-                            「{{ user_name }} ({{ user_id
-                            }})」を削除してもよろしいですか？この操作は元に戻せません。
+                          <h3 class="font-bold text-lg mb-4 text-error text-left">削除の確認</h3>
+                          <p class="mb-5 text-left">
+                            「{{ user_name }} ({{ user_id }})」を削除してもよろしいですか？<br>
+                            この操作は元に戻せません。<br>
+                            ※勤怠データが登録されている場合は削除できません。
                           </p>
                           <div class="flex justify-end space-x-3">
                             <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">
@@ -354,21 +357,38 @@
       form.addEventListener('submit', function (event) {
         event.preventDefault()
         const url = this.action
+        const submitBtn = this.querySelector('button[type="submit"]')
+        
+        if (submitBtn) {
+          submitBtn.disabled = true
+          submitBtn.textContent = '処理中...'
+        }
 
         fetch(url, {
           method: 'DELETE'
         })
           .then((response) => {
-            if (response.ok) {
-              window.location.reload()
-            } else {
+            if (!response.ok) {
               return response.json().then((data) => {
-                alert('エラーが発生しました: ' + (data.detail || '不明なエラー'))
+                throw new Error(data.detail || 'エラーが発生しました')
               })
             }
+            window.location.reload()
           })
           .catch((error) => {
-            alert('エラーが発生しました: ' + error)
+            alert(error.message || 'エラーが発生しました')
+            
+            // ボタンを元に戻す
+            if (submitBtn) {
+              submitBtn.disabled = false
+              submitBtn.textContent = '削除'
+            }
+            
+            // モーダルを閉じる
+            const modalElement = form.closest('[x-data*="showDeleteConfirm"]')
+            if (modalElement && typeof modalElement.__x !== 'undefined') {
+              modalElement.__x.$data.showDeleteConfirm = false
+            }
           })
       })
     })

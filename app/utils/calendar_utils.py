@@ -153,6 +153,11 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
             location_name = str(attendance.location_info)  # 勤務場所の文字列表現を取得
             location_counts[day][location_name] += 1
 
+        # 日ごとの勤怠データ数を一度のクエリで取得（パフォーマンス改善）
+        attendance_counts = calendar_crud.get_month_attendance_counts(
+            db, first_day=first_day, last_day=last_day
+        )
+
         # 各週と日に勤怠情報を付与
         weeks = []
         for week in cal:
@@ -176,10 +181,8 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
                     current_date = date(year, month_num, day)
                     date_str = current_date.strftime("%Y-%m-%d")
 
-                    # この日の勤怠データをカウント
-                    attendance_count = calendar_crud.count_day_attendances(
-                        db, target_date=current_date
-                    )
+                    # この日の勤怠データカウントを取得（最適化版）
+                    attendance_count = attendance_counts.get(day, 0)
 
                     # 祝日情報を取得
                     is_holiday_flag = is_holiday(current_date)

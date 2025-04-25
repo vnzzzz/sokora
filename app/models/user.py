@@ -8,7 +8,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 
-from ..db.session import Base
+from app.db.session import Base
 
 
 class User(Base):  # type: ignore

@@ -10,8 +10,8 @@ from typing import Any, Dict, Optional, Union, List
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from ..models.group import Group
-from ..schemas.group import GroupCreate, GroupUpdate
+from app.models.group import Group
+from app.schemas.group import GroupCreate, GroupUpdate
 
 
 class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):

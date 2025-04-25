@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from typing import Any, Optional, Dict, List
 import html
 from sqlalchemy.orm import Session
+import time
 
 from app.db.session import get_db
 from app.crud.user import user
@@ -26,6 +27,11 @@ from app.core.config import logger
 # ルーター定義
 router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
+
+# カレンダーデータのキャッシュ（パフォーマンス最適化）
+_calendar_cache: Dict[str, Dict[str, Any]] = {}
+_calendar_cache_ttl = 60  # キャッシュの有効期間（秒）
+_calendar_cache_timestamp: Dict[str, float] = {}
 
 
 @router.get("/calendar", response_class=HTMLResponse)
@@ -45,17 +51,26 @@ def get_calendar(
     if month is None:
         month = get_current_month_formatted()
 
+    # キャッシュチェック（パフォーマンス最適化）
+    current_time = time.time()
+    if month in _calendar_cache and current_time - _calendar_cache_timestamp.get(month, 0) < _calendar_cache_ttl:
+        calendar_data = _calendar_cache[month]
+    else:
+        # カレンダーデータを生成してキャッシュする
+        calendar_data = build_calendar_data(db, month)
+        _calendar_cache[month] = calendar_data
+        _calendar_cache_timestamp[month] = current_time
+    
     # 今日の日付をフォーマットして取得
     today_date = get_today_formatted()
 
-    calendar_data = build_calendar_data(db, month)
     context = {
         "request": request,
         "month": calendar_data["month_name"],
         "calendar": calendar_data,
         "today_date": today_date  # テンプレートに今日の日付を渡す
     }
-    return templates.TemplateResponse("components/calendar/calendar.html", context)
+    return templates.TemplateResponse("components/calendar/linear_calendar.html", context)
 
 
 @router.get("/day/{day}", response_class=HTMLResponse)

@@ -12,12 +12,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 
 # 設定ファイルのインポート
-from .core.config import APP_VERSION, logger
+from app.core.config import APP_VERSION, logger
 # DBモジュールのインポート
-from .db.session import initialize_database
+from app.db.session import initialize_database
 # ルートモジュールのインポート
-from .api.pages import router as pages_router  # UIページ用ルーター
-from .api.v1 import router as api_v1_router    # API v1用ルーター
+from app.api.pages import router as pages_router  # UIページ用ルーター
+from app.api.v1 import router as api_v1_router    # API v1用ルーター
 
 
 # APIタグ定義

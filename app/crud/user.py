@@ -10,10 +10,10 @@ from typing import Any, Dict, Optional, Union, List, Tuple
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from ..models.user import User
-from ..models.attendance import Attendance
-from ..schemas.user import UserCreate, UserUpdate
-from ..core.config import logger
+from app.models.user import User
+from app.models.attendance import Attendance
+from app.schemas.user import UserCreate, UserUpdate
+from app.core.config import logger
 
 
 class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):

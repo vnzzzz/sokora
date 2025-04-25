@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional, Union
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from ..models.location import Location
-from ..schemas.location import LocationCreate, LocationUpdate
-from ..core.config import logger
+from app.models.location import Location
+from app.schemas.location import LocationCreate, LocationUpdate
+from app.core.config import logger
 
 
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):

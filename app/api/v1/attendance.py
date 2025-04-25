@@ -6,8 +6,8 @@
 """
 
 from typing import Any, List, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Form
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Form, Request
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 
@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.crud.attendance import attendance
 from app.crud.location import location
 from app.schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate, UserAttendance
+from app.core.config import logger
 
 # API用ルーター
 router = APIRouter(tags=["Attendance"])
@@ -81,6 +82,7 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
 
 @router.post("", response_model=Attendance)
 async def create_attendance(
+    request: Request,
     user_id: str = Form(...),
     date: str = Form(...),
     location_id: int = Form(...),
@@ -120,15 +122,32 @@ async def create_attendance(
         date_obj = datetime.strptime(date, "%Y-%m-%d").date()
         attendance_obj = attendance.get_by_user_and_date(db, user_id=str(user_obj.user_id), date=date_obj)
         
+        if attendance_obj is None and location_id != -1:
+            # 削除でなく、かつオブジェクトが見つからない場合はエラー
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail="勤怠データは更新されましたが、取得できませんでした"
+            )
+        
+        # 削除操作の場合は空のレスポンスを返す
+        if location_id == -1:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+            
+        # Acceptヘッダーがtext/htmlの場合は204を返す（フロントエンドでリロード処理を行うため）
+        if "text/html" in request.headers.get("accept", ""):
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+            
         return attendance_obj
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"勤怠作成エラー: {str(e)}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.put("/{attendance_id}", response_model=Attendance)
 async def update_attendance(
+    request: Request,
     attendance_id: int,
     location_id: int = Form(...),
     db: Session = Depends(get_db),
@@ -145,9 +164,19 @@ async def update_attendance(
             )
         
         if location_id == -1:  # 削除用特殊値
-            # 削除の場合はDeleteエンドポイントへのリダイレクト
-            attendance.remove(db=db, id=attendance_id)
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
+            try:
+                # 削除処理
+                attendance.remove(db=db, id=attendance_id)
+                db.commit()
+                logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
+            except Exception as e:
+                db.rollback()
+                logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                    detail=f"勤怠データの削除中にエラーが発生しました: {str(e)}"
+                )
         else:
             # 勤務場所IDの確認
             loc = location.get_by_id(db, location_id=location_id)
@@ -157,17 +186,35 @@ async def update_attendance(
                     detail=f"勤務場所ID '{location_id}' が見つかりません"
                 )
                 
-            # 更新
-            attendance_update = AttendanceUpdate(location_id=location_id)
-            return attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_update)
+            try:
+                # 更新処理
+                attendance_update = AttendanceUpdate(location_id=location_id)
+                updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_update)
+                db.commit()
+                logger.debug(f"勤怠ID {attendance_id} の更新に成功しました")
+                
+                # Acceptヘッダーがtext/htmlの場合は204を返す（フロントエンドでリロード処理を行うため）
+                if "text/html" in request.headers.get("accept", ""):
+                    return Response(status_code=status.HTTP_204_NO_CONTENT)
+                    
+                return updated_obj
+            except Exception as e:
+                db.rollback()
+                logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                    detail=f"勤怠データの更新中にエラーが発生しました: {str(e)}"
+                )
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.delete("/{attendance_id}")
 async def delete_attendance(
+    request: Request,
     attendance_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
@@ -182,9 +229,20 @@ async def delete_attendance(
                 detail="勤怠データが見つかりません"
             )
         
-        attendance.remove(db=db, id=attendance_id)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        try:
+            attendance.remove(db=db, id=attendance_id)
+            db.commit()
+            logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail=f"勤怠データの削除中にエラーが発生しました: {str(e)}"
+            )
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

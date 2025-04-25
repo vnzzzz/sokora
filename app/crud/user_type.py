@@ -10,8 +10,8 @@ from typing import Any, Dict, Optional, Union, List
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from ..models.user_type import UserType
-from ..schemas.user_type import UserTypeCreate, UserTypeUpdate
+from app.models.user_type import UserType
+from app.schemas.user_type import UserTypeCreate, UserTypeUpdate
 
 
 class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):

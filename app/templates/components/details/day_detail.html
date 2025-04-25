@@ -21,10 +21,9 @@
   <!-- 勤務場所データと社員リスト -->
   <div class="card card-compact bg-base-100 shadow-md mb-2">
     <div class="card-body">
-      <h2 class="card-title text-base">勤務場所別社員リスト</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="flex flex-wrap gap-4">
         {% for location, location_data in organized_data.items() %}
-        <div class="card card-compact bg-base-200 h-full">
+        <div class="card card-compact bg-base-200" style="width: 224px">
           <div class="card-body">
             <h3 class="card-title text-sm">{{ location }}</h3>
 
@@ -39,13 +38,12 @@
                   hx-target="#day-detail-container"
                   hx-swap="outerHTML"
                 >
-                  <div class="flex-1">
-                    <span class="font-medium">{{ user.user_name }}</span>
-                    <span class="text-sm text-base-content/70">({{ user.user_id }})</span>
-                    {% if user.user_type_name %}
-                    <span class="badge badge-sm badge-primary ml-2">{{ user.user_type_name }}</span>
-                    {% endif %}
+                  <div class="flex-1 min-w-0">
+                    <span class="font-medium truncate block">{{ user.user_name }}</span>
                   </div>
+                  {% if user.user_type_name %}
+                  <span class="badge badge-sm badge-primary whitespace-nowrap ml-1">{{ user.user_type_name }}</span>
+                  {% endif %}
                 </li>
                 {% endfor %}
               </ul>

@@ -11,8 +11,8 @@ app/templates/
 │   │   └── theme_switcher.html  # テーマ切替コンポーネント
 │   │
 │   ├── calendar/          # カレンダー関連コンポーネント
-│   │   ├── calendar.html  # カレンダー表示
-│   │   └── calendar_component.html  # カレンダーコンポーネント
+│   │   ├── linear_calendar.html  # 線形カレンダー表示
+│   │   └── grid_calendar.html  # グリッドカレンダーコンポーネント
 │   │
 │   └── details/           # 詳細表示コンポーネント
 │       ├── day_detail.html      # 日付詳細

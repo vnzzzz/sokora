@@ -14,10 +14,15 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- 月選択 -->
             <div class="form-control">
-              <label class="label">
+              <label class="label" for="month-select">
                 <span class="label-text font-medium">月を選択</span>
               </label>
-              <select id="month-select" class="select select-bordered w-full focus:border-neutral">
+              <select
+                id="month-select"
+                name="month-select"
+                class="select select-bordered w-full focus:border-neutral"
+                autocomplete="off"
+              >
                 <option value="">すべての期間</option>
                 {% for month_option in months %}
                 <option value="{{ month_option.value }}">{{ month_option.label }}</option>
@@ -27,19 +32,34 @@
 
             <!-- エンコーディング選択 -->
             <div class="form-control">
-              <label class="label">
-                <span class="label-text font-medium">エンコーディング</span>
-              </label>
-              <div class="flex gap-6 pt-2">
-                <label class="label cursor-pointer justify-start gap-2">
-                  <input type="radio" name="encoding" value="utf-8" class="radio" checked />
-                  <span class="label-text">UTF-8</span>
-                </label>
-                <label class="label cursor-pointer justify-start gap-2">
-                  <input type="radio" name="encoding" value="sjis" class="radio" />
-                  <span class="label-text">SJIS</span>
-                </label>
-              </div>
+              <fieldset>
+                <legend class="label-text font-medium mb-2">エンコーディング</legend>
+                <div class="flex gap-6 pt-2">
+                  <label class="label cursor-pointer justify-start gap-2" for="encoding-utf8">
+                    <input
+                      type="radio"
+                      id="encoding-utf8"
+                      name="encoding"
+                      value="utf-8"
+                      class="radio"
+                      checked
+                      autocomplete="off"
+                    />
+                    <span class="label-text">UTF-8</span>
+                  </label>
+                  <label class="label cursor-pointer justify-start gap-2" for="encoding-sjis">
+                    <input
+                      type="radio"
+                      id="encoding-sjis"
+                      name="encoding"
+                      value="sjis"
+                      class="radio"
+                      autocomplete="off"
+                    />
+                    <span class="label-text">SJIS</span>
+                  </label>
+                </div>
+              </fieldset>
             </div>
           </div>
 

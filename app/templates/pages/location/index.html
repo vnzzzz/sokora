@@ -40,10 +40,17 @@
             <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所追加</h3>
             <form id="new-location-form" action="/api/locations/" method="post" class="space-y-4">
               <div class="form-control">
-                <label class="label">
+                <label class="label" for="add-location-name">
                   <span class="label-text">勤務場所名</span>
                 </label>
-                <input type="text" name="name" class="input input-bordered w-full focus:border-neutral" required />
+                <input
+                  type="text"
+                  id="add-location-name"
+                  name="name"
+                  class="input input-bordered w-full focus:border-neutral"
+                  required
+                  autocomplete="off"
+                />
               </div>
               <div class="flex justify-end space-x-3 mt-6">
                 <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
@@ -205,10 +212,10 @@
                           <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所編集</h3>
                           <form id="edit-form-${location.location_id}" class="space-y-4">
                             <div class="form-control">
-                              <label class="label">
+                              <label class="label" for="edit-location-name-${location.location_id}">
                                 <span class="label-text">勤務場所名</span>
                               </label>
-                              <input type="text" name="name" value="${location.name}" class="input input-bordered focus:border-neutral" required>
+                              <input type="text" id="edit-location-name-${location.location_id}" name="name" value="${location.name}" class="input input-bordered focus:border-neutral" required autocomplete="off">
                             </div>
                             <div class="flex justify-end space-x-3 mt-6">
                               <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
@@ -232,8 +239,12 @@
                       <div x-show="showDeleteConfirm" @click.away="showDeleteConfirm = false" style="display: none"
                            class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
                         <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 text-error">削除の確認</h3>
-                          <p class="mb-5">「${location.name}」を削除してもよろしいですか？この操作は元に戻せません。<br>※勤怠データが紐づいている場合は削除できません。</p>
+                          <h3 class="font-bold text-lg mb-4 text-error text-left">削除の確認</h3>
+                          <p class="mb-5 text-left">
+                            「${location.name}」を削除してもよろしいですか？<br>
+                            この操作は元に戻せません。<br>
+                            ※勤怠データが紐づいている場合は削除できません。
+                          </p>
                           <div class="flex justify-end space-x-3">
                             <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">キャンセル</button>
                             <button type="button" class="btn btn-error shadow-sm delete-location-button"

@@ -14,10 +14,10 @@ from dateutil.relativedelta import relativedelta  # type: ignore
 import pytz  # type: ignore
 from sqlalchemy.orm import Session
 
-from ..core.config import logger
-from ..crud.user import user
-from ..crud.attendance import attendance
-from ..crud.location import location
+from app.core.config import logger
+from app.crud.user import user
+from app.crud.attendance import attendance
+from app.crud.location import location
 
 def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
     """
@@ -109,6 +109,15 @@ def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str
     # ユーザーデータを取得
     users_data = user.get_all_users(db)
     
+    # 勤怠データの日付範囲を決定
+    date_range_start: Optional[date] = None
+    date_range_end: Optional[date] = None
+    if month:
+        date_range_start, date_range_end = get_date_range_for_month(month)
+
+    # 勤怠データを一括取得（パフォーマンス向上）
+    attendance_data = attendance.get_attendance_data_for_csv(db, start_date=date_range_start, end_date=date_range_end)
+    
     # 各ユーザーについて行を作成
     for user_name, user_id, user_type_id in users_data:
         user_obj = user.get_by_user_id(db, user_id=user_id)
@@ -121,16 +130,6 @@ def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str
         # ユーザーの社員種別を取得
         user_type_name = user_obj.user_type.name if user_obj.user_type else ""
         
-        # ユーザーの勤怠データを取得
-        user_entries = attendance.get_user_data(db, user_id=user_id)
-        
-        # 勤怠データを日付ごとのマップに変換
-        user_locations = {}
-        for entry in user_entries:
-            date_key = entry["date"]
-            location_name = entry["location_name"]
-            user_locations[date_key] = location_name
-        
         # 行データ作成
         row_data = [user_name, user_id, group_name, user_type_name]
         
@@ -141,7 +140,8 @@ def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str
             db_date_str = f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
             
             # 該当日の勤務場所を取得
-            location_name = user_locations.get(db_date_str, "")
+            user_date_key = f"{user_id}_{db_date_str}"
+            location_name = attendance_data.get(user_date_key, "")
             row_data.append(location_name)
         
         # CSVに行を書き込み

@@ -43,6 +43,9 @@ class AttendanceUpdate(BaseModel):
 
     location_id: Optional[int] = None
 
+    class Config:
+        from_attributes = True
+
 
 class AttendanceInDBBase(AttendanceBase):
     """データベースIDを持つ勤怠の基本スキーマ"""
@@ -51,19 +54,23 @@ class AttendanceInDBBase(AttendanceBase):
     user_id: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Attendance(AttendanceInDBBase):
     """勤怠データレスポンス用スキーマ"""
 
-    pass
+    class Config:
+        from_attributes = True
 
 
 class AttendanceList(BaseModel):
     """勤怠記録リスト用スキーマ"""
 
     records: List[Attendance]
+
+    class Config:
+        from_attributes = True
 
 
 class UserAttendance(BaseModel):
@@ -72,3 +79,6 @@ class UserAttendance(BaseModel):
     user_id: str
     user_name: str
     dates: List[Dict[str, Any]]  # 日付、勤務場所、勤怠IDのリスト
+
+    class Config:
+        from_attributes = True
