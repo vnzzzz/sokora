@@ -191,10 +191,19 @@
           `
 
           // 各勤務場所の行を追加
-          data.locations.forEach((location) => {
+          data.locations.forEach((location, index) => {
+            // 色のインデックス計算（ui_utils.pyと同じロジック）
+            const tailwindColors = ['success', 'primary', 'warning', 'error', 'info', 'accent', 'secondary']
+            const colorIdx = index % tailwindColors.length
+            const colorName = tailwindColors[colorIdx]
+            const bgColorClass = `bg-${colorName}/10`
+            const textColorClass = `text-${colorName}`
+
             html += `
               <tr class="hover:bg-base-200" id="location-row-${location.location_id}">
-                <td class="font-medium">${location.name}</td>
+                <td class="font-medium">
+                  <span class="${bgColorClass} ${textColorClass} px-2 py-1 rounded">${location.name}</span>
+                </td>
                 <td class="text-right">
                   <div class="flex justify-end gap-2">
                     <div x-data="{ showEditModal: false }">
@@ -209,7 +218,7 @@
                       <div x-show="showEditModal" @click.away="showEditModal = false" style="display: none"
                            class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
                         <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所編集</h3>
+                          <h3 class="font-bold text-lg mb-4 ${textColorClass}">勤務場所編集</h3>
                           <form id="edit-form-${location.location_id}" class="space-y-4">
                             <div class="form-control">
                               <label class="label" for="edit-location-name-${location.location_id}">
@@ -344,7 +353,7 @@
           })
         })
         .catch((error) => {
-          console.error('Error fetching locations:', error)
+          // console.error('Error fetching locations:', error)
           document.getElementById('locations-container').innerHTML = `
           <div class="alert alert-error shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>

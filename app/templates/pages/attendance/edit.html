@@ -54,10 +54,10 @@ content %}
 <!-- 月切り替え用スクリプト -->
 <script>
   function navigateToMonth(month) {
-    console.log('月遷移関数実行:', month)
+    // console.log('月遷移関数実行:', month)
     const baseUrl = '/attendance/edit/{{ user_id }}'
     const url = month ? `${baseUrl}?month=${month}` : baseUrl
-    console.log('移動先URL:', url)
+    // console.log('移動先URL:', url)
 
     // ページ全体をリロードして移動
     window.location.href = url

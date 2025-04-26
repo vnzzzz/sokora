@@ -41,7 +41,8 @@
                   <div class="flex-1 min-w-0">
                     <span class="font-medium block">{{ user.user_name }}</span>
                   </div>
-                  <span class="badge badge-sm badge-{{ user.location_badge }} whitespace-nowrap ml-1"
+                  <span
+                    class="bg-{{ user.location_badge }}/10 text-{{ user.location_badge }} px-2 py-1 rounded whitespace-nowrap ml-1"
                     >{{ user.location_name }}</span
                   >
                 </li>
