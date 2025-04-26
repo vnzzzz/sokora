@@ -8,335 +8,433 @@
   - user_id: ユーザーID（編集時に必要）
   - month_name: 月名表示（タイトル用）
   - location_types: 勤務場所の種類リスト（編集時に必要）
+  - prev_month: 前月情報 (YYYY-MM形式)
+  - next_month: 翌月情報 (YYYY-MM形式)
 -->
 
-{# ビューに応じて編集可能かどうかを設定 #}
-{% set editable = editable|default(False) %}
+{# ビューに応じて編集可能かどうかを設定 #} {% set editable = editable|default(False) %}
 
-<!-- カレンダータイトル -->
-<h3 class="text-xl font-bold text-center mb-5 text-base-content">{{ month_name }}</h3>
+<section class="p-2">
+  <!-- カレンダータイトル -->
+  <h3 class="text-xl font-bold text-center mb-5 text-base-content">{{ month_name }}</h3>
 
-<!-- 曜日ヘッダー -->
-<div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
-  {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
-  {% for day in weekdays %}
-  <div class="p-1">{{ day }}</div>
-  {% endfor %}
-</div>
+  <!-- デバッグ情報（非表示） -->
+  <div
+    id="calendar-debug-info"
+    style="display: none"
+    data-month-name="{{ month_name }}"
+    data-prev-month="{{ prev_month }}"
+    data-next-month="{{ next_month }}"
+    data-user-id="{{ user_id }}"
+    data-user-dates-count="{{ user_dates|length }}"
+  ></div>
 
-<!-- カレンダーグリッド -->
-<div class="grid grid-cols-7 gap-1">
-  {% for week in calendar_data %}
-    {% for day in week %}
-      {% if day and day.day != 0 %}
-        {% set has_data = day.date in user_dates %}
-        {% set location = user_locations[day.date] if has_data else "" %}
-        {% set style_class = location_styles[location] if location in location_styles else "" %}
-        {% set weekday_index = loop.index0 %}
-        {% set is_weekend = weekday_index == 0 or weekday_index == 6 %}
-        {% set is_holiday = day.is_holiday|default(false) %}
+  <!-- テーブル形式のカレンダー -->
+  <div class="overflow-x-auto">
+    <table class="table table-xs w-full" style="table-layout: fixed">
+      <thead>
+        <tr>
+          <!-- 曜日ヘッダー -->
+          <th class="bg-base-200 text-left sticky left-0 z-10 w-28" style="min-width: 140px">日付</th>
+          {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {% for week in calendar_data %} {% for day in
+          week %} {% if day and day.day != 0 %} {% set weekday_index = loop.index0 %} {% set is_weekend = weekday_index
+          == 0 or weekday_index == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class =
+          "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if weekday_index == 0 or is_holiday else
+          "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "" ) %}
 
-        {% if editable %}
-        <div class="calendar-day p-1 border rounded min-h-12
-                {% if is_holiday %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend and weekday_index == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}
-                text-center cursor-pointer hover:bg-base-200 hover:shadow-sm transition-all
-                {% if day.date == last_viewed_date %}border-gray-500 border-2{% endif %}"
-          data-date="{{ day.date }}" 
-          data-is-holiday="{{ is_holiday|lower }}" 
-          data-holiday-name="{{ day.holiday_name|default('') }}">
-          <div class="text-sm font-bold {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">{{ day.day }}</div>
-          {% if day.holiday_name|default('') %}
-          <div class="text-xs text-red-600 dark:text-red-400 mt-0.5">{{ day.holiday_name }}</div>
-          {% endif %}
-          {% if has_data %}
-          <div class="text-xs mt-1">
-            <span class="{{ style_class.split(' ')[1] if style_class else '' }}">{{ location }}</span>
-          </div>
-          {% endif %}
-
-          <!-- 編集モーダル -->
-          <div class="calendar-modal fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" style="display:none;">
-            <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full modal-content">
-              <h3 class="font-bold text-lg mb-2 text-base-content">{{ day.date }}の勤務場所を編集</h3>
-              <p class="text-sm mb-4">勤務場所を選択してください</p>
-              <!-- 祝日表示 -->
-              <p class="holiday-display text-sm text-red-600 mb-3 font-medium" style="display:none;">
-                <span class="mr-1">📅</span>
-                <span class="holiday-name"></span>
-              </p>
-
-              <form action="/api/attendances/" method="post" class="space-y-4" data-calendar-form>
-                <input type="hidden" name="user_id" value="{{ user_id }}">
-                <input type="hidden" name="date" value="{{ day.date }}">
-                <input type="hidden" name="is_holiday" value="{{ is_holiday|lower }}">
-                <!-- attendanceIdをhidden inputに保持 -->
-                <input type="hidden" name="current_attendance_id" value="">
-
-                <div class="form-control">
-                  <label class="label" for="location-select-{{ day.date }}">
-                    <span class="label-text">勤務場所</span>
-                  </label>
-                  <select id="location-select-{{ day.date }}" name="location_id" class="select select-bordered w-full focus:border-neutral" required autocomplete="off">
-                    <option value="">勤務場所を選択</option>
-                    <option value="-1" class="text-error font-medium">-- 予定を削除 --</option>
-                    {% for loc in location_types %}
-                      {% set location_id = loop.index %}
-                      {# 注意: location_id は 1始まり, locationは文字列 #}
-                      {# DBに保存されている実際のIDと比較するか、location文字列で比較する必要がある #}
-                      <option value="{{ location_id }}" {% if location == loc %}selected{% endif %}>
-                        {{ loc }}
-                      </option>
-                    {% endfor %}
-                  </select>
-                  <p class="text-xs text-base-content/70 mt-2">登録済みの勤務場所から選択、または予定を削除できます</p>
-                  <div class="error-message text-error text-sm mt-1" style="display: none;">
-                    勤務場所を選択してください</div>
-                </div>
-
-                <div class="flex justify-end space-x-3 mt-2">
-                  <button type="button" class="btn btn-outline btn-sm cancel-modal">キャンセル</button>
-                  <button type="submit" class="btn btn-neutral btn-sm shadow-sm">保存</button>
-                </div>
-              </form>
+          <th
+            class="bg-base-200 text-center p-1 calendar-header-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
+            data-date="{{ day.date }}"
+            data-day="{{ day.day }}"
+            data-is-holiday="{{ is_holiday|lower }}"
+            data-holiday-name="{{ day.holiday_name|default('') }}"
+          >
+            <div
+              class="font-bold text-sm {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+            >
+              {{ day.day }}
             </div>
-          </div>
-        </div>
-        {% else %}
+            <div
+              class="text-xs opacity-70 {% if day.holiday_name|default('') %}custom-tooltip holiday-tooltip{% endif %}"
+            >
+              {{ weekdays[weekday_index] }} {% if day.holiday_name|default('') %}
+              <span class="tooltip-text">{{ day.holiday_name }}</span>
+              {% endif %}
+            </div>
+          </th>
+          {% endif %} {% endfor %} {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 勤務場所ごとの行 -->
+        {% if editable %} {% for location_type in location_types %} {% set location_id = loop.index %} {% set
+        style_class = location_styles[location_type] if location_type in location_styles else "" %}
+        <tr>
+          <td
+            class="bg-base-200 font-medium text-left sticky left-0 z-10 whitespace-nowrap w-28"
+            style="min-width: 140px"
+          >
+            {{ location_type }}
+          </td>
+
+          {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
+          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10
+          dark:bg-red-300/10" if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if
+          weekday_index == 6 else "" ) %} {% set has_data = day.date in user_dates %} {% set current_location =
+          user_locations[day.date] if has_data else "" %} {% set is_selected = current_location == location_type %}
+
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 calendar-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} {% if is_selected %}{{ style_class }}{% endif %}"
+            data-date="{{ day.date }}"
+            data-location-id="{{ location_id }}"
+            data-location-type="{{ location_type }}"
+            data-user-id="{{ user_id }}"
+            data-is-selected="{{ is_selected|lower }}"
+          >
+            {% if is_selected %}
+            <div class="text-sm location-marker">●</div>
+            {% endif %}
+          </td>
+          {% endif %} {% endfor %} {% endfor %}
+        </tr>
+        {% endfor %} {% else %}
         <!-- 閲覧専用モード -->
-        <div class="p-1 border rounded min-h-12 
-                  {% if is_holiday %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend and weekday_index == 0 %}bg-red-900/10 dark:bg-red-300/10{% elif is_weekend %}bg-blue-900/10 dark:bg-blue-300/10{% endif %}
-                  text-center
-                  {% if day.date == last_viewed_date %}border-gray-500 border-2{% endif %}"
-             data-date="{{ day.date }}">
-          <div class="text-sm font-bold {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">{{ day.day }}</div>
-          {% if day.holiday_name|default('') %}
-          <div class="text-xs text-red-600 dark:text-red-400 mt-0.5">{{ day.holiday_name }}</div>
-          {% endif %}
-          {% if has_data %}
-          <div class="text-xs mt-1">
+        <tr>
+          <td
+            class="bg-base-200 font-medium text-left sticky left-0 z-10 whitespace-nowrap w-28"
+            style="min-width: 140px"
+          >
+            勤務場所
+          </td>
+
+          {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
+          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10
+          dark:bg-red-300/10" if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if
+          weekday_index == 6 else "" ) %} {% set has_data = day.date in user_dates %} {% set location =
+          user_locations[day.date] if has_data else "" %} {% set style_class = location_styles[location] if location in
+          location_styles else "" %}
+
+          <td class="text-center p-1 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}">
+            {% if has_data %}
             <span class="{{ style_class.split(' ')[1] if style_class else '' }}">{{ location }}</span>
-          </div>
-          {% endif %}
-        </div>
+            {% endif %}
+          </td>
+          {% endif %} {% endfor %} {% endfor %}
+        </tr>
         {% endif %}
-      {% else %}
-        <div class="p-1 border rounded bg-base-200/30 min-h-12"></div>
-      {% endif %}
-    {% endfor %}
-  {% endfor %}
-</div>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 <!-- JavaScript -->
 {% if editable %}
 <script>
-  function initializeCalendarForm(targetElement = document) {
-    // console.log('Initializing calendar forms within:', targetElement);
-    const forms = targetElement.querySelectorAll('form[data-calendar-form]:not([data-initialized])');
+  // グローバルスコープで一度だけ初期化する部分
+  if (typeof window.calendarHandlers === 'undefined') {
+    // カレンダー関連の関数をグローバルに一度だけ定義
+    window.calendarHandlers = {
+      initialized: false,
 
-    forms.forEach(form => {
-      form.dataset.initialized = 'true'; // 初期化済みフラグを設定
-      const locationSelect = form.querySelector('select[name="location_id"]');
-      const errorMessage = form.querySelector('.error-message');
-      const submitBtn = form.querySelector('button[type="submit"]');
+      // デバッグ情報の表示
+      logDebugInfo: function () {
+        const debugEl = document.getElementById('calendar-debug-info')
+        if (debugEl) {
+          const monthName = debugEl.dataset.monthName || ''
+          const prevMonth = debugEl.dataset.prevMonth || ''
+          const nextMonth = debugEl.dataset.nextMonth || ''
+          const userId = debugEl.dataset.userId || ''
+          const userDatesCount = debugEl.dataset.userDatesCount || '0'
 
-      const showError = () => {
-        if (errorMessage) errorMessage.style.display = 'block';
-        locationSelect?.classList.add('select-error');
-      };
-
-      const hideError = () => {
-        if (errorMessage) errorMessage.style.display = 'none';
-        locationSelect?.classList.remove('select-error');
-      };
-
-      const closeModal = (formElement) => {
-          const modalContainer = formElement.closest('.calendar-modal');
-          if (modalContainer) {
-              modalContainer.style.display = 'none';
-          }
-      };
-
-      const handleApiResponse = (response, formElement, successCallback) => {
-          if (response.ok) {
-              closeModal(formElement);
-              // 成功後のリロードなどの処理
-              if (successCallback) successCallback();
-              // 短い遅延後にリロード
-              setTimeout(() => window.location.reload(), 150);
-          } else {
-              response.json().then(data => {
-                  alert('エラーが発生しました: ' + (data.detail || '不明なエラー'));
-              }).catch(() => {
-                  alert('エラーが発生しました: ステータス ' + response.status);
-              });
-              // ボタンの状態を元に戻す
-              if (submitBtn) {
-                  submitBtn.disabled = false;
-                  submitBtn.classList.remove('btn-disabled');
-                  submitBtn.textContent = '保存'; // または元のテキスト
-              }
-          }
-      };
-
-       const handleApiError = (error, formElement) => {
-          alert('通信エラーが発生しました: ' + error);
-          // ボタンの状態を元に戻す
-          if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.classList.remove('btn-disabled');
-              submitBtn.textContent = '保存'; // または元のテキスト
-          }
-      };
-
-      form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        const attendanceId = form.querySelector('input[name="current_attendance_id"]')?.value;
-        const formData = new FormData(form);
-
-        // 削除オプションが選択されている場合
-        if (locationSelect.value === '-1') {
-          hideError();
-          if (attendanceId) {
-             if (submitBtn) {
-                 submitBtn.disabled = true;
-                 submitBtn.classList.add('btn-disabled');
-                 submitBtn.textContent = '削除中...';
-             }
-             fetch(`/api/attendances/${attendanceId}`, { method: 'DELETE' })
-               .then(response => handleApiResponse(response, form))
-               .catch(error => handleApiError(error, form));
-          } else {
-            // 削除対象がない場合（例：未登録の日付で削除を選択）
-            console.log('No attendance record to delete.');
-            closeModal(form); // モーダルだけ閉じる
-          }
-          return;
-        }
-
-        // 通常の保存・更新
-        if (!locationSelect.value.trim()) {
-          showError();
-          return;
-        }
-
-        hideError();
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.classList.add('btn-disabled');
-            submitBtn.textContent = '保存中...';
-        }
-
-        if (attendanceId) {
-          // 更新 (PUT)
-          fetch(`/api/attendances/${attendanceId}`, { method: 'PUT', body: formData })
-            .then(response => handleApiResponse(response, form))
-            .catch(error => handleApiError(error, form));
+          console.log('----------- カレンダー情報 -----------')
+          console.log(`月: ${monthName}`)
+          console.log(`前月: ${prevMonth}`)
+          console.log(`次月: ${nextMonth}`)
+          console.log(`ユーザーID: ${userId}`)
+          console.log(`日付データ数: ${userDatesCount}`)
+          console.log('------------------------------------')
         } else {
-          // 新規作成 (POST)
-          fetch('/api/attendances/', { method: 'POST', body: formData })
-            .then(response => handleApiResponse(response, form))
-            .catch(error => handleApiError(error, form));
+          console.warn('デバッグ情報要素が見つかりません')
         }
-      });
+      },
 
-      locationSelect?.addEventListener('change', function () {
-        if (locationSelect.value === '-1' || locationSelect.value.trim()) {
-          hideError();
+      // カレンダーセルの初期化
+      initCalendarCells: function () {
+        // デバッグ情報を表示
+        this.logDebugInfo()
+
+        // カレンダーセルにクリックイベントを追加
+        const cells = document.querySelectorAll('.calendar-cell')
+        if (cells.length === 0) {
+          console.warn('カレンダーセルが見つかりません。1秒後に再試行します。')
+          setTimeout(window.calendarHandlers.initCalendarCells, 1000)
+          return
+        }
+
+        cells.forEach((cell) => {
+          // 既存のイベントリスナを削除してから追加（重複防止）
+          cell.removeEventListener('click', window.calendarHandlers.handleCellClick)
+          cell.addEventListener('click', window.calendarHandlers.handleCellClick)
+        })
+
+        // 今日の日付をハイライト
+        window.calendarHandlers.highlightToday()
+
+        window.calendarHandlers.initialized = true
+        console.log('カレンダーセル初期化完了 - ' + cells.length + '個のセルを初期化しました')
+      },
+
+      // セルクリック時の処理
+      handleCellClick: function (event) {
+        const cell = event.currentTarget
+        const date = cell.dataset.date
+        const locationId = cell.dataset.locationId
+        const locationType = cell.dataset.locationType
+        const userId = cell.dataset.userId
+        const isSelected = cell.dataset.isSelected === 'true'
+
+        // 同じ日付の他のセルを選択解除
+        if (!isSelected) {
+          document.querySelectorAll(`.calendar-cell[data-date="${date}"]`).forEach((otherCell) => {
+            if (otherCell.dataset.isSelected === 'true') {
+              otherCell.dataset.isSelected = 'false'
+              // スタイルクラスを削除
+              const styleClasses = otherCell.className
+                .split(' ')
+                .filter((cls) => cls.startsWith('bg-') || cls.startsWith('text-'))
+              styleClasses.forEach((cls) => otherCell.classList.remove(cls))
+              // マーカーを削除
+              const marker = otherCell.querySelector('.location-marker')
+              if (marker) marker.remove()
+            }
+          })
+        }
+
+        if (isSelected) {
+          // 選択解除して予定を削除
+          window.calendarHandlers.deleteAttendance(date, userId, cell)
         } else {
-          showError();
+          // 選択して予定を追加
+          window.calendarHandlers.createAttendance(date, userId, locationId, cell, locationType)
         }
-      });
-    });
-  }
+      },
 
-  function highlightToday() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const todayDate = `${year}-${month}-${day}`;
+      // 勤怠登録処理
+      createAttendance: function (date, userId, locationId, cell, locationType) {
+        const formData = new FormData()
+        formData.append('user_id', userId)
+        formData.append('date', date)
+        formData.append('location_id', locationId)
 
-      // 既存のハイライトを削除
-      document.querySelectorAll('.today-highlight').forEach(el => {
-          el.classList.remove('today-highlight', 'border-gray-500', 'border-2');
-      });
+        fetch('/api/attendances/', {
+          method: 'POST',
+          body: formData
+        })
+          .then((response) => {
+            if (response.ok) {
+              // UI更新
+              cell.dataset.isSelected = 'true'
 
-      // 今日の日付セルを検索してハイライト
-      const todayCell = document.querySelector(`.grid-cols-7 > div[data-date="${todayDate}"]`);
-      if (todayCell) {
-          todayCell.classList.add('today-highlight', 'border-gray-500', 'border-2');
-      }
-  }
-
-  function initializeCalendarModals() {
-    // 各カレンダー日付セルにイベントリスナーを追加
-    document.querySelectorAll('.calendar-day').forEach(dayCell => {
-      const date = dayCell.dataset.date;
-      const isHoliday = dayCell.dataset.isHoliday === 'true';
-      const holidayName = dayCell.dataset.holidayName;
-      const modal = dayCell.querySelector('.calendar-modal');
-      const holidayDisplay = modal?.querySelector('.holiday-display');
-      const holidayNameEl = modal?.querySelector('.holiday-name');
-      const attendanceIdInput = modal?.querySelector('input[name="current_attendance_id"]');
-      
-      // 祝日情報を表示
-      if (holidayName && holidayDisplay && holidayNameEl) {
-        holidayNameEl.textContent = holidayName;
-        holidayDisplay.style.display = 'block';
-      }
-      
-      // 日付セルのクリックイベント
-      dayCell.addEventListener('click', function() {
-        if (modal) {
-          // 出席IDの取得
-          fetch(`/api/attendances/user/{{ user_id }}?date=${date}`)
-            .then(response => response.ok ? response.json() : null)
-            .then(data => {
-              if (data && data.attendance_id && attendanceIdInput) {
-                attendanceIdInput.value = data.attendance_id;
+              // 勤務場所スタイルを適用
+              const locationStyles = window.calendarHandlers.getLocationStyles()
+              if (locationStyles[locationType]) {
+                const styleClasses = locationStyles[locationType].split(' ')
+                styleClasses.forEach((cls) => cell.classList.add(cls))
               }
-              // モーダル表示
-              modal.style.display = 'flex';
+
+              // マーカーを追加
+              const marker = document.createElement('div')
+              marker.className = 'text-sm location-marker'
+              marker.textContent = '●'
+              cell.appendChild(marker)
+
+              return response.json()
+            } else {
+              throw new Error('登録に失敗しました')
+            }
+          })
+          .catch((error) => {
+            console.error('Error:', error)
+            alert('予定の登録に失敗しました: ' + error.message)
+          })
+      },
+
+      // 勤怠削除処理
+      deleteAttendance: function (date, userId, cell) {
+        // 対象日の予定IDを取得
+        fetch(`/api/attendances/user/${userId}?date=${date}`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error('予定データの取得に失敗しました')
+            }
+            return response.json()
+          })
+          .then((data) => {
+            // データがない場合は処理終了
+            if (!data || !data.dates || data.dates.length === 0) {
+              console.warn('削除対象の予定が見つかりませんでした: ' + date)
+              return null
+            }
+
+            // 予定IDを取得
+            const attendanceId = data.dates[0].attendance_id
+            if (!attendanceId) {
+              throw new Error('予定IDが見つかりませんでした')
+            }
+
+            console.log('削除する予定ID:', attendanceId)
+
+            // 予定を削除
+            return fetch(`/api/attendances/${attendanceId}`, {
+              method: 'DELETE'
             })
-            .catch(error => console.error('Error fetching attendance ID:', error));
+          })
+          .then((response) => {
+            if (!response) {
+              console.warn('削除処理はスキップされました')
+              return
+            }
+
+            if (!response.ok) {
+              throw new Error('削除リクエストが失敗しました')
+            }
+
+            console.log('予定を削除しました: ' + date)
+
+            // UI更新
+            cell.dataset.isSelected = 'false'
+
+            // スタイルクラスを削除
+            const styleClasses = cell.className
+              .split(' ')
+              .filter((cls) => cls.startsWith('bg-') || cls.startsWith('text-'))
+            styleClasses.forEach((cls) => cell.classList.remove(cls))
+
+            // マーカーを削除
+            const marker = cell.querySelector('.location-marker')
+            if (marker) marker.remove()
+          })
+          .catch((error) => {
+            console.error('Error:', error)
+            alert('予定の削除に失敗しました: ' + error.message)
+          })
+      },
+
+      // スタイル取得
+      getLocationStyles: function () {
+        // この関数はサーバーから提供された location_styles を返します
+        return JSON.parse('{{ location_styles|tojson|safe }}')
+      },
+
+      // 今日の日付ハイライト
+      highlightToday: function () {
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = String(today.getMonth() + 1).padStart(2, '0')
+        const day = String(today.getDate()).padStart(2, '0')
+        const todayDate = `${year}-${month}-${day}`
+
+        // 今日の日付のヘッダーを強調
+        const todayHeader = document.querySelector(`.calendar-header-cell[data-date="${todayDate}"]`)
+        if (todayHeader) {
+          todayHeader.classList.add('today-highlight', 'border-gray-500', 'border-2')
         }
-      });
-      
-      // モーダル背景クリックで閉じる
-      modal?.addEventListener('click', function(e) {
-        if (e.target === modal) {
-          modal.style.display = 'none';
-        }
-      });
-      
-      // キャンセルボタンクリックで閉じる
-      const cancelButton = modal?.querySelector('.cancel-modal');
-      cancelButton?.addEventListener('click', function() {
-        modal.style.display = 'none';
-      });
-    });
+      }
+    }
+
+    // グローバルイベントリスナーの設定（一度だけ）
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+      // カレンダーコンテナが更新された場合、または
+      // bodyが更新された場合（月切り替え時）に初期化
+      if (
+        event.detail.target.id === 'calendar-container' ||
+        event.detail.target.id === 'attendance-edit-container' ||
+        event.detail.target === document.body
+      ) {
+        console.log('カレンダーが更新されました - セルを初期化します')
+        // 確実に初期化されるよう少し遅延させて実行
+        setTimeout(window.calendarHandlers.initCalendarCells, 100)
+      }
+    })
   }
 
-  // --- 初期化実行 ---
+  // ページロード時に初期化（ページが読み込まれるたびに実行）
+  document.addEventListener('DOMContentLoaded', function () {
+    window.calendarHandlers.initCalendarCells()
+  })
 
-  // 1. DOMContentLoadedで初期化
-  document.addEventListener('DOMContentLoaded', () => {
-    initializeCalendarForm();
-    initializeCalendarModals();
-    highlightToday();
-  });
-
-  // 3. HTMXによるコンテンツ置換後に初期化
-  document.body.addEventListener('htmx:afterSwap', function(event) {
-      // 新しく追加されたフォームに対して初期化を実行
-      initializeCalendarForm(event.detail.target);
-      // モーダル初期化
-      initializeCalendarModals();
-      // カレンダーが変わった可能性があるので今日を再ハイライト
-      highlightToday();
-  });
-
+  // HTMXによるコンテンツ置換直後も初期化を呼び出す
+  if (document.readyState === 'complete') {
+    // すでにDOMがロードされている場合は直接初期化
+    window.calendarHandlers.initCalendarCells()
+  }
 </script>
-{% endif %} 
+
+<style>
+  /* テーブルスタイル */
+  table {
+    table-layout: fixed !important;
+  }
+
+  /* 今日の日付ハイライト */
+  .today-highlight {
+    border: 2px solid #666 !important;
+    font-weight: bold !important;
+  }
+
+  /* 祝日ツールチップのスタイル */
+  .holiday-tooltip {
+    cursor: help;
+    text-decoration: underline dotted rgba(255, 107, 107, 0.5);
+    position: relative;
+  }
+
+  .holiday-tooltip:hover {
+    text-decoration: underline dotted rgba(255, 107, 107, 1);
+  }
+
+  /* カスタムツールチップ */
+  .custom-tooltip {
+    position: relative;
+    display: inline-block;
+  }
+
+  .tooltip-text {
+    visibility: hidden;
+    width: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 3px 8px;
+    position: absolute;
+    z-index: 100;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.7rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .custom-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* 三角形の矢印 */
+  .tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+  }
+</style>
+{% endif %}

@@ -31,9 +31,14 @@ def get_attendances(db: Session = Depends(get_db)) -> Any:
 
 
 @router.get("/user/{user_id}", response_model=UserAttendance)
-def get_user_attendance(user_id: str, db: Session = Depends(get_db)) -> Any:
+def get_user_attendance(
+    user_id: str, 
+    date: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> Any:
     """
     特定ユーザーの勤怠データを取得します。
+    date パラメータを指定すると、特定日の勤怠データのみを返します。
     """
     from app.crud.user import user
     
@@ -50,8 +55,14 @@ def get_user_attendance(user_id: str, db: Session = Depends(get_db)) -> Any:
     # UserAttendanceスキーマに合わせてデータを整形
     dates = []
     for entry in user_entries:
+        entry_date = entry["date"]
+        
+        # dateパラメータが指定されている場合は、その日のデータのみをフィルタリング
+        if date and entry_date != date:
+            continue
+            
         entry_data = {
-            "date": entry["date"],
+            "date": entry_date,
             "location_id": entry["location_id"],
             "location": entry["location_name"]
         }
@@ -61,6 +72,15 @@ def get_user_attendance(user_id: str, db: Session = Depends(get_db)) -> Any:
             entry_data["attendance_id"] = entry["id"]
             
         dates.append(entry_data)
+    
+    # dateパラメータが指定されていて、日付が見つからなかった場合
+    if date and not dates:
+        # キーは揃えておく
+        return {
+            "user_id": user_id,
+            "user_name": user_name,
+            "dates": []
+        }
     
     return {
         "user_id": user_id,

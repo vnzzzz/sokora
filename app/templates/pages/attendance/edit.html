@@ -6,19 +6,22 @@ content %}
       <div>
         <h2 class="text-2xl font-bold text-base-content">勤怠登録</h2>
       </div>
+      <form id="month-nav-form" class="hidden">
+        <input type="hidden" name="month" id="month-value" value="" />
+      </form>
       <div class="btn-group shadow-sm">
         <button
-          class="btn btn-sm btn-outline"
-          hx-get="/attendance/edit/{{ user_id }}?month={{ prev_month }}"
-          hx-target="body"
+          class="btn btn-sm btn-outline month-nav-btn"
+          data-month="{{ prev_month }}"
+          onclick="navigateToMonth('{{ prev_month }}')"
         >
           ＜前月
         </button>
-        <button class="btn btn-sm btn-neutral" hx-get="/attendance/edit/{{ user_id }}" hx-target="body">今月</button>
+        <button class="btn btn-sm btn-neutral month-nav-btn" onclick="navigateToMonth('')">今月</button>
         <button
-          class="btn btn-sm btn-outline"
-          hx-get="/attendance/edit/{{ user_id }}?month={{ next_month }}"
-          hx-target="body"
+          class="btn btn-sm btn-outline month-nav-btn"
+          data-month="{{ next_month }}"
+          onclick="navigateToMonth('{{ next_month }}')"
         >
           次月＞
         </button>
@@ -26,7 +29,9 @@ content %}
     </div>
 
     <!-- 勤怠カレンダー -->
-    <div class="overflow-x-auto mt-6">{% include "components/calendar/grid_calendar.html" %}</div>
+    <div id="attendance-edit-container" class="overflow-x-auto mt-6">
+      {% include "components/calendar/grid_calendar.html" %}
+    </div>
 
     <div class="flex justify-between items-center mt-6">
       <a href="/attendance" class="btn btn-outline shadow-sm hover:shadow">
@@ -45,4 +50,17 @@ content %}
     </div>
   </div>
 </div>
+
+<!-- 月切り替え用スクリプト -->
+<script>
+  function navigateToMonth(month) {
+    console.log('月遷移関数実行:', month)
+    const baseUrl = '/attendance/edit/{{ user_id }}'
+    const url = month ? `${baseUrl}?month=${month}` : baseUrl
+    console.log('移動先URL:', url)
+
+    // ページ全体をリロードして移動
+    window.location.href = url
+  }
+</script>
 {% endblock %}
