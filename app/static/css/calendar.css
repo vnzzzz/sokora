@@ -1,0 +1,65 @@
+/* カレンダー共通スタイル */
+
+/* テーブルレイアウト */
+table {
+  table-layout: fixed !important;
+}
+
+/* 今日の日付ハイライト */
+.today-highlight {
+  border: 2px solid #666 !important;
+  font-weight: bold !important;
+}
+
+/* 祝日ツールチップのスタイル */
+.holiday-tooltip {
+  cursor: help;
+  text-decoration: underline dotted rgba(255, 107, 107, 0.5);
+  position: relative;
+}
+
+.holiday-tooltip:hover {
+  text-decoration: underline dotted rgba(255, 107, 107, 1);
+}
+
+/* カスタムツールチップ */
+.custom-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: auto;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 3px 8px;
+  position: absolute;
+  z-index: 100;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.custom-tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 三角形の矢印 */
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+}

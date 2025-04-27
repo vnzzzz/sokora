@@ -37,12 +37,7 @@
     <tr class="hover:bg-base-300">
       <td class="font-medium">{{ user_name }} ({{ user_id }})</td>
       <td>{% if user_obj.group %} {{ user_obj.group.name }} {% else %} - {% endif %}</td>
-      <td>
-        {% if user_obj.user_type %} {% set color_index = loop.index0 % 7 %} {% set colors = ["success", "primary",
-        "warning", "error", "info", "accent", "secondary"] %} {% set color = colors[color_index] %}
-        <span class="bg-{{ color }}/10 text-{{ color }} px-2 py-1 rounded">{{ user_obj.user_type.name }}</span>
-        {% else %} - {% endif %}
-      </td>
+      <td>{% if user_obj.user_type %} {{ user_obj.user_type.name }} {% else %} - {% endif %}</td>
       <td class="text-right">
         <div class="flex justify-end gap-2">
           <a href="/attendance/edit/{{ user_id }}" class="btn btn-sm btn-outline shadow-sm hover:shadow">

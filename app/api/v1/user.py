@@ -6,7 +6,7 @@
 """
 
 from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Form
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Form, Body
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -52,10 +52,7 @@ def get_user(user_id: str, db: Session = Depends(get_db)) -> Any:
 
 @router.post("", response_model=User)
 async def create_user(
-    username: str = Form(...),
-    user_id: str = Form(...),
-    group_id: str = Form(...),
-    user_type_id: str = Form(...),
+    user_in: UserCreate,
     db: Session = Depends(get_db),
 ) -> Any:
     """
@@ -64,7 +61,7 @@ async def create_user(
     try:
         # グループIDを整数型に変換
         try:
-            group_id_int = int(group_id)
+            group_id_int = int(user_in.group_id)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -81,7 +78,7 @@ async def create_user(
         
         # 社員種別IDを整数型に変換
         try:
-            user_type_id_int = int(user_type_id)
+            user_type_id_int = int(user_in.user_type_id)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -98,14 +95,14 @@ async def create_user(
                 
         # UserCreateオブジェクトを作成
         user_data = {
-            "username": username,
-            "user_id": user_id,
+            "username": user_in.username,
+            "user_id": user_in.user_id,
             "group_id": group_id_int,
             "user_type_id": user_type_id_int
         }
         
         # 既存ユーザーチェックと新規作成
-        existing_user = user.get_by_user_id(db, user_id=user_id)
+        existing_user = user.get_by_user_id(db, user_id=user_in.user_id)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -124,9 +121,7 @@ async def create_user(
 @router.put("/{user_id}", response_model=User)
 async def update_user(
     user_id: str,
-    username: str = Form(...),
-    group_id: str = Form(...),
-    user_type_id: str = Form(...),
+    user_in: UserUpdate,
     db: Session = Depends(get_db),
 ) -> Any:
     """
@@ -142,7 +137,7 @@ async def update_user(
             
         # グループIDを整数型に変換
         try:
-            group_id_int = int(group_id)
+            group_id_int = int(user_in.group_id)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -159,7 +154,7 @@ async def update_user(
         
         # 社員種別IDを整数型に変換
         try:
-            user_type_id_int = int(user_type_id)
+            user_type_id_int = int(user_in.user_type_id)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -177,7 +172,7 @@ async def update_user(
         success = user.update_user(
             db, 
             user_id=user_id, 
-            username=username, 
+            username=user_in.username, 
             group_id=group_id_int,
             user_type_id=user_type_id_int
         )

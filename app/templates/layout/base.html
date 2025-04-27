@@ -12,75 +12,7 @@
       {% include "components/common/sidebar.html" %}
 
       <!-- メインコンテンツ -->
-      <main class="flex-1 container mx-auto py-6 px-5 space-y-8">
-        {% block content %}
-        <!-- カレンダーエリア -->
-        <div
-          id="calendar-area"
-          hx-get="/calendar"
-          hx-trigger="load"
-          hx-target="#calendar-area"
-          class="card bg-base-200 shadow-lg rounded-lg p-5"
-        >
-          <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->
-        </div>
-
-        <!-- 詳細表示エリア -->
-        <div id="detail-area" class="card bg-base-200 shadow-lg rounded-lg p-5">
-          {% if default_day and default_data %}
-          <section class="p-2">
-            <h3 class="text-lg font-bold mb-5 text-base-content">{{ default_day }}</h3>
-
-            {% if not default_has_data %}
-            <div class="alert bg-base-300 text-base-content">記録なし</div>
-            {% else %}
-            <!-- グループごとの社員リスト -->
-            <div class="flex flex-col gap-5">
-              <div class="flex-1">
-                <div
-                  class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
-                >
-                  <!-- グループカード -->
-                  {% for group_name, group_data in organized_by_group.items() %}
-                  <div
-                    class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-300 w-full min-w-[18rem] max-w-full"
-                  >
-                    <div class="card-body px-4 py-3">
-                      <h4 class="card-title text-sm font-medium mb-2">{{ group_name }}</h4>
-
-                      {% for user_type in group_data.user_types %}
-                      <div class="mt-2">
-                        <h5 class="text-xs font-semibold uppercase text-base-content/70 px-1 mb-1">{{ user_type }}</h5>
-                        <ul class="menu menu-sm p-0 space-y-1">
-                          {% for user in group_data.user_types_data[user_type] %}
-                          <li
-                            hx-get="/user/{{ user.user_id|e }}"
-                            hx-target="#detail-area"
-                            class="hover:bg-base-200 rounded-md flex items-center"
-                          >
-                            <a class="py-2 flex justify-between items-center w-full">
-                              <span>{{ user.user_name|e }} ({{ user.user_id|e }})</span>
-                              <span class="badge badge-sm badge-{{ user.location_badge }} whitespace-nowrap ml-1"
-                                >{{ user.location_name }}</span
-                              >
-                            </a>
-                          </li>
-                          {% endfor %}
-                        </ul>
-                      </div>
-                      {% endfor %}
-                    </div>
-                  </div>
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
-            {% endif %}
-          </section>
-          {% endif %}
-        </div>
-        {% endblock %}
-      </main>
+      <main class="flex-1 container mx-auto py-6 px-5 space-y-8">{% block content %}{% endblock %}</main>
     </div>
 
     <!-- JavaScript -->

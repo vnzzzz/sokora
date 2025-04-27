@@ -1,16 +1,18 @@
 <section class="p-2" id="day-detail-container">
   <div class="space-y-4">
     <div class="flex justify-between items-center">
-      <h3 class="text-lg font-bold">
-        {{ user_name }} ({{ user_id }}) {% if user_type_name %}<span class="badge badge-accent"
-          >{{ user_type_name }}</span
-        >{% endif %} 勤務スケジュール
-      </h3>
+      <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) 勤務スケジュール</h3>
+    </div>
 
+    <!-- カレンダービュー -->
+    <div class="overflow-x-auto">{% include "components/calendar/grid_calendar.html" %}</div>
+
+    <!-- ボタン部分を下部に移動 -->
+    <div class="flex justify-between items-center mt-4">
       <div class="flex gap-2">
         {% if target_date %}
         <button
-          class="btn btn-sm btn-ghost"
+          class="btn btn-sm btn-outline"
           hx-get="/day/{{ target_date }}"
           hx-target="#day-detail-container"
           hx-swap="outerHTML"
@@ -29,69 +31,11 @@
         </button>
         {% endif %}
 
-        <div class="btn-group">
-          <button
-            class="btn btn-sm btn-outline"
-            {%
-            if
-            target_date
-            %}
-            hx-get="/day/{{ target_date }}/user/{{ user_id }}?month={{ prev_month }}"
-            {%
-            else
-            %}
-            hx-get="/user/{{ user_id }}?month={{ prev_month }}"
-            {%
-            endif
-            %}
-            hx-target="#day-detail-container"
-            hx-swap="outerHTML"
-          >
-            ＜前月
-          </button>
-          <button
-            class="btn btn-sm"
-            {%
-            if
-            target_date
-            %}
-            hx-get="/day/{{ target_date }}/user/{{ user_id }}"
-            {%
-            else
-            %}
-            hx-get="/user/{{ user_id }}"
-            {%
-            endif
-            %}
-            hx-target="#day-detail-container"
-            hx-swap="outerHTML"
-          >
-            今月
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            {%
-            if
-            target_date
-            %}
-            hx-get="/day/{{ target_date }}/user/{{ user_id }}?month={{ next_month }}"
-            {%
-            else
-            %}
-            hx-get="/user/{{ user_id }}?month={{ next_month }}"
-            {%
-            endif
-            %}
-            hx-target="#day-detail-container"
-            hx-swap="outerHTML"
-          >
-            次月＞
-          </button>
-        </div>
+        <!-- 共通月切り替えコンポーネント -->
+        {% with use_htmx=true, target_id="day-detail-container", url_base=("/user" if not target_date else "/day/" ~
+        target_date ~ "/user"), user_id=user_id, target_date=target_date, prev_month=prev_month, next_month=next_month
+        %} {% include "components/common/month_switcher.html" %} {% endwith %}
       </div>
     </div>
-
-    <!-- カレンダービュー -->
-    <div class="overflow-x-auto">{% include "components/calendar/grid_calendar.html" %}</div>
   </div>
 </section>

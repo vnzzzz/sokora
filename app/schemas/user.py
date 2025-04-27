@@ -25,7 +25,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """ユーザー更新用スキーマ"""
-    username: Optional[str] = None
+    username: str
     group_id: int
     user_type_id: int
 

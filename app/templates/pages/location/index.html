@@ -1,4 +1,5 @@
-{% extends "layout/base.html" %} {% set title_text = "勤務場所管理 - Sokora" %} {% block content %}
+{% extends "layout/base.html" %} {% set title_text = "勤務場所管理 - Sokora" %} {% from "components/common/modal.html"
+import add_modal, edit_modal, delete_confirm_modal %} {% block content %}
 <div class="card bg-base-200 shadow-lg rounded-lg">
   <div class="card-body p-6">
     <div class="flex justify-between items-center">
@@ -7,7 +8,7 @@
       </div>
 
       <!-- 新規追加ボタン -->
-      <div x-data="{ showAddModal: false }" x-ref="addLocationModal" @click.away="showAddModal = false">
+      <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
         <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -26,342 +27,156 @@
           勤務場所追加
         </button>
 
-        <!-- 新規追加モーダル -->
-        <div
-          x-show="showAddModal"
-          style="display: none"
-          class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-        >
-          <div
-            class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full"
-            @click.away="showAddModal = false"
-            @click.stop
-          >
-            <h3 class="font-bold text-lg mb-4 text-base-content">勤務場所追加</h3>
-            <form id="new-location-form" action="/api/locations/" method="post" class="space-y-4">
-              <div class="form-control">
-                <label class="label" for="add-location-name">
-                  <span class="label-text">勤務場所名</span>
-                </label>
-                <input
-                  type="text"
-                  id="add-location-name"
-                  name="name"
-                  class="input input-bordered w-full focus:border-neutral"
-                  required
-                  autocomplete="off"
-                />
-              </div>
-              <div class="flex justify-end space-x-3 mt-6">
-                <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
-                <button type="submit" class="btn btn-neutral shadow-sm">追加</button>
-              </div>
-            </form>
-          </div>
+        <!-- 勤務場所追加モーダル -->
+        {% set add_content %}
+        <div class="form-control">
+          <label class="label" for="add-location-name">
+            <span class="label-text">勤務場所名</span>
+          </label>
+          <input
+            type="text"
+            id="add-location-name"
+            name="name"
+            class="input input-bordered w-full focus:border-neutral"
+            required
+            autocomplete="off"
+          />
         </div>
+        {% endset %} {{ add_modal("勤務場所追加", "new-location-form", add_content) }}
       </div>
     </div>
 
     <!-- 勤務場所一覧 -->
-    <div id="locations-container" class="mt-8">
-      <div class="flex justify-center">
-        <span class="loading loading-spinner loading-md text-base-content/60"></span>
+    <div class="mt-8">
+      {% if not locations %}
+      <div class="alert alert-info shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          ></path>
+        </svg>
+        <span>勤務場所が登録されていません。新しい勤務場所を追加してください。</span>
       </div>
+      {% else %}
+      <div class="overflow-x-auto rounded-lg">
+        <table class="table table-zebra w-full">
+          <thead class="bg-base-300 text-base-content">
+            <tr>
+              <th class="rounded-tl-lg">勤務場所名</th>
+              <th class="text-right rounded-tr-lg">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for location in locations %}
+            <tr class="hover:bg-base-200" id="location-row-{{ location.location_id }}">
+              <td class="font-medium">
+                <span class="{{ location.color_class }}">{{ location.name }}</span>
+              </td>
+              <td class="text-right">
+                <div class="flex justify-end gap-2">
+                  <div x-data="{ showEditModal: false }">
+                    <button @click="showEditModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-4 h-4 mr-1"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                        />
+                      </svg>
+                      編集
+                    </button>
+
+                    <!-- 勤務場所編集モーダル -->
+                    {% set edit_content %}
+                    <div class="form-control">
+                      <label class="label" for="edit-location-name-{{ location.location_id }}">
+                        <span class="label-text">勤務場所名</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="edit-location-name-{{ location.location_id }}"
+                        name="name"
+                        value="{{ location.name }}"
+                        class="input input-bordered focus:border-neutral"
+                        required
+                        autocomplete="off"
+                      />
+                    </div>
+                    {% endset %} {{ edit_modal("勤務場所編集", "edit-form", edit_content, location.location_id) }}
+                  </div>
+                  <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ location.location_id }}">
+                    <button
+                      @click="showDeleteConfirm = true"
+                      class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-4 h-4 mr-1"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                        />
+                      </svg>
+                      削除
+                    </button>
+
+                    <!-- 削除確認モーダル -->
+                    {% set delete_warning %}※勤怠データが紐づいている場合は削除できません。{% endset %} {{
+                    delete_confirm_modal("削除の確認", delete_warning, location.location_id, location.name, "削除") }}
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
 {% endblock %} {% block extra_scripts %}
-<!-- 勤務場所データ処理スクリプト -->
+<script src="/static/js/modal-handlers.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    // APIからのデータを取得して表示
-    fetchLocations()
+    // 勤務場所追加の処理
+    setupAddFormHandler('new-location-form', '/api/locations/')
 
-    // HTMX のカスタムイベントリスナー
-    document.body.addEventListener('locationChanged', function () {
-      fetchLocations()
-    })
+    // 勤務場所編集の処理
+    setupEditFormHandlers('.btn[data-item-id][class*="btn-neutral"]', 'edit-form', '/api/locations/{id}')
 
-    // 新規追加フォームの処理
-    document.getElementById('new-location-form').addEventListener('submit', function (event) {
-      event.preventDefault()
-      const formData = new FormData(this)
-
-      // 送信ボタンを無効化
-      const submitBtn = this.querySelector('button[type="submit"]')
-      if (submitBtn) {
-        submitBtn.disabled = true
-        submitBtn.textContent = '送信中...'
+    // 勤務場所削除の処理
+    setupDeleteHandlers('.btn[data-item-id][class*="btn-error"]', '/api/locations/{id}', function (data, itemId) {
+      // 成功したら該当行を削除
+      const row = document.getElementById('location-row-' + itemId)
+      if (row) {
+        row.remove()
       }
 
-      // APIにPOSTリクエスト
-      fetch('/api/locations/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.get('name')
-        })
-      })
-        .then((response) => {
-          if (!response.ok) {
-            return response.json().then((data) => {
-              throw new Error(data.detail || 'エラーが発生しました')
-            })
-          }
-          return response.json()
-        })
-        .then((data) => {
-          // 成功したらフォームをリセットしてモーダルを閉じる
-          this.reset()
+      // 行がなくなったら「データなし」表示を出す
+      const tbody = document.querySelector('tbody')
+      if (tbody && tbody.children.length === 0) {
+        window.location.reload()
+      }
 
-          // モーダルを閉じる
-          const addModalElement = document.querySelector('[x-data*="showAddModal"]')
-          if (addModalElement) {
-            // Alpine.jsの変数を直接操作
-            if (typeof addModalElement.__x !== 'undefined') {
-              addModalElement.__x.$data.showAddModal = false
-            } else {
-              // フォールバック: キャンセルボタンをクリック
-              addModalElement.querySelector('button[type="button"][class*="btn-outline"]').click()
-            }
-          }
-
-          // 一覧を更新
-          htmx.trigger('body', 'locationChanged')
-
-          // ボタンを元に戻す（実際には閉じるので見えない）
-          if (submitBtn) {
-            submitBtn.disabled = false
-            submitBtn.textContent = '追加'
-          }
-        })
-        .catch((error) => {
-          alert(error.message || 'エラーが発生しました')
-          // エラー時はボタンを元に戻す
-          if (submitBtn) {
-            submitBtn.disabled = false
-            submitBtn.textContent = '追加'
-          }
-        })
+      // モーダルを閉じる処理は不要 - modal-handlers.jsで実装済み
     })
-
-    // 勤務場所データを取得する関数
-    function fetchLocations() {
-      fetch('/api/locations')
-        .then((response) => response.json())
-        .then((data) => {
-          // データが取得できたらリストを作成して表示
-          const container = document.getElementById('locations-container')
-
-          if (data.locations.length === 0) {
-            container.innerHTML = `
-            <div class="alert alert-info shadow-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                class="stroke-current shrink-0 w-6 h-6"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              <span>勤務場所が登録されていません。新しい勤務場所を追加してください。</span>
-            </div>
-            `
-            return
-          }
-
-          // 表形式で表示
-          let html = `
-          <div class="overflow-x-auto rounded-lg">
-            <table class="table table-zebra w-full">
-              <thead class="bg-base-300 text-base-content">
-                <tr>
-                  <th class="rounded-tl-lg">勤務場所名</th>
-                  <th class="rounded-tr-lg text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-          `
-
-          // 各勤務場所の行を追加
-          data.locations.forEach((location, index) => {
-            // 色のインデックス計算（ui_utils.pyと同じロジック）
-            const tailwindColors = ['success', 'primary', 'warning', 'error', 'info', 'accent', 'secondary']
-            const colorIdx = index % tailwindColors.length
-            const colorName = tailwindColors[colorIdx]
-            const bgColorClass = `bg-${colorName}/10`
-            const textColorClass = `text-${colorName}`
-
-            html += `
-              <tr class="hover:bg-base-200" id="location-row-${location.location_id}">
-                <td class="font-medium">
-                  <span class="${bgColorClass} ${textColorClass} px-2 py-1 rounded">${location.name}</span>
-                </td>
-                <td class="text-right">
-                  <div class="flex justify-end gap-2">
-                    <div x-data="{ showEditModal: false }">
-                      <button @click="showEditModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                        </svg>
-                        編集
-                      </button>
-                      
-                      <!-- 編集モーダル -->
-                      <div x-show="showEditModal" @click.away="showEditModal = false" style="display: none"
-                           class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                        <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 ${textColorClass}">勤務場所編集</h3>
-                          <form id="edit-form-${location.location_id}" class="space-y-4">
-                            <div class="form-control">
-                              <label class="label" for="edit-location-name-${location.location_id}">
-                                <span class="label-text">勤務場所名</span>
-                              </label>
-                              <input type="text" id="edit-location-name-${location.location_id}" name="name" value="${location.name}" class="input input-bordered focus:border-neutral" required autocomplete="off">
-                            </div>
-                            <div class="flex justify-end space-x-3 mt-6">
-                              <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
-                              <button type="button" class="btn btn-neutral shadow-sm edit-location-button" 
-                                data-location-id="${location.location_id}">保存</button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div x-data="{ showDeleteConfirm: false }">
-                      <button @click="showDeleteConfirm = true" class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                        削除
-                      </button>
-                      
-                      <!-- 削除確認モーダル -->
-                      <div x-show="showDeleteConfirm" @click.away="showDeleteConfirm = false" style="display: none"
-                           class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                        <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 text-error text-left">削除の確認</h3>
-                          <p class="mb-5 text-left">
-                            「${location.name}」を削除してもよろしいですか？<br>
-                            この操作は元に戻せません。<br>
-                            ※勤怠データが紐づいている場合は削除できません。
-                          </p>
-                          <div class="flex justify-end space-x-3">
-                            <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">キャンセル</button>
-                            <button type="button" class="btn btn-error shadow-sm delete-location-button"
-                              data-location-id="${location.location_id}">削除</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `
-          })
-
-          // テーブルを閉じる
-          html += `
-              </tbody>
-            </table>
-          </div>
-          `
-
-          // 生成したHTMLを挿入
-          container.innerHTML = html
-
-          // 編集ボタンのイベントリスナーを設定
-          document.querySelectorAll('.edit-location-button').forEach((button) => {
-            button.addEventListener('click', function () {
-              const locationId = this.getAttribute('data-location-id')
-              const form = document.getElementById(`edit-form-${locationId}`)
-              const name = form.querySelector('input[name="name"]').value.trim()
-
-              if (!name) {
-                alert('勤務場所名を入力してください')
-                return
-              }
-
-              // APIにPUTリクエスト
-              fetch(`/api/locations/${locationId}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name })
-              })
-                .then((response) => {
-                  if (!response.ok) {
-                    return response.json().then((data) => {
-                      throw new Error(data.detail || 'エラーが発生しました')
-                    })
-                  }
-                  return response.json()
-                })
-                .then(() => {
-                  // 更新が成功したらデータを再取得
-                  htmx.trigger('body', 'locationChanged')
-
-                  // モーダルを閉じる
-                  const modalElement = button.closest('[x-data*="showEditModal"]')
-                  if (modalElement && typeof modalElement.__x !== 'undefined') {
-                    modalElement.__x.$data.showEditModal = false
-                  }
-                })
-                .catch((error) => {
-                  alert(error.message || 'エラーが発生しました')
-                })
-            })
-          })
-
-          // 削除ボタンのイベントリスナーを設定
-          document.querySelectorAll('.delete-location-button').forEach((button) => {
-            button.addEventListener('click', function () {
-              const locationId = this.getAttribute('data-location-id')
-
-              // APIにDELETEリクエスト
-              fetch(`/api/locations/${locationId}`, {
-                method: 'DELETE'
-              })
-                .then((response) => {
-                  if (!response.ok) {
-                    return response.json().then((data) => {
-                      throw new Error(data.detail || 'エラーが発生しました')
-                    })
-                  }
-                  // 削除が成功したらデータを再取得
-                  htmx.trigger('body', 'locationChanged')
-
-                  // モーダルを閉じる
-                  const modalElement = button.closest('[x-data*="showDeleteConfirm"]')
-                  if (modalElement && typeof modalElement.__x !== 'undefined') {
-                    modalElement.__x.$data.showDeleteConfirm = false
-                  }
-                })
-                .catch((error) => {
-                  alert(error.message || 'エラーが発生しました')
-                })
-            })
-          })
-        })
-        .catch((error) => {
-          // console.error('Error fetching locations:', error)
-          document.getElementById('locations-container').innerHTML = `
-          <div class="alert alert-error shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>データの取得に失敗しました。ページを再読み込みしてください。</span>
-          </div>
-          `
-        })
-    }
   })
 </script>
 {% endblock %}

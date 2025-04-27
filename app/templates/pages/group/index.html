@@ -1,4 +1,5 @@
-{% extends "layout/base.html" %} {% set title_text = "グループ管理 - Sokora" %} {% block content %}
+{% extends "layout/base.html" %} {% set title_text = "グループ管理 - Sokora" %} {% from "components/common/modal.html"
+import add_modal, edit_modal, delete_confirm_modal %} {% block content %}
 <div class="card bg-base-200 shadow-lg rounded-lg">
   <div class="card-body p-6">
     <div class="flex justify-between items-center">
@@ -26,39 +27,22 @@
           グループ追加
         </button>
 
-        <!-- 新規追加モーダル -->
-        <div
-          x-show="showAddModal"
-          style="display: none"
-          class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-        >
-          <div
-            class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full"
-            @click.away="showAddModal = false"
-            @click.stop
-          >
-            <h3 class="font-bold text-lg mb-4 text-base-content">グループ追加</h3>
-            <form id="new-group-form" class="space-y-4">
-              <div class="form-control">
-                <label class="label" for="add-group-name">
-                  <span class="label-text">グループ名</span>
-                </label>
-                <input
-                  type="text"
-                  id="add-group-name"
-                  name="name"
-                  class="input input-bordered w-full focus:border-neutral"
-                  required
-                  autocomplete="off"
-                />
-              </div>
-              <div class="flex justify-end space-x-3 mt-6">
-                <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
-                <button type="button" class="btn btn-neutral shadow-sm" id="add-group-button">追加</button>
-              </div>
-            </form>
-          </div>
+        <!-- グループ追加モーダル -->
+        {% set add_content %}
+        <div class="form-control">
+          <label class="label" for="add-group-name">
+            <span class="label-text">グループ名</span>
+          </label>
+          <input
+            type="text"
+            id="add-group-name"
+            name="name"
+            class="input input-bordered w-full focus:border-neutral"
+            required
+            autocomplete="off"
+          />
         </div>
+        {% endset %} {{ add_modal("グループ追加", "new-group-form", add_content) }}
       </div>
     </div>
 
@@ -110,45 +94,23 @@
                       編集
                     </button>
 
-                    <!-- 編集モーダル -->
-                    <div
-                      x-show="showEditModal"
-                      @click.away="showEditModal = false"
-                      style="display: none"
-                      class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-                    >
-                      <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                        <h3 class="font-bold text-lg mb-4 text-base-content">グループ編集</h3>
-                        <form id="edit-form-{{ group.group_id }}" class="space-y-4">
-                          <div class="form-control">
-                            <label class="label" for="edit-group-name-{{ group.group_id }}">
-                              <span class="label-text">グループ名</span>
-                            </label>
-                            <input
-                              type="text"
-                              id="edit-group-name-{{ group.group_id }}"
-                              name="name"
-                              value="{{ group.name }}"
-                              class="input input-bordered focus:border-neutral"
-                              required
-                              autocomplete="off"
-                            />
-                          </div>
-                          <div class="flex justify-end space-x-3 mt-6">
-                            <button type="button" class="btn btn-outline" @click="showEditModal = false">
-                              キャンセル
-                            </button>
-                            <button
-                              type="button"
-                              class="btn btn-neutral shadow-sm edit-group-button"
-                              data-group-id="{{ group.group_id }}"
-                            >
-                              保存
-                            </button>
-                          </div>
-                        </form>
-                      </div>
+                    <!-- グループ編集モーダル -->
+                    {% set edit_content %}
+                    <div class="form-control">
+                      <label class="label" for="edit-group-name-{{ group.group_id }}">
+                        <span class="label-text">グループ名</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="edit-group-name-{{ group.group_id }}"
+                        name="name"
+                        value="{{ group.name }}"
+                        class="input input-bordered focus:border-neutral"
+                        required
+                        autocomplete="off"
+                      />
                     </div>
+                    {% endset %} {{ edit_modal("グループ編集", "edit-form", edit_content, group.group_id) }}
                   </div>
                   <div x-data="{ showDeleteConfirm: false }">
                     <button
@@ -173,33 +135,8 @@
                     </button>
 
                     <!-- 削除確認モーダル -->
-                    <div
-                      x-show="showDeleteConfirm"
-                      @click.away="showDeleteConfirm = false"
-                      style="display: none"
-                      class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-                    >
-                      <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                        <h3 class="font-bold text-lg mb-4 text-error text-left">削除の確認</h3>
-                        <p class="mb-5 text-left">
-                          「{{ group.name }}」を削除してもよろしいですか？<br />
-                          この操作は元に戻せません。<br />
-                          ※ユーザーに割り当てられている場合は削除できません。
-                        </p>
-                        <div class="flex justify-end space-x-3">
-                          <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">
-                            キャンセル
-                          </button>
-                          <button
-                            type="button"
-                            class="btn btn-error shadow-sm delete-group-button"
-                            data-group-id="{{ group.group_id }}"
-                          >
-                            削除
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    {% set delete_warning %} ※ユーザーに割り当てられている場合は削除できません。 {% endset %} {{
+                    delete_confirm_modal("削除の確認", delete_warning, group.group_id, group.name, "削除") }}
                   </div>
                 </div>
               </td>
@@ -213,123 +150,28 @@
   </div>
 </div>
 {% endblock %} {% block extra_scripts %}
+<script src="/static/js/modal-handlers.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    // 新規追加処理
-    document.getElementById('add-group-button').addEventListener('click', function () {
-      const form = document.getElementById('new-group-form')
-      const name = form.querySelector('input[name="name"]').value.trim()
+    // グループ追加の処理
+    setupAddFormHandler('new-group-form', '/api/groups/')
 
-      if (!name) {
-        alert('グループ名を入力してください')
-        return
+    // グループ編集の処理
+    setupEditFormHandlers('.btn[data-item-id][class*="btn-neutral"]', 'edit-form', '/api/groups/{id}')
+
+    // グループ削除の処理
+    setupDeleteHandlers('.btn[data-item-id][class*="btn-error"]', '/api/groups/{id}', function (data, itemId) {
+      // 成功したら該当行を削除
+      const row = document.getElementById('group-row-' + itemId)
+      if (row) {
+        row.remove()
       }
 
-      // APIにPOSTリクエスト
-      fetch('/api/groups/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name })
-      })
-        .then((response) => {
-          if (!response.ok) {
-            return response.json().then((data) => {
-              throw new Error(data.detail || 'エラーが発生しました')
-            })
-          }
-          return response.json()
-        })
-        .then((data) => {
-          window.location.reload()
-        })
-        .catch((error) => {
-          alert('エラーが発生しました: ' + error.message)
-        })
-    })
-
-    // 編集処理
-    document.querySelectorAll('.edit-group-button').forEach((button) => {
-      button.addEventListener('click', function () {
-        const groupId = this.getAttribute('data-group-id')
-        const form = document.getElementById('edit-form-' + groupId)
-        const name = form.querySelector('input[name="name"]').value.trim()
-
-        if (!name) {
-          alert('グループ名を入力してください')
-          return
-        }
-
-        // APIにPUTリクエスト
-        fetch('/api/groups/' + groupId, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ name })
-        })
-          .then((response) => {
-            if (!response.ok) {
-              return response.json().then((data) => {
-                throw new Error(data.detail || 'エラーが発生しました')
-              })
-            }
-            return response.json()
-          })
-          .then((data) => {
-            window.location.reload()
-          })
-          .catch((error) => {
-            alert('エラーが発生しました: ' + error.message)
-          })
-      })
-    })
-
-    // 削除処理
-    document.querySelectorAll('.delete-group-button').forEach((button) => {
-      button.addEventListener('click', function () {
-        const groupId = this.getAttribute('data-group-id')
-
-        // APIにDELETEリクエスト
-        fetch('/api/groups/' + groupId, {
-          method: 'DELETE'
-        })
-          .then((response) => {
-            if (!response.ok) {
-              return response.json().then((data) => {
-                throw new Error(data.detail || 'エラーが発生しました')
-              })
-            }
-            // 削除成功（204 No Content）の場合
-            if (response.status === 204) {
-              return {}
-            }
-            return response.json()
-          })
-          .then((data) => {
-            // 削除成功したら該当行を削除
-            const row = document.getElementById('group-row-' + groupId)
-            if (row) {
-              row.remove()
-            }
-
-            // 行がなくなったら「データなし」表示を出す
-            const tbody = document.querySelector('tbody')
-            if (tbody && tbody.children.length === 0) {
-              window.location.reload()
-            }
-          })
-          .catch((error) => {
-            alert(error.message || 'エラーが発生しました')
-
-            // モーダルを閉じる
-            const modalElement = button.closest('[x-data*="showDeleteConfirm"]')
-            if (modalElement && typeof modalElement.__x !== 'undefined') {
-              modalElement.__x.$data.showDeleteConfirm = false
-            }
-          })
-      })
+      // 行がなくなったら「データなし」表示を出す
+      const tbody = document.querySelector('tbody')
+      if (tbody && tbody.children.length === 0) {
+        window.location.reload()
+      }
     })
   })
 </script>
