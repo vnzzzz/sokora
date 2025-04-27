@@ -61,7 +61,13 @@
       </div>
 
       <!-- コンテンツ全体をHTMXターゲットとするコンテナ -->
-      <div id="attendance-content">
+      <div
+        id="attendance-content"
+        hx-get="/attendance"
+        hx-trigger="refreshAttendance from:body"
+        hx-target="#attendance-content"
+        hx-swap="innerHTML"
+      >
         {# 部分テンプレートを読み込む #} {% include "pages/attendance/attendance_content.html" %}
       </div>
 
@@ -110,7 +116,7 @@
              userId = $event.detail.userId; 
              userName = $event.detail.userName; 
              date = $event.detail.date;
-             formattedDate = formatDateJa(date);
+             formattedDate = $event.detail.formattedDate;
              selectedLocationId = $event.detail.locationId || null;
              hasData = $event.detail.hasData;"
         x-on:close-attendance-modal.window="showAttendanceModal = false"
@@ -165,7 +171,7 @@
                   type="button"
                   class="btn btn-error btn-outline shadow-sm"
                   x-show="hasData"
-                  @click="deleteAttendance()"
+                  @click="window.attendanceHandlers.deleteAttendance(userId, date)"
                 >
                   削除
                 </button>
@@ -173,7 +179,7 @@
                   type="button"
                   class="btn btn-neutral shadow-sm"
                   x-bind:disabled="selectedLocationId === null"
-                  @click="submitAttendance()"
+                  @click="window.attendanceHandlers.submitAttendance()"
                 >
                   登録
                 </button>
@@ -187,93 +193,6 @@
     </div>
   </div>
 </div>
-
-<!-- 勤怠マトリックス用スクリプト -->
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // 勤怠セルのクリックイベント設定
-    // HTMXで部分更新される可能性があるため、イベント委譲を利用
-    document.body.addEventListener('click', function (event) {
-      if (event.target.closest('.attendance-cell')) {
-        const cell = event.target.closest('.attendance-cell')
-        const userId = cell.dataset.userId
-        const userName = cell.dataset.userName
-        const date = cell.dataset.date
-        const hasData = cell.dataset.hasData === 'true'
-        const locationName = cell.dataset.location || ''
-
-        // 既存の勤務場所に基づいて初期ロケーションIDを設定
-        let locationId = null
-        if (hasData) {
-          const locationTypes = JSON.parse('{{ location_types|tojson|safe }}')
-          const locationIndex = locationTypes.indexOf(locationName)
-          locationId = locationIndex >= 0 ? locationIndex + 1 : null
-        }
-
-        // カスタムイベントでモーダルを開く
-        window.dispatchEvent(
-          new CustomEvent('open-attendance-modal', {
-            detail: {
-              userId,
-              userName,
-              date,
-              locationId,
-              hasData: hasData
-            }
-          })
-        )
-      }
-    })
-
-    // 勤怠登録送信処理
-    window.submitAttendance = function () {
-      const form = document.getElementById('attendance-form')
-      const formData = new FormData(form)
-
-      fetch('/api/attendances/', {
-        method: 'POST',
-        body: formData
-      })
-        .then((response) => {
-          if (!response.ok) {
-            return response.json().then((err) => {
-              throw new Error(err.detail || 'サーバーエラー')
-            })
-          }
-          return response.json()
-        })
-        .then((data) => {
-          if (data.success) {
-            // モーダルを閉じるイベントを発行
-            window.dispatchEvent(new CustomEvent('close-attendance-modal'))
-
-            // 画面を更新 (HTMXリクエストで更新する方が望ましいが、一旦リロード)
-            // TODO: HTMXでの部分更新に切り替える
-            // 例: htmx.trigger('#attendance-content', 'load');
-            window.location.reload()
-          } else {
-            alert('エラー: ' + (data.message || '勤怠の登録に失敗しました'))
-          }
-        })
-        .catch((error) => {
-          console.error('勤怠登録エラー:', error)
-          alert('勤怠の登録処理中にエラーが発生しました: ' + error.message)
-        })
-    }
-
-    // 日本語の日付フォーマット関数
-    window.formatDateJa = function (dateStr) {
-      const date = new Date(dateStr)
-      const year = date.getFullYear()
-      const month = date.getMonth() + 1
-      const day = date.getDate()
-      const weekdays = ['日', '月', '火', '水', '木', '金', '土']
-      const weekday = weekdays[date.getDay()]
-
-      return `${year}年${month}月${day}日(${weekday})`
-    }
-  })
-</script>
 
 <!-- 勤怠マトリックス用スタイル -->
 <style>

@@ -85,3 +85,29 @@ table {
 .text-vacation {
   color: hsl(var(--wa));
 }
+
+/* 選択された日付ヘッダーのスタイル */
+.selected-date {
+  border-top: 2px solid #888888 !important;
+  border-left: 2px solid #888888 !important;
+  border-right: 2px solid #888888 !important;
+  background-color: rgba(136, 136, 136, 0.15) !important;
+  position: relative;
+  z-index: 5;
+  font-weight: bold !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* ヘッダーのみに追加 */
+}
+
+/* 選択された列のスタイル */
+.selected-column {
+  border-left: 2px solid #888888 !important;
+  border-right: 2px solid #888888 !important;
+  background-color: rgba(136, 136, 136, 0.15) !important;
+  position: relative;
+  z-index: 5;
+}
+
+/* 最後の行のセルに下線を追加 */
+tr:last-child .selected-column {
+  border-bottom: 2px solid #888888 !important;
+}

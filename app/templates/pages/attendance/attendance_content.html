@@ -8,6 +8,11 @@
   </div>
 </div>
 
+<!-- JavaScriptへ渡すデータ -->
+<script id="location-types-data" type="application/json" class="hidden">
+  {{ location_types|tojson|safe }}
+</script>
+
 <!-- 勤怠マトリックス -->
 <div class="overflow-x-auto" style="max-width: calc(100vw - 3rem)">
   {# テーブルレイアウトを固定し、列幅指定を有効にする #}

@@ -194,31 +194,3 @@
   <!-- 下部の余白スペース (残りのスペースを埋める) -->
   <div class="flex-grow"></div>
 </aside>
-
-<script>
-  // アクティブなメニュー項目をハイライト
-  document.addEventListener('DOMContentLoaded', function () {
-    const currentPath = window.location.pathname
-    const menuLinks = document.querySelectorAll('aside a')
-
-    menuLinks.forEach((link) => {
-      const linkPath = link.getAttribute('href')
-
-      // 完全一致の場合
-      if (currentPath === linkPath) {
-        link.classList.add('bg-base-300', 'font-medium')
-        link.classList.remove('btn-ghost')
-        return
-      }
-
-      // パスの先頭一致で次の文字がスラッシュの場合（/user と /user_types を区別するため）
-      if (linkPath !== '/' && currentPath.startsWith(linkPath)) {
-        // linkPath の長さが currentPath より短く、次の文字がスラッシュであることを確認
-        if (linkPath.length < currentPath.length && currentPath.charAt(linkPath.length) === '/') {
-          link.classList.add('bg-base-300', 'font-medium')
-          link.classList.remove('btn-ghost')
-        }
-      }
-    })
-  })
-</script>

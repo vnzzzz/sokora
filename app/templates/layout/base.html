@@ -16,64 +16,6 @@
     </div>
 
     <!-- JavaScript -->
-    <script>
-      // Alpine.jsストアをhydration時に初期化
-      document.addEventListener('alpine:init', () => {
-        // ストアの初期化（必要に応じて）
-      })
-
-      // 初期カレンダー読み込み後に選択処理を行うためのHTMXイベントリスナー
-      document.addEventListener('htmx:afterSwap', function (event) {
-        if (event.detail.target.id === 'calendar-area') {
-          // カレンダーエリアが読み込まれた後、選択処理が行われたかチェック
-          setTimeout(function () {
-            const hasSelection = document.querySelector('.calendar-cell.selected-date')
-            if (!hasSelection) {
-              // カスタムイベントを発火して今日の日付をハイライト
-              document.dispatchEvent(new CustomEvent('sokora:highlightToday'))
-            }
-          }, 100) // カレンダー内のスクリプトの実行より少し遅らせる
-        }
-      })
-
-      // カレンダー初期化時にも確認
-      document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-          // カレンダーがロードされてからさらに少し待機
-          setTimeout(function () {
-            const hasSelection = document.querySelector('.calendar-cell.selected-date')
-            if (!hasSelection) {
-              document.dispatchEvent(new CustomEvent('sokora:highlightToday'))
-            }
-          }, 300)
-        }, 100)
-      })
-
-      // 初期表示時に詳細エリアのロード状態をチェック
-      document.addEventListener('DOMContentLoaded', function () {
-        // 少し遅延を入れてHTMXの初期化が完了するのを待つ
-        setTimeout(function () {
-          const detailArea = document.getElementById('detail-area')
-
-          // 詳細エリアが空か、初期コンテンツしか含まない場合
-          if (detailArea) {
-            const hasDetailContent = detailArea.querySelector('h3') !== null
-
-            if (!hasDetailContent) {
-              // 選択されている日付があれば、その日付のデータを読み込む
-              const selectedDate = document.querySelector('.calendar-cell.selected-date')
-              if (selectedDate) {
-                const date = selectedDate.getAttribute('data-date')
-                if (date) {
-                  // HTMX経由で日付詳細を取得
-                  htmx.ajax('GET', `/day/${date}`, { target: '#detail-area' })
-                }
-              }
-            }
-          }
-        }, 500)
-      })
-    </script>
 
     {% block extra_scripts %}
     <!-- ページ固有のスクリプトはここに挿入されます -->
