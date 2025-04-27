@@ -205,36 +205,30 @@ def get_day_detail(
             # 社員種別を追加
             organized_by_group[group_name]["user_types"].add(user_type_name)
             
-            # 社員種別ごとのリストを初期化
+            # 社員種別ごとのデータ構造を初期化
             if user_type_name not in organized_by_group[group_name]["user_types_data"]:
                 organized_by_group[group_name]["user_types_data"][user_type_name] = []
             
             # ユーザーデータを追加
             organized_by_group[group_name]["user_types_data"][user_type_name].append(user_data)
     
-    # グループをID順でソートするための準備
-    sorted_organized_by_group = {}
-    for group_name in sorted_group_names:
-        if group_name in organized_by_group:
-            sorted_organized_by_group[group_name] = organized_by_group[group_name]
+    # 各グループの社員種別をIDでソート
+    for group_name in organized_by_group:
+        # 社員種別をIDの昇順でソート
+        sorted_user_types = sorted(
+            list(organized_by_group[group_name]["user_types"]),
+            key=lambda ut: user_type_id_mapping.get(ut, 9999)
+        )
+        organized_by_group[group_name]["user_types"] = sorted_user_types
     
-    # 未分類グループがあれば最後に追加
-    if "未分類" in organized_by_group:
-        sorted_organized_by_group["未分類"] = organized_by_group["未分類"]
+    # グループをIDの昇順でソート
+    sorted_organized_by_group = dict(sorted(
+        organized_by_group.items(),
+        key=lambda item: item[1]["group_id"]
+    ))
     
-    # 社員種別をID順に並べ替え
-    for group_data in sorted_organized_by_group.values():
-        # 社員種別をID順にソート
-        user_types_sorted = sorted(list(group_data["user_types"]), 
-                                 key=lambda x: user_type_id_mapping.get(x, 9999))
-        group_data["user_types"] = user_types_sorted
-        
-        # 各社員種別内でユーザーを名前順にソート
-        for user_type_name in group_data["user_types"]:
-            group_data["user_types_data"][user_type_name].sort(key=lambda u: u.get("user_name", ""))
-
-    # Check if data exists
-    has_data = has_data_for_day(detail)
+    # データの有無を確認
+    has_data = bool(attendance_data) and any(len(users) > 0 for users in attendance_data.values())
 
     context = {
         "request": request,
@@ -248,163 +242,4 @@ def get_day_detail(
         "target_date": day  # day_detail.htmlで使用されるtarget_dateも追加
     }
     
-    return templates.TemplateResponse("components/details/day_detail.html", context)
-
-
-@router.get("/user/{user_id}", response_class=HTMLResponse)
-def get_user_detail(
-    request: Request,
-    user_id: str,
-    month: Optional[str] = None,
-    db: Session = Depends(get_db),
-) -> Any:
-    """特定のユーザーに関する詳細情報を表示
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: ユーザーID
-        month: 月（YYYY-MM形式、指定がない場合は現在の月）
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたユーザー詳細HTML
-    """
-    try:
-        if month is None:
-            month = get_current_month_formatted()
-
-        # カレンダーデータを取得
-        calendar_data = build_calendar_data(db, month)
-        
-        # ユーザー名を取得
-        user_name = user.get_user_name_by_id(db, user_id=user_id)
-        if not user_name:
-            return HTMLResponse(f"ユーザー '{html.escape(user_id)}' が見つかりません", status_code=404)
-        
-        # ユーザーオブジェクトから社員種別情報を取得
-        user_obj = user.get_by_user_id(db, user_id=user_id)
-        user_type_name = user_obj.user_type.name if user_obj and user_obj.user_type else ""
-        user_type_id = user_obj.user_type_id if user_obj else 0
-        
-        # ユーザーの勤怠データ取得
-        user_entries = attendance.get_user_data(db, user_id=user_id)
-        
-        # 日付と勤務場所のマップを作成
-        user_dates = []
-        user_locations = {}
-        for entry in user_entries:
-            date = entry["date"]
-            user_dates.append(date)
-            user_locations[date] = entry["location_name"]
-        
-        # 勤務場所の種類を取得
-        location_types = location.get_all_locations(db)
-        
-        # 勤務場所のスタイル情報を生成
-        location_styles = generate_location_styles(location_types)
-        
-        # 表示用の日付
-        last_viewed_date = get_last_viewed_date(request)
-        
-        context = {
-            "request": request,
-            "user_id": user_id,
-            "user_name": user_name,
-            "calendar_data": calendar_data["weeks"],
-            "user_dates": user_dates,
-            "user_locations": user_locations,
-            "location_styles": location_styles,
-            "prev_month": calendar_data["prev_month"],
-            "next_month": calendar_data["next_month"],
-            "last_viewed_date": last_viewed_date,
-            "month_name": calendar_data["month_name"],  # 月名を追加
-            "location_types": location_types,  # 勤務場所の種類も追加
-            "editable": False,  # 閲覧専用モード
-            "user_type_name": user_type_name,
-            "user_type_id": user_type_id,
-        }
-        
-        return templates.TemplateResponse("components/details/user_detail.html", context)
-    except Exception as e:
-        logger.error(f"Error getting user detail: {str(e)}")
-        return HTMLResponse(f"エラーが発生しました: {html.escape(str(e))}", status_code=500)
-
-
-@router.get("/day/{day}/user/{user_id}", response_class=HTMLResponse)
-def get_day_user_detail(
-    request: Request,
-    day: str,
-    user_id: str,
-    month: Optional[str] = None,
-    db: Session = Depends(get_db),
-) -> Any:
-    """指定された日付の特定ユーザーの詳細を表示します
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        day: 日付（YYYY-MM-DD形式）
-        user_id: ユーザーID
-        month: 月（YYYY-MM形式、指定がない場合は日付から抽出）
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたユーザー詳細HTML
-    """
-    try:
-        # ユーザー名を取得
-        user_name = user.get_user_name_by_id(db, user_id=user_id)
-        if not user_name:
-            return HTMLResponse(f"ユーザー '{html.escape(user_id)}' が見つかりません", status_code=404)
-        
-        # ユーザーオブジェクトから社員種別情報を取得
-        user_obj = user.get_by_user_id(db, user_id=user_id)
-        user_type_name = user_obj.user_type.name if user_obj and user_obj.user_type else ""
-        user_type_id = user_obj.user_type_id if user_obj else 0
-        
-        # 月を決定（引数があれば使用、なければ日付から抽出）
-        if month is None:
-            month = "-".join(day.split("-")[:2])
-        
-        # カレンダーデータを取得
-        calendar_data = build_calendar_data(db, month)
-        
-        # ユーザーの勤怠データ取得
-        user_entries = attendance.get_user_data(db, user_id=user_id)
-        
-        # 日付と勤務場所のマップを作成
-        user_dates = []
-        user_locations = {}
-        for entry in user_entries:
-            date = entry["date"]
-            user_dates.append(date)
-            user_locations[date] = entry["location_name"]
-        
-        # 勤務場所の種類を取得
-        location_types = location.get_all_locations(db)
-        
-        # 勤務場所のスタイル情報を生成
-        location_styles = generate_location_styles(location_types)
-        
-        context = {
-            "request": request,
-            "user_id": user_id,
-            "user_name": user_name,
-            "calendar_data": calendar_data["weeks"],
-            "user_dates": user_dates,
-            "user_locations": user_locations,
-            "location_styles": location_styles,
-            "prev_month": calendar_data["prev_month"],
-            "next_month": calendar_data["next_month"],
-            "last_viewed_date": day,
-            "month_name": calendar_data["month_name"],
-            "location_types": location_types,
-            "editable": False,  # 閲覧専用モード
-            "user_type_name": user_type_name,
-            "user_type_id": user_type_id,
-            "target_date": day,  # 元の日付に戻るためのパラメーター
-        }
-        
-        return templates.TemplateResponse("components/details/user_detail.html", context)
-    except Exception as e:
-        logger.error(f"Error getting day user detail: {str(e)}")
-        return HTMLResponse(f"エラーが発生しました: {html.escape(str(e))}", status_code=500) 
+    return templates.TemplateResponse("components/details/day_detail.html", context) 
