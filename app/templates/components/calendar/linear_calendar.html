@@ -10,8 +10,8 @@
           weekday_array = [] %} {% for week in calendar.weeks %} {% for day_idx in range(7) %} {% if week[day_idx] and
           week[day_idx].day != 0 %} {% set day = week[day_idx] %} {% set day_idx_val = day_idx %} {% set is_weekend =
           day_idx == 0 or day_idx == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class =
-          "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if day_idx == 0 or is_holiday else "bg-blue-900/10
-          dark:bg-blue-300/10" if day_idx == 6 else "" ) %} {% set _ = day_data_array.append({ 'day': day, 'day_idx':
+          "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10" if day_idx == 0 or is_holiday else "bg-blue-900/10
+          dark:bg-blue-300/10" if day_idx == 6 else "") %} {% set _ = day_data_array.append({ 'day': day, 'day_idx':
           day_idx_val, 'is_weekend': is_weekend, 'is_holiday': is_holiday, 'weekend_class': weekend_class }) %} {% endif
           %} {% endfor %} {% endfor %} {# 日付ヘッダーを効率的に出力 #} {% for item in day_data_array %} {% set day =
           item.day %} {% set day_idx = item.day_idx %} {% set is_weekend = item.is_weekend %} {% set is_holiday =

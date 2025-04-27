@@ -4,6 +4,18 @@
   <meta name="description" content="Sokora - シンプルな勤怠管理システム" />
   <meta name="format-detection" content="telephone=no, email=no, address=no" />
 
+  <!-- テーマフラッシュ防止のためのインラインスクリプト -->
+  <script>
+    ;(function () {
+      // ローカルストレージからテーマを即座に読み込む
+      const savedTheme = localStorage.getItem('theme') || 'light'
+      document.documentElement.setAttribute('data-theme', savedTheme)
+      document.addEventListener('DOMContentLoaded', function () {
+        document.body.setAttribute('data-theme', savedTheme)
+      })
+    })()
+  </script>
+
   <!-- ページタイトル -->
   <title>{% if title_text %}{{ title_text }}{% else %}Sokora - 勤怠管理システム{% endif %}</title>
 
@@ -16,11 +28,32 @@
   <!-- HTMX -->
   <script defer src="/static/js/htmx.min.js"></script>
 
+  <!-- Main JS -->
+  <script defer src="/static/js/main.js"></script>
+
   <!-- Main CSS -->
   <link href="/static/css/main.css" rel="stylesheet" />
 
   <!-- カレンダー共通CSS -->
   <link href="/static/css/calendar.css" rel="stylesheet" />
+
+  <!-- テーマ切り替えアニメーション -->
+  <style>
+    html,
+    body {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* ダークモード時のテキスト選択色 */
+    [data-theme='dark'] ::selection {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ライトモード時のテキスト選択色 */
+    [data-theme='light'] ::selection {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+  </style>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />

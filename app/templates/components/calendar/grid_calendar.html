@@ -39,8 +39,8 @@
           {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {% for week in calendar_data %} {% for day in
           week %} {% if day and day.day != 0 %} {% set weekday_index = loop.index0 %} {% set is_weekend = weekday_index
           == 0 or weekday_index == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class =
-          "bg-opacity-90 " ~ ( "bg-red-900/10 dark:bg-red-300/10" if weekday_index == 0 or is_holiday else
-          "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "" ) %}
+          "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10" if weekday_index == 0 or is_holiday else
+          "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "") %}
 
           <th
             class="bg-base-200 text-center p-1 calendar-header-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
@@ -79,10 +79,10 @@
 
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
           loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
-          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10
-          dark:bg-red-300/10" if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if
-          weekday_index == 6 else "" ) %} {% set has_data = day.date in user_dates %} {% set current_location =
-          user_locations[day.date] if has_data else "" %} {% set is_selected = current_location == location_type %}
+          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
+          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          %} {% set has_data = day.date in user_dates %} {% set current_location = user_locations[day.date] if has_data
+          else "" %} {% set is_selected = current_location == location_type %}
 
           <td
             class="text-center hover:bg-base-300 cursor-pointer p-1 calendar-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} {% if is_selected %}{{ style_class }}{% endif %}"
@@ -110,11 +110,10 @@
 
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
           loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
-          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ( "bg-red-900/10
-          dark:bg-red-300/10" if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if
-          weekday_index == 6 else "" ) %} {% set has_data = day.date in user_dates %} {% set location =
-          user_locations[day.date] if has_data else "" %} {% set style_class = location_styles[location] if location in
-          location_styles else "" %}
+          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
+          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          %} {% set has_data = day.date in user_dates %} {% set location = user_locations[day.date] if has_data else ""
+          %} {% set style_class = location_styles[location] if location in location_styles else "" %}
 
           <td class="text-center p-1 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}">
             {% if has_data %}
