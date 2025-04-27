@@ -32,10 +32,15 @@ class AttendanceCreate(AttendanceBase):
         return v
 
     class Config:
+        """Pydanticモデルの設定クラス。
+
+        `json_encoders` でdate型をISO形式文字列に変換するよう指定。
+        `from_attributes = True` でORMからの変換を有効化。
+        """
         json_encoders = {
-            date: lambda v: v.isoformat()  # dateオブジェクトをISO形式の文字列に変換
+            date: lambda v: v.isoformat()
         }
-        from_attributes = True  # Pydantic V2の新しい設定
+        from_attributes = True
 
 
 class AttendanceUpdate(BaseModel):
@@ -44,6 +49,10 @@ class AttendanceUpdate(BaseModel):
     location_id: Optional[int] = None
 
     class Config:
+        """Pydanticモデルの設定クラス。
+
+        `from_attributes = True` でORMからの変換を有効化。
+        """
         from_attributes = True
 
 
@@ -54,6 +63,10 @@ class AttendanceInDBBase(AttendanceBase):
     user_id: str
 
     class Config:
+        """Pydanticモデルの設定クラス。
+
+        `from_attributes = True` でORMからの変換を有効化。
+        """
         from_attributes = True
 
 
@@ -61,6 +74,10 @@ class Attendance(AttendanceInDBBase):
     """勤怠データレスポンス用スキーマ"""
 
     class Config:
+        """Pydanticモデルの設定クラス。
+
+        `from_attributes = True` でORMからの変換を有効化。
+        """
         from_attributes = True
 
 
@@ -70,6 +87,10 @@ class AttendanceList(BaseModel):
     records: List[Attendance]
 
     class Config:
+        """Pydanticモデルの設定クラス。
+
+        `from_attributes = True` でORMからの変換を有効化。
+        """
         from_attributes = True
 
 
@@ -81,4 +102,8 @@ class UserAttendance(BaseModel):
     dates: List[Dict[str, Any]]  # 日付、勤務場所、勤怠IDのリスト
 
     class Config:
+        """Pydanticモデルの設定クラス。
+
+        `from_attributes = True` でORMからの変換を有効化。
+        """
         from_attributes = True

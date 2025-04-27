@@ -64,7 +64,7 @@ def update_group(
             status_code=status.HTTP_404_NOT_FOUND, detail="グループが見つかりません"
         )
     
-    # 名前を変更する場合は重複チェック
+    # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
     if group_in.name and group_in.name != group_obj.name:
         existing = group.get_by_name(db, name=group_in.name)
         if existing:
@@ -87,12 +87,12 @@ def delete_group(*, db: Session = Depends(get_db), group_id: int) -> Any:
             status_code=status.HTTP_404_NOT_FOUND, detail="グループが見つかりません"
         )
     
-    # グループが使用されているかチェック
+    # 削除しようとしているグループが現在ユーザーに割り当てられていないか確認します。
     from app.models.user import User
     user_count = db.query(User).filter(User.group_id == group_id).count()
     if user_count > 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"このグループは{user_count}人のユーザーに割り当てられているため削除できません"
         )
 

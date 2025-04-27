@@ -88,158 +88,136 @@ def get_day_detail(
         HTMLResponse: レンダリングされた日別詳細HTML
     """
     detail = attendance.get_day_data(db, day=day)
-    
-    # attendance_dataとしてdetailを設定
+
+    # attendance.get_day_data から返されるデータを attendance_data として使用します。
     attendance_data = detail
 
-    # グループ情報を取得
+    # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
     groups_map = {g.group_id: g for g in groups}
 
-    # ユーザータイプ情報を取得
+    # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
     user_types_map = {ut.user_type_id: ut for ut in user_types}
 
-    # 勤務場所情報を取得
+    # 全勤務場所名を取得します。
     location_types = location.get_all_locations(db)
-    # locations_map = {loc.location_id: loc for loc in location_types}
-    
-    # 勤務場所のバッジ情報生成
+
+    # 勤務場所名に対応するUIバッジ情報を生成します。
     locations = generate_location_badges(location_types)
     locations_badge_map = {loc["name"]: loc["badge"] for loc in locations}
 
-    # 勤務場所ごとにユーザーをグループ化・整理
+    # UI表示用に、勤務場所ごとにユーザーをグルーピングします。
     organized_data: Dict[str, Dict[str, Any]] = {}
-    
     for location_name, users_list in attendance_data.items():
-        # ユーザーをグループごとに整理
+        # 各勤務場所内で、ユーザーを所属グループごとに整理します。
         grouped_users: Dict[str, List] = {}
-        
         for user_data in users_list:
-            # ユーザーの完全なオブジェクトを取得
             user_obj = user.get_by_user_id(db, user_id=user_data["user_id"])
             if not user_obj:
                 continue
-                
-            # グループ情報を取得
-            group_obj = None
-            if user_obj.group_id in groups_map:
-                group_obj = groups_map[user_obj.group_id]
-            
+
+            group_obj = groups_map.get(user_obj.group_id)
             group_name = str(group_obj.name) if group_obj else "未分類"
-            
-            # ユーザーデータにグループ情報を追加
+
             user_data["group_id"] = str(user_obj.group_id)
             user_data["group_name"] = group_name
-            
-            # グループごとのリストに追加
+
             if group_name not in grouped_users:
                 grouped_users[group_name] = []
-            
+
             grouped_users[group_name].append(user_data)
-        
-        # 各グループ内でユーザーを社員種別でソート
+
+        # 各グループ内のユーザーリストを社員種別IDでソートします。
         for g_name in list(grouped_users.keys()):
             grouped_users[g_name].sort(key=lambda u: u.get("user_type_id", 999))
-        
-        # データを整理
+
+        # 整理したデータを勤務場所名をキーとして格納します。
         organized_data[location_name] = {
             "groups": grouped_users,
-            "group_names": sorted(list(grouped_users.keys()))
+            "group_names": sorted(list(grouped_users.keys())) # グループ名をソートして格納
         }
 
-    # グループごとにユーザーを社員種別ごとに整理
+    # さらに、グループを主キーとしてユーザーを整理するデータ構造も作成します。
     organized_by_group: Dict[str, Dict[str, Any]] = {}
-    
-    # グループIDとグループ名のマッピングを作成
+    # グループIDとグループ名のマッピング (ソート用)
     group_id_to_name = {g.group_id: g.name for g in groups}
-    # グループIDでソートするためのマッピング
     sorted_groups = sorted(groups, key=lambda g: int(g.group_id) if g.group_id is not None else 9999)
     sorted_group_names = [str(g.name) for g in sorted_groups]
-    
-    # ユーザー種別IDと名前のマッピングを作成
+
+    # ユーザー種別IDと名前のマッピング (ソート用)
     user_type_id_to_name = {ut.user_type_id: ut.name for ut in user_types}
-    # ユーザー種別をIDでソートするための準備
     user_type_id_mapping = {}
-    
+
+    # 全勤怠データを再度ループし、グループ主キーのデータ構造を構築します。
     for location_name, users_list in attendance_data.items():
-        # 勤務場所のバッジ情報を取得
         location_badge = locations_badge_map.get(location_name, "neutral")
-        
+
         for user_data in users_list:
-            # 必要なデータを追加
+            # ユーザーデータに必要な情報を追加します。
             user_data["location_name"] = location_name
             user_data["location_badge"] = location_badge
-            
-            # ユーザーの完全なオブジェクトを取得
+
             user_obj = user.get_by_user_id(db, user_id=user_data["user_id"])
             if not user_obj:
                 continue
-                
-            # グループ情報を取得
-            group_obj = None
-            if user_obj.group_id in groups_map:
-                group_obj = groups_map[user_obj.group_id]
-            
+
+            group_obj = groups_map.get(user_obj.group_id)
             group_name = str(group_obj.name) if group_obj else "未分類"
-            
-            # 社員種別情報を取得
+
+            # 社員種別情報を取得し、ソート用のIDマッピングも更新します。
             user_type_name = "未分類"
-            user_type_id = 9999  # 未分類の場合は大きな値を設定
+            user_type_id = 9999
             if user_obj.user_type_id in user_types_map:
                 user_type_obj = user_types_map[user_obj.user_type_id]
                 user_type_name = str(user_type_obj.name)
                 user_type_id = int(user_type_obj.user_type_id)
-                
-                # ユーザー種別IDを記録
                 user_type_id_mapping[user_type_name] = user_type_id
-            
-            # グループ構造を初期化
+
+            # グループキーの辞書が存在しない場合は初期化します。
             if group_name not in organized_by_group:
                 organized_by_group[group_name] = {
-                    "user_types": set(),
-                    "user_types_data": {},
-                    "group_id": int(user_obj.group_id) if user_obj.group_id is not None else 9999  # 未分類は大きな値
+                    "user_types": set(), # このグループに含まれる社員種別名のセット
+                    "user_types_data": {}, # 社員種別名をキーとするユーザーリストの辞書
+                    "group_id": int(user_obj.group_id) if user_obj.group_id is not None else 9999
                 }
-            
-            # 社員種別を追加
+
             organized_by_group[group_name]["user_types"].add(user_type_name)
-            
-            # 社員種別ごとのデータ構造を初期化
+
+            # 社員種別キーのリストが存在しない場合は初期化します。
             if user_type_name not in organized_by_group[group_name]["user_types_data"]:
                 organized_by_group[group_name]["user_types_data"][user_type_name] = []
-            
-            # ユーザーデータを追加
+
             organized_by_group[group_name]["user_types_data"][user_type_name].append(user_data)
-    
-    # 各グループの社員種別をIDでソート
+
+    # 各グループ内の社員種別リストを、社員種別IDに基づいてソートします。
     for group_name in organized_by_group:
-        # 社員種別をIDの昇順でソート
         sorted_user_types = sorted(
             list(organized_by_group[group_name]["user_types"]),
             key=lambda ut: user_type_id_mapping.get(ut, 9999)
         )
         organized_by_group[group_name]["user_types"] = sorted_user_types
-    
-    # グループをIDの昇順でソート
+
+    # 最終的なグループ主キーの辞書を、グループIDに基づいてソートします。
     sorted_organized_by_group = dict(sorted(
         organized_by_group.items(),
         key=lambda item: item[1].get("group_id", 9999)
     ))
-    
-    # データの有無を確認
+
+    # この日に勤怠データが存在するかどうかのフラグを設定します。
     has_data = bool(attendance_data) and any(len(users) > 0 for users in attendance_data.values())
 
+    # テンプレートに渡すコンテキストを作成します。
     context = {
         "request": request,
         "day": day,
-        "data": detail,
-        "locations": locations,
+        "data": detail, # 元の get_day_data の結果も渡す
+        "locations": locations, # UI用バッジ情報
         "has_data": has_data,
-        "attendance_data": attendance_data,
-        "organized_data": organized_data,
-        "organized_by_group": sorted_organized_by_group,
-        "target_date": day  # day_detail.htmlで使用されるtarget_dateも追加
+        "attendance_data": attendance_data, # 加工前の勤怠データ
+        "organized_data": organized_data, # 勤務場所主キーで整理されたデータ
+        "organized_by_group": sorted_organized_by_group, # グループ主キーで整理・ソートされたデータ
+        "target_date": day
     }
-    
+
     return templates.TemplateResponse("components/details/day_detail.html", context) 

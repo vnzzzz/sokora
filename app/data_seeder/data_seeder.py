@@ -20,13 +20,12 @@ from app.models.user_type import UserType
 
 
 class UserInfo(NamedTuple):
-    """ユーザー情報を保持するクラス"""
+    """データ生成に使用するユーザーの基本情報を格納する名前付きタプル。"""
     user_id: str
     full_name: str
 
 
-# あらかじめ用意されたユーザー情報セット
-# 実際のプロジェクトではより多くのデータを用意するべき
+# データ生成用のサンプルユーザーリスト
 SAMPLE_USERS = [
     UserInfo("tanaka.taro", "田中太郎"),
     UserInfo("yamada.hanako", "山田花子"),
@@ -133,175 +132,188 @@ SAMPLE_USERS = [
 
 def seed_users(db: Session, count: int = 10) -> List[User]:
     """
-    サンプルユーザーをデータベースに追加します
+    サンプルユーザーデータをデータベースに追加します。
+
+    既存のユーザーIDとの重複を避け、指定された数のユーザーを生成します。
+    グループIDと社員種別IDはランダムに割り当てられます。
 
     Args:
         db: データベースセッション
-        count: 追加するユーザー数（最大100）
+        count: 追加するユーザー数 (最大100まで。サンプル数を超える場合はサンプル数に制限されます)
 
     Returns:
-        追加されたユーザーのリスト
+        List[User]: データベースに追加されたUserオブジェクトのリスト。
     """
-    # 既存のユーザーIDを取得して重複を避ける
+    # 既存ユーザーIDをセットとして保持し、重複チェックを効率化します。
     existing_user_ids: Set[str] = set(str(user.user_id) for user in db.query(User).all())
-    
-    # グループとユーザータイプを取得
+
+    # データベースから利用可能なグループとユーザータイプを取得します。
     groups = db.query(Group).all()
     user_types = db.query(UserType).all()
-    
-    # 実際に追加する数を決定（利用可能なサンプルと要求カウントの小さい方）
+
+    # 生成するユーザー数を決定します (指定数とサンプル数の小さい方)。
     actual_count = min(count, len(SAMPLE_USERS))
-    
+
     created_users = []
-    
-    # ランダムにサンプルユーザーを選択（重複なし）
+
+    # 重複しないようにサンプルユーザーをランダムに選択します。
     selected_samples = random.sample(SAMPLE_USERS, actual_count)
-    
+
     for user_info in selected_samples:
         user_id = user_info.user_id
-        
-        # 重複を避けるための対策
+
+        # ユーザーIDが既に存在する場合、末尾に連番を追加して重複を回避します。
         counter = 1
         temp_user_id = user_id
         while temp_user_id in existing_user_ids:
             temp_user_id = f"{user_id}{counter}"
             counter += 1
         user_id = temp_user_id
-        
-        # 新しいユーザーを作成
+
+        # 新しいユーザーオブジェクトを作成します。
         user = User(
             user_id=user_id,
             username=user_info.full_name,
             group_id=random.choice(groups).group_id,
             user_type_id=random.choice(user_types).user_type_id
         )
-        
+
         db.add(user)
         created_users.append(user)
-        existing_user_ids.add(user_id)
-    
+        existing_user_ids.add(user_id) # 新規追加したIDもセットに追加
+
     db.commit()
     return created_users
 
 
-# 勤務場所の好みパターンを作成する関数
+# 勤務場所の選択確率を生成するヘルパー関数
 def create_location_preferences(
     location_ids: List[int],
-    primary_location_id: int, 
+    primary_location_id: int,
     primary_weight: float = 0.7
 ) -> Dict[int, float]:
-    """特定の勤務場所を優先した確率分布を作成"""
+    """指定された勤務場所IDリストに基づき、特定の場所を優先する確率分布を生成します。
+
+    Args:
+        location_ids: 利用可能な勤務場所IDのリスト。
+        primary_location_id: 優先的に選択される勤務場所のID。
+        primary_weight: 優先勤務場所が選択される確率の重み (デフォルト0.7)。
+
+    Returns:
+        Dict[int, float]: 各勤務場所IDをキーとし、選択確率の重みを値とする辞書。
+    """
     prefs = {loc_id: random.uniform(0.1, 0.3) for loc_id in location_ids}
     prefs[primary_location_id] = primary_weight
     return prefs
 
 
-def seed_attendance(db: Session, users: Optional[List[User]] = None, 
+def seed_attendance(db: Session, users: Optional[List[User]] = None,
                    days_back: int = 30, days_forward: int = 30) -> List[Attendance]:
     """
-    指定されたユーザーに対して勤怠記録を生成します
+    指定されたユーザーリストまたは全ユーザーに対して、ダミーの勤怠記録を生成します。
+
+    ユーザーごとにランダムな出勤パターン（オフィス派/テレワーク派、優先オフィス）と
+    曜日ごとの勤務場所選択確率を決定し、指定された期間の勤怠データを生成します。
+    既存のレコードがある場合はスキップします。
 
     Args:
         db: データベースセッション
-        users: 勤怠記録を追加するユーザー（Noneの場合は全ユーザー）
-        days_back: 過去何日分のデータを生成するか
-        days_forward: 未来何日分のデータを生成するか
+        users: 勤怠記録を追加するユーザーオブジェクトのリスト (Noneの場合は全ユーザーが対象)。
+        days_back: 過去何日分のデータを生成するか (デフォルト30日)。
+        days_forward: 未来何日分のデータを生成するか (デフォルト30日)。
 
     Returns:
-        追加された勤怠記録のリスト
+        List[Attendance]: データベースに追加されたAttendanceオブジェクトのリスト。
     """
     if users is None:
         users = db.query(User).all()
-    
-    # 勤務場所を取得
+
+    # 利用可能な勤務場所IDを取得します。
     locations = db.query(Location).all()
     location_ids = [int(loc.location_id) for loc in locations]
-    
-    # 既存の勤怠記録を取得して重複を避ける
+    if not location_ids:
+        print("Error: No locations found in the database. Cannot seed attendance.")
+        return []
+
+    # 既存の勤怠記録を (user_id, date) をキーとする辞書に格納し、重複チェックを効率化します。
     existing_records: Dict[Tuple[str, date], Attendance] = {}
     for record in db.query(Attendance).all():
-        # SQLAlchemyのColumnオブジェクトから実際の値を取得
         user_id = str(record.user_id)
-        record_date = date.fromisoformat(str(record.date))  # SQLAlchemyのColumn型をdate型に変換
+        record_date = date.fromisoformat(str(record.date))
         key = (user_id, record_date)
         existing_records[key] = record
-    
-    # 日付範囲を設定
+
+    # データ生成対象の日付範囲を決定します。
     today = date.today()
     start_date = today - timedelta(days=days_back)
     end_date = today + timedelta(days=days_forward)
-    
+
     created_records = []
-    
+
     for user in users:
-        # このユーザーの特性を決定
-        is_office_worker = random.random() > 0.3  # 70%はオフィス勤務派
-        preferred_office = 1 if random.random() > 0.5 else 2  # 東京か横浜か
-        
-        # 曜日ごとの出勤パターン
-        weekday_patterns = {}
-        
-        # 平日のパターン
-        for weekday in range(5):  # 月曜〜金曜
+        # ユーザーごとの勤務傾向（オフィス派/テレワーク派、好みのオフィス）をランダムに設定します。
+        is_office_worker = random.random() > 0.3
+        # テレワーク(ID=3) 以外の場所を優先的に選択します。
+        possible_offices = [loc_id for loc_id in location_ids if loc_id != 3]
+        preferred_office = random.choice(possible_offices) if possible_offices else location_ids[0]
+
+        # 曜日ごとの勤務場所選択確率を格納する辞書を初期化します。
+        weekday_patterns: Dict[int, Dict[int, float]] = {}
+
+        # 平日 (月曜=0 〜 金曜=4) の勤務パターンを設定します。
+        for weekday in range(5):
             if is_office_worker:
-                # オフィス勤務派
+                # オフィス勤務を好むユーザーの確率分布を設定します。
                 location_prefs = create_location_preferences(location_ids, preferred_office)
             else:
-                # テレワーク派
-                location_prefs = create_location_preferences(location_ids, 5)  # テレワークのID=5
-            
+                # テレワークを好むユーザーの確率分布を設定します (location_id=3 がテレワーク)。
+                location_prefs = create_location_preferences(location_ids, 3)
+
             weekday_patterns[weekday] = {
-                "probability": 0.95,  # 95%の確率で出勤
-                "preferences": location_prefs
+                loc_id: weight for loc_id, weight in location_prefs.items()
             }
-        
-        # 土日のパターン
-        for weekday in range(5, 7):  # 土曜、日曜
+
+        # 休日 (土曜=5, 日曜=6) の勤務パターンを設定します (出勤は稀)。
+        for weekday in range(5, 7):
             # 休日出勤の場合はテレワーク確率が高い
-            location_prefs = create_location_preferences(location_ids, 5, 0.8)
-            
+            location_prefs = create_location_preferences(location_ids, 3, 0.8)
+
             weekday_patterns[weekday] = {
-                "probability": 0.2,  # 20%の確率で出勤
-                "preferences": location_prefs
+                loc_id: weight for loc_id, weight in location_prefs.items()
             }
-        
-        # 日付範囲でループ
-        current_date = start_date
-        while current_date <= end_date:
-            # すでに記録が存在するかチェック
-            key = (str(user.user_id), current_date)
-            if key in existing_records:
-                current_date += timedelta(days=1)
+
+        # 指定された日付範囲で勤怠記録を生成します。
+        for day_offset in range((end_date - start_date).days + 1):
+            day = start_date + timedelta(days=day_offset)
+
+            # 既存レコードがある場合はスキップします。
+            if (str(user.user_id), day) in existing_records:
                 continue
-            
-            # 曜日を取得
-            weekday = current_date.weekday()
-            pattern = weekday_patterns[weekday]
-            
-            # 出勤確率と比較
-            probability_value = pattern.get("probability", 0.0)
-            if isinstance(probability_value, (int, float)) and random.random() < probability_value:
-                # 出勤する場合、勤務場所を確率分布に従って選択
-                loc_preferences = cast(Dict[int, float], pattern.get("preferences", {}))
-                
-                location_id = random.choices(
-                    population=list(loc_preferences.keys()),
-                    weights=list(loc_preferences.values()),
-                    k=1
-                )[0]
-                
-                # 勤怠記録を追加
+
+            # 勤務する確率 (平日は高く、休日は低い)
+            attendance_probability = 0.9 if day.weekday() < 5 else 0.05
+
+            if random.random() < attendance_probability:
+                # その曜日の勤務場所パターンを取得します。
+                current_pattern = weekday_patterns.get(day.weekday(), {}) # weekdayは整数なのでstr()は不要
+                if not current_pattern: # パターンがない場合はスキップ（念のため）
+                    continue
+
+                # パターンに基づいて勤務場所を選択します。
+                location_ids_in_pattern = list(current_pattern.keys())
+                weights = list(current_pattern.values())
+                chosen_location_id = random.choices(location_ids_in_pattern, weights=weights, k=1)[0]
+
+                # 新しい勤怠記録オブジェクトを作成します。
                 attendance = Attendance(
-                    user_id=user.user_id,
-                    date=current_date,
-                    location_id=location_id
+                    user_id=str(user.user_id),
+                    date=day,
+                    location_id=chosen_location_id
                 )
-                
                 db.add(attendance)
                 created_records.append(attendance)
-            
-            current_date += timedelta(days=1)
-    
+
+    # まとめてコミットします。
     db.commit()
     return created_records
 

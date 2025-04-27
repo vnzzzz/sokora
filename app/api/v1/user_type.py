@@ -64,7 +64,7 @@ def update_user_type(
             status_code=status.HTTP_404_NOT_FOUND, detail="社員種別が見つかりません"
         )
     
-    # 名前を変更する場合は重複チェック
+    # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
     if user_type_in.name and user_type_in.name != user_type_obj.name:
         existing = user_type.get_by_name(db, name=user_type_in.name)
         if existing:
@@ -87,12 +87,12 @@ def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any
             status_code=status.HTTP_404_NOT_FOUND, detail="社員種別が見つかりません"
         )
     
-    # 社員種別が使用されているかチェック
+    # 削除しようとしている社員種別が現在ユーザーに割り当てられていないか確認します。
     from app.models.user import User
     user_count = db.query(User).filter(User.user_type_id == user_type_id).count()
     if user_count > 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"この社員種別は{user_count}人のユーザーに割り当てられているため削除できません"
         )
 

@@ -21,9 +21,9 @@ class User(Base):  # type: ignore
     group_id = Column(Integer, ForeignKey("groups.group_id"), nullable=False)
     user_type_id = Column(Integer, ForeignKey("user_types.user_type_id"), nullable=False)
 
-    # グループとの関連
+    # Groupモデルとのリレーションシップ定義 (多対一)
     group = relationship("Group", back_populates="users")
-    # 社員種別との関連
+    # UserTypeモデルとのリレーションシップ定義 (多対一)
     user_type = relationship("UserType", back_populates="users")
-    # 勤怠記録との関連
+    # Attendanceモデルとのリレーションシップ定義 (一対多)
     attendance_records = relationship("Attendance", back_populates="user")

@@ -35,30 +35,31 @@ def download_csv(
         StreamingResponse: CSVデータのストリームレスポンス
     """
     try:
-        # CSVデータを取得
+        # 指定された月とエンコーディングで勤怠データをCSV形式で取得します。
         csv_content = get_work_entries_csv(db, month=month, encoding=encoding)
-        
-        # エンコーディングに応じたContent-Typeを設定
+
+        # レスポンスヘッダーのContent-Typeを決定します。
         content_type = "text/csv; charset=utf-8"
         if encoding.lower() == "sjis":
             content_type = "text/csv; charset=shift_jis"
-        
-        # ファイル名を設定
+
+        # ダウンロード時のファイル名を決定します (月指定があればファイル名に含める)。
         filename = "work_entries.csv"
         if month:
             filename = f"work_entries_{month}.csv"
-        
-        # レスポンスを返す
+
+        # CSVデータをストリーミングレスポンスとして返します。
         return StreamingResponse(
             iter([csv_content]),
             media_type=content_type,
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
-        logger.error(f"CSVダウンロードエラー: {str(e)}", exc_info=True)
-        # エラーが発生した場合も空のCSVを返す
+        logger.error(f"CSVダウンロード中にエラーが発生しました: {str(e)}", exc_info=True)
+        # エラー発生時は、エラーを示すファイル名と空のヘッダー行を持つCSVを返します。
+        error_csv_header = b"user_name,user_id,group_name,user_type" # エラー時のヘッダー
         return StreamingResponse(
-            iter([b"user_name,user_id,group_name,is_contractor,is_manager"]),
+            iter([error_csv_header]),
             media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=work_entries_error.csv"}
         ) 

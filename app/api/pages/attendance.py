@@ -48,37 +48,35 @@ def attendance_page(
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    # 月の処理
+    # 月パラメータの処理と検証 (指定がない場合は現在の月を使用)
     if month is None:
         month = get_current_month_formatted()
         logger.debug(f"月パラメータなし。デフォルト設定: {month}")
     else:
-        # 月の形式を検証
+        # YYYY-MM 形式に正規化し、無効な場合は現在の月にリダイレクト
         try:
             year, month_num = parse_month(month)
-            # フォーマットを統一
             month = f"{year}-{month_num:02d}"
             logger.debug(f"月パラメータ検証成功: {month}")
         except ValueError as e:
             logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
-            # 現在の月にリダイレクト
             current_month = get_current_month_formatted()
             return RedirectResponse(url=f"/attendance?month={current_month}")
-    
-    # カレンダーデータを取得
+
+    # 指定された月のカレンダーデータを構築します。
     logger.debug(f"カレンダーデータ取得: {month}")
     calendar_data = build_calendar_data(db, month)
-    
+
+    # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
     if not calendar_data or "weeks" not in calendar_data:
         logger.error(f"カレンダーデータの取得に失敗: {month}")
-        # 現在の月にフォールバック
         month = get_current_month_formatted()
         calendar_data = build_calendar_data(db, month)
-    
-    # 全ユーザー取得
+
+    # 全ユーザー情報を取得します。
     all_users = user.get_all_users(db)
-    
-    # 検索クエリがある場合、フィルタリング
+
+    # 検索クエリが指定されている場合、ユーザーをフィルタリングします。
     if search_query and search_query.strip():
         search_term = search_query.lower().strip()
         filtered_users = [
@@ -88,84 +86,75 @@ def attendance_page(
         base_users = filtered_users
     else:
         base_users = all_users
-    
-    # ユーザーオブジェクトを追加
+
+    # フィルタリング後のユーザーリストに、完全なUserオブジェクトを追加します。
     users = []
     for user_name, user_id, user_type_id in base_users:
         user_obj = user.get_by_user_id(db, user_id=user_id)
         if user_obj:
             users.append((user_name, user_id, user_type_id, user_obj))
-    
-    # グループ情報を取得
+
+    # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
     groups_map = {g.group_id: g for g in groups}
-    
-    # ユーザータイプ情報を取得
+
+    # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
     user_types_map = {ut.user_type_id: ut for ut in user_types}
-    
-    # ユーザーをグループごとに整理
+
+    # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List] = {}
-    
     for user_name, user_id, user_type_id, user_obj in users:
-        # グループ情報を取得
-        group_obj = None
-        if user_obj.group_id in groups_map:
-            group_obj = groups_map[user_obj.group_id]
-        
+        group_obj = groups_map.get(user_obj.group_id)
         group_name = str(group_obj.name) if group_obj else "未分類"
-        
-        # グループごとのリストに追加
+
         if group_name not in grouped_users:
             grouped_users[group_name] = []
-        
+
         grouped_users[group_name].append((user_name, user_id, user_type_id, user_obj))
-    
-    # 各グループ内でユーザーを社員種別でソート
+
+    # 各グループ内のユーザーリストを社員種別IDでソートします。
     for g_name in list(grouped_users.keys()):
-        grouped_users[g_name].sort(key=lambda u: u[2])  # user_type_id でソート
-    
-    # 勤務場所タイプの取得
+        grouped_users[g_name].sort(key=lambda u: u[2])
+
+    # 利用可能な全勤務場所名を取得します。
     location_types = location.get_all_locations(db)
-    
-    # 勤務場所スタイルの生成
+
+    # 勤務場所名に対応するCSSクラスを生成します。
     location_styles = generate_location_styles(location_types)
-    
-    # 各ユーザーの勤怠データを取得
+
+    # 各ユーザーの勤怠データを日付をキーとして取得・整形します。
     user_attendances = {}
     user_attendance_locations = {}
-    
     for user_name, user_id, user_type_id, user_obj in users:
-        # ユーザーの勤怠データを取得
         user_entries = attendance.get_user_data(db, user_id=user_id)
-        
-        # ユーザーの勤怠日付とロケーションをマッピング
-        user_dates = {}
-        locations_map = {}
-        
+
+        user_dates = {} # 特定の日に勤怠データが存在するか (True/False)
+        locations_map = {} # 特定の日の勤務場所名
+
         for entry in user_entries:
-            date = entry["date"]
-            user_dates[date] = True
-            locations_map[date] = entry["location_name"]
-        
+            date_str = entry["date"]
+            user_dates[date_str] = True
+            locations_map[date_str] = entry["location_name"]
+
         user_attendances[user_id] = user_dates
         user_attendance_locations[user_id] = locations_map
-    
-    # カレンダーの日数をカウント（colspan用）
+
+    # カレンダーの表示日数を計算 (テーブルのcolspan用)
     calendar_day_count = 0
     for week in calendar_data["weeks"]:
         for day in week:
             if day and day.get("day", 0) != 0:
                 calendar_day_count += 1
-    
-    # 共通コンテキスト
+
+    # テンプレートに渡すコンテキストを作成します。
     context = {
-        "request": request, 
-        "users": users, 
-        "groups": groups, 
+        "request": request,
+        "users": users,
+        "groups": groups,
         "user_types": user_types,
         "grouped_users": grouped_users,
-        "group_names": sorted(list(grouped_users.keys())),
+        "group_names": sorted(list(grouped_users.keys())), # グループ名をソートして渡す
         "calendar_data": calendar_data["weeks"],
         "month_name": calendar_data["month_name"],
         "prev_month": calendar_data["prev_month"],
@@ -176,16 +165,16 @@ def attendance_page(
         "user_attendance_locations": user_attendance_locations,
         "calendar_day_count": calendar_day_count,
     }
-    
-    # HTMXリクエストの場合はテーブル部分のみを返す
+
+    # HTMXリクエストの場合、勤怠テーブル部分のみをレンダリングして返します。
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
             "pages/attendance/attendance_content.html", context,
-            headers={"HX-Reswap": "innerHTML"}
+            headers={"HX-Reswap": "innerHTML"} # HTMXに入れ替え方法を指定
         )
-    
-    # 通常のリクエストの場合は完全なページを返す
+
+    # 通常のGETリクエストの場合、完全なHTMLページをレンダリングして返します。
     logger.debug("通常リクエスト。完全なページを返します。")
     return templates.TemplateResponse(
         "pages/attendance/index.html", context

@@ -45,43 +45,43 @@ def get_user_attendance(
     user_obj = user.get_by_user_id(db, user_id=user_id)
     if not user_obj:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"ユーザー '{user_id}' が見つかりません"
         )
-    
+
     user_entries = attendance.get_user_data(db, user_id=user_id)
     user_name = user.get_user_name_by_id(db, user_id=user_id)
-    
-    # UserAttendanceスキーマに合わせてデータを整形
+
+    # 取得したデータをレスポンススキーマ形式に整形します。
     dates = []
     for entry in user_entries:
         entry_date = entry["date"]
-        
-        # dateパラメータが指定されている場合は、その日のデータのみをフィルタリング
+
+        # dateパラメータが指定されている場合、一致する日付のデータのみを抽出します。
         if date and entry_date != date:
             continue
-            
+
         entry_data = {
             "date": entry_date,
             "location_id": entry["location_id"],
             "location": entry["location_name"]
         }
-        
-        # attendance_idが存在する場合は追加
+
+        # 勤怠レコードID (attendance_id) が存在すればレスポンスに含めます。
         if "id" in entry:
             entry_data["attendance_id"] = entry["id"]
-            
+
         dates.append(entry_data)
-    
-    # dateパラメータが指定されていて、日付が見つからなかった場合
+
+    # dateパラメータが指定され、かつ該当日のデータが見つからなかった場合の処理。
     if date and not dates:
-        # キーは揃えておく
+        # レスポンスの構造を維持するため、空のdatesリストを含むデータを返します。
         return {
             "user_id": user_id,
             "user_name": user_name,
             "dates": []
         }
-    
+
     return {
         "user_id": user_id,
         "user_name": user_name,

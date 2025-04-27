@@ -37,7 +37,11 @@ class User(UserBase):
     user_type: Optional[UserType] = None
 
     class Config:
-        """設定クラス"""
+        """Pydanticモデルの設定クラス。
+
+        `from_attributes = True` により、ORMオブジェクトなどの属性から
+        Pydanticモデルを生成できるようになります (旧 `orm_mode = True`)。
+        """
         from_attributes = True
 
 

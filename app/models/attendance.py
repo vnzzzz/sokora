@@ -22,11 +22,16 @@ class Attendance(Base):  # type: ignore
     date = Column(Date, nullable=False, index=True)
     location_id = Column(Integer, ForeignKey("locations.location_id"), nullable=False)
 
-    # ユーザーとの関連付け
+    # Userモデルとのリレーションシップ定義 (多対一)
     user = relationship("User", back_populates="attendance_records")
-    # 勤務場所との関連付け
+    # Locationモデルとのリレーションシップ定義 (多対一)
     location_info = relationship("Location", back_populates="attendances")
 
-    class Config:
-        # ユーザーIDと日付の組み合わせに対する一意制約
-        unique_together = ("user_id", "date")
+    # SQLAlchemyのUniqueConstraintを使って複合ユニーク制約を定義
+    # (ユーザーIDと日付の組み合わせが一意であることを保証)
+    # from sqlalchemy import UniqueConstraint
+    # __table_args__ = (UniqueConstraint('user_id', 'date', name='_user_date_uc'),)
+    # ConfigクラスはPydanticで使用されるもので、SQLAlchemyモデルでは通常 __table_args__ を使用します。
+    # ただし、既存の動作を維持するため、ここではコメントアウトのままにします。
+    # class Config:
+    #     unique_together = ("user_id", "date")

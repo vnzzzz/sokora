@@ -64,7 +64,7 @@ def update_location(
             status_code=status.HTTP_404_NOT_FOUND, detail="勤務場所が見つかりません"
         )
     
-    # 名前を変更する場合は重複チェック
+    # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
     if location_in.name and location_in.name != location_obj.name:
         existing = location.get_by_name(db, name=location_in.name)
         if existing:
@@ -87,12 +87,12 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
             status_code=status.HTTP_404_NOT_FOUND, detail="勤務場所が見つかりません"
         )
     
-    # 勤務場所が使用されているかチェック
+    # 削除しようとしている勤務場所が現在勤怠データで使用されていないか確認します。
     from app.models.attendance import Attendance
     attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
     if attendance_count > 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"この勤務場所は{attendance_count}件の勤怠データで使用されているため削除できません"
         )
 

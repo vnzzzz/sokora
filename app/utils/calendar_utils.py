@@ -125,66 +125,66 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
     from app.core.config import logger
     
     try:
-        # 月を解析
+        # 対象月を解析 (YYYY-MM形式)
         year, month_num = parse_month(month)
         month_name = f"{year}年{month_num}月"
 
-        # その月のカレンダーを作成
+        # Python標準のcalendarモジュールでその月のカレンダー構造を取得 (週ごとの日のリスト)
         cal = calendar.monthcalendar(year, month_num)
 
-        # 勤務場所のリストを取得
+        # データベースから利用可能な全勤務場所名を取得
         location_types = location.get_all_locations(db)
 
-        # 日ごとの勤務場所カウントを初期化
+        # 日付をキー、勤務場所名をサブキーとするネストしたカウント辞書を初期化
         location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        # 月の初日と末日を取得
+        # 対象月の初日と最終日を計算
         first_day = date(year, month_num, 1)
         last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
 
-        # この月の全勤怠レコードを取得
+        # 対象月期間の全勤怠レコードをデータベースから取得
         attendances = calendar_crud.get_month_attendances(
             db, first_day=first_day, last_day=last_day
         )
 
-        # 勤務場所ごとのカウントを集計
+        # 取得した勤怠レコードを日ごと・勤務場所ごとに集計
         for attendance in attendances:
             day = attendance.date.day
-            location_name = str(attendance.location_info)  # 勤務場所の文字列表現を取得
+            location_name = str(attendance.location_info) # locationリレーションから名前を取得
             location_counts[day][location_name] += 1
 
-        # 日ごとの勤怠データ数を一度のクエリで取得（パフォーマンス改善）
+        # 日ごとの総勤怠データ数を一括で取得 (パフォーマンスのため)
         attendance_counts = calendar_crud.get_month_attendance_counts(
             db, first_day=first_day, last_day=last_day
         )
 
-        # 各週と日に勤怠情報を付与
+        # カレンダー表示用のデータ構造を構築 (週ごとのリスト)
         weeks = []
         for week in cal:
             week_data = []
             for day in week:
                 if day == 0:
-                    # 月の範囲外の日
-                    # 同じデータ構造で日の値だけ0に
+                    # calendar.monthcalendar は月の範囲外の日を0として返すため、
+                    # UI側で非表示にするためのプレースホルダーデータを設定
                     day_data = {
-                        "day": 0,  # 0日
+                        "day": 0, # 日の値が0であればUI側で非表示にする想定
                         "date": "",
                         "has_data": False,
                     }
-                    
-                    # 各勤務場所のカウントを0で追加
+                    # プレースホルダーにも勤務場所カラムは用意 (UIの構造を合わせるため)
                     for loc_type in location_types:
                         day_data[loc_type] = 0
-                        
+
                     week_data.append(day_data)
                 else:
+                    # 有効な日付の場合、詳細データを設定
                     current_date = date(year, month_num, day)
                     date_str = current_date.strftime("%Y-%m-%d")
 
-                    # この日の勤怠データカウントを取得（最適化版）
+                    # 事前に一括取得したデータから、この日の総勤怠数を取得
                     attendance_count = attendance_counts.get(day, 0)
 
-                    # 祝日情報を取得
+                    # 祝日判定と祝日名取得
                     is_holiday_flag = is_holiday(current_date)
                     holiday_name = get_holiday_name(current_date)
 
@@ -196,34 +196,47 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
                         "holiday_name": holiday_name
                     }
 
-                    # 各勤務場所のカウントを追加
+                    # 各勤務場所ごとの勤怠数を追加
                     for loc_type in location_types:
                         day_data[loc_type] = location_counts[day].get(loc_type, 0)
 
                     week_data.append(day_data)
             weeks.append(week_data)
 
-        # 前月と翌月の情報を計算
+        # 前月と翌月の年月文字列 (YYYY-MM) を計算
+        # 前月の計算: 対象月の1日から1日引く
         prev_month_date = date(year, month_num, 1) - timedelta(days=1)
         prev_month = f"{prev_month_date.year}-{prev_month_date.month:02d}"
 
-        next_month_date = date(year, month_num, 28)  # 月末を超えても翌月になる
-        if next_month_date.month == month_num:  # まだ同じ月の場合は日付を増やす
-            next_month_date = next_month_date.replace(
-                day=calendar.monthrange(year, month_num)[1]
-            ) + timedelta(days=1)
+        # 翌月の計算: 対象月の最終日から1日足す (monthrangeで正確な最終日を取得)
+        last_day_of_month = calendar.monthrange(year, month_num)[1]
+        next_month_date = date(year, month_num, last_day_of_month) + timedelta(days=1)
         next_month = f"{next_month_date.year}-{next_month_date.month:02d}"
 
-        # 勤務場所の表示データを生成
-        locations = generate_location_data(location_types)
+        # UI表示用の勤務場所データ (色情報などを含む) を生成
+        locations_ui_data = generate_location_data(location_types)
 
         return {
             "month_name": month_name,
             "weeks": weeks,
-            "locations": locations,
+            "locations": locations_ui_data,
             "prev_month": prev_month,
             "next_month": next_month,
         }
+    except ValueError as ve:
+        logger.error(f"月フォーマット解析エラー: {str(ve)}")
+        # エラー発生時は空のデータを返す
+        return {"month_name": "", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
     except Exception as e:
-        logger.error(f"Error building calendar data: {str(e)}")
-        return {"month_name": "", "weeks": [], "locations": []}
+        logger.error(f"カレンダーデータ構築中に予期せぬエラーが発生しました: {str(e)}", exc_info=True)
+        # エラー発生時は空のデータを返す
+        return {"month_name": "", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
+
+
+# 遅延インポートを解消するためのダミー呼び出し（型チェック用）
+if __name__ == "__main__":
+    # このブロックは通常実行されない
+    from app.crud.location import location
+    from app.crud.calendar import calendar_crud
+    from app.utils.ui_utils import generate_location_data
+    from app.core.config import logger

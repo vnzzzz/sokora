@@ -59,7 +59,7 @@ async def create_user(
     新しいユーザーを作成します。
     """
     try:
-        # グループIDを整数型に変換
+        # 入力されたグループIDを整数に変換し、存在を確認します。
         try:
             group_id_int = int(user_in.group_id)
         except ValueError:
@@ -67,16 +67,15 @@ async def create_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="無効なグループIDが指定されました"
             )
-            
-        # グループ存在確認
+
         group_obj = group.get_by_id(db, group_id=group_id_int)
         if not group_obj:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"グループID '{group_id_int}' が存在しません"
             )
-        
-        # 社員種別IDを整数型に変換
+
+        # 入力された社員種別IDを整数に変換し、存在を確認します。
         try:
             user_type_id_int = int(user_in.user_type_id)
         except ValueError:
@@ -84,32 +83,31 @@ async def create_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="無効な社員種別IDが指定されました"
             )
-            
-        # 社員種別存在確認
+
         user_type_obj = user_type.get_by_id(db, user_type_id=user_type_id_int)
         if not user_type_obj:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"社員種別ID '{user_type_id_int}' が存在しません"
             )
-                
-        # UserCreateオブジェクトを作成
+
+        # ユーザー作成用のデータを作成します。
         user_data = {
             "username": user_in.username,
             "user_id": user_in.user_id,
             "group_id": group_id_int,
             "user_type_id": user_type_id_int
         }
-        
-        # 既存ユーザーチェックと新規作成
+
+        # 指定されたユーザーIDが既に存在するか確認します。
         existing_user = user.get_by_user_id(db, user_id=user_in.user_id)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="このユーザーIDは既に使用されています"
             )
-            
-        # ユーザーを作成
+
+        # ユーザーを作成します。
         user_obj = user.create_with_id(db, obj_in=user_data)
         return user_obj
     except HTTPException:
@@ -135,7 +133,7 @@ async def update_user(
                 detail=f"ユーザー '{user_id}' が見つかりません"
             )
             
-        # グループIDを整数型に変換
+        # 入力されたグループIDを整数に変換し、存在を確認します。
         try:
             group_id_int = int(user_in.group_id)
         except ValueError:
@@ -144,7 +142,6 @@ async def update_user(
                 detail="無効なグループIDが指定されました"
             )
         
-        # グループ存在確認
         group_obj = group.get_by_id(db, group_id=group_id_int)
         if not group_obj:
             raise HTTPException(
@@ -152,7 +149,7 @@ async def update_user(
                 detail=f"グループID '{group_id_int}' が存在しません"
             )
         
-        # 社員種別IDを整数型に変換
+        # 入力された社員種別IDを整数に変換し、存在を確認します。
         try:
             user_type_id_int = int(user_in.user_type_id)
         except ValueError:
@@ -161,7 +158,6 @@ async def update_user(
                 detail="無効な社員種別IDが指定されました"
             )
             
-        # 社員種別存在確認
         user_type_obj = user_type.get_by_id(db, user_type_id=user_type_id_int)
         if not user_type_obj:
             raise HTTPException(
@@ -169,10 +165,11 @@ async def update_user(
                 detail=f"社員種別ID '{user_type_id_int}' が存在しません"
             )
         
+        # ユーザー情報を更新します。
         success = user.update_user(
-            db, 
-            user_id=user_id, 
-            username=user_in.username, 
+            db,
+            user_id=user_id,
+            username=user_in.username,
             group_id=group_id_int,
             user_type_id=user_type_id_int
         )

@@ -26,11 +26,13 @@ class LocationInDBBase(LocationBase):
     location_id: int
     name: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True # ORMオブジェクトからの変換を有効化
+    )
 
 
 class Location(LocationInDBBase):
-    """勤務場所読み取り用スキーマ"""
+    """APIレスポンスなどで使用する勤務場所読み取り用スキーマ。"""
     pass
 
 

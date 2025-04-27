@@ -23,5 +23,5 @@ class Location(Base):  # type: ignore
     attendances = relationship("Attendance", back_populates="location_info")
     
     def __str__(self) -> str:
-        """文字列表現としてname属性を返します"""
+        """オブジェクトの文字列表現として勤務場所名を返します。"""
         return str(self.name) if self.name is not None else ""

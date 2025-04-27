@@ -27,7 +27,7 @@ def csv_page(request: Request) -> Any:
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    # 利用可能な月リストを取得
+    # CSVダウンロード対象として選択可能な月のリストを取得します。
     months = get_available_months()
     
     return templates.TemplateResponse(
