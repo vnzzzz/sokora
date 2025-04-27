@@ -96,18 +96,18 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
     """
     detail = attendance.get_day_data(db, day=day)
     if not detail:
-        return {}
-    return detail
+        return {"success": True, "data": {}}
+    return {"success": True, "data": detail}
 
 
-@router.post("", response_model=Attendance)
+@router.post("")
 async def create_attendance(
     request: Request,
     user_id: str = Form(...),
     date: str = Form(...),
     location_id: int = Form(...),
     db: Session = Depends(get_db),
-) -> Any:
+) -> JSONResponse:
     """
     勤怠データを作成します。
     """
@@ -116,27 +116,27 @@ async def create_attendance(
         if location_id != -1:  # -1は削除用特殊値
             loc = location.get_by_id(db, location_id=location_id)
             if not loc:
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"勤務場所ID '{location_id}' が見つかりません"
+                    content={"success": False, "message": f"勤務場所ID '{location_id}' が見つかりません"}
                 )
         
         success = attendance.update_user_entry(
             db, user_id=user_id, date_str=date, location_id=location_id
         )
         if not success:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="勤怠データの作成に失敗しました。ユーザーIDまたは日付が無効である可能性があります。"
+                content={"success": False, "message": "勤怠データの作成に失敗しました。ユーザーIDまたは日付が無効である可能性があります。"}
             )
         
         # 作成したデータを返す
         from app.crud.user import user
         user_obj = user.get_by_user_id(db, user_id=user_id)
         if not user_obj:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"ユーザー '{user_id}' が見つかりません"
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"success": False, "message": f"ユーザー '{user_id}' が見つかりません"}
             )
         
         date_obj = datetime.strptime(date, "%Y-%m-%d").date()
@@ -144,43 +144,68 @@ async def create_attendance(
         
         if attendance_obj is None and location_id != -1:
             # 削除でなく、かつオブジェクトが見つからない場合はエラー
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail="勤怠データは更新されましたが、取得できませんでした"
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"success": False, "message": "勤怠データは更新されましたが、取得できませんでした"}
             )
         
-        # 削除操作の場合は空のレスポンスを返す
+        # 削除操作の場合は成功メッセージを返す
         if location_id == -1:
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-            
-        # Acceptヘッダーがtext/htmlの場合は204を返す（フロントエンドでリロード処理を行うため）
-        if "text/html" in request.headers.get("accept", ""):
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-            
-        return attendance_obj
-    except HTTPException:
-        raise
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"success": True, "message": "勤怠データを正常に削除しました"}
+            )
+        
+        # 常に成功レスポンスを返す（HTMLリクエストとAPIリクエストで共通）
+        # attendance_objはPydanticモデルに変換されていないため、JSONに変換可能なデータを返す
+        if attendance_obj is not None:
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "success": True, 
+                    "message": "勤怠データを正常に登録しました",
+                    "data": {
+                        "id": attendance_obj.id,
+                        "user_id": attendance_obj.user_id,
+                        "date": attendance_obj.date.isoformat(),
+                        "location_id": attendance_obj.location_id
+                    }
+                }
+            )
+        else:
+            # データが見つからない場合でも成功として返す
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "success": True, 
+                    "message": "勤怠データを正常に登録しました",
+                    "data": None
+                }
+            )
     except Exception as e:
         logger.error(f"勤怠作成エラー: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"勤怠データの作成中にエラーが発生しました: {str(e)}"}
+        )
 
 
-@router.put("/{attendance_id}", response_model=Attendance)
+@router.put("/{attendance_id}")
 async def update_attendance(
     request: Request,
     attendance_id: int,
     location_id: int = Form(...),
     db: Session = Depends(get_db),
-) -> Any:
+) -> JSONResponse:
     """
     勤怠データを更新します。
     """
     try:
         attendance_obj = attendance.get(db=db, id=attendance_id)
         if not attendance_obj:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="勤怠データが見つかりません"
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"success": False, "message": "勤怠データが見つかりません"}
             )
         
         if location_id == -1:  # 削除用特殊値
@@ -189,21 +214,24 @@ async def update_attendance(
                 attendance.remove(db=db, id=attendance_id)
                 db.commit()
                 logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
-                return Response(status_code=status.HTTP_204_NO_CONTENT)
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={"success": True, "message": "勤怠データを正常に削除しました"}
+                )
             except Exception as e:
                 db.rollback()
                 logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                    detail=f"勤怠データの削除中にエラーが発生しました: {str(e)}"
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
                 )
         else:
             # 勤務場所IDの確認
             loc = location.get_by_id(db, location_id=location_id)
             if not loc:
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"勤務場所ID '{location_id}' が見つかりません"
+                    content={"success": False, "message": f"勤務場所ID '{location_id}' が見つかりません"}
                 )
                 
             try:
@@ -213,23 +241,42 @@ async def update_attendance(
                 db.commit()
                 logger.debug(f"勤怠ID {attendance_id} の更新に成功しました")
                 
-                # Acceptヘッダーがtext/htmlの場合は204を返す（フロントエンドでリロード処理を行うため）
-                if "text/html" in request.headers.get("accept", ""):
-                    return Response(status_code=status.HTTP_204_NO_CONTENT)
-                    
-                return updated_obj
+                if updated_obj is not None:
+                    return JSONResponse(
+                        status_code=status.HTTP_200_OK,
+                        content={
+                            "success": True, 
+                            "message": "勤怠データを正常に更新しました",
+                            "data": {
+                                "id": updated_obj.id,
+                                "user_id": updated_obj.user_id,
+                                "date": updated_obj.date.isoformat(),
+                                "location_id": updated_obj.location_id
+                            }
+                        }
+                    )
+                else:
+                    return JSONResponse(
+                        status_code=status.HTTP_200_OK,
+                        content={
+                            "success": True, 
+                            "message": "勤怠データを正常に更新しました",
+                            "data": None
+                        }
+                    )
             except Exception as e:
                 db.rollback()
                 logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                    detail=f"勤怠データの更新中にエラーが発生しました: {str(e)}"
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={"success": False, "message": f"勤怠データの更新中にエラーが発生しました: {str(e)}"}
                 )
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"勤怠データの更新中にエラーが発生しました: {str(e)}"}
+        )
 
 
 @router.delete("/{attendance_id}")
@@ -237,32 +284,37 @@ async def delete_attendance(
     request: Request,
     attendance_id: int,
     db: Session = Depends(get_db),
-) -> Any:
+) -> JSONResponse:
     """
     勤怠データを削除します。
     """
     try:
         attendance_obj = attendance.get(db=db, id=attendance_id)
         if not attendance_obj:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="勤怠データが見つかりません"
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"success": False, "message": "勤怠データが見つかりません"}
             )
         
         try:
             attendance.remove(db=db, id=attendance_id)
             db.commit()
             logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
+            
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"success": True, "message": "勤怠データを正常に削除しました"}
+            )
         except Exception as e:
             db.rollback()
             logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail=f"勤怠データの削除中にエラーが発生しました: {str(e)}"
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
             )
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
+        )
