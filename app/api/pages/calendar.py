@@ -220,4 +220,4 @@ def get_day_detail(
         "target_date": day
     }
 
-    return templates.TemplateResponse("components/details/day_detail.html", context) 
+    return templates.TemplateResponse("pages/main/day_detail.html", context) 
