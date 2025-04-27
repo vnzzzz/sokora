@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 def attendance_page(
     request: Request, 
     search_query: Optional[str] = None,
+    month: Optional[str] = None,
     db: Session = Depends(get_db)
 ) -> Any:
     """勤怠登録ページを表示します
@@ -41,11 +42,39 @@ def attendance_page(
     Args:
         request: FastAPIリクエストオブジェクト
         search_query: 検索クエリ（社員名またはID）
+        month: 月（YYYY-MM形式、指定がない場合は現在の月）
         db: データベースセッション
 
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
+    # 月の処理
+    if month is None:
+        month = get_current_month_formatted()
+        logger.debug(f"月パラメータなし。デフォルト設定: {month}")
+    else:
+        # 月の形式を検証
+        try:
+            year, month_num = parse_month(month)
+            # フォーマットを統一
+            month = f"{year}-{month_num:02d}"
+            logger.debug(f"月パラメータ検証成功: {month}")
+        except ValueError as e:
+            logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
+            # 現在の月にリダイレクト
+            current_month = get_current_month_formatted()
+            return RedirectResponse(url=f"/attendance?month={current_month}")
+    
+    # カレンダーデータを取得
+    logger.debug(f"カレンダーデータ取得: {month}")
+    calendar_data = build_calendar_data(db, month)
+    
+    if not calendar_data or "weeks" not in calendar_data:
+        logger.error(f"カレンダーデータの取得に失敗: {month}")
+        # 現在の月にフォールバック
+        month = get_current_month_formatted()
+        calendar_data = build_calendar_data(db, month)
+    
     # 全ユーザー取得
     all_users = user.get_all_users(db)
     
@@ -96,27 +125,70 @@ def attendance_page(
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])  # user_type_id でソート
     
+    # 勤務場所タイプの取得
+    location_types = location.get_all_locations(db)
+    
+    # 勤務場所スタイルの生成
+    location_styles = generate_location_styles(location_types)
+    
+    # 各ユーザーの勤怠データを取得
+    user_attendances = {}
+    user_attendance_locations = {}
+    
+    for user_name, user_id, user_type_id, user_obj in users:
+        # ユーザーの勤怠データを取得
+        user_entries = attendance.get_user_data(db, user_id=user_id)
+        
+        # ユーザーの勤怠日付とロケーションをマッピング
+        user_dates = {}
+        locations_map = {}
+        
+        for entry in user_entries:
+            date = entry["date"]
+            user_dates[date] = True
+            locations_map[date] = entry["location_name"]
+        
+        user_attendances[user_id] = user_dates
+        user_attendance_locations[user_id] = locations_map
+    
+    # カレンダーの日数をカウント（colspan用）
+    calendar_day_count = 0
+    for week in calendar_data["weeks"]:
+        for day in week:
+            if day and day.get("day", 0) != 0:
+                calendar_day_count += 1
+    
+    # 共通コンテキスト
+    context = {
+        "request": request, 
+        "users": users, 
+        "groups": groups, 
+        "user_types": user_types,
+        "grouped_users": grouped_users,
+        "group_names": sorted(list(grouped_users.keys())),
+        "calendar_data": calendar_data["weeks"],
+        "month_name": calendar_data["month_name"],
+        "prev_month": calendar_data["prev_month"],
+        "next_month": calendar_data["next_month"],
+        "location_types": location_types,
+        "location_styles": location_styles,
+        "user_attendances": user_attendances,
+        "user_attendance_locations": user_attendance_locations,
+        "calendar_day_count": calendar_day_count,
+    }
+    
     # HTMXリクエストの場合はテーブル部分のみを返す
     if request.headers.get("HX-Request") == "true":
+        logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
-            "components/details/attendance_table.html", {
-                "request": request, 
-                "users": users,
-                "grouped_users": grouped_users,
-                "group_names": sorted(list(grouped_users.keys()))
-            }
+            "pages/attendance/attendance_content.html", context,
+            headers={"HX-Reswap": "innerHTML"}
         )
     
     # 通常のリクエストの場合は完全なページを返す
+    logger.debug("通常リクエスト。完全なページを返します。")
     return templates.TemplateResponse(
-        "pages/attendance/index.html", {
-            "request": request, 
-            "users": users, 
-            "groups": groups, 
-            "user_types": user_types,
-            "grouped_users": grouped_users,
-            "group_names": sorted(list(grouped_users.keys()))
-        }
+        "pages/attendance/index.html", context
     )
 
 
@@ -127,7 +199,7 @@ def edit_user_attendance(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """ユーザーの勤怠編集ページを表示します
+    """ユーザーの勤怠編集ページを表示します（レガシーサポート用）
 
     Args:
         request: FastAPIリクエストオブジェクト
@@ -138,97 +210,5 @@ def edit_user_attendance(
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    try:
-        # デバッグログ追加
-        logger.debug(f"勤怠編集ページ表示: user_id={user_id}, month={month}, HX-Request={request.headers.get('HX-Request')}")
-        
-        if month is None:
-            month = get_current_month_formatted()
-            logger.debug(f"月パラメータなし。デフォルト設定: {month}")
-        else:
-            # 月の形式を検証
-            try:
-                year, month_num = parse_month(month)
-                # フォーマットを統一
-                month = f"{year}-{month_num:02d}"
-                logger.debug(f"月パラメータ検証成功: {month}")
-            except ValueError as e:
-                logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
-                # 現在の月にリダイレクト
-                current_month = get_current_month_formatted()
-                return RedirectResponse(url=f"/attendance/edit/{user_id}?month={current_month}")
-
-        # Get calendar data for the specified month
-        logger.debug(f"カレンダーデータ取得: {month}")
-        calendar_data = build_calendar_data(db, month)
-        
-        if not calendar_data or "weeks" not in calendar_data:
-            logger.error(f"カレンダーデータの取得に失敗: {month}")
-            # 現在の月にフォールバック
-            month = get_current_month_formatted()
-            calendar_data = build_calendar_data(db, month)
-            
-        logger.debug(f"カレンダーデータ取得完了: 前月={calendar_data.get('prev_month')} 次月={calendar_data.get('next_month')}")
-
-        # ユーザー一覧を取得して存在チェック
-        all_users = user.get_all_users(db)
-        all_user_ids = [u_id for user_name, u_id, user_type_id in all_users]
-        
-        # ユーザーIDが存在しない場合はエラー
-        if user_id not in all_user_ids:
-            logger.error(f"ユーザーIDが見つかりません: {user_id}")
-            raise HTTPException(status_code=404, detail=f"ユーザーID '{user_id}' が見つかりません")
-
-        # Get user name
-        user_name = user.get_user_name_by_id(db, user_id=user_id)
-        logger.debug(f"ユーザー名取得: {user_name}")
-
-        # Get user data
-        user_entries = attendance.get_user_data(db, user_id=user_id)
-        logger.debug(f"ユーザー勤怠データ取得: {len(user_entries)} エントリ")
-        
-        # Create a map of dates and work locations for the user
-        user_dates = []
-        user_locations = {}
-        for entry in user_entries:
-            date = entry["date"]
-            user_dates.append(date)
-            user_locations[date] = entry["location_name"]
-
-        # Get types of work locations
-        location_types = location.get_all_locations(db)
-        logger.debug(f"勤務場所タイプ取得: {location_types}")
-
-        # Generate style information for work locations
-        location_styles = generate_location_styles(location_types)
-
-        # 前月と翌月の情報はcalendar_dataから取得可能
-        prev_month = calendar_data["prev_month"]
-        next_month = calendar_data["next_month"]
-
-        context = {
-            "request": request,
-            "user_id": user_id,
-            "user_name": user_name,
-            "calendar_data": calendar_data["weeks"],
-            "user_dates": user_dates,
-            "user_locations": user_locations,
-            "location_styles": location_styles,
-            "location_types": location_types,
-            "prev_month": prev_month,
-            "next_month": next_month,
-            "month_name": calendar_data["month_name"],
-            "editable": True,  # 編集可能モード
-        }
-
-        # HTMX要求の場合、AcceptヘッダーがHTMXを含む場合は部分テンプレートを返す
-        is_htmx_request = request.headers.get("HX-Request") == "true"
-        if is_htmx_request:
-            logger.debug(f"HTMX要求: 部分テンプレートを返します (月={month})")
-            return templates.TemplateResponse("components/calendar/grid_calendar.html", context)
-
-        logger.debug(f"通常要求: 完全ページを返します (月={month})")
-        return templates.TemplateResponse("pages/attendance/edit.html", context)
-    except Exception as e:
-        logger.error(f"勤怠編集ページ表示エラー: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"勤怠データ表示中にエラーが発生しました: {str(e)}") 
+    # 新しい勤怠登録画面にリダイレクト
+    return RedirectResponse(url="/attendance") 

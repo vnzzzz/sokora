@@ -224,7 +224,7 @@ def get_day_detail(
     # グループをIDの昇順でソート
     sorted_organized_by_group = dict(sorted(
         organized_by_group.items(),
-        key=lambda item: item[1]["group_id"]
+        key=lambda item: item[1].get("group_id", 9999)
     ))
     
     # データの有無を確認

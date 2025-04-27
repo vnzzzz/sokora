@@ -318,3 +318,50 @@ async def delete_attendance(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
         )
+
+
+@router.delete("", status_code=status.HTTP_200_OK)
+def delete_attendance_by_user_date(
+    user_id: str,
+    date: date, # FastAPIが "YYYY-MM-DD" から date オブジェクトに変換
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """指定されたユーザーと日付の勤怠データを削除します。"""
+    try:
+        logger.debug(f"勤怠削除リクエスト受信: user_id={user_id}, date={date}")
+        
+        # ユーザーの存在確認 (任意ですが、より親切)
+        from app.crud.user import user
+        user_obj = user.get_by_user_id(db, user_id=user_id)
+        if not user_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"ユーザー '{user_id}' が見つかりません"
+            )
+        
+        # CRUD関数を呼び出して削除
+        deleted = attendance.delete_by_user_and_date(db=db, user_id=user_id, date_obj=date)
+        
+        if deleted:
+            db.commit()
+            logger.info(f"勤怠データ削除成功: user_id={user_id}, date={date}")
+            return JSONResponse(
+                content={"success": True, "message": "勤怠データを正常に削除しました"}
+            )
+        else:
+            # 削除対象が見つからなかった場合もエラーではないとする
+            logger.warning(f"削除対象の勤怠データが見つかりませんでした: user_id={user_id}, date={date}")
+            return JSONResponse(
+                content={"success": True, "message": "削除対象のデータが見つかりませんでした"}
+            )
+            
+    except HTTPException as http_exc:
+        # HTTP関連のエラーはそのまま再raise
+        raise http_exc
+    except Exception as e:
+        db.rollback()
+        logger.error(f"勤怠削除中に予期せぬエラー: user_id={user_id}, date={date}, error={str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
+        )

@@ -73,6 +73,34 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
             return False
 
+    def delete_by_user_and_date(self, db: Session, *, user_id: str, date_obj: date) -> bool:
+        """
+        指定されたユーザーIDと日付の勤怠記録を削除します。
+
+        Args:
+            db: データベースセッション
+            user_id: ユーザーID
+            date_obj: 日付オブジェクト
+
+        Returns:
+            bool: 削除に成功した場合はTrue、対象が見つからない場合はFalse
+        """
+        obj = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
+        if obj:
+            logger.debug(f"勤怠レコード削除実行: id={obj.id}, user_id={user_id}, date={date_obj}")
+            # super().remove(db=db, id=obj.id) を使うと commit までしてしまう可能性がある
+            # CRUDBase の remove は commit を含まないが、念のため直接 delete を呼ぶ
+            db.delete(obj)
+            # commit は API 層で行う
+            # キャッシュをクリアする
+            day_key = date_obj.strftime("%Y-%m-%d")
+            if day_key in self._day_data_cache:
+                del self._day_data_cache[day_key]
+                logger.debug(f"日別キャッシュクリア: {day_key}")
+            return True
+        logger.debug(f"削除対象の勤怠レコードが見つかりません: user_id={user_id}, date={date_obj}")
+        return False
+
     def update_attendance(
         self, db: Session, *, user_id: str, date_obj: date, location_id: int
     ) -> Optional[Attendance]:
