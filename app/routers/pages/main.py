@@ -5,12 +5,13 @@
 トップページなど基本的なページ表示に関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request, Depends
+import logging
+from typing import Any
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
-from typing import Any
 from sqlalchemy.orm import Session
-import logging
 
 from app.db.session import get_db
 

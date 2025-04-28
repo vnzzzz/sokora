@@ -5,17 +5,25 @@
 勤怠入力と編集に関連するAPIエンドポイント
 """
 
-from typing import Any, List, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Form, Request
-from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
-from sqlalchemy.orm import Session
 from datetime import date, datetime
+from typing import Any, Dict, List, Optional
 
-from app.db.session import get_db
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from sqlalchemy.orm import Session
+
+from app.core.config import logger
 from app.crud.attendance import attendance
 from app.crud.location import location
-from app.schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate, UserAttendance
-from app.core.config import logger
+from app.crud.user import user
+from app.db.session import get_db
+from app.schemas.attendance import (
+    Attendance,
+    AttendanceCreate,
+    AttendanceList,
+    AttendanceUpdate,
+    UserAttendance,
+)
 
 # API用ルーター
 router = APIRouter(tags=["Attendance"])
@@ -40,8 +48,6 @@ def get_user_attendance(
     特定ユーザーの勤怠データを取得します。
     date パラメータを指定すると、特定日の勤怠データのみを返します。
     """
-    from app.crud.user import user
-    
     user_obj = user.get_by_user_id(db, user_id=user_id)
     if not user_obj:
         raise HTTPException(
@@ -131,7 +137,6 @@ async def create_attendance(
             )
         
         # 作成したデータを返す
-        from app.crud.user import user
         user_obj = user.get_by_user_id(db, user_id=user_id)
         if not user_obj:
             return JSONResponse(
@@ -331,7 +336,6 @@ def delete_attendance_by_user_date(
         logger.debug(f"勤怠削除リクエスト受信: user_id={user_id}, date={date}")
         
         # ユーザーの存在確認 (任意ですが、より親切)
-        from app.crud.user import user
         user_obj = user.get_by_user_id(db, user_id=user_id)
         if not user_obj:
             raise HTTPException(

@@ -5,8 +5,9 @@
 ユーザーの社員種別のPydanticスキーマ。
 """
 
-from pydantic import BaseModel
 from typing import List, Optional
+
+from pydantic import BaseModel
 
 
 class UserTypeBase(BaseModel):

@@ -5,14 +5,15 @@
 勤務場所の設定管理に関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request, Depends
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from typing import Any, List, Dict
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.crud.location import location
+from app.db.session import get_db
 from app.utils.ui_utils import TAILWIND_COLORS
 
 # ルーター定義

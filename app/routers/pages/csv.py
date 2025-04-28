@@ -5,10 +5,11 @@ CSVダウンロードページエンドポイント
 CSVデータのダウンロードページを提供するルートハンドラー
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from typing import Any
 
 from app.utils.csv_utils import get_available_months
 

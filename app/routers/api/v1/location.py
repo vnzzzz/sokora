@@ -9,8 +9,9 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.crud.location import location
+from app.db.session import get_db
+from app.models.attendance import Attendance
 from app.schemas.location import Location, LocationCreate, LocationList, LocationUpdate
 
 router = APIRouter(tags=["Locations"])
@@ -88,7 +89,6 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
         )
     
     # 削除しようとしている勤務場所が現在勤怠データで使用されていないか確認します。
-    from app.models.attendance import Attendance
     attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
     if attendance_count > 0:
         raise HTTPException(

@@ -5,15 +5,15 @@
 ユーザーの取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
-from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Form, Body
-from fastapi.responses import RedirectResponse
+from typing import Any, List
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
-from app.crud.user import user
 from app.crud.group import group
+from app.crud.user import user
 from app.crud.user_type import user_type
+from app.db.session import get_db
 from app.schemas.user import User, UserCreate, UserList, UserUpdate
 
 # API用ルーター

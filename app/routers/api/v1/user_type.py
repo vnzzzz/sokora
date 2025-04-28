@@ -5,12 +5,14 @@
 社員種別の取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
-from typing import Any, List, Optional
+from typing import Any, List
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.crud.user_type import user_type
+from app.db.session import get_db
+from app.models.user import User
 from app.schemas.user_type import UserType, UserTypeCreate, UserTypeList, UserTypeUpdate
 
 router = APIRouter(tags=["UserTypes"])
@@ -88,7 +90,6 @@ def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any
         )
     
     # 削除しようとしている社員種別が現在ユーザーに割り当てられていないか確認します。
-    from app.models.user import User
     user_count = db.query(User).filter(User.user_type_id == user_type_id).count()
     if user_count > 0:
         raise HTTPException(

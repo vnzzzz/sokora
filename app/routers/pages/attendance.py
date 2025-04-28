@@ -5,22 +5,23 @@
 勤怠登録・管理ページに関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request, Depends, HTTPException
+import logging
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from typing import Any, Optional, Dict, List
 from sqlalchemy.orm import Session
-import logging
 
-from app.db.session import get_db
-from app.crud.user import user
 from app.crud.attendance import attendance
-from app.crud.location import location
 from app.crud.group import group
+from app.crud.location import location
+from app.crud.user import user
 from app.crud.user_type import user_type
+from app.db.session import get_db
+from app.utils.calendar_utils import build_calendar_data, parse_month
 from app.utils.date_utils import get_current_month_formatted
 from app.utils.ui_utils import generate_location_styles
-from app.utils.calendar_utils import build_calendar_data, parse_month
 
 # ルーター定義
 router = APIRouter(tags=["Pages"])

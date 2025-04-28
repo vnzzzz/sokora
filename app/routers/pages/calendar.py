@@ -5,24 +5,33 @@
 カレンダー表示に関連するルートハンドラー
 """
 
-from fastapi import APIRouter, Request, Depends
+import html
+import time
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from typing import Any, Optional, Dict, List
-import html
 from sqlalchemy.orm import Session
-import time
 
-from app.db.session import get_db
-from app.crud.user import user
-from app.crud.attendance import attendance
-from app.crud.location import location
-from app.crud.group import group
-from app.crud.user_type import user_type
-from app.utils.date_utils import get_today_formatted, get_current_month_formatted, get_last_viewed_date
-from app.utils.ui_utils import generate_location_badges, has_data_for_day, generate_location_styles
-from app.utils.calendar_utils import build_calendar_data
 from app.core.config import logger
+from app.crud.attendance import attendance
+from app.crud.group import group
+from app.crud.location import location
+from app.crud.user import user
+from app.crud.user_type import user_type
+from app.db.session import get_db
+from app.utils.calendar_utils import build_calendar_data
+from app.utils.date_utils import (
+    get_current_month_formatted,
+    get_last_viewed_date,
+    get_today_formatted,
+)
+from app.utils.ui_utils import (
+    generate_location_badges,
+    generate_location_styles,
+    has_data_for_day,
+)
 
 # ルーター定義
 router = APIRouter(tags=["Pages"])
@@ -226,10 +235,18 @@ def get_day_detail(
         )
         organized_by_group[group_name]["user_types"] = sorted_user_types
 
+    # ソートキー取得用のヘルパー関数
+    def get_group_id_sort_key(item: tuple[str, Dict[str, Any]]) -> int:
+        group_data = item[1]
+        if isinstance(group_data, dict):
+            return group_data.get("group_id", 9999)
+        logger.warning(f"Unexpected type for group data: {type(group_data)} in item: {item}")
+        return 9999 # Default sort value for unexpected types
+
     # 最終的なグループ主キーの辞書を、グループIDに基づいてソートします。
     sorted_organized_by_group = dict(sorted(
         organized_by_group.items(),
-        key=lambda item: item[1].get("group_id", 9999)
+        key=get_group_id_sort_key # ヘルパー関数を使用
     ))
 
     # この日に勤怠データが存在するかどうかのフラグを設定します。

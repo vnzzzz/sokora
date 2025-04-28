@@ -8,7 +8,7 @@
 
 ## 2. 前提条件
 
-- **Jinja2 テンプレートエンジンの設定:** API ルーター (例: `app/api/v1/*.py` や `app/api/pages/*.py`) 内で `request: Request` を引数として受け取り、`TemplateResponse` を使用して HTML フラグメントをレンダリングできる状態であること。通常、`app/main.py` や共通の依存性注入で `templates = Jinja2Templates(directory="app/templates")` が設定されている。
+- **Jinja2 テンプレートエンジンの設定:** API ルーター (例: `app/routers/api/v1/*.py` や `app/routers/pages/*.py`) 内で `request: Request` を引数として受け取り、`TemplateResponse` を使用して HTML フラグメントをレンダリングできる状態であること。通常、`app/main.py` や共通の依存性注入で `templates = Jinja2Templates(directory="app/templates")` が設定されている。
 - **FastAPI の依存性注入:** 各 API エンドポイントで `db: Session = Depends(deps.get_db)` や `request: Request` が適切に注入されていること。
 
 ## 3. 現状分析
@@ -20,30 +20,30 @@
     - 各管理ページテンプレート: テーブル行 (`<tr>`) に `id` 属性 (例: `id="user-row-{{ user.id }}"`) が付与されている。編集/削除ボタンには `data-*` 属性 (例: `data-user-id`) が付与されている場合がある。追加・編集フォームの送信は JavaScript が制御。
     - 編集モーダルの内容は `hx-get` で非同期に読み込まれている場合がある。
 - **バックエンド:**
-    - CRUD API エンドポイント (`app/api/v1/*.py`):
+    - CRUD API エンドポイント (`app/routers/api/v1/*.py`):
         - **POST:** 成功時に作成されたリソースを JSON で返す。
         - **PUT:** 成功時に更新されたリソースを JSON で返す。
         - **DELETE:** 成功時に JSON または 204 No Content を返す。
     - CRUD 操作は `app/crud/*.py` 内の関数で行われる。
-    - HTML ページを提供するエンドポイントは `app/api/pages/*.py` に存在する。
-    - サービス層 (`app/services/*.py`) は現在存在しない。
+    - HTML ページを提供するエンドポイントは `app/routers/pages/*.py` に存在する。
+    - サービス層 (`app/services/*.py`) が作成された。
 
 ## 4. リファクタリング方針
 
-**基本戦略として、外部システム連携用の既存 JSON API (`/api/v1/*`) は維持し、UI 部分更新用の HTML フラグメント API (`/api/pages/*`) を新規に追加します。両者は明確に分離しつつ、データベース操作やビジネスロジックは共通の `crud` 層や `services` 層（新規作成）で実装し、コードの重複を避けます。**
+**基本戦略として、外部システム連携用の JSON API (`/api/v1/*`, 実装は `app/routers/api/v1/*.py`) は維持し、UI 部分更新用の HTML フラグメント API (`/pages/*`, 実装は `app/routers/pages/*.py`) を追加・修正します。両者は明確に分離しつつ、データベース操作は `crud` 層、ビジネスロジックは `services` 層で実装し、コードの重複を避けます。**
 
 - **API エンドポイント戦略:**
-    - **JSON API (`/api/v1/<entity>`)**: **データ操作と外部システム連携** を主目的とし、原則として JSON 形式でレスポンスを返す。既存の仕様を維持する。
-    - **HTML フラグメント API (`/pages/<entity>/row` 等)**: **Web UI (HTMX) からの部分更新** を目的とし、HTML フラグメント (`<tr>` 等) を `HTMLResponse` で返す。既存のページ関連ルーター (`app/api/pages/<entity>.py`) に**追加**する。
-    - **DELETE API (`/api/v1/<entity>/{id}`)**: 削除操作はシンプルであるため、既存の `/api/v1/*` を流用し、成功時に `Response(status_code=204)` を返すように統一する (HTMX は空レスポンスで要素削除が可能)。
+    - **JSON API (`/api/v1/<entity>`)**: **データ操作と外部システム連携** を主目的とし、原則として JSON 形式でレスポンスを返す。実装は `app/routers/api/v1/<entity>.py`。既存の仕様を維持する。
+    - **HTML フラグメント API (`/pages/<entity>/row` 等)**: **Web UI (HTMX) からの部分更新** を目的とし、HTML フラグメント (`<tr>` 等) を `HTMLResponse` で返す。実装は `app/routers/pages/<entity>.py` に**追加**する。
+    - **DELETE API (`/api/v1/<entity>/{id}`)**: 削除操作はシンプルであるため、既存の `/api/v1/*` (実装: `app/routers/api/v1/<entity>.py`) を流用し、成功時に `Response(status_code=204)` を返すように統一する (HTMX は空レスポンスで要素削除が可能)。
     - **コアロジック共通化**: HTML 返却用 API は、内部で既存の JSON API と同じ **`crud` 関数** や **`services` 関数** (バリデーション等) を呼び出し、コアロジックの重複を徹底的に避ける。
     - **コアロジック共通化の徹底 (重要):**
         - **CRUD操作:** データベースへの実際の読み書き (Create, Read, Update, Delete) は、`app/crud/*.py` 内の関数に集約する。JSONを返すAPIもHTMLを返すAPIも、**必ず同じCRUD関数を呼び出す**こと。既存の `crud` 関数が適切でない場合（例: 単純すぎる、副作用があるなど）は、この機会にリファクタリングする。
             - 例 (`crud.user.update_user`): 現在の実装は個別の引数を取り bool を返すため、`UserUpdate` スキーマを受け取り、更新後の `User` オブジェクト（リレーション含む）を返すように `CRUDBase.update` を利用またはオーバーライドする方向でリファクタリングが必要。（要確認）
         - **データ取得:** APIが必要とするデータ（リレーション含む）を取得するロジックも共通化する（通常は `crud` 内）。更新後や作成後にデータを再取得する際も共通の関数を利用する。
             - 例: HTMLフラグメント生成やJSONレスポンス生成に必要な関連データ（グループ名、社員種別名など）が効率的に取得できるように `crud` 層の `get` メソッドなどを調整する。
-        - **ビジネスロジック/権限チェック:** 単純なCRUD以上のロジックや権限チェックは、**新規作成するサービスレイヤー (`app/services/*.py`)** やヘルパー関数に切り出し、両方のエンドポイントタイプから呼び出す。既存実装でエンドポイント内にロジックが散在している場合は、積極的に共通化のためのリファクタリングを行う。
-            - 例 (`/api/v1/user.py`): `create_user`, `update_user` 内のグループ・社員種別存在チェックは、**新規作成するサービス関数 (`user_service.validate_user_creation` など)** に切り出すことを検討する。
+        - **ビジネスロジック/権限チェック:** 単純なCRUD以上のロジックや権限チェックは、**`app/services/*.py`** やヘルパー関数に切り出し、両方のエンドポイントタイプから呼び出す。既存実装でエンドポイント内にロジックが散在している場合は、積極的に共通化のためのリファクタリングを行う。
+            - 例 (`app/routers/api/v1/user.py`): `create_user`, `update_user` 内のグループ・社員種別存在チェックは、**サービス関数 (`user_service.validate_user_creation` など)** に切り出すことを検討する。
 - **部分テンプレートの活用:** 各管理対象（ユーザー、グループ等）のテーブル行 (`<tr>`) を表示するための部分テンプレート (`app/templates/components/<entity>/_row.html`) を新規作成し、HTML フラグメント API から利用する。
 - **編集処理:**
     - **バックエンド (新規 PUT `/pages/<entity>/row/{id}`):** 成功時に、更新されたデータを使って新規作成した部分テンプレート (`_row.html`) をレンダリングし、その HTML フラグメントを `HTMLResponse(content=..., status_code=200)` で返す。
@@ -107,16 +107,16 @@
 2.  **バックエンド API 修正:**
     - [ ] **コアロジックのリファクタリング (必要に応じて):**
         - [ ] `app/crud/user.py` の `update_user` を、`UserUpdate` スキーマを受け取り更新後の `User` を返すように修正する。
-        - [ ] **新規** に `app/services/` ディレクトリと `app/services/user_service.py` ファイルを作成し、`app/api/v1/user.py` 内のグループ・社員種別存在チェックなどのビジネスロジックを共通のサービス関数に切り出す。
-    - [ ] **既存 `app/api/v1/user.py` の修正:**
+        - [ ] **新規** に `app/services/user_service.py` ファイルを作成し、`app/routers/api/v1/user.py` 内のグループ・社員種別存在チェックなどのビジネスロジックを共通のサービス関数に切り出す。
+    - [ ] **既存 `app/routers/api/v1/user.py` の修正:**
         - **`delete_user` (DELETE `/api/v1/users/{user_id}`)**: 現在の実装で既に `Response(status_code=204)` を返しているため、**修正不要**。
-        - `create_user` (POST), `update_user` (PUT): 内部のビジネスロジックを新規作成した共通サービス関数呼び出しに置き換える。
-    - [ ] **既存 `app/api/pages/user.py` にエンドポイント追加:**
+        - `create_user` (POST), `update_user` (PUT): 内部のビジネスロジックを共通サービス関数呼び出しに置き換える。
+    - [ ] **既存 `app/routers/pages/user.py` にエンドポイント追加:**
         - **コアロジック共通化の確認:** 以下の新規エンドポイントを実装する前に、関連する `crud.user` 関数や権限チェックロジックが適切に共通化・分離されているか確認し、必要であればリファクタリングを行う。
         - **`handle_create_user_row` (POST `/pages/user/row`)**: `request: Request`, `user_in: schemas.UserCreate = Depends(...)`, `db: Session` を引数に取り、内部で **共通化されたサービス関数/CRUD関数** (`user_service.create_user_with_validation` や `crud.user.create`) を呼び出す。成功後、作成/取得された `user` を取得し、`TemplateResponse` で **新規作成した `components/user/_user_row.html`** をレンダリングして `HTMLResponse` (status_code=200) で返す。
             - `Depends(schemas.UserCreate.as_form)` を使う場合は、`UserCreate` スキーマに `as_form` メソッドを実装する必要がある。
           ```python
-          # 例: app/api/pages/user.py (既存ファイルに追加)
+          # 例: app/routers/pages/user.py (既存ファイルに追加)
           from fastapi import APIRouter, Depends, Request, status, HTTPException
           from fastapi.responses import HTMLResponse
           from fastapi.templating import Jinja2Templates
@@ -164,7 +164,7 @@
           ```
         - **`handle_update_user_row` (PUT `/pages/user/row/{user_id}`)**: `request: Request`, `user_id: int`, `user_in: schemas.UserUpdate = Depends(...)`, `db: Session` を引数に取り、内部で **共通化されたサービス関数/CRUD関数** (`user_service.update_user_with_validation` や `crud.user.update`) を呼び出す。成功後、更新された `user` を取得し、`TemplateResponse` で **新規作成した `components/user/_user_row.html`** をレンダリングして `HTMLResponse` (status_code=200) で返す。
             - 同様に `as_form` や `Form(...)` を利用。
-        - **`get_user_edit_form` (GET `/pages/user/edit/{user_id}`)**: 編集モーダルの内容 (フォーム) をHTMLで返すエンドポイント。これも既存の `app/api/pages/user.py` に追加する。
+        - **`get_user_edit_form` (GET `/pages/user/edit/{user_id}`)**: 編集モーダルの内容 (フォーム) をHTMLで返すエンドポイント。これも既存の `app/routers/pages/user.py` に追加する。
             - **新規作成するテンプレート (`components/user/_edit_form.html` など)** をレンダリングして返す。
 
 3.  **フロントエンド テンプレート修正 (`app/templates/pages/user/index.html`):**
@@ -189,17 +189,6 @@
         - フォーム内の保存ボタンから `data-*` 属性を削除。
         - モーダル内に `<span class="loading loading-spinner htmx-indicator" id="edit-modal-loading-{{ user.id }}"></span>` を追加。
     - [ ] **削除ボタン:** Alpine.js の `onclick` を削除し、`hx-delete` のみで動作するようにする (計画通り)。
-        ```html
-        <button class="btn btn-sm btn-error btn-outline"
-                hx-delete="{{ url_for('delete_user', user_id=user.id) }}"
-                hx-target="closest tr"
-                hx-swap="outerHTML"
-                hx-confirm="「{{ user.username }}」を削除してもよろしいですか？"
-                hx-indicator="#row-indicator-{{ user.id }}">
-            削除
-        </button>
-        ```
-    - [ ] **`<script>` ブロック:** ページ末尾の `setupAddFormHandler`, `setupEditFormHandlers`, `setupDeleteHandlers` の呼び出しをコメントアウトまたは削除。
 
 4.  **JavaScript 修正 (`app/static/js/modal-handlers.js`):**
     - [ ] 社員管理の HTMX 化が完了したら、`updateUIAfterEdit` 関数内の `user-row-` ID を対象とした DOM 更新処理を削除。
@@ -222,7 +211,7 @@
         - **JSON API (`/api/v1/*`)**: 従来通り JSON 形式でエラー情報を返す。
     - **フロントエンド:** HTMX フォーム要素に `hx-target="#form-error-message"` と `hx-swap="outerHTML"` を追加するか、`HX-Retarget` レスポンスヘッダーをバックエンドから送信して、エラー表示領域を指定する。モーダルを閉じないように、エラー時の `hx-on::after-request` 処理はスキップさせる (`if(event.detail.successful)` の条件分岐が役立つ)。エラーメッセージ表示用のコンテナ (`<div id="form-error-message"></div>`) をモーダル内に配置する。
 - **ローディングインジケータ:** `htmx-indicator` クラスと `hx-indicator` 属性を活用し、処理中のフィードバックをユーザーに提供する。
-- **URL生成:** テンプレート内では FastAPI の `url_for()` を使用する。そのためには、ページをレンダリングするエンドポイント (`app/api/pages/*.py` 内) で `request: Request` を受け取り、`TemplateResponse` のコンテキストに `{"request": request, ...}` を含める必要がある。APIエンドポイント関数名を正しく指定すること。（FastAPI 0.100.0 以降は `TemplateResponse(request=request, name=...)` の形式が推奨）
+- **URL生成:** テンプレート内では FastAPI の `url_for()` を使用する。そのためには、ページをレンダリングするエンドポイント (`app/routers/pages/*.py` 内) で `request: Request` を受け取り、`TemplateResponse` のコンテキストに `{\"request\": request, ...}` を含める必要がある。APIエンドポイント関数名を正しく指定すること。（FastAPI 0.100.0 以降は `TemplateResponse(request=request, name=...)` の形式が推奨）
 - **Alpine.js との連携:** モーダルの表示 (`*.showModal()`) は `onclick` で残すのがシンプル。HTMXリクエスト成功後のモーダル非表示 (`*.close()`) は `hx-on::after-request` で実装する。これら以外の複雑な連携は必要に応じて検討。
 - **スキーマとフォーム:** `Depends(Schema.as_form)` を利用する場合、対象スキーマに `as_form` クラスメソッドを定義する必要がある点に注意。
 - **テスト:** リファクタリング後は、各管理機能の追加・編集・削除が期待通りに動作することを手動テストで確認する。**JSON API と HTML API の両方に対する自動テストを追加・更新**し、コアロジックの変更が両方に反映されることを担保する。 

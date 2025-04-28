@@ -9,11 +9,10 @@ Sokora APIエンドポイントのバージョン1です。
 # APIバージョン
 __version__ = "0.1.0"
 
-# FastAPIルーター設定
 from fastapi import APIRouter
 
 # データ操作API関連
-from app.api.v1 import attendance, location, user, group, user_type, csv
+from app.routers.api.v1 import attendance, csv, group, location, user, user_type
 
 # メインAPIルーターの作成（すべてのAPIエンドポイントを統合）
 api_router = APIRouter(prefix="/api")

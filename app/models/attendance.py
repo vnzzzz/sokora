@@ -5,9 +5,10 @@
 ユーザーの勤怠記録を管理するSQLAlchemyモデル。
 """
 
-from sqlalchemy import Column, String, Integer, Date, ForeignKey
-from sqlalchemy.orm import relationship
 from typing import Any, ClassVar
+
+from sqlalchemy import Column, Date, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
 
 from app.db.session import Base
 
