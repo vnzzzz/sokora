@@ -175,7 +175,7 @@ def attendance_page(
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
-            "pages/attendance/attendance_content.html", context,
+            "pages/attendance/attendance_calendar.html", context,
             headers={"HX-Reswap": "innerHTML"} # HTMXに入れ替え方法を指定
         )
 

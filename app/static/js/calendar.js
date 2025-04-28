@@ -146,7 +146,7 @@
     const calendarArea = document.getElementById('calendar-area')
     // event.target が calendarArea の子孫要素であるか、または calendarArea 自身であるかを確認
     if (calendarArea && event.target && calendarArea.contains(event.target)) {
-      // #calendar-metadata が存在するか (つまり linear_calendar.html がロードされたか) 確認
+      // #calendar-metadata が存在するか (つまり summary_calendar.html がロードされたか) 確認
       // htmx:afterSwap はスワップされた要素 (event.target) だけでなく、
       // その親要素も含む可能性があるため、document全体で検索する方が確実な場合がある
       if (document.getElementById('calendar-metadata')) {
@@ -157,7 +157,7 @@
 
   // ページ初期ロード時にもカレンダーが存在すれば初期化を実行
   function attemptInitialCalendarInit() {
-    // #calendar-metadata が DOM に存在するかどうかで linear_calendar がロードされたかを判断
+    // #calendar-metadata が DOM に存在するかどうかで summary_calendar がロードされたかを判断
     if (document.getElementById('calendar-metadata')) {
       setTimeout(initCalendar, 50)
     }
