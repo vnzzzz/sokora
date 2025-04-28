@@ -4,6 +4,10 @@
 
 既存のデータベースに追加のテストデータを投入するためのユーティリティモジュール。
 ユーザーと勤怠記録を水増しして、アプリケーションのテストや開発を支援します。
+
+実行方法:
+プロジェクトルートディレクトリから以下のコマンドで実行してください。
+`poetry run python -m scripts.seeding.data_seeder --users <数> --days-back <日数> --days-forward <日数>`
 """
 
 import random
