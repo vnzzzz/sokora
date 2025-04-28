@@ -166,6 +166,9 @@ def attendance_page(
         "calendar_day_count": calendar_day_count,
     }
 
+    # 現在選択中の月 (YYYY-MM) をコンテキストに追加
+    context["current_month"] = month
+
     # HTMXリクエストの場合、勤怠テーブル部分のみをレンダリングして返します。
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")

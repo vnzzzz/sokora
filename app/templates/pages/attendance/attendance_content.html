@@ -1,11 +1,10 @@
-<!-- 月切り替え -->
-<div class="flex justify-between items-center mb-4">
-  <div></div>
-  <div>
-    <!-- 共通月切り替えコンポーネント -->
-    {% with use_htmx=true, target_id="attendance-content", url_base="/attendance", prev_month=prev_month,
-    next_month=next_month %} {% include "components/common/month_switcher.html" %} {% endwith %}
-  </div>
+<!-- 月表示と切り替え -->
+<div class="flex items-center justify-center space-x-4 mb-4">
+  <span class="text-lg font-semibold">{{ current_month }}</span>
+  <!-- 共通月切り替えコンポーネント -->
+  {% with use_htmx=true, target_id="attendance-content", url_base="/attendance", prev_month=prev_month,
+  next_month=next_month, current_month=current_month %} {% include "components/common/month_switcher.html" %} {% endwith
+  %}
 </div>
 
 <!-- JavaScriptへ渡すデータ -->

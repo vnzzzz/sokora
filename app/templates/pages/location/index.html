@@ -1,154 +1,152 @@
 {% extends "layout/base.html" %} {% set title_text = "勤務場所管理 - Sokora" %} {% from "components/common/modal.html"
 import add_modal, edit_modal, delete_confirm_modal %} {% block content %}
-<div class="card bg-base-200 shadow-lg rounded-lg">
-  <div class="card-body p-6">
-    <div class="flex justify-between items-center">
-      <div>
-        <h2 class="text-2xl font-bold text-base-content">勤務場所管理</h2>
-      </div>
-
-      <!-- 新規追加ボタン -->
-      <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
-        <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="1.5"
-            stroke="currentColor"
-            class="w-4 h-4 mr-1"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
-            />
-          </svg>
-          勤務場所追加
-        </button>
-
-        <!-- 勤務場所追加モーダル -->
-        {% set add_content %}
-        <div class="form-control">
-          <label class="label" for="add-location-name">
-            <span class="label-text">勤務場所名</span>
-          </label>
-          <input
-            type="text"
-            id="add-location-name"
-            name="name"
-            class="input input-bordered w-full focus:border-neutral"
-            required
-            autocomplete="off"
-          />
-        </div>
-        {% endset %} {{ add_modal("勤務場所追加", "new-location-form", add_content) }}
-      </div>
+<div class="p-6">
+  <div class="flex justify-between items-center max-w-[700px]">
+    <div>
+      <h2 class="text-2xl font-bold text-base-content">勤務場所管理</h2>
     </div>
 
-    <!-- 勤務場所一覧 -->
-    <div class="mt-8">
-      {% if not locations %}
-      <div class="alert alert-info shadow-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+    <!-- 新規追加ボタン -->
+    <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
+      <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="w-4 h-4 mr-1"
+        >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          ></path>
+            d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
+          />
         </svg>
-        <span>勤務場所が登録されていません。新しい勤務場所を追加してください。</span>
-      </div>
-      {% else %}
-      <div class="overflow-x-auto rounded-lg">
-        <table class="table table-zebra w-full">
-          <thead class="bg-base-300 text-base-content">
-            <tr>
-              <th class="rounded-tl-lg">勤務場所名</th>
-              <th class="text-right rounded-tr-lg">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for location in locations %}
-            <tr class="hover:bg-base-200" id="location-row-{{ location.location_id }}">
-              <td class="font-medium">
-                <span class="{{ location.color_class }}">{{ location.name }}</span>
-              </td>
-              <td class="text-right">
-                <div class="flex justify-end gap-2">
-                  <div x-data="{ showEditModal: false }">
-                    <button @click="showEditModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-4 h-4 mr-1"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                        />
-                      </svg>
-                      編集
-                    </button>
+        勤務場所追加
+      </button>
 
-                    <!-- 勤務場所編集モーダル -->
-                    {% set edit_content %}
-                    <div class="form-control">
-                      <label class="label" for="edit-location-name-{{ location.location_id }}">
-                        <span class="label-text">勤務場所名</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="edit-location-name-{{ location.location_id }}"
-                        name="name"
-                        value="{{ location.name }}"
-                        class="input input-bordered focus:border-neutral"
-                        required
-                        autocomplete="off"
-                      />
-                    </div>
-                    {% endset %} {{ edit_modal("勤務場所編集", "edit-form", edit_content, location.location_id) }}
-                  </div>
-                  <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ location.location_id }}">
-                    <button
-                      @click="showDeleteConfirm = true"
-                      class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-4 h-4 mr-1"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                        />
-                      </svg>
-                      削除
-                    </button>
-
-                    <!-- 削除確認モーダル -->
-                    {% set delete_warning %}※勤怠データが紐づいている場合は削除できません。{% endset %} {{
-                    delete_confirm_modal("削除の確認", delete_warning, location.location_id, location.name, "削除") }}
-                  </div>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <!-- 勤務場所追加モーダル -->
+      {% set add_content %}
+      <div class="form-control">
+        <label class="label" for="add-location-name">
+          <span class="label-text">勤務場所名</span>
+        </label>
+        <input
+          type="text"
+          id="add-location-name"
+          name="name"
+          class="input input-bordered w-full focus:border-neutral"
+          required
+          autocomplete="off"
+        />
       </div>
-      {% endif %}
+      {% endset %} {{ add_modal("勤務場所追加", "new-location-form", add_content) }}
     </div>
+  </div>
+
+  <!-- 勤務場所一覧 -->
+  <div class="mt-8">
+    {% if not locations %}
+    <div class="alert alert-info shadow-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        ></path>
+      </svg>
+      <span>勤務場所が登録されていません。新しい勤務場所を追加してください。</span>
+    </div>
+    {% else %}
+    <div class="overflow-x-auto rounded-lg max-w-[700px]">
+      <table class="table table-zebra w-full">
+        <thead class="bg-base-300 text-base-content">
+          <tr>
+            <th class="rounded-tl-lg">勤務場所名</th>
+            <th class="text-right rounded-tr-lg">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for location in locations %}
+          <tr class="hover:bg-base-200" id="location-row-{{ location.location_id }}">
+            <td class="font-medium">
+              <span class="{{ location.color_class }}">{{ location.name }}</span>
+            </td>
+            <td class="text-right">
+              <div class="flex justify-end gap-2">
+                <div x-data="{ showEditModal: false }">
+                  <button @click="showEditModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="w-4 h-4 mr-1"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                      />
+                    </svg>
+                    編集
+                  </button>
+
+                  <!-- 勤務場所編集モーダル -->
+                  {% set edit_content %}
+                  <div class="form-control">
+                    <label class="label" for="edit-location-name-{{ location.location_id }}">
+                      <span class="label-text">勤務場所名</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-location-name-{{ location.location_id }}"
+                      name="name"
+                      value="{{ location.name }}"
+                      class="input input-bordered focus:border-neutral"
+                      required
+                      autocomplete="off"
+                    />
+                  </div>
+                  {% endset %} {{ edit_modal("勤務場所編集", "edit-form", edit_content, location.location_id) }}
+                </div>
+                <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ location.location_id }}">
+                  <button
+                    @click="showDeleteConfirm = true"
+                    class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="w-4 h-4 mr-1"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                      />
+                    </svg>
+                    削除
+                  </button>
+
+                  <!-- 削除確認モーダル -->
+                  {% set delete_warning %}※勤怠データが紐づいている場合は削除できません。{% endset %} {{
+                  delete_confirm_modal("削除の確認", delete_warning, location.location_id, location.name, "削除") }}
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %} {% block extra_scripts %}

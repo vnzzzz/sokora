@@ -61,16 +61,43 @@ def get_calendar(
         _calendar_cache[month] = calendar_data
         _calendar_cache_timestamp[month] = current_time
     
+    # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
+    if not calendar_data or "weeks" not in calendar_data:
+        logger.error(f"カレンダーデータの取得に失敗: {month}")
+        # エラー時は空のカレンダー情報を設定
+        calendar_data = {
+            "weeks": [],
+            "locations": [],
+            "month_name": "エラー",
+            "prev_month": month, # フォールバック用に元の月を保持
+            "next_month": month
+        }
+        month = calendar_data["prev_month"] # エラーが発生しても month は定義されているように
+    elif not all(k in calendar_data for k in ("prev_month", "next_month")):
+        # prev_month や next_month が欠けている場合もエラーとして扱う
+        logger.error(f"カレンダーデータに必要なキーが不足: {month}")
+        calendar_data["prev_month"] = calendar_data.get("prev_month", month)
+        calendar_data["next_month"] = calendar_data.get("next_month", month)
+        calendar_data["month_name"] = calendar_data.get("month_name", "エラー")
+    
     # 今日の日付をフォーマットして取得
     today_date = get_today_formatted()
 
     context = {
+        "current_month": month, # YYYY-MM 形式
         "request": request,
         "month": calendar_data["month_name"],
         "calendar": calendar_data,
         "today_date": today_date  # テンプレートに今日の日付を渡す
     }
-    return templates.TemplateResponse("components/calendar/linear_calendar.html", context)
+    # HTMXリクエストの場合、innerHTMLで入れ替えるようにヘッダーを追加
+    headers = {"HX-Reswap": "innerHTML"} if request.headers.get("HX-Request") == "true" else {}
+    logger.debug(f"Returning template with headers: {headers}")
+    return templates.TemplateResponse(
+        "components/calendar/linear_calendar.html", 
+        context,
+        headers=headers
+    )
 
 
 @router.get("/day/{day}", response_class=HTMLResponse)
