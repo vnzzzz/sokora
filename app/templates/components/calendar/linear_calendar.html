@@ -61,9 +61,7 @@
             class="font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap"
             style="width: 130px; min-width: 130px"
           >
-            <span class="bg-{{ location.badge }}/10 text-{{ location.badge }} px-2 py-1 rounded"
-              >{{ location.name }}</span
-            >
+            <span class="text-{{ location.badge }}">{{ location.name }}</span>
           </td>
 
           {# 各勤務場所のデータを一度のループで効率的に表示 #} {% for item in day_data_array %} {% set day = item.day %}

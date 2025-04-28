@@ -39,14 +39,12 @@ def location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any
     for i, loc in enumerate(locations_db):
         color_idx = i % len(TAILWIND_COLORS)
         color_name = TAILWIND_COLORS[color_idx]
-        bg_color_class = f"bg-{color_name}/10"
         text_color_class = f"text-{color_name}"
-        color_class = f"{bg_color_class} {text_color_class} px-2 py-1 rounded"
 
         locations.append({
             "location_id": loc.location_id,
             "name": loc.name,
-            "color_class": color_class # Tailwind CSS クラス
+            "color_class": text_color_class # 文字色クラスのみ
         })
 
     return templates.TemplateResponse(

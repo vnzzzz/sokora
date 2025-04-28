@@ -74,7 +74,7 @@ def generate_location_styles(location_types: List[str]) -> Dict[str, str]:
         Dict[str, str]: 勤務場所とそのスタイル情報のマッピング
     """
     return {
-        loc_type: f"bg-{_get_color_for_index(i)}/10 text-{_get_color_for_index(i)}"
+        loc_type: f"text-{_get_color_for_index(i)}"
         for i, loc_type in enumerate(location_types)
     }
 
