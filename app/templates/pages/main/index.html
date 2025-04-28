@@ -1,17 +1,14 @@
 {% extends "layout/base.html" %} {% block content %}
-<!-- カレンダーエリア -->
-<div
-  id="calendar-area"
-  hx-get="/calendar"
-  hx-trigger="load"
-  hx-target="#calendar-area"
-  class="card bg-base-200 shadow-lg rounded-lg p-5"
->
-  <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->
-</div>
+<div class="p-4">
+  <h2 class="text-lg font-bold mb-3">勤怠確認</h2>
+  <!-- カレンダーエリア -->
+  <div id="calendar-area" hx-get="/calendar" hx-trigger="load" hx-target="#calendar-area">
+    <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->
+  </div>
 
-<!-- 詳細表示エリア -->
-<div id="detail-area" class="card bg-base-200 shadow-lg rounded-lg p-5">
-  <!-- 詳細データは/dayエンドポイントから非同期に読み込まれます -->
+  <!-- 詳細表示エリア -->
+  <div id="detail-area">
+    <!-- 詳細データは/dayエンドポイントから非同期に読み込まれます -->
+  </div>
 </div>
 {% endblock %}

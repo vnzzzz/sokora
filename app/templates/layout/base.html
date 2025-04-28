@@ -27,8 +27,11 @@
 
       <!-- メインコンテンツ -->
       <main
-        class="flex-1 container mx-auto py-6 px-5 space-y-8 transition-all duration-300 ease-in-out"
-        :class="{'ml-[200px]': isSidebarOpen, 'ml-16': !isSidebarOpen}"
+        class="flex-1 py-2 px-3 space-y-4 transition-all duration-300 ease-in-out"
+        :class="{
+          'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen, {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
+          'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen       {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
+        }"
       >
         {% block content %}{% endblock %}
       </main>

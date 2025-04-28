@@ -3,10 +3,10 @@
 {% from "components/common/modal.html" import add_modal, edit_modal, delete_confirm_modal %}
 
 {% block content %}
-<div class="p-6">
-  <div class="flex justify-between items-center max-w-[700px]">
+<div class="p-4">
+  <div class="flex justify-between items-center max-w-[700px] mb-4">
     <div>
-      <h2 class="text-2xl font-bold text-base-content">社員管理</h2>
+      <h2 class="text-lg font-bold text-base-content">社員管理</h2>
     </div>
 
     <!-- 社員追加ボタン -->
@@ -72,7 +72,7 @@
     </div>
   </div>
 
-  <div class="mt-8">
+  <div class="mt-4">
     {% if users|length == 0 %}
     <div class="alert alert-info shadow-sm">
       <svg

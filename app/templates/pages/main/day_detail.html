@@ -1,4 +1,4 @@
-<section class="p-2" id="day-detail-container">
+<section id="day-detail-container" class="mt-6">
   {% if success_message %}
   <div class="alert alert-success mb-4">
     <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -13,7 +13,7 @@
   </div>
   {% endif %}
 
-  <h3 class="text-lg font-bold mb-4">{{ day }}</h3>
+  <h3 class="text-lg font-bold mb-2">{{ day }}の勤怠情報</h3>
 
   {% if not has_data %}
   <div class="alert bg-base-300 text-base-content">記録なし</div>
