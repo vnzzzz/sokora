@@ -5,7 +5,7 @@
 ユーザーのSQLAlchemyモデル。
 """
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -16,10 +16,10 @@ class User(Base):  # type: ignore
 
     __tablename__ = "users"
 
-    user_id = Column(String, primary_key=True, nullable=False, index=True)
+    id = Column(String, primary_key=True, nullable=False, index=True)
     username = Column(String, nullable=False, index=True)
-    group_id = Column(Integer, ForeignKey("groups.group_id"), nullable=False)
-    user_type_id = Column(Integer, ForeignKey("user_types.user_type_id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
+    user_type_id = Column(Integer, ForeignKey("user_types.id"), nullable=False)
 
     # Groupモデルとのリレーションシップ定義 (多対一)
     group = relationship("Group", back_populates="users")

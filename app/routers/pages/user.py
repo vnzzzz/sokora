@@ -39,17 +39,17 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
     # 完全なUserオブジェクトを含むリストを作成します。
     for user_name, user_id, user_type_id in users_data:
-        user_obj = user.get_by_user_id(db, user_id=user_id)
+        user_obj = user.get(db, id=user_id)
         if user_obj:
             users.append((user_name, user_id, user_type_id, user_obj))
 
     # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
-    groups_map = {g.group_id: g for g in groups}
+    groups_map = {g.id: g for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
-    user_types_map = {ut.user_type_id: ut for ut in user_types}
+    user_types_map = {ut.id: ut for ut in user_types}
 
     # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List] = {}

@@ -5,11 +5,11 @@
 勤怠入力と編集に関連するAPIエンドポイント
 """
 
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import logger
@@ -48,7 +48,7 @@ def get_user_attendance(
     特定ユーザーの勤怠データを取得します。
     date パラメータを指定すると、特定日の勤怠データのみを返します。
     """
-    user_obj = user.get_by_user_id(db, user_id=user_id)
+    user_obj = user.get(db, id=user_id)
     if not user_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -56,7 +56,7 @@ def get_user_attendance(
         )
 
     user_entries = attendance.get_user_data(db, user_id=user_id)
-    user_name = user.get_user_name_by_id(db, user_id=user_id)
+    user_name = user.get_username_by_id(db, id=user_id)
 
     # 取得したデータをレスポンススキーマ形式に整形します。
     dates = []
@@ -106,181 +106,79 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
     return {"success": True, "data": detail}
 
 
-@router.post("")
+@router.post("", response_model=Attendance, status_code=status.HTTP_201_CREATED)
 async def create_attendance(
-    request: Request,
     user_id: str = Form(...),
-    date: str = Form(...),
+    date: date = Form(...),
     location_id: int = Form(...),
     db: Session = Depends(get_db),
-) -> JSONResponse:
+) -> Attendance:
     """
     勤怠データを作成します。
     """
     try:
-        # 勤務場所IDの確認
-        if location_id != -1:  # -1は削除用特殊値
-            loc = location.get_by_id(db, location_id=location_id)
-            if not loc:
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content={"success": False, "message": f"勤務場所ID '{location_id}' が見つかりません"}
-                )
-        
-        success = attendance.update_user_entry(
-            db, user_id=user_id, date_str=date, location_id=location_id
+        # ユーザーと勤務場所の存在確認
+        user.get_or_404(db, id=user_id)
+        location.get_or_404(db, id=location_id)
+
+        # 既存レコードのチェック
+        existing_attendance = attendance.get_by_user_and_date(
+            db, user_id=user_id, date=date
         )
-        if not success:
-            return JSONResponse(
+        if existing_attendance:
+            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={"success": False, "message": "勤怠データの作成に失敗しました。ユーザーIDまたは日付が無効である可能性があります。"}
+                detail=f"User '{user_id}' already has attendance for date '{date}'"
             )
-        
-        # 作成したデータを返す
-        user_obj = user.get_by_user_id(db, user_id=user_id)
-        if not user_obj:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={"success": False, "message": f"ユーザー '{user_id}' が見つかりません"}
-            )
-        
-        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
-        attendance_obj = attendance.get_by_user_and_date(db, user_id=str(user_obj.user_id), date=date_obj)
-        
-        if attendance_obj is None and location_id != -1:
-            # 削除でなく、かつオブジェクトが見つからない場合はエラー
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"success": False, "message": "勤怠データは更新されましたが、取得できませんでした"}
-            )
-        
-        # 削除操作の場合は成功メッセージを返す
-        if location_id == -1:
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={"success": True, "message": "勤怠データを正常に削除しました"}
-            )
-        
-        # 常に成功レスポンスを返す（HTMLリクエストとAPIリクエストで共通）
-        # attendance_objはPydanticモデルに変換されていないため、JSONに変換可能なデータを返す
-        if attendance_obj is not None:
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={
-                    "success": True, 
-                    "message": "勤怠データを正常に登録しました",
-                    "data": {
-                        "id": attendance_obj.id,
-                        "user_id": attendance_obj.user_id,
-                        "date": attendance_obj.date.isoformat(),
-                        "location_id": attendance_obj.location_id
-                    }
-                }
-            )
-        else:
-            # データが見つからない場合でも成功として返す
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={
-                    "success": True, 
-                    "message": "勤怠データを正常に登録しました",
-                    "data": None
-                }
-            )
+
+        # AttendanceCreateオブジェクトを手動で作成
+        attendance_in = AttendanceCreate(user_id=user_id, date=date, location_id=location_id)
+
+        # 勤怠データ作成
+        created_attendance = attendance.create(db=db, obj_in=attendance_in)
+        return created_attendance
+
+    except HTTPException:
+        raise # HTTPExceptionはそのまま再送出
     except Exception as e:
         logger.error(f"勤怠作成エラー: {str(e)}", exc_info=True)
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"success": False, "message": f"勤怠データの作成中にエラーが発生しました: {str(e)}"}
+            detail=f"勤怠データの作成中にエラーが発生しました: {str(e)}"
         )
 
 
-@router.put("/{attendance_id}")
+@router.put("/{attendance_id}", response_model=Attendance)
 async def update_attendance(
-    request: Request,
     attendance_id: int,
-    location_id: int = Form(...),
+    attendance_in: AttendanceUpdate,
     db: Session = Depends(get_db),
-) -> JSONResponse:
+) -> Attendance:
     """
     勤怠データを更新します。
     """
     try:
-        attendance_obj = attendance.get(db=db, id=attendance_id)
-        if not attendance_obj:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={"success": False, "message": "勤怠データが見つかりません"}
-            )
+        attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         
-        if location_id == -1:  # 削除用特殊値
-            try:
-                # 削除処理
-                attendance.remove(db=db, id=attendance_id)
-                db.commit()
-                logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
-                return JSONResponse(
-                    status_code=status.HTTP_200_OK,
-                    content={"success": True, "message": "勤怠データを正常に削除しました"}
-                )
-            except Exception as e:
-                db.rollback()
-                logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-                return JSONResponse(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
-                )
-        else:
-            # 勤務場所IDの確認
-            loc = location.get_by_id(db, location_id=location_id)
-            if not loc:
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content={"success": False, "message": f"勤務場所ID '{location_id}' が見つかりません"}
-                )
+        # 新しい勤務場所IDの存在確認
+        if attendance_in.location_id is not None:
+            location.get_or_404(db, id=attendance_in.location_id)
                 
-            try:
-                # 更新処理
-                attendance_update = AttendanceUpdate(location_id=location_id)
-                updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_update)
-                db.commit()
-                logger.debug(f"勤怠ID {attendance_id} の更新に成功しました")
-                
-                if updated_obj is not None:
-                    return JSONResponse(
-                        status_code=status.HTTP_200_OK,
-                        content={
-                            "success": True, 
-                            "message": "勤怠データを正常に更新しました",
-                            "data": {
-                                "id": updated_obj.id,
-                                "user_id": updated_obj.user_id,
-                                "date": updated_obj.date.isoformat(),
-                                "location_id": updated_obj.location_id
-                            }
-                        }
-                    )
-                else:
-                    return JSONResponse(
-                        status_code=status.HTTP_200_OK,
-                        content={
-                            "success": True, 
-                            "message": "勤怠データを正常に更新しました",
-                            "data": None
-                        }
-                    )
-            except Exception as e:
-                db.rollback()
-                logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
-                return JSONResponse(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"success": False, "message": f"勤怠データの更新中にエラーが発生しました: {str(e)}"}
-                )
+        # 更新処理
+        updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_in)
+        logger.debug(f"勤怠ID {attendance_id} の更新に成功しました")
+        
+        # Pydanticモデルが返されるのでそのまま返す
+        return updated_obj
+
+    except HTTPException:
+        raise # HTTPExceptionはそのまま再送出
     except Exception as e:
+        db.rollback() # update内でエラーがあればrollbackされるはずだが念のため
         logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"success": False, "message": f"勤怠データの更新中にエラーが発生しました: {str(e)}"}
+            detail=f"勤怠データの更新中にエラーが発生しました: {str(e)}"
         )
 
 
@@ -294,12 +192,7 @@ async def delete_attendance(
     勤怠データを削除します。
     """
     try:
-        attendance_obj = attendance.get(db=db, id=attendance_id)
-        if not attendance_obj:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={"success": False, "message": "勤怠データが見つかりません"}
-            )
+        attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         
         try:
             attendance.remove(db=db, id=attendance_id)
@@ -336,7 +229,7 @@ def delete_attendance_by_user_date(
         logger.debug(f"勤怠削除リクエスト受信: user_id={user_id}, date={date}")
         
         # ユーザーの存在確認 (任意ですが、より親切)
-        user_obj = user.get_by_user_id(db, user_id=user_id)
+        user_obj = user.get(db, id=user_id)
         if not user_obj:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 

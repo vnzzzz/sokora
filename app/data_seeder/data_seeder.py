@@ -7,7 +7,7 @@
 """
 
 import random
-from typing import List, Dict, Any, Optional, Set, Tuple, NamedTuple, Union, cast
+from typing import List, Dict, Optional, Set, Tuple, NamedTuple
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
@@ -145,11 +145,19 @@ def seed_users(db: Session, count: int = 10) -> List[User]:
         List[User]: データベースに追加されたUserオブジェクトのリスト。
     """
     # 既存ユーザーIDをセットとして保持し、重複チェックを効率化します。
-    existing_user_ids: Set[str] = set(str(user.user_id) for user in db.query(User).all())
+    existing_user_ids: Set[str] = set(str(user.id) for user in db.query(User).all())
 
     # データベースから利用可能なグループとユーザータイプを取得します。
     groups = db.query(Group).all()
     user_types = db.query(UserType).all()
+
+    # グループやユーザータイプが存在しない場合はエラーメッセージを表示して終了
+    if not groups:
+        print("Error: No groups found in the database. Cannot seed users.")
+        return []
+    if not user_types:
+        print("Error: No user types found in the database. Cannot seed users.")
+        return []
 
     # 生成するユーザー数を決定します (指定数とサンプル数の小さい方)。
     actual_count = min(count, len(SAMPLE_USERS))
@@ -172,10 +180,10 @@ def seed_users(db: Session, count: int = 10) -> List[User]:
 
         # 新しいユーザーオブジェクトを作成します。
         user = User(
-            user_id=user_id,
+            id=user_id,
             username=user_info.full_name,
-            group_id=random.choice(groups).group_id,
-            user_type_id=random.choice(user_types).user_type_id
+            group_id=random.choice(groups).id,
+            user_type_id=random.choice(user_types).id
         )
 
         db.add(user)
@@ -230,7 +238,7 @@ def seed_attendance(db: Session, users: Optional[List[User]] = None,
 
     # 利用可能な勤務場所IDを取得します。
     locations = db.query(Location).all()
-    location_ids = [int(loc.location_id) for loc in locations]
+    location_ids = [int(loc.id) for loc in locations]
     if not location_ids:
         print("Error: No locations found in the database. Cannot seed attendance.")
         return []
@@ -287,7 +295,7 @@ def seed_attendance(db: Session, users: Optional[List[User]] = None,
             day = start_date + timedelta(days=day_offset)
 
             # 既存レコードがある場合はスキップします。
-            if (str(user.user_id), day) in existing_records:
+            if (str(user.id), day) in existing_records:
                 continue
 
             # 勤務する確率 (平日は高く、休日は低い)
@@ -306,7 +314,7 @@ def seed_attendance(db: Session, users: Optional[List[User]] = None,
 
                 # 新しい勤怠記録オブジェクトを作成します。
                 attendance = Attendance(
-                    user_id=str(user.user_id),
+                    user_id=str(user.id),
                     date=day,
                     location_id=chosen_location_id
                 )

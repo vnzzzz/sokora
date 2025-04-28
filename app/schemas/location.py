@@ -3,7 +3,7 @@
 """
 
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LocationBase(BaseModel):
@@ -23,7 +23,7 @@ class LocationUpdate(LocationBase):
 
 class LocationInDBBase(LocationBase):
     """データベース内の勤務場所スキーマ"""
-    location_id: int
+    id: int
     name: str
 
     model_config = ConfigDict(

@@ -20,7 +20,16 @@ function setupAddFormHandler(formId, endpoint, redirectUrl = null, successCallba
 
     // FormDataからJSONに変換
     formData.forEach((value, key) => {
-      data[key] = value
+      // 特定のキーの値を整数に変換
+      if (key === 'group_id' || key === 'user_type_id') {
+        // parseInt で整数に変換。失敗時は NaN になるので、元の値を使うか、
+        // エラーにするかは要件次第。ここでは元の文字列のまま送るよりはマシとして変換を試みる。
+        // 失敗時 (NaN) の挙動はバックエンドのバリデーションに任せる。
+        const intValue = parseInt(value, 10)
+        data[key] = isNaN(intValue) ? value : intValue // 変換失敗時は元の値を保持（バリデーションエラーになるはず）
+      } else {
+        data[key] = value
+      }
     })
 
     // 送信ボタンを無効化
@@ -52,7 +61,14 @@ function setupAddFormHandler(formId, endpoint, redirectUrl = null, successCallba
       // エラー時はボタンを元に戻す
       if (submitBtn) {
         submitBtn.disabled = false
-        submitBtn.textContent = '追加'
+        // ボタンテキストはフォームによって異なる可能性があるので注意
+        // 例: ユーザー追加フォームなら「追加」
+        if (formId === 'addUserForm') {
+          // 仮のフォームID
+          submitBtn.textContent = '追加'
+        } else {
+          submitBtn.textContent = '送信' // デフォルト
+        }
       }
     }
   })
@@ -62,7 +78,7 @@ function setupAddFormHandler(formId, endpoint, redirectUrl = null, successCallba
  * 編集フォームのハンドラーを一括設定
  * @param {string} selector - ボタンセレクタ
  * @param {string} formIdPrefix - フォームID接頭辞
- * @param {string} endpointTemplate - APIエンドポイントテンプレート
+ * @param {string} endpointTemplate - APIエンドポイントテンプレート (例: '/api/users/{user_id}')
  * @param {Function} successCallback - 成功時のコールバック関数（省略可）
  */
 function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, successCallback = null) {
@@ -81,7 +97,13 @@ function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, success
 
       // FormDataからJSONに変換
       formData.forEach((value, key) => {
-        data[key] = value
+        // 編集時も group_id と user_type_id は整数に変換
+        if (key === 'group_id' || key === 'user_type_id') {
+          const intValue = parseInt(value, 10)
+          data[key] = isNaN(intValue) ? value : intValue
+        } else {
+          data[key] = value
+        }
       })
 
       // モーダル要素を事前に取得
@@ -92,7 +114,7 @@ function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, success
       button.textContent = '保存中...'
 
       // APIにPUTリクエスト
-      const endpoint = endpointTemplate.replace('{id}', itemId)
+      const endpoint = endpointTemplate.replace(/\{[a-zA-Z_]+\}/, itemId) // 正規表現でプレースホルダーを置換
       try {
         const responseData = await window.apiClient.putJson(endpoint, data)
         // 更新されたデータを画面に反映
@@ -183,7 +205,7 @@ function updateUIAfterEdit(data, itemId) {
 /**
  * 削除確認のハンドラーを一括設定
  * @param {string} selector - ボタンセレクタ
- * @param {string} endpointTemplate - APIエンドポイントテンプレート
+ * @param {string} endpointTemplate - APIエンドポイントテンプレート (例: '/api/users/{user_id}')
  * @param {Function} successCallback - 成功時のコールバック関数（省略可）
  */
 function setupDeleteHandlers(selector, endpointTemplate, successCallback = null) {
@@ -205,36 +227,25 @@ function setupDeleteHandlers(selector, endpointTemplate, successCallback = null)
       button.textContent = '処理中...'
 
       // APIにDELETEリクエスト
-      const endpoint = endpointTemplate.replace('{id}', itemId)
+      const endpoint = endpointTemplate.replace(/\{[a-zA-Z_]+\}/, itemId) // 正規表現でプレースホルダーを置換
       try {
         // apiClient.delete は成功時 { success: true } を返す想定
         const responseData = await window.apiClient.delete(endpoint)
 
         if (responseData.success) {
           // モーダルを閉じる
-          if (modalElement && typeof modalElement.__x !== 'undefined' && modalElement.__x.$data.showDeleteConfirm) {
-            // Alpine.js v3+ を想定
-            Alpine.store('modals').close('deleteConfirm') // 例：ストアを使う場合
-            // または、イベントを発行して親コンポーネントで閉じる
-            // window.dispatchEvent(new CustomEvent('close-delete-confirm-modal'));
-            // 一旦シンプルなクリックで試す
-            const closeBtn = modalElement.querySelector('button[type="button"]')
-            if (closeBtn) {
-              closeBtn.click()
-            }
+          if (modalElement && typeof modalElement.__x !== 'undefined') {
+            // Alpine.js のデータプロパティを直接変更してモーダルを閉じる
+            modalElement.__x.$data.showDeleteConfirm = false
+          } else {
+            // フォールバックとして従来のクリックを試みる (もしAlpineが見つからない場合)
+            const closeBtn = modalElement?.querySelector('button[type="button"]')
+            closeBtn?.click()
           }
 
-          // 成功時の処理
+          // 成功時のコールバック関数を実行
           if (successCallback) {
-            successCallback(itemId) // 削除成功時はIDだけ渡すなど
-          } else {
-            // デフォルトでは行を削除するなど
-            const row = document.getElementById(`${selector.replace(/\.delete-btn-/, '')}-row-${itemId}`) // 仮のID生成ロジック
-            if (row) {
-              row.remove()
-            } else {
-              window.location.reload() // 行が見つからなければリロード
-            }
+            successCallback(responseData, itemId)
           }
         } else {
           alert('エラー: 削除に失敗しました。(不明な応答)')

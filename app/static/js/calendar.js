@@ -98,7 +98,6 @@
       highlightSelectedDate(targetDate)
       return true
     } else {
-      console.warn('No date could be selected for highlighting.')
       return false
     }
   }

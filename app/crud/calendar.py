@@ -6,17 +6,12 @@
 """
 
 import calendar
-from typing import Dict, Any, List
-from datetime import date, timedelta
-from collections import defaultdict
+from typing import Dict, List
+from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
 from app.models.attendance import Attendance
-from app.models.user import User
-from app.crud.location import location as location_crud
-from app.utils.calendar_utils import parse_month
-from app.utils.ui_utils import generate_location_data
 from app.core.config import logger
 
 

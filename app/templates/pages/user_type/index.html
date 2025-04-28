@@ -70,7 +70,7 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
         </thead>
         <tbody>
           {% for user_type in user_types %}
-          <tr class="hover:bg-base-200" id="user-type-row-{{ user_type.user_type_id }}">
+          <tr class="hover:bg-base-200" id="user-type-row-{{ user_type.id }}">
             <td class="font-medium">{{ user_type.name }}</td>
             <td class="text-right">
               <div class="flex justify-end gap-2">
@@ -96,12 +96,12 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
                   <!-- 社員種別編集モーダル -->
                   {% set edit_content %}
                   <div class="form-control">
-                    <label class="label" for="edit-user-type-name-{{ user_type.user_type_id }}">
+                    <label class="label" for="edit-user-type-name-{{ user_type.id }}">
                       <span class="label-text">社員種別名</span>
                     </label>
                     <input
                       type="text"
-                      id="edit-user-type-name-{{ user_type.user_type_id }}"
+                      id="edit-user-type-name-{{ user_type.id }}"
                       name="name"
                       value="{{ user_type.name }}"
                       class="input input-bordered focus:border-neutral"
@@ -109,9 +109,9 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
                       autocomplete="off"
                     />
                   </div>
-                  {% endset %} {{ edit_modal("社員種別編集", "edit-form", edit_content, user_type.user_type_id) }}
+                  {% endset %} {{ edit_modal("社員種別編集", "edit-form", edit_content, user_type.id) }}
                 </div>
-                <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ user_type.user_type_id }}">
+                <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ user_type.id }}">
                   <button
                     @click="showDeleteConfirm = true"
                     class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
@@ -135,7 +135,7 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
 
                   <!-- 削除確認モーダル -->
                   {% set delete_warning %} ※ユーザーに割り当てられている場合は削除できません。 {% endset %} {{
-                  delete_confirm_modal("削除の確認", delete_warning, user_type.user_type_id, user_type.name, "削除") }}
+                  delete_confirm_modal("削除の確認", delete_warning, user_type.id, user_type.name, "削除") }}
                 </div>
               </div>
             </td>
@@ -162,13 +162,13 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
       // 成功したら該当行を削除
       const row = document.getElementById('user-type-row-' + itemId)
       if (row) {
+        const tbody = row.closest('tbody')
         row.remove()
-      }
 
-      // 行がなくなったら「データなし」表示を出す
-      const tbody = document.querySelector('tbody')
-      if (tbody && tbody.children.length === 0) {
-        window.location.reload()
+        // 行がなくなったら「データなし」表示を出す (or reload)
+        if (tbody && tbody.children.length === 0) {
+          window.location.reload()
+        }
       }
     })
   })

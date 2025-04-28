@@ -5,14 +5,13 @@
 社員種別の取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.crud.user_type import user_type
 from app.db.session import get_db
-from app.models.user import User
 from app.schemas.user_type import UserType, UserTypeCreate, UserTypeList, UserTypeUpdate
 
 router = APIRouter(tags=["UserTypes"])
@@ -60,11 +59,7 @@ def update_user_type(
     """
     社員種別を更新します。
     """
-    user_type_obj = user_type.get_by_id(db=db, user_type_id=user_type_id)
-    if not user_type_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="社員種別が見つかりません"
-        )
+    user_type_obj = user_type.get_or_404(db=db, id=user_type_id)
     
     # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
     if user_type_in.name and user_type_in.name != user_type_obj.name:
@@ -83,19 +78,16 @@ def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any
     """
     社員種別を削除します。
     """
-    user_type_obj = user_type.get_by_id(db=db, user_type_id=user_type_id)
-    if not user_type_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="社員種別が見つかりません"
-        )
+    user_type_obj = user_type.get_or_404(db=db, id=user_type_id)
     
     # 削除しようとしている社員種別が現在ユーザーに割り当てられていないか確認します。
-    user_count = db.query(User).filter(User.user_type_id == user_type_id).count()
-    if user_count > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"この社員種別は{user_count}人のユーザーに割り当てられているため削除できません"
-        )
+    # user_count = db.query(User).filter(User.user_type_id == user_type_id).count()
+    # if user_count > 0:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail=f"この社員種別は{user_count}人のユーザーに割り当てられているため削除できません"
+    #     )
+    # ↑ このチェックは crud.user_type.remove 内に移動
 
     user_type.remove(db=db, id=user_type_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT) 

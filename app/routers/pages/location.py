@@ -43,7 +43,7 @@ def location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any
         text_color_class = f"text-{color_name}"
 
         locations.append({
-            "location_id": loc.location_id,
+            "id": loc.id,
             "name": loc.name,
             "color_class": text_color_class # 文字色クラスのみ
         })

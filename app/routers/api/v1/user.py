@@ -5,7 +5,7 @@
 ユーザーの取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ def get_users(db: Session = Depends(get_db)) -> Any:
     users_list = []
     
     for user_name, user_id_str, user_type_id in users_data:
-        user_obj = user.get_by_user_id(db, user_id=user_id_str)
+        user_obj = user.get(db, id=user_id_str)
         if user_obj:
             users_list.append(user_obj)
     
@@ -41,12 +41,7 @@ def get_user(user_id: str, db: Session = Depends(get_db)) -> Any:
     """
     指定したIDのユーザーを取得します。
     """
-    user_obj = user.get_by_user_id(db, user_id=user_id)
-    if not user_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=f"ユーザー '{user_id}' が見つかりません"
-        )
+    user_obj = user.get_or_404(db, id=user_id)
     return user_obj
 
 
@@ -68,12 +63,7 @@ async def create_user(
                 detail="無効なグループIDが指定されました"
             )
 
-        group_obj = group.get_by_id(db, group_id=group_id_int)
-        if not group_obj:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"グループID '{group_id_int}' が存在しません"
-            )
+        group_obj = group.get_or_404(db, id=group_id_int)
 
         # 入力された社員種別IDを整数に変換し、存在を確認します。
         try:
@@ -84,23 +74,10 @@ async def create_user(
                 detail="無効な社員種別IDが指定されました"
             )
 
-        user_type_obj = user_type.get_by_id(db, user_type_id=user_type_id_int)
-        if not user_type_obj:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"社員種別ID '{user_type_id_int}' が存在しません"
-            )
-
-        # ユーザー作成用のデータを作成します。
-        user_data = {
-            "username": user_in.username,
-            "user_id": user_in.user_id,
-            "group_id": group_id_int,
-            "user_type_id": user_type_id_int
-        }
+        user_type_obj = user_type.get_or_404(db, id=user_type_id_int)
 
         # 指定されたユーザーIDが既に存在するか確認します。
-        existing_user = user.get_by_user_id(db, user_id=user_in.user_id)
+        existing_user = user.get(db, id=user_in.id)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -108,7 +85,7 @@ async def create_user(
             )
 
         # ユーザーを作成します。
-        user_obj = user.create_with_id(db, obj_in=user_data)
+        user_obj = user.create(db, obj_in=user_in)
         return user_obj
     except HTTPException:
         raise
@@ -126,12 +103,7 @@ async def update_user(
     ユーザー情報を更新します。
     """
     try:
-        user_obj = user.get_by_user_id(db, user_id=user_id)
-        if not user_obj:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"ユーザー '{user_id}' が見つかりません"
-            )
+        user_obj = user.get_or_404(db, id=user_id)
             
         # 入力されたグループIDを整数に変換し、存在を確認します。
         try:
@@ -142,12 +114,7 @@ async def update_user(
                 detail="無効なグループIDが指定されました"
             )
         
-        group_obj = group.get_by_id(db, group_id=group_id_int)
-        if not group_obj:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"グループID '{group_id_int}' が存在しません"
-            )
+        group_obj = group.get_or_404(db, id=group_id_int)
         
         # 入力された社員種別IDを整数に変換し、存在を確認します。
         try:
@@ -158,27 +125,16 @@ async def update_user(
                 detail="無効な社員種別IDが指定されました"
             )
             
-        user_type_obj = user_type.get_by_id(db, user_type_id=user_type_id_int)
-        if not user_type_obj:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"社員種別ID '{user_type_id_int}' が存在しません"
-            )
+        user_type_obj = user_type.get_or_404(db, id=user_type_id_int)
         
         # ユーザー情報を更新します。
-        success = user.update_user(
-            db,
-            user_id=user_id,
-            username=user_in.username,
-            group_id=group_id_int,
-            user_type_id=user_type_id_int
-        )
-        if not success:
+        updated_user = user.update(db=db, db_obj=user_obj, obj_in=user_in)
+        if not updated_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"ユーザー '{user_id}' の更新に失敗しました。"
             )
-        return user.get_by_user_id(db, user_id=user_id)
+        return updated_user
     except HTTPException:
         raise
     except Exception as e:
@@ -194,14 +150,9 @@ async def delete_user(
     ユーザーを削除します。
     """
     try:
-        user_obj = user.get_by_user_id(db, user_id=user_id)
-        if not user_obj:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"ユーザー '{user_id}' が見つかりません"
-            )
+        user_obj = user.get_or_404(db, id=user_id)
             
-        user.delete_user(db, user_id=user_id)
+        user.remove(db, id=user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise

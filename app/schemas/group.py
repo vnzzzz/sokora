@@ -5,7 +5,7 @@
 ユーザーグループのPydanticスキーマ。
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
@@ -26,7 +26,7 @@ class GroupUpdate(BaseModel):
 
 class Group(GroupBase):
     """グループ取得用スキーマ"""
-    group_id: int
+    id: int
 
     class Config:
         """Pydanticモデルの設定クラス。

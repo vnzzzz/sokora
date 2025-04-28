@@ -14,13 +14,13 @@ from .user_type import UserType
 class UserBase(BaseModel):
     """ユーザーの基本スキーマ"""
     username: str
-    group_id: int
-    user_type_id: int
+    group_id: str | int
+    user_type_id: str | int
 
 
 class UserCreate(UserBase):
     """ユーザー作成用スキーマ"""
-    user_id: str
+    id: str = Field(..., alias="user_id")
 
 
 class UserUpdate(BaseModel):
@@ -32,7 +32,8 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     """ユーザー取得用スキーマ"""
-    user_id: str
+    # user_id: str
+    id: str
     group: Optional[Group] = None
     user_type: Optional[UserType] = None
 

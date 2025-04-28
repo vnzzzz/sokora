@@ -40,28 +40,36 @@
    * 勤怠セルクリック時の処理
    * @param {Event} event - クリックイベント
    */
-  function handleAttendanceCellClick(event) {
+  async function handleAttendanceCellClick(event) {
     if (event.target.closest('.attendance-cell')) {
       const cell = event.target.closest('.attendance-cell')
       const userId = cell.dataset.userId
       const userName = cell.dataset.userName
       const date = cell.dataset.date
       const hasData = cell.dataset.hasData === 'true'
-      const locationName = cell.dataset.location || ''
+      // const locationName = cell.dataset.location || ''; // 古い locationName は不要かも
 
-      // JSON.parseする前にlocation_types_dataが存在するか確認
-      const locationTypesElement = document.getElementById('location-types-data')
-      let locationId = null
-      if (hasData && locationTypesElement && locationTypesElement.textContent) {
-        try {
-          const locationTypes = JSON.parse(locationTypesElement.textContent)
-          const locationIndex = locationTypes.indexOf(locationName)
-          locationId = locationIndex >= 0 ? locationIndex + 1 : null
-        } catch (e) {
-          console.error('Failed to parse location types data:', e)
+      let attendanceId = null
+      let currentLocationId = null
+
+      // データを取得して最新の状態を確認 (hasData によらず確認)
+      try {
+        const endpoint = `/api/attendances/user/${userId}?date=${date}`
+        const userData = await window.apiClient.get(endpoint)
+        if (userData && userData.dates && userData.dates.length > 0) {
+          // 該当日のデータが存在する場合
+          const attendanceData = userData.dates[0] // 1日1レコード前提
+          attendanceId = attendanceData.attendance_id
+          currentLocationId = attendanceData.location_id
+        } else {
+          // 該当日のデータが存在しない場合
+          attendanceId = null
+          currentLocationId = null
         }
-      } else if (hasData) {
-        console.warn('Location types data element not found or empty.')
+      } catch (error) {
+        console.error(`Failed to fetch attendance data for ${userId} on ${date}:`, error)
+        // エラーが発生してもモーダルは開くが、IDは null のまま
+        alert('勤怠データの取得に失敗しました。モーダルは表示されますが、更新/削除ができない可能性があります。')
       }
 
       // カスタムイベントでモーダルを開く
@@ -71,10 +79,10 @@
             userId,
             userName,
             date,
-            locationId,
-            hasData: hasData,
-            // formatDateJa も detail に含めるか、Alpine側で直接 window.attendanceHandlers.formatDateJa を呼ぶ
-            formattedDate: formatDateJa(date) // ここでフォーマットして渡す
+            attendanceId, // APIから取得したID
+            locationId: currentLocationId, // APIから取得した現在のLocation ID
+            hasData: !!attendanceId, // attendanceId があればデータありとみなす
+            formattedDate: formatDateJa(date)
           }
         })
       )
@@ -102,14 +110,14 @@
 
     try {
       const data = await window.apiClient.postFormData('/api/attendances/', formData)
-      // 成功時の処理 (apiClient側でエラーはthrowされる)
-      if (data.success) {
-        // APIが成功時に { success: true, ... } を返すと仮定
+      // 成功時の処理: APIは作成された Attendance オブジェクトを返すので、その存在チェック (例: idがあるか) で成功を判断
+      if (data && data.id) {
+        // data.success の代わりに data.id の存在をチェック
         window.dispatchEvent(new CustomEvent('close-attendance-modal'))
         htmx.trigger(document.body, 'refreshAttendance', {})
       } else {
-        // APIは成功(2xx)だが、業務ロジックエラーの場合 (success: false)
-        alert('エラー: ' + (data.message || '勤怠の登録に失敗しました'))
+        // APIは成功(2xx)だが、期待したデータが返ってこなかった場合 (通常は起こらないはず)
+        alert('エラー: 勤怠の登録に失敗しました (不明な応答)')
       }
     } catch (error) {
       console.error('勤怠登録エラー:', error)
@@ -177,6 +185,58 @@
     }
   }
 
+  /**
+   * 勤怠更新処理 (Alpineモーダルから呼び出される)
+   * @param {number} attendanceId - 更新対象の勤怠ID
+   * @param {number|string} locationId - 新しい勤務場所ID
+   */
+  async function updateAttendance(attendanceId, locationId) {
+    if (!attendanceId || locationId === null || locationId === undefined) {
+      alert('更新に必要な情報が不足しています。')
+      return
+    }
+
+    const form = document.getElementById('attendance-form') // ボタン取得用
+    const submitButton = form?.querySelector('button[type="button"].btn-neutral')
+    if (submitButton) {
+      submitButton.disabled = true
+      submitButton.classList.add('loading')
+    }
+
+    const endpoint = `/api/attendances/${attendanceId}`
+    // AttendanceUpdate スキーマに合わせる
+    const data = { location_id: parseInt(locationId, 10) } // 数値に変換
+
+    if (isNaN(data.location_id)) {
+      alert('無効な勤務場所が選択されました。')
+      if (submitButton) {
+        submitButton.disabled = false
+        submitButton.classList.remove('loading')
+      }
+      return
+    }
+
+    try {
+      // apiClient.putJson は成功時パースされたJSONを返す想定
+      const responseData = await window.apiClient.putJson(endpoint, data)
+      // API が成功レスポンス (例: 更新後の Attendance オブジェクト) を返すと仮定
+      window.dispatchEvent(new CustomEvent('close-attendance-modal'))
+      htmx.trigger(document.body, 'refreshAttendance', {})
+    } catch (error) {
+      console.error('勤怠更新エラー:', error)
+      const message =
+        error instanceof window.apiClient.ApiClientError
+          ? error.message
+          : '勤怠の更新処理中に予期せぬエラーが発生しました。' + error.message
+      alert(message)
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false
+        submitButton.classList.remove('loading')
+      }
+    }
+  }
+
   // --- 初期化処理 ---
 
   /**
@@ -191,6 +251,7 @@
     window.attendanceHandlers.submitAttendance = submitAttendance
     window.attendanceHandlers.deleteAttendance = deleteAttendance
     window.attendanceHandlers.formatDateJa = formatDateJa
+    window.attendanceHandlers.updateAttendance = updateAttendance
 
     // HTMXコンテンツ置換後にも初期化が必要か確認
     // このファイルが読み込まれる attendance/index.html では、

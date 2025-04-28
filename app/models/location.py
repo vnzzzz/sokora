@@ -16,7 +16,7 @@ class Location(Base):  # type: ignore
 
     __tablename__ = "locations"
 
-    location_id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
     
     # 関連する勤怠記録

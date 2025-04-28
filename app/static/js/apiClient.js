@@ -26,7 +26,6 @@
         errorData = await response.json()
       } catch (e) {
         // JSONパースに失敗した場合
-        console.warn('Failed to parse error response body as JSON.')
       }
       const errorMessage = errorData?.detail || `サーバーエラー (${response.status})`
       throw new ApiClientError(errorMessage, response.status, errorData)
@@ -39,15 +38,12 @@
         return await response.json()
       } catch (e) {
         // JSON パースに失敗した場合 (例: 空のレスポンスボディ)
-        console.warn('Failed to parse success response body as JSON. Returning null.')
         return null // あるいは {} や undefined を返すなど、仕様に応じて決定
       }
     } else if (response.status === 204) {
       // No Content
       return null // または成功を示す { success: true } など
     } else {
-      // JSON以外のレスポンスの場合、テキストとして返すか、nullを返すかなど
-      console.warn('Non-JSON success response received. Returning null.')
       return null
     }
   }

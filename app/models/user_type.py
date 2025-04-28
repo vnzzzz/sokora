@@ -16,7 +16,7 @@ class UserType(Base):  # type: ignore
 
     __tablename__ = "user_types"
 
-    user_type_id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
     
     # Userモデルとのリレーションシップ定義 (一対多)

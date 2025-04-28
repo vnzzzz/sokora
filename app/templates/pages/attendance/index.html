@@ -45,34 +45,16 @@
         formattedDate: '', 
         selectedLocationId: null, 
         hasData: false,
+        attendanceId: null,
 
-        deleteAttendance() {
-          if (!this.userId || !this.date) {
-            alert('削除に必要な情報が不足しています。')
-            return
+        submitForm() {
+          if (this.attendanceId) {
+            // 更新処理
+            window.attendanceHandlers.updateAttendance(this.attendanceId, this.selectedLocationId);
+          } else {
+            // 新規登録処理
+            window.attendanceHandlers.submitAttendance();
           }
-          fetch(`/api/attendances/?user_id=${encodeURIComponent(this.userId)}&date=${encodeURIComponent(this.date)}`, {
-            method: 'DELETE'
-          })
-          .then((response) => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.detail || 'サーバーエラー'); });
-            }
-            return response.json();
-          })
-          .then((data) => {
-            if (data.success) {
-              // モーダルを閉じるイベントを発行 (this ではなく window)
-              window.dispatchEvent(new CustomEvent('close-attendance-modal'))
-              window.location.reload() // Or trigger HTMX refresh
-            } else {
-              alert('エラー: ' + (data.message || '勤怠の削除に失敗しました'))
-            }
-          })
-          .catch((error) => {
-            console.error('勤怠削除エラー:', error)
-            alert('勤怠の削除処理中にエラーが発生しました: ' + error.message)
-          })
         }
       }"
       x-on:open-attendance-modal.window="
@@ -82,7 +64,8 @@
            date = $event.detail.date;
            formattedDate = $event.detail.formattedDate;
            selectedLocationId = $event.detail.locationId || null;
-           hasData = $event.detail.hasData;"
+           hasData = $event.detail.hasData;
+           attendanceId = $event.detail.attendanceId || null;"
       x-on:close-attendance-modal.window="showAttendanceModal = false"
       class="attendance-modal-container"
     >
@@ -134,7 +117,7 @@
               <button
                 type="button"
                 class="btn btn-error btn-outline shadow-sm"
-                x-show="hasData"
+                x-show="attendanceId !== null"
                 @click="window.attendanceHandlers.deleteAttendance(userId, date)"
               >
                 削除
@@ -143,9 +126,9 @@
                 type="button"
                 class="btn btn-neutral shadow-sm"
                 x-bind:disabled="selectedLocationId === null"
-                @click="window.attendanceHandlers.submitAttendance()"
+                @click="submitForm()"
               >
-                登録
+                <span x-text="attendanceId ? '更新' : '登録'"></span>
               </button>
             </div>
           </form>

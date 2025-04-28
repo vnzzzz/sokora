@@ -70,7 +70,7 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
         </thead>
         <tbody>
           {% for location in locations %}
-          <tr class="hover:bg-base-200" id="location-row-{{ location.location_id }}">
+          <tr class="hover:bg-base-200" id="location-row-{{ location.id }}">
             <td class="font-medium">
               <span class="{{ location.color_class }}">{{ location.name }}</span>
             </td>
@@ -98,12 +98,12 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
                   <!-- 勤務場所編集モーダル -->
                   {% set edit_content %}
                   <div class="form-control">
-                    <label class="label" for="edit-location-name-{{ location.location_id }}">
+                    <label class="label" for="edit-location-name-{{ location.id }}">
                       <span class="label-text">勤務場所名</span>
                     </label>
                     <input
                       type="text"
-                      id="edit-location-name-{{ location.location_id }}"
+                      id="edit-location-name-{{ location.id }}"
                       name="name"
                       value="{{ location.name }}"
                       class="input input-bordered focus:border-neutral"
@@ -111,9 +111,9 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
                       autocomplete="off"
                     />
                   </div>
-                  {% endset %} {{ edit_modal("勤務場所編集", "edit-form", edit_content, location.location_id) }}
+                  {% endset %} {{ edit_modal("勤務場所編集", "edit-form", edit_content, location.id) }}
                 </div>
-                <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ location.location_id }}">
+                <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ location.id }}">
                   <button
                     @click="showDeleteConfirm = true"
                     class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
@@ -137,7 +137,7 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
 
                   <!-- 削除確認モーダル -->
                   {% set delete_warning %}※勤怠データが紐づいている場合は削除できません。{% endset %} {{
-                  delete_confirm_modal("削除の確認", delete_warning, location.location_id, location.name, "削除") }}
+                  delete_confirm_modal("削除の確認", delete_warning, location.id, location.name, "削除") }}
                 </div>
               </div>
             </td>
@@ -164,16 +164,14 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
       // 成功したら該当行を削除
       const row = document.getElementById('location-row-' + itemId)
       if (row) {
+        const tbody = row.closest('tbody')
         row.remove()
-      }
 
-      // 行がなくなったら「データなし」表示を出す
-      const tbody = document.querySelector('tbody')
-      if (tbody && tbody.children.length === 0) {
-        window.location.reload()
+        // 行がなくなったら「データなし」表示を出す
+        if (tbody && tbody.children.length === 0) {
+          window.location.reload()
+        }
       }
-
-      // モーダルを閉じる処理は不要 - modal-handlers.jsで実装済み
     })
   })
 </script>

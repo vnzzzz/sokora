@@ -7,7 +7,7 @@
 
 from typing import List, Optional, Dict, Any, Union
 from datetime import date, datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, field_validator, Field
 
 
 class AttendanceBase(BaseModel):
@@ -22,7 +22,7 @@ class AttendanceCreate(AttendanceBase):
 
     user_id: str  # ユーザーID
 
-    @validator('date')
+    @field_validator('date', mode='before')
     def validate_date(cls, v: Union[str, date]) -> date:
         if isinstance(v, str):
             try:

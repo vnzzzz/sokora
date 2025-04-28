@@ -8,6 +8,8 @@
 import html
 import time
 from typing import Any, Dict, List, Optional
+from datetime import date, timedelta
+import calendar
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -17,20 +19,19 @@ from sqlalchemy.orm import Session
 from app.core.config import logger
 from app.crud.attendance import attendance
 from app.crud.group import group
-from app.crud.location import location
+from app.crud.location import location as location_crud
+from app.crud.calendar import calendar_crud
 from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
-from app.utils.calendar_utils import build_calendar_data
-from app.utils.date_utils import (
+from app.utils.calendar_utils import (
+    build_calendar_data,
     get_current_month_formatted,
-    get_last_viewed_date,
     get_today_formatted,
+    parse_month
 )
 from app.utils.ui_utils import (
     generate_location_badges,
-    generate_location_styles,
-    has_data_for_day,
 )
 
 # ルーター定義
@@ -62,17 +63,43 @@ def get_calendar(
 
     # キャッシュチェック（パフォーマンス最適化）
     current_time = time.time()
-    if month in _calendar_cache and current_time - _calendar_cache_timestamp.get(month, 0) < _calendar_cache_ttl:
-        calendar_data = _calendar_cache[month]
+    # キャッシュされたデータ構造にはDBから取得したデータも含まれるようにする必要がある
+    cached_data = _calendar_cache.get(month)
+    if cached_data and current_time - _calendar_cache_timestamp.get(month, 0) < _calendar_cache_ttl:
+        calendar_data = cached_data
     else:
-        # カレンダーデータを生成してキャッシュする
-        calendar_data = build_calendar_data(db, month)
-        _calendar_cache[month] = calendar_data
-        _calendar_cache_timestamp[month] = current_time
-    
+        # DBからデータを取得
+        try:
+            year, month_num = parse_month(month)
+            first_day = date(year, month_num, 1)
+            last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+
+            attendances = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
+            attendance_counts = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+            location_types_unsorted = location_crud.get_all_locations(db)
+            location_types = sorted(location_types_unsorted)
+            
+            # カレンダーデータを生成してキャッシュする
+            calendar_data = build_calendar_data(
+                month=month, 
+                attendances=attendances, 
+                attendance_counts=attendance_counts, 
+                location_types=location_types
+            )
+            # 取得した元データもキャッシュに含めるか、または build_calendar_data の結果だけをキャッシュするかは要検討
+            # ここでは build_calendar_data の結果のみキャッシュする
+            _calendar_cache[month] = calendar_data
+            _calendar_cache_timestamp[month] = current_time
+        except ValueError as e:
+            logger.error(f"月解析エラー ({month}): {e}")
+            calendar_data = None # エラー発生
+        except Exception as e:
+            logger.error(f"カレンダーデータ取得中にエラー ({month}): {e}", exc_info=True)
+            calendar_data = None # エラー発生
+
     # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
     if not calendar_data or "weeks" not in calendar_data:
-        logger.error(f"カレンダーデータの取得に失敗: {month}")
+        logger.error(f"カレンダーデータの取得または生成に失敗: {month}")
         # エラー時は空のカレンダー情報を設定
         calendar_data = {
             "weeks": [],
@@ -130,14 +157,14 @@ def get_day_detail(
 
     # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
-    groups_map = {g.group_id: g for g in groups}
+    groups_map = {g.id: g for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
-    user_types_map = {ut.user_type_id: ut for ut in user_types}
+    user_types_map = {ut.id: ut for ut in user_types}
 
     # 全勤務場所名を取得します。
-    location_types_unsorted = location.get_all_locations(db)
+    location_types_unsorted = location_crud.get_all_locations(db)
     location_types = sorted(location_types_unsorted) # 名前でソート
 
     # 勤務場所名に対応するUIバッジ情報を生成します。
@@ -150,7 +177,7 @@ def get_day_detail(
         # 各勤務場所内で、ユーザーを所属グループごとに整理します。
         grouped_users: Dict[str, List] = {}
         for user_data in users_list:
-            user_obj = user.get_by_user_id(db, user_id=user_data["user_id"])
+            user_obj = user.get(db, id=user_data["user_id"])
             if not user_obj:
                 continue
 
@@ -178,12 +205,12 @@ def get_day_detail(
     # さらに、グループを主キーとしてユーザーを整理するデータ構造も作成します。
     organized_by_group: Dict[str, Dict[str, Any]] = {}
     # グループIDとグループ名のマッピング (ソート用)
-    group_id_to_name = {g.group_id: g.name for g in groups}
-    sorted_groups = sorted(groups, key=lambda g: int(g.group_id) if g.group_id is not None else 9999)
+    group_id_to_name = {g.id: g.name for g in groups}
+    sorted_groups = sorted(groups, key=lambda g: int(g.id) if g.id is not None else 9999)
     sorted_group_names = [str(g.name) for g in sorted_groups]
 
     # ユーザー種別IDと名前のマッピング (ソート用)
-    user_type_id_to_name = {ut.user_type_id: ut.name for ut in user_types}
+    user_type_id_to_name = {ut.id: ut.name for ut in user_types}
     user_type_id_mapping = {}
 
     # 全勤怠データを再度ループし、グループ主キーのデータ構造を構築します。
@@ -195,7 +222,7 @@ def get_day_detail(
             user_data["location_name"] = location_name
             user_data["location_badge"] = location_badge
 
-            user_obj = user.get_by_user_id(db, user_id=user_data["user_id"])
+            user_obj = user.get(db, id=user_data["user_id"])
             if not user_obj:
                 continue
 
@@ -208,7 +235,7 @@ def get_day_detail(
             if user_obj.user_type_id in user_types_map:
                 user_type_obj = user_types_map[user_obj.user_type_id]
                 user_type_name = str(user_type_obj.name)
-                user_type_id = int(user_type_obj.user_type_id)
+                user_type_id = int(user_type_obj.id)
                 user_type_id_mapping[user_type_name] = user_type_id
 
             # グループキーの辞書が存在しない場合は初期化します。

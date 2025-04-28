@@ -5,10 +5,9 @@
 勤怠記録モデルの作成、読取、更新、削除操作を提供します。
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from datetime import datetime, date
-from collections import defaultdict
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session
 import time
 
 from .base import CRUDBase
@@ -165,7 +164,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             logger.debug(f"勤怠情報更新/削除処理開始: user_id={user_id}, date={date_str}, location_id={location_id}")
 
             # 対象ユーザーが存在するか確認
-            user = db.query(User).filter(User.user_id == user_id).first()
+            user = db.query(User).filter(User.id == user_id).first()
             if not user:
                 logger.error(f"指定されたユーザーが見つかりません: user_id={user_id}")
                 return False
@@ -180,8 +179,8 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
             # location_id が -1 の場合は削除処理を実行
             if location_id == -1:
-                logger.debug(f"勤怠レコード削除処理開始: user_id={user.user_id}, date={date_obj}")
-                result = self.delete_attendance(db, user_id=str(user.user_id), date_obj=date_obj)
+                logger.debug(f"勤怠レコード削除処理開始: user_id={user.id}, date={date_obj}")
+                result = self.delete_attendance(db, user_id=str(user.id), date_obj=date_obj)
                 if result:
                     db.commit() # 変更を確定
                     logger.debug("勤怠レコード削除成功")
@@ -196,9 +195,9 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                     return True
             else:
                 # location_id が有効な場合は更新または新規作成処理を実行
-                logger.debug(f"勤怠レコード更新/作成処理開始: user_id={user.user_id}, date={date_obj}, location_id={location_id}")
+                logger.debug(f"勤怠レコード更新/作成処理開始: user_id={user.id}, date={date_obj}, location_id={location_id}")
                 attendance_result = self.update_attendance(
-                    db, user_id=str(user.user_id), date_obj=date_obj, location_id=location_id
+                    db, user_id=str(user.id), date_obj=date_obj, location_id=location_id
                 )
                 if attendance_result is not None:
                     db.commit() # 変更を確定
@@ -231,7 +230,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         """
         try:
             # 対象ユーザーを取得
-            user = db.query(User).filter(User.user_id == user_id).first()
+            user = db.query(User).filter(User.id == user_id).first()
             if not user:
                 logger.warning(f"データ取得対象のユーザーが見つかりません: user_id={user_id}")
                 return []
@@ -239,8 +238,8 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             # ユーザーの勤怠記録と関連する勤務場所情報を結合して取得
             results = (
                 db.query(Attendance, Location)
-                .filter(Attendance.user_id == user.user_id)
-                .join(Location, Attendance.location_id == Location.location_id)
+                .filter(Attendance.user_id == user.id)
+                .join(Location, Attendance.location_id == Location.id)
                 .all()
             )
 
@@ -294,9 +293,9 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                     Location.name.label('location_name'),
                     UserType.name.label('user_type_name')
                 )
-                .join(User, Attendance.user_id == User.user_id)
-                .join(Location, Attendance.location_id == Location.location_id)
-                .outerjoin(UserType, User.user_type_id == UserType.user_type_id)
+                .join(User, Attendance.user_id == User.id)
+                .join(Location, Attendance.location_id == Location.id)
+                .outerjoin(UserType, User.user_type_id == UserType.id)
                 .filter(Attendance.date == date_obj)
             )
             

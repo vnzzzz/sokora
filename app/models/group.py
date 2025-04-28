@@ -16,7 +16,7 @@ class Group(Base):  # type: ignore
 
     __tablename__ = "groups"
 
-    group_id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
     
     # Userモデルとのリレーションシップ定義 (一対多)

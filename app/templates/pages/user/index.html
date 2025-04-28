@@ -51,7 +51,7 @@
         <select id="add-group-id" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
           <option value="">選択してください</option>
           {% for group in groups %}
-          <option value="{{ group.group_id }}">{{ group.name }}</option>
+          <option value="{{ group.id }}">{{ group.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -63,7 +63,7 @@
         <select id="add-user-type-id" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
           <option value="">選択してください</option>
           {% for user_type in user_types %}
-          <option value="{{ user_type.user_type_id }}">{{ user_type.name }}</option>
+          <option value="{{ user_type.id }}">{{ user_type.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -165,7 +165,7 @@
                       <select id="edit-group-id-{{ user_id }}" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
                         <option value="">選択なし</option>
                         {% for group in groups %}
-                        <option value="{{ group.group_id }}" {% if user_obj and user_obj.group_id == group.group_id %}selected{% endif %}>{{ group.name }}</option>
+                        <option value="{{ group.id }}" {% if user_obj and user_obj.group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -177,7 +177,7 @@
                       <select id="edit-user-type-id-{{ user_id }}" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
                         <option value="">選択なし</option>
                         {% for user_type in user_types %}
-                        <option value="{{ user_type.user_type_id }}" {% if user_obj and user_obj.user_type_id == user_type.user_type_id %}selected{% endif %}>{{ user_type.name }}</option>
+                        <option value="{{ user_type.id }}" {% if user_obj and user_obj.user_type_id == user_type.id %}selected{% endif %}>{{ user_type.name }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -254,17 +254,18 @@
     // 社員削除の処理
     setupDeleteHandlers('.btn[data-item-id][class*="btn-error"]', '/api/users/{id}', function (data, itemId) {
       // 成功したら該当行を削除
-      const row = document.getElementById('user-row-' + itemId)
+      const row = document.getElementById('user-row-' + itemId);
       if (row) {
-        row.remove()
-      }
+        const tbody = row.closest('tbody'); // 行を削除する前に tbody を取得
+        row.remove(); // 行を削除
 
-      // 行がなくなったら「データなし」表示を出す
-      const tbody = row.closest('tbody')
-      if (tbody && tbody.children.length === 0) {
-        window.location.reload()
+        // 行がなくなったら「データなし」表示を出す (or reload)
+        if (tbody && tbody.children.length === 0) {
+          // テーブルボディが空になったらリロード
+          window.location.reload();
+        }
       }
-    })
+    });
   });
 </script>
 {% endblock %}

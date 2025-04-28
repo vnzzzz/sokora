@@ -7,20 +7,22 @@
 
 import logging
 from typing import Any, Dict, List, Optional
+from datetime import date, timedelta
+import calendar
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.crud.attendance import attendance
 from app.crud.group import group
-from app.crud.location import location
+from app.crud.location import location as location_crud
+from app.crud.calendar import calendar_crud
 from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
-from app.utils.calendar_utils import build_calendar_data, parse_month
-from app.utils.date_utils import get_current_month_formatted
+from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted
 from app.utils.ui_utils import generate_location_styles
 
 # ルーター定義
@@ -64,15 +66,55 @@ def attendance_page(
             current_month = get_current_month_formatted()
             return RedirectResponse(url=f"/attendance?month={current_month}")
 
-    # 指定された月のカレンダーデータを構築します。
-    logger.debug(f"カレンダーデータ取得: {month}")
-    calendar_data = build_calendar_data(db, month)
+    # DBからカレンダー構築に必要なデータを取得
+    try:
+        year, month_num = parse_month(month)
+        first_day = date(year, month_num, 1)
+        last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+
+        attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
+        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+        location_types_unsorted_for_cal = location_crud.get_all_locations(db)
+        location_types_for_cal = sorted(location_types_unsorted_for_cal)
+
+        # 指定された月のカレンダーデータを構築します。
+        logger.debug(f"カレンダーデータ構築: {month}")
+        calendar_data = build_calendar_data(
+            month=month,
+            attendances=attendances_for_cal,
+            attendance_counts=attendance_counts_for_cal,
+            location_types=location_types_for_cal
+        )
+    except ValueError as e:
+        logger.error(f"月解析エラー ({month}): {e}")
+        calendar_data = None # エラー発生
+    except Exception as e:
+        logger.error(f"カレンダーデータ構築中にエラー ({month}): {e}", exc_info=True)
+        calendar_data = None # エラー発生
 
     # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
     if not calendar_data or "weeks" not in calendar_data:
-        logger.error(f"カレンダーデータの取得に失敗: {month}")
+        logger.error(f"カレンダーデータの構築に失敗: {month}")
         month = get_current_month_formatted()
-        calendar_data = build_calendar_data(db, month)
+        # 再度データを取得して構築（エラーハンドリングは簡略化）
+        try:
+            year, month_num = parse_month(month)
+            first_day = date(year, month_num, 1)
+            last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+            attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
+            attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+            location_types_unsorted_for_cal = location_crud.get_all_locations(db)
+            location_types_for_cal = sorted(location_types_unsorted_for_cal)
+            calendar_data = build_calendar_data(
+                month=month,
+                attendances=attendances_for_cal,
+                attendance_counts=attendance_counts_for_cal,
+                location_types=location_types_for_cal
+            )
+        except:
+            logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {month}")
+            # さらにエラーなら空データを設定
+            calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
 
     # 全ユーザー情報を取得します。
     all_users = user.get_all_users(db)
@@ -91,17 +133,17 @@ def attendance_page(
     # フィルタリング後のユーザーリストに、完全なUserオブジェクトを追加します。
     users = []
     for user_name, user_id, user_type_id in base_users:
-        user_obj = user.get_by_user_id(db, user_id=user_id)
+        user_obj = user.get(db, id=user_id)
         if user_obj:
             users.append((user_name, user_id, user_type_id, user_obj))
 
     # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
-    groups_map = {g.group_id: g for g in groups}
+    groups_map = {g.id: g for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
-    user_types_map = {ut.user_type_id: ut for ut in user_types}
+    user_types_map = {ut.id: ut for ut in user_types}
 
     # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List] = {}
@@ -119,7 +161,7 @@ def attendance_page(
         grouped_users[g_name].sort(key=lambda u: u[2])
 
     # 利用可能な全勤務場所名を取得します。
-    location_types_unsorted = location.get_all_locations(db)
+    location_types_unsorted = location_crud.get_all_locations(db)
     location_types = sorted(location_types_unsorted) # 名前でソート
 
     # 勤務場所名に対応するCSSクラスを生成します。

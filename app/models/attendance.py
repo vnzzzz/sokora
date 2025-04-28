@@ -5,8 +5,6 @@
 ユーザーの勤怠記録を管理するSQLAlchemyモデル。
 """
 
-from typing import Any, ClassVar
-
 from sqlalchemy import Column, Date, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
@@ -19,9 +17,9 @@ class Attendance(Base):  # type: ignore
     __tablename__ = "attendance"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     date = Column(Date, nullable=False, index=True)
-    location_id = Column(Integer, ForeignKey("locations.location_id"), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
 
     # Userモデルとのリレーションシップ定義 (多対一)
     user = relationship("User", back_populates="attendance_records")

@@ -8,12 +8,9 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-
-from app.db.session import get_db
 
 # ページ表示用ルーター
 router = APIRouter(tags=["Pages"])

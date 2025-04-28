@@ -7,7 +7,7 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class UserTypeBase(BaseModel):
@@ -27,7 +27,7 @@ class UserTypeUpdate(BaseModel):
 
 class UserType(UserTypeBase):
     """社員種別取得用スキーマ"""
-    user_type_id: int
+    id: int
 
     class Config:
         """Pydanticモデルの設定クラス。

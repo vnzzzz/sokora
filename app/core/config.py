@@ -7,7 +7,6 @@
 
 import os
 import logging
-from datetime import datetime
 
 # アプリケーション全体のバージョン情報
 APP_VERSION = "1.0.0"

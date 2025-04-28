@@ -27,8 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // テーマ変更イベントを発火（必要に応じて他のコンポーネントに通知）
       document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }))
-
-      console.log('テーマを変更しました:', newTheme)
     })
   }
 
@@ -73,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Alpine.js 初期化 ---
   // base.html から移動
   document.addEventListener('alpine:init', () => {
-    // ストアの初期化など、必要に応じて Alpine.js 関連の初期設定をここに追加
-    console.log('Alpine.js initialized.') // 必要なら削除
+    // ダークモード設定を適用
+    applyDarkModePreference()
   })
 })

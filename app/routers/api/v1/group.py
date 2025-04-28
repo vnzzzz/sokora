@@ -59,11 +59,7 @@ def update_group(
     """
     グループを更新します。
     """
-    group_obj = group.get_by_id(db=db, group_id=group_id)
-    if not group_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="グループが見つかりません"
-        )
+    group_obj = group.get_or_404(db=db, id=group_id)
     
     # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
     if group_in.name and group_in.name != group_obj.name:
@@ -82,19 +78,7 @@ def delete_group(*, db: Session = Depends(get_db), group_id: int) -> Any:
     """
     グループを削除します。
     """
-    group_obj = group.get_by_id(db=db, group_id=group_id)
-    if not group_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="グループが見つかりません"
-        )
+    group_obj = group.get_or_404(db=db, id=group_id)
     
-    # 削除しようとしているグループが現在ユーザーに割り当てられていないか確認します。
-    user_count = db.query(User).filter(User.group_id == group_id).count()
-    if user_count > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"このグループは{user_count}人のユーザーに割り当てられているため削除できません"
-        )
-
     group.remove(db=db, id=group_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT) 
