@@ -118,7 +118,8 @@ def attendance_page(
         grouped_users[g_name].sort(key=lambda u: u[2])
 
     # 利用可能な全勤務場所名を取得します。
-    location_types = location.get_all_locations(db)
+    location_types_unsorted = location.get_all_locations(db)
+    location_types = sorted(location_types_unsorted) # 名前でソート
 
     # 勤務場所名に対応するCSSクラスを生成します。
     location_styles = generate_location_styles(location_types)

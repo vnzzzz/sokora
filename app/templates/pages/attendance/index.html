@@ -92,10 +92,10 @@
         class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
         @click.away="showAttendanceModal = false"
       >
-        <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
+        <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-sm w-full" @click.stop>
           <h3 class="font-bold text-lg mb-4 text-base-content">
-            勤怠登録：<span x-text="userName"></span>
-            <span class="text-sm font-normal">(<span x-text="formattedDate"></span>)</span>
+            <span x-text="userName"></span>：
+            <span class="text-sm font-normal"><span x-text="date"></span></span>
           </h3>
 
           <form id="attendance-form" class="space-y-4">
@@ -106,12 +106,12 @@
               <div class="label">
                 <span class="label-text">勤務場所</span>
               </div>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="space-y-2">
                 {% for location_type in location_types %} {% set location_id = loop.index %} {% set input_id =
                 "location_" ~ location_id %} {% set style_class = location_styles[location_type]|default('') %}
                 <label
                   for="{{ input_id }}"
-                  class="flex items-center p-2 border rounded cursor-pointer {{ style_class }}"
+                  class="flex items-center p-2 cursor-pointer {{ style_class }}"
                   :class="{ 'ring-2 ring-primary': selectedLocationId === {{ location_id }} }"
                 >
                   <input

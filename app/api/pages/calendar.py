@@ -128,7 +128,8 @@ def get_day_detail(
     user_types_map = {ut.user_type_id: ut for ut in user_types}
 
     # 全勤務場所名を取得します。
-    location_types = location.get_all_locations(db)
+    location_types_unsorted = location.get_all_locations(db)
+    location_types = sorted(location_types_unsorted) # 名前でソート
 
     # 勤務場所名に対応するUIバッジ情報を生成します。
     locations = generate_location_badges(location_types)

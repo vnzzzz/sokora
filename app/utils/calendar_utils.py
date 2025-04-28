@@ -133,7 +133,8 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
         cal = calendar.monthcalendar(year, month_num)
 
         # データベースから利用可能な全勤務場所名を取得
-        location_types = location.get_all_locations(db)
+        location_types_unsorted = location.get_all_locations(db)
+        location_types = sorted(location_types_unsorted) # 名前でソート
 
         # 日付をキー、勤務場所名をサブキーとするネストしたカウント辞書を初期化
         location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -214,7 +215,7 @@ def build_calendar_data(db: Session, month: str) -> Dict[str, Any]:
         next_month = f"{next_month_date.year}-{next_month_date.month:02d}"
 
         # UI表示用の勤務場所データ (色情報などを含む) を生成
-        locations_ui_data = generate_location_data(location_types)
+        locations_ui_data = generate_location_data(location_types) # ソート済みのリストを渡す
 
         return {
             "month_name": month_name,
