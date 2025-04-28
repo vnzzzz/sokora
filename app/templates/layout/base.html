@@ -1,22 +1,40 @@
 <!DOCTYPE html>
 <html lang="ja" x-data class="bg-base-100">
-  {% include "components/common/head.html" %}
+  <head>
+    {% include "components/common/head.html" %}
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+  </head>
 
   <body class="min-h-screen bg-base-100">
     <!-- テーマ切替ボタン -->
     {% include "components/common/theme_switcher.html" %}
 
     <!-- レイアウト -->
-    <div class="flex">
+    <div
+      class="flex"
+      x-data="{
+        isSidebarOpen: localStorage.getItem('sidebarOpen') === null ? true : localStorage.getItem('sidebarOpen') === 'true'
+      }"
+      x-init="$watch('isSidebarOpen', value => localStorage.setItem('sidebarOpen', value))"
+      x-cloak
+    >
       <!-- サイドバー -->
-      {% include "components/common/sidebar.html" %}
+      {% include "components/common/sidebar.html" with context %}
 
       <!-- メインコンテンツ -->
-      <main class="flex-1 container mx-auto py-6 px-5 space-y-8">{% block content %}{% endblock %}</main>
+      <main
+        class="flex-1 container mx-auto py-6 px-5 space-y-8 transition-all duration-300 ease-in-out"
+        :class="{'ml-[200px]': isSidebarOpen, 'ml-16': !isSidebarOpen}"
+      >
+        {% block content %}{% endblock %}
+      </main>
     </div>
 
     <!-- JavaScript -->
-
     {% block extra_scripts %}
     <!-- ページ固有のスクリプトはここに挿入されます -->
     {% endblock %}
