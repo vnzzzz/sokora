@@ -164,6 +164,7 @@ def attendance_page(
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
         "calendar_day_count": calendar_day_count,
+        "search_query": search_query,
     }
 
     # 現在選択中の月 (YYYY-MM) をコンテキストに追加
