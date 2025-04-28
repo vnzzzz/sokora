@@ -7,7 +7,7 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class UserTypeBase(BaseModel):
@@ -29,13 +29,9 @@ class UserType(UserTypeBase):
     """社員種別取得用スキーマ"""
     id: int
 
-    class Config:
-        """Pydanticモデルの設定クラス。
-
-        `from_attributes = True` により、ORMオブジェクトなどの属性から
-        Pydanticモデルを生成できるようになります (旧 `orm_mode = True`)。
-        """
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class UserTypeList(BaseModel):

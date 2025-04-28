@@ -5,7 +5,7 @@
 ユーザーグループのPydanticスキーマ。
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 
 
@@ -28,13 +28,9 @@ class Group(GroupBase):
     """グループ取得用スキーマ"""
     id: int
 
-    class Config:
-        """Pydanticモデルの設定クラス。
-
-        `from_attributes = True` により、ORMオブジェクトなどの属性から
-        Pydanticモデルを生成できるようになります (旧 `orm_mode = True`)。
-        """
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class GroupList(BaseModel):

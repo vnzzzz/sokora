@@ -6,7 +6,7 @@
 """
 
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from .group import Group
 from .user_type import UserType
 
@@ -37,13 +37,9 @@ class User(UserBase):
     group: Optional[Group] = None
     user_type: Optional[UserType] = None
 
-    class Config:
-        """Pydanticモデルの設定クラス。
-
-        `from_attributes = True` により、ORMオブジェクトなどの属性から
-        Pydanticモデルを生成できるようになります (旧 `orm_mode = True`)。
-        """
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class UserList(BaseModel):
