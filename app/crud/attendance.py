@@ -105,6 +105,28 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         logger.debug(f"削除対象の勤怠レコードが見つかりません: user_id={user_id}, date={date_obj}")
         return False
 
+    def delete_attendances_by_user_id(self, db: Session, *, user_id: str) -> int:
+        """
+        指定されたユーザーIDに紐づく全ての勤怠記録を削除します。
+
+        Args:
+            db: データベースセッション
+            user_id: 削除対象のユーザーID
+
+        Returns:
+            int: 削除されたレコード数
+        """
+        try:
+            num_deleted = db.query(Attendance).filter(Attendance.user_id == user_id).delete()
+            # CRUDBaseと異なり、ここではコミットを行わない (呼び出し元に委ねる)
+            # キャッシュクリアは不要 (ユーザー自体が削除されるため)
+            logger.info(f"ユーザーID '{user_id}' に紐づく勤怠レコードを {num_deleted} 件削除しました。")
+            return num_deleted
+        except Exception as e:
+            logger.error(f"ユーザーID '{user_id}' の勤怠レコード一括削除中にエラーが発生しました: {str(e)}", exc_info=True)
+            db.rollback() # エラー発生時はロールバック
+            raise  # エラーを再送出して呼び出し元に通知
+
     def update_attendance(
         self, db: Session, *, user_id: str, date_obj: date, location_id: int
     ) -> Optional[Attendance]:

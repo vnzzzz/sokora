@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.crud.group import group
 from app.crud.user import user
 from app.crud.user_type import user_type
+from app.crud.attendance import attendance
 from app.db.session import get_db
 from app.schemas.user import User, UserCreate, UserList, UserUpdate
 
@@ -152,9 +153,17 @@ async def delete_user(
     try:
         user_obj = user.get_or_404(db, id=user_id)
             
+        # 先に関連する勤怠データを削除
+        attendance.delete_attendances_by_user_id(db=db, user_id=user_id)
+            
+        # ユーザーを削除
         user.remove(db, id=user_id)
+        
+        db.commit() # 勤怠削除とユーザー削除をコミット
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
+        db.rollback() # エラー時はロールバック
         raise
     except Exception as e:
+        db.rollback() # エラー時はロールバック
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) 

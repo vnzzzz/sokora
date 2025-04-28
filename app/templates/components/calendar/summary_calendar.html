@@ -76,7 +76,7 @@
             data-day="{{ day.day }}"
             style="width: 40px; min-width: 40px; max-width: 40px"
           >
-            <span class="{{ location.color }} whitespace-nowrap">
+            <span class="{{ location.color }} whitespace-nowrap text-base">
               {% if day and location.key in day and day[location.key] != 0 %} {{ day[location.key] }} {% endif %}
             </span>
           </td>
