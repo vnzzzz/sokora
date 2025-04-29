@@ -5,6 +5,8 @@ import pytest
 from httpx import AsyncClient
 from fastapi import status
 from datetime import date, timedelta
+import csv
+import io
 
 # ヘルパー関数や依存関係をインポート (必要に応じて)
 # from tests.utils import create_test_user, create_test_location # 仮のutils関数
@@ -452,13 +454,35 @@ async def test_delete_attendance_by_user_date_invalid_date(async_client: AsyncCl
 
     response = await async_client.delete(f"/api/attendances?user_id={user_id}&date={invalid_date}")
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    # FastAPIがクエリパラメータのdate型変換でエラーを返す想定
-    # assert "validation error" in response.json()["detail"][0]["msg"].lower() # メッセージ内容は変わりうるため削除
     # ステータスコードの確認のみで十分
 
 
+# --- GET /api/csv/download Tests ---
+
+# async def test_download_csv_success_all(async_client: AsyncClient) -> None:
+#    ... (削除) ...
+
+# async def test_download_csv_success_month_sjis(async_client: AsyncClient) -> None:
+#    ... (削除) ...
+
+# async def test_download_csv_no_data(async_client: AsyncClient) -> None:
+#    ... (削除) ...
+
+# async def test_download_csv_invalid_month(async_client: AsyncClient) -> None:
+#    ... (削除) ...
+
+# async def test_download_csv_invalid_encoding(async_client: AsyncClient) -> None:
+#    ... (削除) ...
+
+# 削除対象の最後のテストの後ろに不要なコメントが残っている場合も削除
 # --- 他のHTTPメソッド (GET, PUT, DELETE) のテストも同様に追加 ---
 # 例:
-# async def test_get_user_attendance_success(async_client: AsyncClient) -> None: ...
-# async def test_update_attendance_success(async_client: AsyncClient) -> None: ...
-# async def test_delete_attendance_success(async_client: AsyncClient) -> None: ... 
+# ...
+
+# ... (他の DELETE テスト) ...
+
+# ... (他の GET テスト) ...
+
+# ... (他の PUT テスト) ...
+
+# ... (他の DELETE テスト) ... 

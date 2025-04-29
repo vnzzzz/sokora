@@ -26,9 +26,10 @@ def db() -> Generator[Session, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    # TestingSessionLocal の定義を関数内に移動し、インデントを修正
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    # モデルをインポート
+    # モデルをインポート (インデントを修正)
     from app.models import User, Attendance, Location, Group, UserType
     Base.metadata.create_all(bind=engine) # テーブル作成
 

@@ -29,6 +29,12 @@ COPY ./app ./app
 RUN curl -Lo /app/app/static/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx.min.js && \
   curl -Lo /app/app/static/js/alpine.min.js https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js
 
+# scriptのコピー
+COPY ./scripts ./scripts
+
+# testsのコピー
+COPY ./tests ./tests
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
