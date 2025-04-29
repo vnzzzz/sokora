@@ -5,15 +5,19 @@
 既存のデータベースに追加のテストデータを投入するためのユーティリティモジュール。
 ユーザーと勤怠記録を水増しして、アプリケーションのテストや開発を支援します。
 
+マスターデータ（グループ、勤務場所、社員種別）が存在しない場合は、
+定義済みのリストに基づいて作成します。
+
 実行方法:
 プロジェクトルートディレクトリから以下のコマンドで実行してください。
 `poetry run python -m scripts.seeding.data_seeder --users <数> --days-back <日数> --days-forward <日数>`
 """
 
 import random
-from typing import List, Dict, Optional, Set, Tuple, NamedTuple
+from typing import List, Dict, Optional, Set, Tuple, NamedTuple, Any
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.models.user import User
@@ -21,6 +25,13 @@ from app.models.attendance import Attendance
 from app.models.location import Location
 from app.models.group import Group
 from app.models.user_type import UserType
+from app.core.config import logger
+
+
+# --- マスターデータ定義 ---
+GROUP_NAMES = ["グループ１", "グループ２", "グループ３"]
+LOCATION_NAMES = ["東京", "横浜", "大阪", "テレワーク", "夜勤"]
+USER_TYPE_NAMES = ["マネージャー", "リーダー", "社員", "派遣"]
 
 
 class UserInfo(NamedTuple):
@@ -134,47 +145,105 @@ SAMPLE_USERS = [
 ]
 
 
-def seed_users(db: Session, count: int = 10) -> List[User]:
+def seed_master_data(db: Session) -> Dict[str, Dict[str, Any]]:
     """
-    サンプルユーザーデータをデータベースに追加します。
-
-    既存のユーザーIDとの重複を避け、指定された数のユーザーを生成します。
-    グループIDと社員種別IDはランダムに割り当てられます。
+    グループ、勤務場所、社員種別のマスターデータを作成します。
+    既に同名のデータが存在する場合は作成しません。
 
     Args:
         db: データベースセッション
-        count: 追加するユーザー数 (最大100まで。サンプル数を超える場合はサンプル数に制限されます)
+
+    Returns:
+        Dict[str, Dict[str, Any]]: 作成または取得したマスターデータオブジェクト
+                                     (名前をキーとする辞書) を含む辞書。
+                                     例: {'groups': {'グループ１': <Group obj>}, ...}
+    """
+    created_data: Dict[str, Dict[str, Any]] = {
+        "groups": {},
+        "locations": {},
+        "user_types": {}
+    }
+    commit_needed = False
+
+    # グループ作成 (キーを str() でキャスト)
+    existing_groups = {str(g.name): g for g in db.scalars(select(Group)).all()}
+    for name in GROUP_NAMES:
+        if name not in existing_groups:
+            group = Group(name=name)
+            db.add(group)
+            created_data["groups"][name] = group
+            logger.info(f"マスターデータ作成 (Group): {name}")
+            commit_needed = True
+        else:
+            created_data["groups"][name] = existing_groups[name]
+
+    # 勤務場所作成 (キーを str() でキャスト)
+    existing_locations = {str(loc.name): loc for loc in db.scalars(select(Location)).all()}
+    for name in LOCATION_NAMES:
+        if name not in existing_locations:
+            location = Location(name=name)
+            db.add(location)
+            created_data["locations"][name] = location
+            logger.info(f"マスターデータ作成 (Location): {name}")
+            commit_needed = True
+        else:
+            created_data["locations"][name] = existing_locations[name]
+
+    # 社員種別作成 (キーを str() でキャスト)
+    existing_user_types = {str(ut.name): ut for ut in db.scalars(select(UserType)).all()}
+    for name in USER_TYPE_NAMES:
+        if name not in existing_user_types:
+            user_type = UserType(name=name)
+            db.add(user_type)
+            created_data["user_types"][name] = user_type
+            logger.info(f"マスターデータ作成 (UserType): {name}")
+            commit_needed = True
+        else:
+            created_data["user_types"][name] = existing_user_types[name]
+
+    if commit_needed:
+        db.commit()
+        # 再取得部分 (キーを str() でキャスト)
+        created_data["groups"] = {str(g.name): g for g in db.scalars(select(Group)).all()}
+        created_data["locations"] = {str(loc.name): loc for loc in db.scalars(select(Location)).all()}
+        created_data["user_types"] = {str(ut.name): ut for ut in db.scalars(select(UserType)).all()}
+
+    return created_data
+
+
+def seed_users(db: Session, master_data: Dict[str, Dict[str, Any]], count: int = 10) -> List[User]:
+    """
+    サンプルユーザーデータをデータベースに追加します。
+    グループと社員種別は、提供されたマスターデータからランダムに割り当てます。
+
+    Args:
+        db: データベースセッション
+        master_data: seed_master_data から返されたマスターデータオブジェクト辞書
+        count: 追加するユーザー数 (最大100まで)
 
     Returns:
         List[User]: データベースに追加されたUserオブジェクトのリスト。
     """
-    # 既存ユーザーIDをセットとして保持し、重複チェックを効率化します。
-    existing_user_ids: Set[str] = set(str(user.id) for user in db.query(User).all())
+    existing_user_ids: Set[str] = set(str(user.id) for user in db.scalars(select(User)).all())
 
-    # データベースから利用可能なグループとユーザータイプを取得します。
-    groups = db.query(Group).all()
-    user_types = db.query(UserType).all()
+    # マスターデータからグループと社員種別のリストを取得
+    groups = list(master_data.get("groups", {}).values())
+    user_types = list(master_data.get("user_types", {}).values())
 
-    # グループやユーザータイプが存在しない場合はエラーメッセージを表示して終了
+    # グループや社員種別が存在しない場合は処理を中断
     if not groups:
-        print("Error: No groups found in the database. Cannot seed users.")
+        logger.error("マスターデータにグループが存在しません。ユーザーシードをスキップします。")
         return []
     if not user_types:
-        print("Error: No user types found in the database. Cannot seed users.")
+        logger.error("マスターデータに社員種別が存在しません。ユーザーシードをスキップします。")
         return []
 
-    # 生成するユーザー数を決定します (指定数とサンプル数の小さい方)。
     actual_count = min(count, len(SAMPLE_USERS))
-
     created_users = []
-
-    # 重複しないようにサンプルユーザーをランダムに選択します。
     selected_samples = random.sample(SAMPLE_USERS, actual_count)
 
     for user_info in selected_samples:
         user_id = user_info.user_id
-
-        # ユーザーIDが既に存在する場合、末尾に連番を追加して重複を回避します。
         counter = 1
         temp_user_id = user_id
         while temp_user_id in existing_user_ids:
@@ -182,54 +251,59 @@ def seed_users(db: Session, count: int = 10) -> List[User]:
             counter += 1
         user_id = temp_user_id
 
-        # 新しいユーザーオブジェクトを作成します。
         user = User(
             id=user_id,
             username=user_info.full_name,
+            # マスターデータのリストからランダムに選択
             group_id=random.choice(groups).id,
             user_type_id=random.choice(user_types).id
         )
-
         db.add(user)
         created_users.append(user)
         existing_user_ids.add(user_id) # 新規追加したIDもセットに追加
 
     db.commit()
+    logger.info(f"{len(created_users)} 件のユーザーをシードしました。")
     return created_users
 
 
-# 勤務場所の選択確率を生成するヘルパー関数
 def create_location_preferences(
-    location_ids: List[int],
-    primary_location_id: int,
+    locations: Dict[str, Location],
+    primary_location_name: str,
     primary_weight: float = 0.7
 ) -> Dict[int, float]:
-    """指定された勤務場所IDリストに基づき、特定の場所を優先する確率分布を生成します。
+    """指定された勤務場所辞書に基づき、特定の場所を優先する確率分布を生成します。
 
     Args:
-        location_ids: 利用可能な勤務場所IDのリスト。
-        primary_location_id: 優先的に選択される勤務場所のID。
+        locations: 勤務場所の名前をキー、Locationオブジェクトを値とする辞書。
+        primary_location_name: 優先的に選択される勤務場所の名前。
         primary_weight: 優先勤務場所が選択される確率の重み (デフォルト0.7)。
 
     Returns:
         Dict[int, float]: 各勤務場所IDをキーとし、選択確率の重みを値とする辞書。
+                          存在しないprimary_location_nameが指定された場合は空辞書。
     """
-    prefs = {loc_id: random.uniform(0.1, 0.3) for loc_id in location_ids}
+    if primary_location_name not in locations:
+        logger.warning(f"優先勤務場所 '{primary_location_name}' が見つかりません。")
+        return {}
+
+    # キーを int() でキャスト
+    primary_location_id = int(locations[primary_location_name].id)
+    prefs = {int(loc.id): random.uniform(0.1, 0.3) for loc in locations.values()}
     prefs[primary_location_id] = primary_weight
     return prefs
 
 
-def seed_attendance(db: Session, users: Optional[List[User]] = None,
+def seed_attendance(db: Session, master_data: Dict[str, Dict[str, Any]],
+                   users: Optional[List[User]] = None,
                    days_back: int = 30, days_forward: int = 30) -> List[Attendance]:
     """
     指定されたユーザーリストまたは全ユーザーに対して、ダミーの勤怠記録を生成します。
-
-    ユーザーごとにランダムな出勤パターン（オフィス派/テレワーク派、優先オフィス）と
-    曜日ごとの勤務場所選択確率を決定し、指定された期間の勤怠データを生成します。
-    既存のレコードがある場合はスキップします。
+    勤務場所は提供されたマスターデータから選択されます。
 
     Args:
         db: データベースセッション
+        master_data: seed_master_data から返されたマスターデータオブジェクト辞書
         users: 勤怠記録を追加するユーザーオブジェクトのリスト (Noneの場合は全ユーザーが対象)。
         days_back: 過去何日分のデータを生成するか (デフォルト30日)。
         days_forward: 未来何日分のデータを生成するか (デフォルト30日)。
@@ -238,36 +312,47 @@ def seed_attendance(db: Session, users: Optional[List[User]] = None,
         List[Attendance]: データベースに追加されたAttendanceオブジェクトのリスト。
     """
     if users is None:
-        users = db.query(User).all()
+        users_to_process: List[User] = list(db.scalars(select(User)).all())
+    else:
+        users_to_process = users
 
-    # 利用可能な勤務場所IDを取得します。
-    locations = db.query(Location).all()
-    location_ids = [int(loc.id) for loc in locations]
-    if not location_ids:
-        print("Error: No locations found in the database. Cannot seed attendance.")
+    # マスターデータから勤務場所の辞書を取得
+    locations_dict = master_data.get("locations", {})
+    if not locations_dict:
+        logger.error("マスターデータに勤務場所が存在しません。勤怠シードをスキップします。")
         return []
 
-    # 既存の勤怠記録を (user_id, date) をキーとする辞書に格納し、重複チェックを効率化します。
+    # 既存レコードを効率的にチェックするための準備
     existing_records: Dict[Tuple[str, date], Attendance] = {}
-    for record in db.query(Attendance).all():
+    for record in db.scalars(select(Attendance)).all():
         user_id = str(record.user_id)
         record_date = date.fromisoformat(str(record.date))
         key = (user_id, record_date)
         existing_records[key] = record
 
-    # データ生成対象の日付範囲を決定します。
     today = date.today()
     start_date = today - timedelta(days=days_back)
     end_date = today + timedelta(days=days_forward)
-
     created_records = []
 
-    for user in users:
+    for user in users_to_process:
         # ユーザーごとの勤務傾向（オフィス派/テレワーク派、好みのオフィス）をランダムに設定します。
         is_office_worker = random.random() > 0.3
-        # テレワーク(ID=3) 以外の場所を優先的に選択します。
-        possible_offices = [loc_id for loc_id in location_ids if loc_id != 3]
-        preferred_office = random.choice(possible_offices) if possible_offices else location_ids[0]
+
+        # 優先オフィス候補から「テレワーク」「夜勤」を除外
+        possible_offices = {
+            name: loc for name, loc in locations_dict.items()
+            if name not in ["テレワーク", "夜勤"]
+        }
+        if not possible_offices:
+             logger.warning("優先オフィス候補 (テレワーク/夜勤以外) が見つかりません。")
+             # 代替として最初の場所を使うか、処理を中断するかなど検討
+             if locations_dict:
+                 preferred_office_name = list(locations_dict.keys())[0]
+             else:
+                 continue # ユーザーの処理をスキップ
+        else:
+            preferred_office_name = random.choice(list(possible_offices.keys()))
 
         # 曜日ごとの勤務場所選択確率を格納する辞書を初期化します。
         weekday_patterns: Dict[int, Dict[int, float]] = {}
@@ -275,24 +360,16 @@ def seed_attendance(db: Session, users: Optional[List[User]] = None,
         # 平日 (月曜=0 〜 金曜=4) の勤務パターンを設定します。
         for weekday in range(5):
             if is_office_worker:
-                # オフィス勤務を好むユーザーの確率分布を設定します。
-                location_prefs = create_location_preferences(location_ids, preferred_office)
+                location_prefs = create_location_preferences(locations_dict, preferred_office_name)
             else:
-                # テレワークを好むユーザーの確率分布を設定します (location_id=3 がテレワーク)。
-                location_prefs = create_location_preferences(location_ids, 3)
-
-            weekday_patterns[weekday] = {
-                loc_id: weight for loc_id, weight in location_prefs.items()
-            }
+                # テレワークを好むユーザー (テレワークのIDを渡す)
+                location_prefs = create_location_preferences(locations_dict, "テレワーク")
+            weekday_patterns[weekday] = location_prefs
 
         # 休日 (土曜=5, 日曜=6) の勤務パターンを設定します (出勤は稀)。
         for weekday in range(5, 7):
-            # 休日出勤の場合はテレワーク確率が高い
-            location_prefs = create_location_preferences(location_ids, 3, 0.8)
-
-            weekday_patterns[weekday] = {
-                loc_id: weight for loc_id, weight in location_prefs.items()
-            }
+            location_prefs = create_location_preferences(locations_dict, preferred_office_name, 0.8)
+            weekday_patterns[weekday] = location_prefs
 
         # 指定された日付範囲で勤怠記録を生成します。
         for day_offset in range((end_date - start_date).days + 1):
@@ -314,25 +391,28 @@ def seed_attendance(db: Session, users: Optional[List[User]] = None,
                 # パターンに基づいて勤務場所を選択します。
                 location_ids_in_pattern = list(current_pattern.keys())
                 weights = list(current_pattern.values())
-                chosen_location_id = random.choices(location_ids_in_pattern, weights=weights, k=1)[0]
+                # locations_dict から ID を取得するようにする
+                if location_ids_in_pattern: # パターンにIDがあれば
+                    chosen_location_id = random.choices(location_ids_in_pattern, weights=weights, k=1)[0]
 
-                # 新しい勤怠記録オブジェクトを作成します。
-                attendance = Attendance(
-                    user_id=str(user.id),
-                    date=day,
-                    location_id=chosen_location_id
-                )
-                db.add(attendance)
-                created_records.append(attendance)
+                    # 新しい勤怠記録オブジェクトを作成します。
+                    attendance = Attendance(
+                        user_id=str(user.id),
+                        date=day,
+                        location_id=chosen_location_id
+                    )
+                    db.add(attendance)
+                    created_records.append(attendance)
 
     # まとめてコミットします。
     db.commit()
+    logger.info(f"{len(created_records)} 件の勤怠記録をシードしました。")
     return created_records
 
 
 def run_seeder(user_count: int = 20, days_back: int = 60, days_forward: int = 30) -> Dict[str, int]:
     """
-    シードデータを生成して実行します
+    マスターデータとシードデータを生成して実行します
 
     Args:
         user_count: 追加するユーザー数
@@ -344,31 +424,64 @@ def run_seeder(user_count: int = 20, days_back: int = 60, days_forward: int = 30
     """
     db = SessionLocal()
     try:
-        # ユーザーを追加
-        users = seed_users(db, count=user_count)
-        
-        # 勤怠記録を追加
-        attendances = seed_attendance(db, users=users, days_back=days_back, days_forward=days_forward)
-        
+        # 1. マスターデータを作成/取得
+        logger.info("マスターデータのシードを開始します...")
+        master_data = seed_master_data(db)
+        logger.info("マスターデータのシードが完了しました。")
+
+        # 2. ユーザーを追加 (マスターデータを渡す)
+        logger.info("ユーザーデータのシードを開始します...")
+        # master_data が空でないことを確認
+        if not master_data.get("groups") or not master_data.get("user_types"):
+             logger.error("マスターデータ(グループまたは社員種別)の準備に失敗したため、ユーザーをシードできません。")
+             users_created_count = 0
+        else:
+            users = seed_users(db, master_data, count=user_count)
+            users_created_count = len(users)
+        logger.info("ユーザーデータのシードが完了しました。")
+
+        # 3. 勤怠記録を追加 (マスターデータを渡す)
+        logger.info("勤怠データのシードを開始します...")
+        # users リストが None でないことを確認 (seed_usersが空リストを返す場合があるため)
+        users_to_seed = users if 'users' in locals() and users else None
+        if not master_data.get("locations"):
+             logger.error("マスターデータ(勤務場所)の準備に失敗したため、勤怠をシードできません。")
+             attendances_created_count = 0
+        elif users_to_seed is None and user_count > 0:
+             logger.warning("勤怠をシードする対象ユーザーが存在しません。")
+             attendances_created_count = 0
+        else:
+            # users_to_seed が None の場合は seed_attendance が全ユーザーを対象にする
+            attendances = seed_attendance(db, master_data, users=users_to_seed,
+                                          days_back=days_back, days_forward=days_forward)
+            attendances_created_count = len(attendances)
+        logger.info("勤怠データのシードが完了しました。")
+
         return {
-            "users": len(users),
-            "attendances": len(attendances)
+            "users": users_created_count,
+            "attendances": attendances_created_count
         }
+    except Exception as e:
+        logger.error(f"シーダー実行中にエラーが発生しました: {e}", exc_info=True)
+        # エラー発生時は空の結果を返すか、例外を再raiseするか検討
+        return {"users": 0, "attendances": 0}
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    # このスクリプトが直接実行された場合、シーダーを実行
     import argparse
-    
+    # ロガー設定 (必要であれば)
+    # from app.core.logging_config import setup_logging
+    # setup_logging()
+
     parser = argparse.ArgumentParser(description="データベースにテストデータを追加します")
     parser.add_argument("--users", type=int, default=20, help="追加するユーザー数")
     parser.add_argument("--days-back", type=int, default=60, help="過去何日分のデータを生成するか")
     parser.add_argument("--days-forward", type=int, default=30, help="未来何日分のデータを生成するか")
-    
+
     args = parser.parse_args()
-    
+
     print(f"データシーダーを実行中...")
     result = run_seeder(user_count=args.users, days_back=args.days_back, days_forward=args.days_forward)
     print(f"完了しました！")
