@@ -14,9 +14,12 @@ from .user_type import UserType
 
 class UserBase(BaseModel):
     """ユーザーの基本スキーマ"""
-    username: str
-    group_id: str | int
-    user_type_id: str | int
+    id: str = Field(..., description="ユーザーID (半角英数-_)", pattern=r"^[a-zA-Z0-9_-]+$")
+    username: str = Field(..., description="ユーザー名")
+    group_id: int | str = Field(..., description="所属グループID")
+    user_type_id: int | str = Field(..., description="社員種別ID")
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(UserBase):

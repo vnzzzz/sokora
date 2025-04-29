@@ -6,6 +6,7 @@
 """
 
 from typing import Any, Dict, List, Tuple
+import json
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse
@@ -138,10 +139,16 @@ def handle_create_user_row(
         if not user_row_data: # 基本的に作成直後なので存在するはずだが念のため
             raise HTTPException(status_code=500, detail="Failed to retrieve created user details")
             
-        return templates.TemplateResponse(
+        response = templates.TemplateResponse(
             "components/user/_user_row.html",
             {"request": request, "user": user_row_data}
         )
+        # 変更: 成功時にページリフレッシュとメッセージ表示をトリガー
+        response.headers["HX-Trigger"] = json.dumps({
+            "showMessage": f"ユーザー {created_user.username} を追加しました。", 
+            "refreshPage": True
+        })
+        return response
     except HTTPException as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
@@ -151,6 +158,8 @@ def handle_create_user_row(
         response.status_code = e.status_code # エラーに応じたステータスコードを設定
         # HTMXがエラーメッセージを正しい場所に挿入するようにHX-Retargetヘッダーを追加
         response.headers["HX-Retarget"] = "#add-form-error" # 追加フォームのエラー表示領域ID
+        # 変更: エラー時にもメッセージ表示をトリガー (Toast用)
+        response.headers["HX-Trigger"] = json.dumps({"showMessage": e.detail, "isError": True})
         return response
 
 
@@ -181,10 +190,16 @@ def handle_update_user_row(
         if not user_row_data: # 基本的に更新直後なので存在するはずだが念のため
             raise HTTPException(status_code=500, detail="Failed to retrieve updated user details")
 
-        return templates.TemplateResponse(
+        response = templates.TemplateResponse(
             "components/user/_user_row.html",
             {"request": request, "user": user_row_data}
         )
+        # 変更: 成功時にページリフレッシュとメッセージ表示をトリガー
+        response.headers["HX-Trigger"] = json.dumps({
+            "showMessage": f"ユーザー {updated_user.username} を更新しました。", 
+            "refreshPage": True
+        })
+        return response
     except HTTPException as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
@@ -194,4 +209,6 @@ def handle_update_user_row(
         response.status_code = e.status_code
         # HX-Retargetヘッダーを追加（編集フォームのエラー表示領域ID）
         response.headers["HX-Retarget"] = f"#edit-form-error-{user_id}"
+        # 変更: エラー時にもメッセージ表示をトリガー (Toast用)
+        response.headers["HX-Trigger"] = json.dumps({"showMessage": e.detail, "isError": True})
         return response 

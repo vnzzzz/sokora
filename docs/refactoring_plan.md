@@ -132,7 +132,7 @@
        - **`handle_create_user_row` (POST `/pages/user/row`)**: 新規ユーザーを作成し、新しいテーブル行 (`_user_row.html`) を返す。サービス層関数 (`create_user_with_validation`) を呼び出す。
        - **`handle_update_user_row` (PUT `/pages/user/row/{user_id}`)**: 既存ユーザーを更新し、更新されたテーブル行 (`_user_row.html`) を返す。サービス層関数 (`update_user_with_validation`) を呼び出す。
        - *注意: 削除は既存の `/api/v1/user/{{ user.id }}` をそのまま利用します。*
-   - [ ] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行します。
+   - [x] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行します。
 
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/user/index.html`)**
 
@@ -310,3 +310,13 @@
 ## 9. 考慮事項
 
 // ... existing code ...
+
+## 10. テスト実行方法
+
+リファクタリング中の各ステップで定義されたテストは、プロジェクトルートディレクトリから以下のスクリプトを実行することで実施できます。
+
+```bash
+./scripts/testing/run_test.sh
+```
+
+このスクリプトは `pytest` を使用して `app/tests/` ディレクトリ以下のすべてのテストを実行します。

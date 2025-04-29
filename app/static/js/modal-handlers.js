@@ -187,19 +187,19 @@ function updateUIAfterEdit(data, itemId) {
     }
   }
 
-  // ユーザーの場合
-  const userRow = document.getElementById(`user-row-${itemId}`)
-  if (userRow && data.username) {
-    const nameElement = document.getElementById(`user-name-${itemId}`)
-    if (nameElement) {
-      nameElement.textContent = `${data.username} (${data.user_id})`
-    }
-
-    const typeElement = document.getElementById(`user-type-${itemId}`)
-    if (typeElement && data.user_type && data.user_type.name) {
-      typeElement.textContent = data.user_type.name
-    }
-  }
+  // ユーザーの場合 (HTMX 化により削除)
+  // const userRow = document.getElementById(`user-row-${itemId}`)
+  // if (userRow && data.username) {
+  //   const nameElement = document.getElementById(`user-name-${itemId}`)
+  //   if (nameElement) {
+  //     nameElement.textContent = `${data.username} (${data.user_id})`
+  //   }
+  //
+  //   const typeElement = document.getElementById(`user-type-${itemId}`)
+  //   if (typeElement && data.user_type && data.user_type.name) {
+  //     typeElement.textContent = data.user_type.name
+  //   }
+  // }
 }
 
 /**
