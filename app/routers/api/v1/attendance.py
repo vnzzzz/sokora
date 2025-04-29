@@ -5,7 +5,7 @@
 勤怠入力と編集に関連するAPIエンドポイント
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
@@ -109,7 +109,7 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
 @router.post("", response_model=Attendance, status_code=status.HTTP_201_CREATED)
 async def create_attendance(
     user_id: str = Form(...),
-    date: date = Form(...),
+    date_str: str = Form(..., alias="date"),
     location_id: int = Form(...),
     db: Session = Depends(get_db),
 ) -> Attendance:
@@ -117,22 +117,31 @@ async def create_attendance(
     勤怠データを作成します。
     """
     try:
+        # 文字列から date オブジェクトへの変換
+        try:
+            attendance_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="日付の形式が無効です。YYYY-MM-DD形式で入力してください。"
+            )
+
         # ユーザーと勤務場所の存在確認
         user.get_or_404(db, id=user_id)
         location.get_or_404(db, id=location_id)
 
         # 既存レコードのチェック
         existing_attendance = attendance.get_by_user_and_date(
-            db, user_id=user_id, date=date
+            db, user_id=user_id, date=attendance_date
         )
         if existing_attendance:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User '{user_id}' already has attendance for date '{date}'"
+                detail=f"ユーザー '{user_id}' の日付 '{date_str}' には既に勤怠データが存在します。"
             )
 
         # AttendanceCreateオブジェクトを手動で作成
-        attendance_in = AttendanceCreate(user_id=user_id, date=date, location_id=location_id)
+        attendance_in = AttendanceCreate(user_id=user_id, date=attendance_date, location_id=location_id)
 
         # 勤怠データ作成
         created_attendance = attendance.create(db=db, obj_in=attendance_in)

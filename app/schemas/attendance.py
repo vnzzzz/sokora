@@ -31,9 +31,9 @@ class AttendanceCreate(AttendanceBase):
                 raise ValueError("日付形式が無効です。YYYY-MM-DD形式で入力してください。")
         return v
 
-    @field_serializer('date')
-    def serialize_date(self, v: date) -> str:
-        return v.isoformat()
+    # @field_serializer('date') # DB保存時には不要なためコメントアウト
+    # def serialize_date(self, v: date) -> str:
+    #     return v.isoformat()
 
     model_config = ConfigDict(
         from_attributes=True

@@ -162,7 +162,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             ModelType: 削除されたオブジェクト
         """
         try:
-            obj = db.query(self.model).get(id)
+            # obj = db.query(self.model).get(id) # SQLAlchemy 2.0 で非推奨
+            obj = db.get(self.model, id)
             if obj is None:
                 raise ValueError(f"ID {id} のオブジェクトが見つかりません")
             db.delete(obj)
