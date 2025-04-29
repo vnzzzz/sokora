@@ -6,18 +6,16 @@ CSV変換ユーティリティ
 """
 
 import csv
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Iterator, Generator
 import io
 from datetime import datetime, date
 import calendar
 from dateutil.relativedelta import relativedelta  # type: ignore
-import pytz  # type: ignore
 from sqlalchemy.orm import Session
 
-from ..core.config import logger
-from ..crud.user import user
-from ..crud.attendance import attendance
-from ..crud.location import location
+from app.crud.user import user as crud_user # エイリアス変更
+from app.crud.attendance import attendance as crud_attendance # エイリアス変更
+from app.core.config import logger # loggerを追加
 
 def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
     """
@@ -63,96 +61,99 @@ def get_date_range_for_month(month: str) -> Tuple[date, date]:
     
     return start_date, end_date
 
-def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str = "utf-8") -> bytes:
-    """
-    勤怠データをCSV形式で取得します
-
-    Args:
-        db: データベースセッション
-        month: 'YYYY-MM'形式の月文字列（Noneの場合は全期間）
-        encoding: CSVのエンコーディング（'utf-8'または'sjis'）
-
-    Returns:
-        bytes: エンコードされたCSVデータ
-    """
-    # CSVバッファを初期化
-    output = io.StringIO()
-    csv_writer = csv.writer(output)
-    
-    # 日付列のヘッダー（年月日）を作成
-    today = datetime.now().date()
-    
-    # 月が指定されている場合、その月の日付に限定
+def _generate_date_headers(month: Optional[str] = None) -> List[str]:
+    """CSV用の日付ヘッダーリストを生成します。"""
+    today = date.today()
     if month:
         start_date, end_date = get_date_range_for_month(month)
         current_date = start_date
         date_headers = []
-        
-        # 指定月の全日付をヘッダーに追加
         while current_date <= end_date:
             date_headers.append(current_date.strftime("%Y/%m/%d"))
-            current_date = current_date + relativedelta(days=1)
+            current_date += relativedelta(days=1)
     else:
-        # 月指定がない場合、3ヶ月分のデータを表示
-        date_headers = []
-        for i in range(90):  # 90日分
-            d = today - relativedelta(days=i)
-            date_headers.append(d.strftime("%Y/%m/%d"))
-        
-        # 日付順に並べ替え
-        date_headers.sort()
-    
-    # ヘッダー行を書き込み
-    headers = ["user_name", "user_id", "group_name", "user_type"] + date_headers
-    csv_writer.writerow(headers)
-    
-    # ユーザーデータを取得
-    users_data = user.get_all_users(db)
-    
-    # 各ユーザーについて行を作成
-    for user_name, user_id, user_type_id in users_data:
-        user_obj = user.get_by_user_id(db, user_id=user_id)
-        if not user_obj:
-            continue
-            
-        # ユーザーの所属グループを取得
-        group_name = user_obj.group.name if user_obj.group else ""
-        
-        # ユーザーの社員種別を取得
-        user_type_name = user_obj.user_type.name if user_obj.user_type else ""
-        
-        # ユーザーの勤怠データを取得
-        user_entries = attendance.get_user_data(db, user_id=user_id)
-        
-        # 勤怠データを日付ごとのマップに変換
-        user_locations = {}
-        for entry in user_entries:
-            date_key = entry["date"]
-            location_name = entry["location_name"]
-            user_locations[date_key] = location_name
-        
-        # 行データ作成
-        row_data = [user_name, user_id, group_name, user_type_name]
-        
-        # 各日付列のデータを追加
-        for date_str in date_headers:
-            # YYYY/MM/DD形式からYYYY-MM-DD形式に変換
-            date_parts = date_str.split("/")
-            db_date_str = f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
-            
-            # 該当日の勤務場所を取得
-            location_name = user_locations.get(db_date_str, "")
-            row_data.append(location_name)
-        
-        # CSVに行を書き込み
-        csv_writer.writerow(row_data)
-    
-    # CSVデータを文字列として取得
-    csv_content = output.getvalue()
-    output.close()
-    
-    # 指定されたエンコーディングに変換
-    if encoding.lower() == "sjis":
-        return csv_content.encode("shift_jis", errors="replace")
-    else:
-        return csv_content.encode("utf-8") 
+        # 月指定がない場合はデフォルトで過去3ヶ月（約90日）とする
+        # 仕様に応じて調整可能
+        num_days = 90 
+        date_headers = [
+            (today - relativedelta(days=i)).strftime("%Y/%m/%d") 
+            for i in range(num_days)
+        ]
+        date_headers.sort() # 日付順にソート
+    return date_headers
+
+def generate_work_entries_csv_rows(
+    db: Session, month: Optional[str] = None
+) -> Generator[List[str], None, None]:
+    """
+    勤怠データのCSV行を生成するジェネレータ。
+
+    Args:
+        db: データベースセッション
+        month: 'YYYY-MM'形式の月文字列（Noneの場合はデフォルト期間）
+
+    Yields:
+        List[str]: CSVの1行を表す文字列リスト（ヘッダー行を含む）
+    """
+    try:
+        date_headers = _generate_date_headers(month)
+        headers = ["user_name", "user_id", "group_name", "user_type"] + date_headers
+        yield headers # ヘッダー行をyield
+
+        # ユーザーデータを関連情報と共に取得
+        users_data = crud_user.get_all_users_with_details(db)
+        if not users_data:
+            logger.info("CSV生成: 対象ユーザーが見つかりませんでした。")
+            return # ユーザーがいなければ終了
+
+        # 勤怠データの日付範囲を決定
+        date_range_start: Optional[date] = None
+        date_range_end: Optional[date] = None
+        if date_headers: # ヘッダーがあれば範囲を決定
+            try:
+                # ヘッダーは YYYY/MM/DD 形式
+                date_range_start = datetime.strptime(date_headers[0], "%Y/%m/%d").date()
+                date_range_end = datetime.strptime(date_headers[-1], "%Y/%m/%d").date()
+            except (ValueError, IndexError) as e:
+                logger.error(f"日付ヘッダーからの範囲決定に失敗: {e}")
+                # エラーが発生した場合、範囲指定なしで取得 (あるいはエラー終了)
+                pass
+
+        # 勤怠データを一括取得
+        logger.debug(f"勤怠データ取得範囲: {date_range_start} - {date_range_end}")
+        attendance_data = crud_attendance.get_attendance_data_for_csv(
+            db, start_date=date_range_start, end_date=date_range_end
+        )
+        logger.debug(f"取得した勤怠データ件数: {len(attendance_data)}")
+
+        # 各ユーザーについて行を生成
+        for user_name, user_id, group_name, user_type_name in users_data:
+            row_data = [
+                user_name or "",
+                user_id or "",
+                group_name or "",
+                user_type_name or ""
+            ]
+
+            # 各日付列のデータを追加
+            for date_str_header in date_headers:
+                # ヘッダー形式 (YYYY/MM/DD) からDB検索用のキー形式 (YYYY-MM-DD) へ
+                try:
+                    db_date_str = datetime.strptime(date_str_header, "%Y/%m/%d").strftime("%Y-%m-%d")
+                    user_date_key = f"{user_id}_{db_date_str}"
+                    location_name = attendance_data.get(user_date_key, "")
+                    row_data.append(location_name)
+                except ValueError:
+                    # 日付変換エラー時は空文字を追加
+                    row_data.append("")
+
+            yield row_data # データ行をyield
+
+    except Exception as e:
+        logger.error(f"CSV行生成中にエラー: {e}", exc_info=True)
+        # エラーが発生した場合、エラーを示す特別な行を返すか、ログに記録して終了
+        yield ["Error generating CSV data"] # エラーを示す行 (ヘッダーとは異なる列数)
+
+# get_work_entries_csv 関数は不要になる (エンドポイントで直接ジェネレータを使うため)
+# def get_work_entries_csv(...) -> bytes:
+#    ... (古い実装) ... 

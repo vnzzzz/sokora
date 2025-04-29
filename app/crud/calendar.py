@@ -6,17 +6,13 @@
 """
 
 import calendar
-from typing import Dict, Any, List
-from datetime import date, timedelta
-from collections import defaultdict
+from typing import Dict, List
+from datetime import date
 from sqlalchemy.orm import Session
+from sqlalchemy import func, and_
 
-from ..models.attendance import Attendance
-from ..models.user import User
-from ..crud.location import location as location_crud
-from ..utils.calendar_utils import parse_month
-from ..utils.ui_utils import generate_location_data
-from ..core.config import logger
+from app.models.attendance import Attendance
+from app.core.config import logger
 
 
 # 日曜日を週の最初の日として設定 (0: 月曜始まり → 6: 日曜始まり)
@@ -66,6 +62,43 @@ class CRUDCalendar:
         except Exception as e:
             logger.error(f"Error counting day attendances: {str(e)}")
             return 0
+
+    def get_month_attendance_counts(self, db: Session, *, first_day: date, last_day: date) -> Dict[int, int]:
+        """
+        月内の日付ごとの勤怠データ数を一括取得
+
+        Args:
+            db: データベースセッション
+            first_day: 月の初日
+            last_day: 月の末日
+
+        Returns:
+            Dict[int, int]: 日付の日部分をキー、勤怠データ数を値とする辞書
+        """
+        try:
+            attendance_counts = {}
+            attendance_counts_query = (
+                db.query(
+                    func.extract('day', Attendance.date).label('day'),
+                    func.count('*').label('count')
+                )
+                .filter(
+                    and_(
+                        Attendance.date >= first_day,
+                        Attendance.date <= last_day
+                    )
+                )
+                .group_by(func.extract('day', Attendance.date))
+                .all()
+            )
+            
+            for day, count in attendance_counts_query:
+                attendance_counts[int(day)] = count
+                
+            return attendance_counts
+        except Exception as e:
+            logger.error(f"Error getting month attendance counts: {str(e)}")
+            return {}
 
 
 calendar_crud = CRUDCalendar()

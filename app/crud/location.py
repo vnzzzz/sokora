@@ -5,13 +5,15 @@
 勤務場所モデルの作成、読取、更新、削除操作を提供します。
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 
 from .base import CRUDBase
-from ..models.location import Location
-from ..schemas.location import LocationCreate, LocationUpdate
-from ..core.config import logger
+from app.models.attendance import Attendance
+from app.models.location import Location
+from app.schemas.location import LocationCreate, LocationUpdate
+from app.core.config import logger
 
 
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
@@ -29,19 +31,6 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             Optional[Location]: 見つかった勤務場所、またはNone
         """
         return db.query(Location).filter(Location.name == name).first()
-
-    def get_by_id(self, db: Session, *, location_id: int) -> Optional[Location]:
-        """
-        IDで勤務場所を取得
-
-        Args:
-            db: データベースセッション
-            location_id: 勤務場所ID
-
-        Returns:
-            Optional[Location]: 見つかった勤務場所、またはNone
-        """
-        return db.query(Location).filter(Location.location_id == location_id).first()
 
     def create_with_name(
         self, db: Session, *, name: str
@@ -94,7 +83,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         """
         try:
             locations = db.query(Location).all()
-            return {int(loc.location_id): str(loc.name) for loc in locations}
+            return {int(loc.id): str(loc.name) for loc in locations}
         except Exception as e:
             logger.error(f"Error getting location dict: {str(e)}")
             return {}
@@ -123,22 +112,31 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return result
 
     def remove(self, db: Session, *, id: int) -> Location:
-        """
-        勤務場所を削除する
+        """勤務場所を削除 (関連勤怠記録がない場合のみ)
 
         Args:
             db: データベースセッション
-            id: 勤務場所ID
+            id: 削除する勤務場所のID
 
         Returns:
             Location: 削除された勤務場所
+
+        Raises:
+            HTTPException: 勤務場所が見つからない場合 (404)
+            HTTPException: 勤務場所に関連勤怠記録が存在する場合 (400)
         """
-        location = self.get_by_id(db, location_id=id)
-        if location is None:
-            raise ValueError(f"勤務場所ID {id} が見つかりません")
-        db.delete(location)
+        db_obj = self.get_or_404(db, id)
+        
+        attendance_count = db.query(Attendance).filter(Attendance.location_id == id).count()
+        if attendance_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"この勤務場所は{attendance_count}件の勤怠データで使用されているため削除できません"
+            )
+        
+        db.delete(db_obj)
         db.commit()
-        return location
+        return db_obj
 
 
 location = CRUDLocation(Location)

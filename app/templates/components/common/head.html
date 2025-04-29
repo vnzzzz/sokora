@@ -1,49 +1,102 @@
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{ title_text|default('Sokora') }}</title>
+  <meta name="description" content="Sokora - シンプルな勤怠管理システム" />
+  <meta name="format-detection" content="telephone=no, email=no, address=no" />
+
+  <!-- テーマフラッシュ防止のためのインラインスクリプト -->
+  <script>
+    ;(function () {
+      // ローカルストレージからテーマを即座に読み込む
+      const savedTheme = localStorage.getItem('theme') || 'light'
+      document.documentElement.setAttribute('data-theme', savedTheme)
+      document.addEventListener('DOMContentLoaded', function () {
+        document.body.setAttribute('data-theme', savedTheme)
+      })
+    })()
+  </script>
+
+  <!-- ページタイトル -->
+  <title>Sokora - {% if title_text %}{{ title_text }}{% else %}勤怠管理システム{% endif %}</title>
 
   <!-- favicon -->
-  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
-  <script src="/static/js/circle-favicon.js"></script>
+  <link rel="icon" href="/static/favicon.ico" sizes="any" />
 
-  <!-- フォント -->
+  <!-- Alpine.js -->
+  <script defer src="/static/js/alpine.min.js"></script>
+
+  <!-- HTMX -->
+  <script defer src="/static/js/htmx.min.js"></script>
+
+  <!-- Main JS -->
+  <script defer src="/static/js/main.js"></script>
+
+  <!-- API Client JS -->
+  <script defer src="/static/js/apiClient.js"></script>
+
+  <!-- Calendar JS -->
+  <script defer src="/static/js/calendar.js"></script>
+
+  <!-- Attendance JS -->
+  <script defer src="/static/js/attendance.js"></script>
+
+  <!-- Main CSS -->
+  <link href="/static/css/main.css" rel="stylesheet" />
+
+  <!-- カレンダー共通CSS -->
+  <link href="/static/css/calendar.css" rel="stylesheet" />
+
+  <!-- テーマ切り替えアニメーション -->
+  <style>
+    html,
+    body {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* ダークモード時のテキスト選択色 */
+    [data-theme='dark'] ::selection {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ライトモード時のテキスト選択色 */
+    [data-theme='light'] ::selection {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+  </style>
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  />
 
-  <!-- スタイルとJavaScript -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.3/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <!-- DaisyUI - Tailwind CSS フレームワーク -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
-  <script src="/static/js/alpine.min.js" defer></script>
-  <script src="/static/js/htmx.min.js"></script>
 
-  <!-- Tailwind設定 -->
+  <!-- TailwindCSS設定 -->
   <script>
     tailwind.config = {
+      // ここで全てのTailwindCSSの設定を定義します
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Noto Sans JP"', 'sans-serif']
+            sans: ['Noto Sans JP', 'sans-serif']
           }
         }
       },
+      // DaisyUIの設定
       daisyui: {
-        themes: ['light', 'dark']
+        themes: ['light', 'dark', 'cupcake', 'corporate', 'winter', 'night']
       }
     }
   </script>
 
-  <!-- 共通スタイル -->
-  <style>
-    body {
-      font-family: 'Noto Sans JP', sans-serif;
-    }
-  </style>
+  <!-- Favicon指定 -->
+  <script src="/static/js/circle-favicon.js"></script>
 
-  <!-- メインCSS -->
-  <link href="/static/css/main.css" rel="stylesheet" />
-
-  {% block extra_head %}{% endblock %}
+  <!-- Meta情報 -->
+  <meta name="theme-color" content="#4a5568" />
 </head>

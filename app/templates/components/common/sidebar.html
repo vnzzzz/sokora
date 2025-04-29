@@ -1,14 +1,37 @@
 <!-- サイドバーコンポーネント -->
 <aside
-  class="bg-base-200 min-h-screen min-w-[200px] max-w-[200px] shadow-lg border-r border-base-300 p-5 flex flex-col"
+  x-bind:class="{'w-16': !isSidebarOpen, 'min-w-[200px] max-w-[200px]': isSidebarOpen}"
+  class="bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20 transition-all duration-300 ease-in-out"
 >
+  <!-- 開閉ボタン -->
+  <button
+    @click="isSidebarOpen = !isSidebarOpen"
+    class="absolute top-2 -right-3 bg-base-300 text-base-content rounded-full p-1 shadow-md z-10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-200 transition-transform duration-300"
+    x-bind:class="{ 'rotate-180': !isSidebarOpen }"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="2"
+      stroke="currentColor"
+      class="w-4 h-4"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+    </svg>
+  </button>
+
   <!-- 一般機能セクション -->
-  <div class="mb-6">
-    <h3 class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2">一般機能</h3>
+  <div class="mb-6 mt-8 overflow-hidden">
+    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+      一般機能
+    </h3>
     <!-- 勤怠確認リンク（トップページ） -->
     <a
       href="/"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="勤怠確認"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -24,13 +47,20 @@
           d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
         />
       </svg>
-      <span>勤怠確認</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >勤怠確認</span
+      >
     </a>
 
     <!-- 勤怠登録リンク -->
     <a
       href="/attendance"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="勤怠登録"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -47,17 +77,26 @@
           d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
         />
       </svg>
-      <span>勤怠登録</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >勤怠登録</span
+      >
     </a>
   </div>
 
   <!-- 管理機能セクション -->
-  <div class="mb-6">
-    <h3 class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2">管理機能</h3>
+  <div class="mb-6 overflow-hidden">
+    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+      管理機能
+    </h3>
     <!-- 社員管理リンク -->
     <a
       href="/user"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="社員管理"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -73,13 +112,20 @@
           d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
         />
       </svg>
-      <span>社員管理</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >社員管理</span
+      >
     </a>
 
     <!-- グループ管理リンク -->
     <a
       href="/groups"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="グループ管理"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -95,13 +141,20 @@
           d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
         />
       </svg>
-      <span>グループ管理</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >グループ管理</span
+      >
     </a>
 
     <!-- 社員種別管理リンク -->
     <a
       href="/user_types"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="社員種別管理"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -117,13 +170,20 @@
           d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z"
         />
       </svg>
-      <span>社員種別管理</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >社員種別管理</span
+      >
     </a>
 
     <!-- 勤務場所管理リンク -->
     <a
       href="/locations"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="勤務場所管理"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -139,13 +199,20 @@
           d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
         />
       </svg>
-      <span>勤務場所管理</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >勤務場所管理</span
+      >
     </a>
 
     <!-- CSVダウンロードリンク -->
     <a
       href="/csv"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="CSV"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -161,17 +228,26 @@
           d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.125-3.75H3.375m0 0h1.125m0 0h7.5c.621 0 1.125.504 1.125 1.125m0 0h-7.5m7.5 0c-.621 0-1.125.504-1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 13.125v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 13.125c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 15.375v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 15.375c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125"
         />
       </svg>
-      <span>CSV</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >CSV</span
+      >
     </a>
   </div>
 
   <!-- その他セクション -->
-  <div class="mb-6">
-    <h3 class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2">その他</h3>
+  <div class="mb-6 overflow-hidden">
+    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+      その他
+    </h3>
     <!-- APIリンク -->
     <a
       href="/docs"
-      class="btn btn-ghost justify-start gap-2 hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all flex items-center"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="API"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -187,28 +263,15 @@
           d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
         />
       </svg>
-      <span>API</span>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >API</span
+      >
     </a>
   </div>
 
   <!-- 下部の余白スペース (残りのスペースを埋める) -->
   <div class="flex-grow"></div>
 </aside>
-
-<script>
-  // アクティブなメニュー項目をハイライト
-  document.addEventListener('DOMContentLoaded', function () {
-    const currentPath = window.location.pathname
-    const menuLinks = document.querySelectorAll('aside a')
-
-    menuLinks.forEach((link) => {
-      const linkPath = link.getAttribute('href')
-
-      // 完全一致または先頭一致の場合（ルートパスを除く）
-      if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
-        link.classList.add('bg-base-300', 'font-medium')
-        link.classList.remove('btn-ghost')
-      }
-    })
-  })
-</script>

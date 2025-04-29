@@ -5,10 +5,10 @@
 ユーザーグループのSQLAlchemyモデル。
 """
 
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 
-from ..db.session import Base
+from app.db.session import Base
 
 
 class Group(Base):  # type: ignore
@@ -16,12 +16,12 @@ class Group(Base):  # type: ignore
 
     __tablename__ = "groups"
 
-    group_id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
     
-    # ユーザーとの関連付け
+    # Userモデルとのリレーションシップ定義 (一対多)
     users = relationship("User", back_populates="group")
     
     def __str__(self) -> str:
-        """文字列表現としてname属性を返します"""
+        """オブジェクトの文字列表現としてグループ名を返します。"""
         return str(self.name) if self.name is not None else "" 

@@ -5,20 +5,17 @@ Sokora Webアプリケーションのメインエントリーポイント
 FastAPIアプリケーションの設定と初期化を行います。
 """
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 
-# 設定ファイルのインポート
-from .core.config import APP_VERSION, logger
-# DBモジュールのインポート
-from .db.session import initialize_database
-# ルートモジュールのインポート
-from .api.pages import router as pages_router  # UIページ用ルーター
-from .api.v1 import router as api_v1_router    # API v1用ルーター
-
+# ローカルモジュールのインポート
+from app.routers.api.v1 import router as api_v1_router  # API v1用ルーター
+from app.routers.pages import router as pages_router       # UIページ用ルーター
+from app.core.config import APP_VERSION, logger
+from app.db.session import initialize_database
 
 # APIタグ定義
 API_TAGS: List[Dict[str, str]] = [

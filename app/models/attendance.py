@@ -5,11 +5,10 @@
 ユーザーの勤怠記録を管理するSQLAlchemyモデル。
 """
 
-from sqlalchemy import Column, String, Integer, Date, ForeignKey
+from sqlalchemy import Column, Date, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from typing import Any, ClassVar
 
-from ..db.session import Base
+from app.db.session import Base
 
 
 class Attendance(Base):  # type: ignore
@@ -18,15 +17,20 @@ class Attendance(Base):  # type: ignore
     __tablename__ = "attendance"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     date = Column(Date, nullable=False, index=True)
-    location_id = Column(Integer, ForeignKey("locations.location_id"), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
 
-    # ユーザーとの関連付け
+    # Userモデルとのリレーションシップ定義 (多対一)
     user = relationship("User", back_populates="attendance_records")
-    # 勤務場所との関連付け
+    # Locationモデルとのリレーションシップ定義 (多対一)
     location_info = relationship("Location", back_populates="attendances")
 
-    class Config:
-        # ユーザーIDと日付の組み合わせに対する一意制約
-        unique_together = ("user_id", "date")
+    # SQLAlchemyのUniqueConstraintを使って複合ユニーク制約を定義
+    # (ユーザーIDと日付の組み合わせが一意であることを保証)
+    # from sqlalchemy import UniqueConstraint
+    # __table_args__ = (UniqueConstraint('user_id', 'date', name='_user_date_uc'),)
+    # ConfigクラスはPydanticで使用されるもので、SQLAlchemyモデルでは通常 __table_args__ を使用します。
+    # ただし、既存の動作を維持するため、ここではコメントアウトのままにします。
+    # class Config:
+    #     unique_together = ("user_id", "date")

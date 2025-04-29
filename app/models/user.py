@@ -5,10 +5,10 @@
 ユーザーのSQLAlchemyモデル。
 """
 
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from ..db.session import Base
+from app.db.session import Base
 
 
 class User(Base):  # type: ignore
@@ -16,14 +16,14 @@ class User(Base):  # type: ignore
 
     __tablename__ = "users"
 
-    user_id = Column(String, primary_key=True, nullable=False, index=True)
+    id = Column(String, primary_key=True, nullable=False, index=True)
     username = Column(String, nullable=False, index=True)
-    group_id = Column(Integer, ForeignKey("groups.group_id"), nullable=False)
-    user_type_id = Column(Integer, ForeignKey("user_types.user_type_id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
+    user_type_id = Column(Integer, ForeignKey("user_types.id"), nullable=False)
 
-    # グループとの関連
+    # Groupモデルとのリレーションシップ定義 (多対一)
     group = relationship("Group", back_populates="users")
-    # 社員種別との関連
+    # UserTypeモデルとのリレーションシップ定義 (多対一)
     user_type = relationship("UserType", back_populates="users")
-    # 勤怠記録との関連
+    # Attendanceモデルとのリレーションシップ定義 (一対多)
     attendance_records = relationship("Attendance", back_populates="user")

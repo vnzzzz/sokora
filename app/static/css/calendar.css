@@ -1,0 +1,113 @@
+/* カレンダー共通スタイル */
+
+/* テーブルレイアウト */
+table {
+  table-layout: fixed !important;
+}
+
+/* 今日の日付ハイライト */
+.today-highlight {
+  border: 2px solid #666 !important;
+  font-weight: bold !important;
+}
+
+/* 追加するスタイル */
+.calendar-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.calendar-cell {
+  width: calc(100% / 7);
+  box-sizing: border-box;
+}
+
+.calendar-day {
+  transition: all 0.2s ease;
+  min-height: 5rem;
+  border-radius: 0.25rem;
+  width: 100%;
+  overflow: hidden;
+}
+
+.calendar-day:hover {
+  background-color: rgba(var(--color-base-content) / 0.1);
+  box-shadow: 0 0 0 1px rgba(var(--color-base-content) / 0.2);
+}
+
+.has-data {
+  background-color: rgba(var(--color-base-content) / 0.03);
+}
+
+/* 祝日表示用スタイル */
+.holiday-cell {
+  background-color: rgba(255, 76, 76, 0.1);
+}
+
+.holiday-text {
+  color: #e53e3e;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 勤怠表示用スタイル */
+.bg-remote {
+  background-color: rgba(var(--color-success) / 0.15);
+}
+
+.bg-office {
+  background-color: rgba(var(--color-primary) / 0.15);
+}
+
+.bg-business-trip {
+  background-color: rgba(var(--color-secondary) / 0.15);
+}
+
+.bg-vacation {
+  background-color: rgba(var(--color-warning) / 0.15);
+}
+
+.text-remote {
+  color: hsl(var(--s));
+}
+
+.text-office {
+  color: hsl(var(--p));
+}
+
+.text-business-trip {
+  color: hsl(var(--su));
+}
+
+.text-vacation {
+  color: hsl(var(--wa));
+}
+
+/* 選択された日付ヘッダーのスタイル */
+.selected-date {
+  border-top: 2px solid #888888 !important;
+  border-left: 2px solid #888888 !important;
+  border-right: 2px solid #888888 !important;
+  background-color: rgba(136, 136, 136, 0.15) !important;
+  position: relative;
+  z-index: 5;
+  font-weight: bold !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* ヘッダーのみに追加 */
+}
+
+/* 選択された列のスタイル */
+.selected-column {
+  border-left: 2px solid #888888 !important;
+  border-right: 2px solid #888888 !important;
+  background-color: rgba(136, 136, 136, 0.15) !important;
+  position: relative;
+  z-index: 5;
+}
+
+/* 最後の行のセルに下線を追加 */
+tr:last-child .selected-column {
+  border-bottom: 2px solid #888888 !important;
+}

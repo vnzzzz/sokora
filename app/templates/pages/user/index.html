@@ -1,377 +1,271 @@
 {% extends "layout/base.html" %}
-{% set title_text = "社員管理 - Sokora" %}
+{% set title_text = "社員管理" %}
+{% from "components/common/modal.html" import add_modal, edit_modal, delete_confirm_modal %}
 
 {% block content %}
-<div class="card bg-base-200 shadow-lg rounded-lg">
-  <div class="card-body p-6">
-    <div class="flex justify-between items-center">
-      <div>
-        <h2 class="text-2xl font-bold text-base-content">社員管理</h2>
-      </div>
-
-      <!-- 社員追加ボタン -->
-      <div x-data="{ showAddUser: false }" @click.away="showAddUser = false">
-        <button @click="showAddUser = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="1.5"
-            stroke="currentColor"
-            class="w-4 h-4 mr-1"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z"
-            />
-          </svg>
-          社員追加
-        </button>
-
-        <!-- 社員追加モーダル -->
-        <div
-          x-show="showAddUser"
-          style="display: none"
-          class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-        >
-          <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-            <h3 class="font-bold text-lg mb-4 text-base-content">社員追加</h3>
-            <form action="/api/users" method="post" class="space-y-4" id="add-user-form">
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">社員名</span>
-                </label>
-                <input type="text" name="username" class="input input-bordered focus:border-neutral" required />
-              </div>
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">社員ID</span>
-                </label>
-                <input type="text" name="user_id" class="input input-bordered focus:border-neutral" required />
-              </div>
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">グループ</span>
-                  <span class="label-text-alt text-error">*</span>
-                </label>
-                <select name="group_id" class="select select-bordered focus:border-neutral" required>
-                  <option value="">選択してください</option>
-                  {% for group in groups %}
-                  <option value="{{ group.group_id }}">{{ group.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">社員種別</span>
-                  <span class="label-text-alt text-error">*</span>
-                </label>
-                <select name="user_type_id" class="select select-bordered focus:border-neutral" required>
-                  <option value="">選択してください</option>
-                  {% for user_type in user_types %}
-                  <option value="{{ user_type.user_type_id }}">{{ user_type.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="flex justify-end space-x-3 mt-6">
-                <button type="button" class="btn btn-outline" @click="showAddUser = false">キャンセル</button>
-                <button type="submit" class="btn btn-neutral shadow-sm">追加</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+<div class="p-4">
+  <div class="flex justify-between items-center max-w-[700px] mb-4">
+    <div>
+      <h2 class="text-lg font-bold text-base-content">社員管理</h2>
     </div>
 
-    <div class="mt-8">
-      {% if users|length == 0 %}
-      <div class="alert alert-info shadow-sm">
+    <!-- 社員追加ボタン -->
+    <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
+      <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
-          class="stroke-current shrink-0 w-6 h-6"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="w-4 h-4 mr-1"
         >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          ></path>
+            d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z"
+          />
         </svg>
-        <span>社員情報がありません。新しい社員を追加してください。</span>
-      </div>
-      {% else %}
-      <!-- グループごとに表示 -->
-      {% for group_name in group_names %}
-      <div class="mb-6">
-        <h3 class="text-lg font-bold text-base-content mb-3">{{ group_name }}</h3>
-        <div class="overflow-x-auto rounded-lg">
-          <table class="table table-zebra w-full">
-            <thead class="bg-base-300 text-base-content">
-              <tr>
-                <th class="rounded-tl-lg">社員名</th>
-                <th>社員種別</th>
-                <th class="text-right rounded-tr-lg">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %}
-              <tr class="hover:bg-base-200">
-                <td class="font-medium">
-                  <span id="user-name-{{ user_id }}">{{ user_name }} ({{ user_id }})</span>
-                </td>
-                <td>
-                  {% if user_obj.user_type %}
-                    {{ user_obj.user_type.name }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td class="text-right">
-                  <div class="flex justify-end gap-2">
-                    <div x-data="{ showEditModal: false }">
-                      <button
-                        @click="showEditModal = true"
-                        class="btn btn-sm btn-outline shadow-sm hover:shadow"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke-width="1.5"
-                          stroke="currentColor"
-                          class="w-4 h-4 mr-1"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                          />
-                        </svg>
-                        編集
-                      </button>
-                      
-                      <!-- 編集モーダル -->
-                      <div
-                        x-show="showEditModal"
-                        @click.away="showEditModal = false"
-                        style="display: none"
-                        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-                      >
-                        <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 text-base-content">社員編集</h3>
-                          <form
-                            id="edit-modal-form-{{ user_id }}"
-                            action="/api/users/{{ user_id }}"
-                            method="post"
-                            class="space-y-4"
-                            onsubmit="this.method='PUT';"
-                          >
-                            <div class="form-control">
-                              <label class="label">
-                                <span class="label-text">社員名</span>
-                              </label>
-                              <input
-                                type="text"
-                                name="username"
-                                value="{{ user_name }}"
-                                class="input input-bordered focus:border-neutral"
-                                required
-                              />
-                            </div>
-                            <div class="form-control">
-                              <label class="label">
-                                <span class="label-text">グループ</span>
-                                <span class="label-text-alt text-error">*</span>
-                              </label>
-                              <select name="group_id" class="select select-bordered focus:border-neutral" required>
-                                <option value="">選択なし</option>
-                                {% for group in groups %}
-                                <option value="{{ group.group_id }}" {% if user_obj and user_obj.group_id == group.group_id %}selected{% endif %}>{{ group.name }}</option>
-                                {% endfor %}
-                              </select>
-                            </div>
-                            <div class="form-control">
-                              <label class="label">
-                                <span class="label-text">社員種別</span>
-                                <span class="label-text-alt text-error">*</span>
-                              </label>
-                              <select name="user_type_id" class="select select-bordered focus:border-neutral" required>
-                                <option value="">選択なし</option>
-                                {% for user_type in user_types %}
-                                <option value="{{ user_type.user_type_id }}" {% if user_obj and user_obj.user_type_id == user_type.user_type_id %}selected{% endif %}>{{ user_type.name }}</option>
-                                {% endfor %}
-                              </select>
-                            </div>
-                            <div class="flex justify-end space-x-3 mt-6">
-                              <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
-                              <button type="submit" class="btn btn-neutral shadow-sm">保存</button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                    </div>
-                    <div x-data="{ showDeleteConfirm: false }">
-                      <button
-                        @click="showDeleteConfirm = true"
-                        class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke-width="1.5"
-                          stroke="currentColor"
-                          class="w-4 h-4"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                          />
-                        </svg>
-                        削除
-                      </button>
+        社員追加
+      </button>
 
-                      <!-- 削除確認モーダル -->
-                      <div
-                        x-show="showDeleteConfirm"
-                        @click.away="showDeleteConfirm = false"
-                        style="display: none"
-                        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-                      >
-                        <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
-                          <h3 class="font-bold text-lg mb-4 text-error">削除の確認</h3>
-                          <p class="mb-5">
-                            「{{ user_name }} ({{ user_id
-                            }})」を削除してもよろしいですか？この操作は元に戻せません。
-                          </p>
-                          <div class="flex justify-end space-x-3">
-                            <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">
-                              キャンセル
-                            </button>
-                            <form
-                              action="/api/users/{{ user_id }}"
-                              method="post"
-                              onsubmit="this.method='DELETE';"
-                            >
-                              <button type="submit" class="btn btn-error shadow-sm">削除</button>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+      <!-- 社員追加モーダル -->
+      {% set add_content %}
+      <div class="form-control">
+        <label class="label" for="add-username">
+          <span class="label-text">社員名</span>
+        </label>
+        <input type="text" id="add-username" name="username" class="input input-bordered focus:border-neutral" required autocomplete="name" />
       </div>
-      {% endfor %}
-      {% endif %}
+      <div class="form-control">
+        <label class="label" for="add-user-id">
+          <span class="label-text">社員ID</span>
+        </label>
+        <input type="text" id="add-user-id" name="user_id" class="input input-bordered focus:border-neutral" required autocomplete="off" />
+      </div>
+      <div class="form-control">
+        <label class="label" for="add-group-id">
+          <span class="label-text">グループ</span>
+          <span class="label-text-alt text-error">*</span>
+        </label>
+        <select id="add-group-id" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+          <option value="">選択してください</option>
+          {% for group in groups %}
+          <option value="{{ group.id }}">{{ group.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-control">
+        <label class="label" for="add-user-type-id">
+          <span class="label-text">社員種別</span>
+          <span class="label-text-alt text-error">*</span>
+        </label>
+        <select id="add-user-type-id" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+          <option value="">選択してください</option>
+          {% for user_type in user_types %}
+          <option value="{{ user_type.id }}">{{ user_type.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endset %}
+      {{ add_modal("社員追加", "add-user-form", add_content) }}
     </div>
+  </div>
+
+  <div class="mt-4">
+    {% if users|length == 0 %}
+    <div class="alert alert-info shadow-sm">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        class="stroke-current shrink-0 w-6 h-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        ></path>
+      </svg>
+      <span>社員情報がありません。新しい社員を追加してください。</span>
+    </div>
+    {% else %}
+    <!-- グループごとに表示 -->
+    {% for group_name in group_names %}
+    <div class="mb-6">
+      <h3 class="text-lg font-bold text-base-content mb-3">{{ group_name }}</h3>
+      <div class="overflow-x-auto rounded-lg max-w-[700px]">
+        <table class="table table-zebra w-full">
+          <thead class="bg-base-300 text-base-content">
+            <tr>
+              <th class="rounded-tl-lg">社員名</th>
+              <th>社員種別</th>
+              <th class="text-right rounded-tr-lg">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %}
+            <tr class="hover:bg-base-200" id="user-row-{{ user_id }}">
+              <td class="font-medium">
+                <span id="user-name-{{ user_id }}">{{ user_name }} ({{ user_id }})</span>
+              </td>
+              <td>
+                {% if user_obj.user_type %}
+                  <span id="user-type-{{ user_id }}">{{ user_obj.user_type.name }}</span>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="text-right">
+                <div class="flex justify-end gap-2">
+                  <div x-data="{ showEditModal: false }">
+                    <button
+                      @click="showEditModal = true"
+                      class="btn btn-sm btn-outline shadow-sm hover:shadow"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-4 h-4 mr-1"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                        />
+                      </svg>
+                      編集
+                    </button>
+                    
+                    <!-- 編集モーダル -->
+                    {% set edit_content %}
+                    <div class="form-control">
+                      <label class="label" for="edit-username-{{ user_id }}">
+                        <span class="label-text">社員名</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="edit-username-{{ user_id }}"
+                        name="username"
+                        value="{{ user_name }}"
+                        class="input input-bordered focus:border-neutral"
+                        required
+                        autocomplete="name"
+                      />
+                    </div>
+                    <div class="form-control">
+                      <label class="label" for="edit-group-id-{{ user_id }}">
+                        <span class="label-text">グループ</span>
+                        <span class="label-text-alt text-error">*</span>
+                      </label>
+                      <select id="edit-group-id-{{ user_id }}" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+                        <option value="">選択なし</option>
+                        {% for group in groups %}
+                        <option value="{{ group.id }}" {% if user_obj and user_obj.group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="form-control">
+                      <label class="label" for="edit-user-type-id-{{ user_id }}">
+                        <span class="label-text">社員種別</span>
+                        <span class="label-text-alt text-error">*</span>
+                      </label>
+                      <select id="edit-user-type-id-{{ user_id }}" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+                        <option value="">選択なし</option>
+                        {% for user_type in user_types %}
+                        <option value="{{ user_type.id }}" {% if user_obj and user_obj.user_type_id == user_type.id %}selected{% endif %}>{{ user_type.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    {% endset %}
+                    {{ edit_modal("社員編集", "edit-form", edit_content, user_id) }}
+                  </div>
+                  <div x-data="{ showDeleteConfirm: false }">
+                    <button
+                      @click="showDeleteConfirm = true"
+                      class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                        />
+                      </svg>
+                      削除
+                    </button>
+
+                    <!-- 削除確認モーダル -->
+                    {% set delete_warning %}
+                    ※勤怠データが登録されている場合は削除できません。
+                    {% endset %}
+                    {{ delete_confirm_modal("削除の確認", delete_warning, user_id, user_name ~ " (" ~ user_id ~ ")", "削除") }}
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
   </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<!-- 編集フォーム用スクリプト -->
+<script src="/static/js/modal-handlers.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     // 社員追加フォームの送信処理
-    const addUserForm = document.getElementById('add-user-form')
-    if (addUserForm) {
-      addUserForm.addEventListener('submit', function (event) {
-        event.preventDefault()
-        const formData = new FormData(this)
+    setupAddFormHandler('add-user-form', '/api/users/')
 
-        // 送信ボタンを無効化
-        const submitBtn = this.querySelector('button[type="submit"]')
-        if (submitBtn) {
-          submitBtn.disabled = true
-          submitBtn.textContent = '送信中...'
+    // 社員編集の処理
+    setupEditFormHandlers('.btn[data-item-id][class*="btn-neutral"]', 'edit-form', '/api/users/{id}', function(data, itemId) {
+      // 成功したら該当行のデータを更新
+      if (data && itemId) {
+        // 社員名を更新
+        const nameElement = document.getElementById('user-name-' + itemId);
+        if (nameElement && data.username) {
+          nameElement.textContent = data.username + ' (' + data.user_id + ')';
         }
 
-        fetch('/api/users/', {
-          method: 'POST',
-          body: formData
-        })
-          .then((response) => {
-            if (response.ok) {
-              window.location.href = '/user'
-            } else {
-              return response.json().then((data) => {
-                alert('エラーが発生しました: ' + (data.detail || '不明なエラー'))
-                if (submitBtn) {
-                  submitBtn.disabled = false
-                  submitBtn.textContent = '追加'
-                }
-              })
-            }
-          })
-          .catch((error) => {
-            alert('エラーが発生しました: ' + error)
-            if (submitBtn) {
-              submitBtn.disabled = false
-              submitBtn.textContent = '追加'
-            }
-          })
-      })
-    }
-
-    // PUTメソッドのフォーム送信処理
-    document.querySelectorAll('form[onsubmit*="PUT"]').forEach((form) => {
-      form.addEventListener('submit', function (event) {
-        event.preventDefault()
-        const formData = new FormData(this)
-        const url = this.action
-
-        fetch(url, {
-          method: 'PUT',
-          body: formData
-        })
-          .then((response) => {
-            if (response.ok) {
-              window.location.reload()
-            } else {
-              return response.json().then((data) => {
-                alert('エラーが発生しました: ' + (data.detail || '不明なエラー'))
-              })
-            }
-          })
-          .catch((error) => {
-            alert('エラーが発生しました: ' + error)
-          })
-      })
+        // 社員種別を更新
+        const typeElement = document.getElementById('user-type-' + itemId);
+        if (typeElement && data.user_type && data.user_type.name) {
+          typeElement.textContent = data.user_type.name;
+        }
+      }
     })
 
-    // DELETEメソッドのフォーム送信処理
-    document.querySelectorAll('form[onsubmit*="DELETE"]').forEach((form) => {
-      form.addEventListener('submit', function (event) {
-        event.preventDefault()
-        const url = this.action
+    // 社員削除の処理
+    setupDeleteHandlers('.btn[data-item-id][class*="btn-error"]', '/api/users/{id}', function (data, itemId) {
+      // 成功したら該当行を削除
+      const row = document.getElementById('user-row-' + itemId);
+      if (row) {
+        const tbody = row.closest('tbody'); // 行を削除する前に tbody を取得
+        row.remove(); // 行を削除
 
-        fetch(url, {
-          method: 'DELETE'
-        })
-          .then((response) => {
-            if (response.ok) {
-              window.location.reload()
-            } else {
-              return response.json().then((data) => {
-                alert('エラーが発生しました: ' + (data.detail || '不明なエラー'))
-              })
-            }
-          })
-          .catch((error) => {
-            alert('エラーが発生しました: ' + error)
-          })
-      })
-    })
-  })
+        // 行がなくなったら「データなし」表示を出す (or reload)
+        if (tbody && tbody.children.length === 0) {
+          // テーブルボディが空になったらリロード
+          window.location.reload();
+        }
+      }
+    });
+  });
 </script>
 {% endblock %}
