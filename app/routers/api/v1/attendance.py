@@ -201,25 +201,42 @@ async def delete_attendance(
     勤怠データを削除します。
     """
     try:
+        # get_or_404 は HTTPException を送出する可能性がある
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         
-        try:
-            attendance.remove(db=db, id=attendance_id)
-            db.commit()
-            logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
+        # ここに到達すればオブジェクトは存在する
+        # try:
+        #     attendance.remove(db=db, id=attendance_id)
+        #     db.commit()
+        #     logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
             
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={"success": True, "message": "勤怠データを正常に削除しました"}
-            )
-        except Exception as e:
-            db.rollback()
-            logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
-            )
+        #     return JSONResponse(
+        #         status_code=status.HTTP_200_OK,
+        #         content={"success": True, "message": "勤怠データを正常に削除しました"}
+        #     )
+        # except Exception as e:
+        #     db.rollback()
+        #     logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
+        #     return JSONResponse(
+        #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        #         content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
+        #     )
+        
+        # remove処理自体はシンプルなので、内側のtry-exceptは不要かもしれない
+        attendance.remove(db=db, id=attendance_id) # removeは内部でcommitしない想定 (base.py次第)
+        # db.commit() # removeがcommitしない場合、ここでcommitが必要。base.pyを確認。
+        logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"success": True, "message": "勤怠データを正常に削除しました"}
+        )
+
+    except HTTPException as http_exc:
+        # get_or_404 が発生させた 404 エラーをそのまま返す
+        raise http_exc
     except Exception as e:
+        # その他の予期せぬエラー
+        db.rollback() # 念のためロールバック
         logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
