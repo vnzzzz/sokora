@@ -16,7 +16,8 @@ from app.crud.group import group
 from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
-from app import schemas, services # スキーマとサービスをインポート
+from app import schemas # スキーマをインポート
+from app.services import user_service # user_service を直接インポート
 from app.models.user import User # User モデルをインポート
 
 # ルーター定義
@@ -131,7 +132,7 @@ def handle_create_user_row(
         HTMLResponse: レンダリングされたHTMLページ
     """
     try:
-        created_user = services.user_service.create_user_with_validation(db=db, user_in=user_in)
+        created_user = user_service.create_user_with_validation(db=db, user_in=user_in)
         # 作成成功時は、新しい行を描画して返す (関連情報も取得)
         user_row_data = user.get_user_with_details(db, id=str(created_user.id))
         if not user_row_data: # 基本的に作成直後なので存在するはずだが念のため
@@ -172,7 +173,7 @@ def handle_update_user_row(
         HTMLResponse: レンダリングされたHTMLページ
     """
     try:
-        updated_user = services.user_service.update_user_with_validation(
+        updated_user = user_service.update_user_with_validation(
             db=db, user_id=user_id, user_in=user_in
         )
         # 更新成功時は、更新された行を描画して返す (関連情報も取得)

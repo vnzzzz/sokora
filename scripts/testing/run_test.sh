@@ -6,4 +6,4 @@
 echo "Running tests..."
 # プロジェクトルート (/app) から pytest を実行
 export PYTHONPATH="/app:${PYTHONPATH}"  # PYTHONPATH に /app を追加
-poetry run pytest tests/ 
+poetry run pytest app/tests/ 
