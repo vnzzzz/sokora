@@ -1,5 +1,5 @@
 <!-- Month display and switcher -->
-<div class="flex items-center justify-start space-x-4">
+<div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
   <span class="text-xl font-bold">{{ current_month }}</span> {# Style unified #}
   <!-- 共通月切り替えコンポーネント -->
   {% with use_htmx=true, target_id="attendance-content", url_base="/attendance", prev_month=prev_month,
@@ -46,10 +46,7 @@
     <thead>
       <tr>
         {# --- 新しい固定列: グループ (ヘッダーテキスト削除、幅縮小) --- #}
-        <th
-          class="bg-base-300 text-left sticky left-0 z-20 whitespace-nowrap"
-          style="width: 50px; min-width: 50px; max-width: 50px"
-        >
+        <th class="bg-base-300 text-left sticky left-0 z-20" style="width: 50px; min-width: 50px; max-width: 50px">
           {# グループヘッダーテキストを削除 #}
         </th>
         {# --- 固定列: 社員名 (leftを調整) --- #}
@@ -108,7 +105,7 @@
       <tr class="bg-base-200/80">
         {# グループ名セル (グループの最初の種別の行に表示、幅縮小) #}
         <td
-          class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 whitespace-nowrap p-1 align-top"
+          class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top"
           style="width: 50px; min-width: 50px; max-width: 50px"
           {#
           幅を50pxに
