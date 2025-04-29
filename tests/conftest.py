@@ -3,7 +3,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 # ASGITransport をインポート
 from httpx import AsyncClient, ASGITransport
 # 同期エンジン作成用の create_engine と StaticPool をインポート
@@ -14,70 +14,50 @@ from sqlalchemy.orm import sessionmaker, Session # Session をインポート
 # --- アプリケーションとDB設定のインポート ---
 from app.db.session import Base, get_db # get_db と Base をインポート
 from app.main import app as main_app
+# トップレベルでモデルをインポート
+# from app.models import User, Attendance, Location, Group, UserType
 
-# --- テスト用同期データベース設定 ---
-# インメモリSQLiteの同期URL
-TEST_DATABASE_URL = "sqlite:///:memory:"
+# --- テスト用データベースフィクスチャ ---
+@pytest.fixture(scope="function")
+def db() -> Generator[Session, None, None]:
+    """テスト関数ごとにインメモリDBとセッションを作成・提供するフィクスチャ"""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 同期エンジンを作成 (テスト用に StaticPool を使用)
-engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False}, # SQLite用
-    poolclass=StaticPool, # テストではコネクションを使い回さない
-)
+    # モデルをインポート
+    from app.models import User, Attendance, Location, Group, UserType
+    Base.metadata.create_all(bind=engine) # テーブル作成
 
-# 同期セッションファクトリ
-TestingSessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine
-)
-
-# --- pytest-asyncio イベントループフィクスチャ (削除) ---
-# @pytest.fixture(scope="session")
-# def event_loop(request: pytest.FixtureRequest) -> Generator:
-#     """pytest-asyncio 用のイベントループフィクスチャ (非推奨)"""
-#     loop = asyncio.get_event_loop_policy().new_event_loop()
-#     yield loop
-#     loop.close()
-
-# --- テスト用データベースセットアップフィクスチャ ---
-@pytest.fixture(scope="session", autouse=True)
-def setup_database() -> Generator[None, None, None]:
-    """テストセッション開始時にDBテーブルを作成し、終了時に破棄する"""
-    Base.metadata.create_all(bind=engine) # 同期エンジンを使用
-    yield
-    Base.metadata.drop_all(bind=engine) # 同期エンジンを使用
+    db_session = TestingSessionLocal()
+    try:
+        yield db_session # テスト関数にセッションを提供
+    finally:
+        Base.metadata.drop_all(bind=engine) # テーブル削除
+        db_session.close()
 
 # --- FastAPIアプリケーションと依存性オーバーライド ---
 
-# get_db をオーバーライドする 同期 関数
-def override_get_db() -> Generator[Session, None, None]: # 戻り値を Session に
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# get_db をオーバーライドする関数 (dbフィクスチャに依存)
+# def override_get_db(db_session: Session = Depends(db)) -> Generator[Session, None, None]:
+#     yield db_session
 
-# @pytest_asyncio.fixture(scope="function") # 非同期セッションを使わないため不要
-# async def db() -> AsyncGenerator[AsyncSession, None]:
-#     """テストごとに独立した非同期DBセッションを提供するフィクスチャ"""
-#     async with TestingSessionLocal() as session:
-#         yield session
-#         await session.rollback() # 各テスト後にロールバック
-
-# test_app フィクスチャは async_client で必要なので残すが、内部で使う override_get_db は同期
+# test_app フィクスチャ (dbフィクスチャに依存)
 @pytest.fixture(scope="function")
-def test_app() -> Generator[FastAPI, None, None]:
+def test_app(db: Session) -> Generator[FastAPI, None, None]: # db フィクスチャを引数で受け取る
     """依存関係をオーバーライドしたテスト用FastAPIアプリケーションインスタンス"""
-    main_app.dependency_overrides[get_db] = override_get_db
-    yield main_app # yield に変更して後処理でクリア
-    main_app.dependency_overrides.clear() # テスト後にオーバーライドをクリア
+    # override_get_db を使わず、dbフィクスチャのセッションを直接返すようにlambdaで上書き
+    main_app.dependency_overrides[get_db] = lambda: db 
+    yield main_app
+    main_app.dependency_overrides.clear()
 
-# --- 非同期テストクライアント ---
-
+# --- 非同期テストクライアント (変更なし、test_app に依存) ---
 @pytest_asyncio.fixture(scope="function")
 async def async_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """テスト用の非同期HTTPクライアント"""
-    # ASGITransport を使用するように修正
     transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client 
