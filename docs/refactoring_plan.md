@@ -69,93 +69,244 @@
 - [ ] 社員種別管理 (`user_type`)
 - [ ] 勤務場所管理 (`location`)
 
-## 6. 作業ステップ (各管理機能ごと)
+## 6. 共通準備ステップ
 
-以下に、**社員管理 (`user`)** を例として、具体的な作業ステップを詳細に記述します。他の管理機能 (`group`, `user_type`, `location`) についても、エンティティ名 (`user`) を適宜読み替えながら、同様の手順を適用します。
+以下のステップは、すべての管理機能に共通する準備作業です。
 
-**ステップ 0: スキーマへの `as_form` 実装**
+**ステップ 0: スキーマへの `as_form` 実装 (実施済み)**
 
-   - [ ] HTMX フォームからのデータ受け取りに使用する Pydantic スキーマに `as_form` クラスメソッドを実装します。これは、リファクタリング対象の各管理機能 (`user`, `group`, `user_type`, `location`) の `Create` スキーマと `Update` スキーマに対して行います。
-       - `app/schemas/user.py`: `UserCreate`, `UserUpdate`
-       - `app/schemas/group.py`: `GroupCreate`, `GroupUpdate`
-       - `app/schemas/user_type.py`: `UserTypeCreate`, `UserTypeUpdate`
-       - `app/schemas/location.py`: `LocationCreate`, `LocationUpdate`
+   - [x] HTMX フォームからのデータ受け取りに使用する Pydantic スキーマに `as_form` クラスメソッドを実装します。これは、リファクタリング対象の各管理機能 (`user`, `group`, `user_type`, `location`) の `Create` スキーマと `Update` スキーマに対して行います。
+       - [x] `app/schemas/user.py`: `UserCreate`, `UserUpdate`
+       - [x] `app/schemas/group.py`: `GroupCreate`, `GroupUpdate`
+       - [x] `app/schemas/user_type.py`: `UserTypeCreate`, `UserTypeUpdate`
+       - [x] `app/schemas/location.py`: `LocationCreate`, `LocationUpdate`
        - *参考: `as_form` の実装は、FastAPI のドキュメントやコミュニティの例を参照してください。通常、`@classmethod` デコレータと `Form(...)` を使用して実装されます。*
 
-**ステップ 1: サービス層の作成とビジネスロジックの移行**
+**ステップ 1: サービス層の準備**
 
-   - [ ] **`app/services/` ディレクトリを新規作成**します (まだ存在しない場合)。
-   - [ ] **`app/services/user_service.py` を新規作成**します。
-   - [ ] `app/routers/api/v1/user.py` および `app/routers/pages/user.py` (もし存在すれば) から、ユーザー作成・更新時に関連するビジネスロジック（例: グループ ID、社員種別 ID の存在チェック、ユーザー ID やユーザー名の重複チェックなど）を `user_service.py` にサービス関数として切り出します。
-       - 例: `async def validate_user_dependencies(db: Session, group_id: int, user_type_id: int)`
-       - 例: `async def validate_user_creation(db: Session, user_in: schemas.UserCreate)`
-       - 例: `async def validate_user_update(db: Session, user_id: str, user_in: schemas.UserUpdate)`
-   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `user_service.py` に作成します。
-       - 例: `async def create_user_with_validation(db: Session, user_in: schemas.UserCreate) -> models.User:`
-       - 例: `async def update_user_with_validation(db: Session, user_id: str, user_in: schemas.UserUpdate) -> models.User:`
-   - [ ] `app/routers/api/v1/user.py` の `create_user` および `update_user` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [x] **`app/services/` ディレクトリを新規作成**します (まだ存在しない場合)。
+   - [x] `app/services/` 内に、対象となる各管理機能に対応する空のサービスファイル (`user_service.py`, `group_service.py`, `user_type_service.py`, `location_service.py`) と、ディレクトリを Python パッケージとして認識させるための `__init__.py` を作成します。
+   - [x] 同様に、テスト用のディレクトリ **`app/tests/services/` を新規作成**し、空の `__init__.py` を作成します。
 
-**ステップ 2: CRUD 層の修正 (必要に応じて)**
+**ステップ 2: 部分テンプレートの準備**
 
-   - [ ] HTML フラグメント (`_user_row.html`) のレンダリングに必要な関連情報（グループ名、社員種別名）を含めてユーザー情報を取得する関数を `app/crud/user.py` に**追加**します。
-       - 例: `def get_user_with_details(db: Session, user_id: str) -> Optional[models.User]:`
+   - [x] **`app/templates/components/common/_form_error.html` を新規作成**し、フォームエラーを共通的に表示するテンプレートを用意します (まだ存在しない場合)。
+   - [x] 対象となる各管理機能に対応する部分テンプレート用ディレクトリ **`app/templates/components/<entity>/`** (例: `user/`, `group/` など) を新規作成します。
+   - [x] 同様に、テスト用のディレクトリ **`app/tests/routers/pages/`** と **`app/tests/routers/api/v1/`** を新規作成し、それぞれに空の `__init__.py` を作成します (まだ存在しない場合)。
 
-**ステップ 3: 部分テンプレートの作成 (`app/templates/components/user/`)**
+## 7. 管理機能別リファクタリング
 
-   - [ ] **`app/templates/components/user/` ディレクトリを新規作成**します (まだ存在しない場合)。
-   - [ ] **`app/templates/components/user/_user_row.html` を新規作成**します。
-   - [ ] **`app/templates/components/user/_user_edit_form.html` を新規作成**します。
-   - [ ] **`app/templates/components/common/_form_error.html` を新規作成**します (まだ存在しない場合)。
+以下のセクションで、各管理機能 (`user`, `group`, `user_type`, `location`) のリファクタリング手順と進捗を個別に管理します。実施順序に従い、各機能のステップ3から9までを順に完了させてください。
 
-**ステップ 4: バックエンド API の追加・修正 (`app/routers/pages/user.py`)**
+**各ステップの進め方:**
+1.  **現状確認:** そのステップに関連する既存のコード（ルーター、CRUD、サービス、テンプレート等）を確認します。
+2.  **計画詳細化:** 確認した内容に基づき、そのステップでの具体的な作業内容（作成・修正するファイル、関数、ロジック等）を詳細化します。
+3.  **実行:** 計画に従ってコードの編集やファイルの作成を行います。
+4.  **テスト:** 計画で定義されたタイミングで自動テストを実行し、変更による影響を確認・修正します。
 
-   - [ ] **`app/routers/pages/user.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+### 7.1 社員管理 (user)
+
+**ステップ 3: ビジネスロジックのサービス層への移行**
+
+   - [x] `app/routers/api/v1/user.py` および `app/routers/pages/user.py` (もし存在すれば) から、ユーザー作成・更新時に関連するビジネスロジック（例: グループ ID、社員種別 ID の存在チェック、ユーザー ID やユーザー名の重複チェックなど）を `app/services/user_service.py` にサービス関数として切り出します。
+       - 例: `validate_user_dependencies`, `validate_user_creation`, `validate_user_update`
+   - [x] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/user_service.py` に作成します。
+       - 例: `create_user_with_validation`, `update_user_with_validation`
+   - [x] `app/routers/api/v1/user.py` の `create_user` および `update_user` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [x] **テスト実行(1):** 関連する既存APIテスト (`tests/routers/api/v1/test_user_api.py`) を実行し、意図しない挙動破壊がないか確認、必要に応じて修正しました。
+
+**ステップ 4: CRUD 層の修正 (必要に応じて)**
+
+   - [x] HTML フラグメント (`_user_row.html`) のレンダリングに必要な関連情報（グループ名、社員種別名）を含めてユーザー情報を取得する関数を `app/crud/user.py` に**追加**します (既存の取得関数で十分な場合は不要)。
+       - 例: `get_user_with_details`
+
+**ステップ 5: 部分テンプレートの作成 (`app/templates/components/user/`)**
+
+   - [x] **`app/templates/components/user/_user_row.html` を新規作成**します。テーブル行の HTML 構造を定義します。
+   - [x] **`app/templates/components/user/_user_edit_form.html` を新規作成**します。編集モーダル内で使用するフォームの HTML 構造を定義します。
+
+**ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/user.py`)**
+
+   - [x] **`app/routers/pages/user.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
        - **`get_user_edit_form` (GET `/pages/user/edit/{user_id}`)**: 編集フォーム (`_user_edit_form.html`) をレンダリングして返す。
-       - **`handle_create_user_row` (POST `/pages/user/row`)**: 新規ユーザーを作成し、新しいテーブル行 (`_user_row.html`) を返す。
-       - **`handle_update_user_row` (PUT `/pages/user/row/{user_id}`)**: 既存ユーザーを更新し、更新されたテーブル行 (`_user_row.html`) を返す。
+       - **`handle_create_user_row` (POST `/pages/user/row`)**: 新規ユーザーを作成し、新しいテーブル行 (`_user_row.html`) を返す。サービス層関数 (`create_user_with_validation`) を呼び出す。
+       - **`handle_update_user_row` (PUT `/pages/user/row/{user_id}`)**: 既存ユーザーを更新し、更新されたテーブル行 (`_user_row.html`) を返す。サービス層関数 (`update_user_with_validation`) を呼び出す。
+       - *注意: 削除は既存の `/api/v1/user/{{ user.id }}` をそのまま利用します。*
+   - [ ] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行します。
 
-**ステップ 5: フロントエンド テンプレートの修正 (`app/templates/pages/user/index.html`)**
+**ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/user/index.html`)**
 
-   - [ ] ユーザー一覧テーブルの `<tbody>` タグに `id="user-table-body"` を追加します。
-   - [ ] テーブルのループ処理を修正し、`_user_row.html` を `include` するように変更します。
-   - [ ] **編集モーダル**のコンテナ (`<dialog id="edit-user-modal-{{ user.id }}">` と `<div id="modal-content-edit-user-{{ user.id }}">`) が適切に配置されていることを確認します。
-   - [ ] **追加モーダル**内のフォーム (`<form id="add-user-form">`) に HTMX 属性を追加し、エラー表示領域、インジケータ、成功時のクローズ処理を実装します。
+   - [ ] ユーザー一覧テーブルの `<tbody>` タグに `id="user-table-body"` (または適切な ID) と `hx-target="this"` `hx-swap="outerHTML"` を追加します (追加操作によるテーブル全体の更新用)。
+   - [ ] テーブルの各行 (`<tr>`) を生成するループ処理を修正し、ステップ 5 で作成した `_user_row.html` を `include` するように変更します。各行の `<tr>` タグには `id="user-row-{{ user.id }}"` を付与します。
+   - [ ] **編集ボタン**: `hx-get="/pages/user/edit/{{ user.id }}"`、`hx-target="#modal-content-edit-user-{{ user.id }}"` などの属性を追加し、クリック時に編集フォームをモーダル内にロードするようにします。
+   - [ ] **編集モーダル**: 編集フォームをロードするコンテナ (`<div id="modal-content-edit-user-{{ user.id }}">`) を用意します。モーダル内のフォーム (`<form>`) に `hx-put="/pages/user/row/{{ user.id }}"`、`hx-target="#user-row-{{ user.id }}"`、`hx-swap="outerHTML"` などの属性を追加します。
+   - [ ] **追加モーダル**: フォーム (`<form>`) に `hx-post="/pages/user/row"`、`hx-target="#user-table-body"`、`hx-swap="innerHTML"` (またはテーブル構造に応じて `tbody` の内容を入れ替えるように) などの属性を追加します。
+   - [ ] **削除ボタン**: `hx-delete="/api/v1/user/{{ user.id }}"`、`hx-target="closest tr"`、`hx-swap="outerHTML swap:1s"`、`hx-confirm="本当に削除しますか？"` などの属性を追加します。
+   - [ ] 必要に応じて、エラー表示領域 (`hx-target` で指定)、ローディングインジケータ (`hx-indicator`)、モーダルを閉じる処理 (`HX-Trigger` ヘッダーや `htmx:afterRequest` イベントを利用) を実装します。
+   - [ ] **テスト実行(3):** 関連する自動テスト（サービス層、ページAPI、既存API）を再度実行し、問題がないことを確認します。手動での基本的な動作確認も推奨されます。
 
-**ステップ 6: テストの実装と実行**
+**ステップ 8: テストの最終確認と実装**
 
-   - [ ] **サービス層テスト:** `app/tests/services/` (なければ作成) に `test_user_service.py` を作成し、ステップ 1 で作成したサービス関数の単体テストを実装・実行します (バリデーションロジック、正常系、異常系)。
-   - [ ] **API テスト:** `app/tests/routers/pages/` (なければ作成) に `test_user_page.py` を作成し、ステップ 4 で追加・修正した以下のエンドポイントに対するテストを実装・実行します。
-       - `get_user_edit_form` (GET): 正常時のステータスコード 200 と HTML 内容の部分検証、存在しない ID の場合の 404。
-       - `handle_create_user_row` (POST): 正常時のステータスコード 200 と返却される `_user_row.html` の内容検証。バリデーションエラー時のステータスコード 4xx と `_form_error.html` の内容検証。
-       - `handle_update_user_row` (PUT): 正常時のステータスコード 200 と返却される `_user_row.html` の内容検証。バリデーションエラー時のステータスコード 4xx と `_form_error.html` の内容検証。存在しない ID の場合の 404。
-   - [ ] **既存 API テスト:** `app/tests/routers/api/v1/` (なければ作成) に `test_user_api.py` を作成し、`create_user`, `update_user` (サービス層呼び出しに変更後も JSON を返すこと)、`delete_user` (204 を返すこと) のテストを実装・実行します。
+   - [ ] これまでのステップで追加・修正したテストがすべて実装され、パスすることを確認します。
+       - [ ] サービス層テスト (`test_user_service.py`)
+       - [ ] ページ API テスト (`test_user_page.py`)
+       - [x] 既存 API テスト (`test_user_api.py` - ステップ3で確認・修正済み)
 
-**ステップ 7: JavaScript のクリーンアップ**
+**ステップ 9: JavaScript のクリーンアップ (`user` 関連部分)**
 
-   - [ ] 上記ステップが完了し、手動テストでも社員管理 (`user`) 機能が HTMX で完全に動作することを確認した後、`app/static/js/modal-handlers.js` から**ユーザー管理に関連する処理**を削除します。
+   - [ ] `modal-handlers.js` からユーザー管理関連処理を削除します。
+   - [ ] **テスト実行(4):** 関連する自動テストをすべて再実行し、JavaScript の削除が悪影響を与えていないことを確認します。
 
-## 7. 実施順序
+### 7.2 グループ管理 (group)
 
-以下の順序で、**各機能の実装とそのテストをセットで完了させながら**、段階的にリファクタリングを進めます。
+**ステップ 3: ビジネスロジックのサービス層への移行**
 
-1.  **スキーマ修正:** まずステップ 0 を実施し、リファクタリング対象**全機能**の関連スキーマに `as_form` を実装します。
-2.  **サービス層準備:** `app/services/` ディレクトリと、対象**全機能**に対応する空のサービスファイル (`user_service.py`, `group_service.py` など) および `__init__.py` を作成します。
-3.  **社員管理 (`user`)**: ステップ 1 から 7 を実施し、**実装とテストを完了**させます。
-4.  **グループ管理 (`group`)**: 同様にステップ 1 から 7 (エンティティ名を読み替え) を実施し、**実装とテストを完了**させます。
-5.  **社員種別管理 (`user_type`)**: 同様にステップ 1 から 7 を実施し、**実装とテストを完了**させます。
-6.  **勤務場所管理 (`location`)**: 同様にステップ 1 から 7 を実施し、**実装とテストを完了**させます。
-7.  **最終クリーンアップ:** 全ての管理機能のリファクタリングとテストが完了したら、不要になった JavaScript ファイル **`app/static/js/modal-handlers.js`** を削除し、テンプレートからの読み込みも削除します。（`apiClient.js` は他の機能で使用されているため削除しません）。最終的に `pytest` を実行し、全てのテストがパスすることを確認します。
+   - [ ] `app/routers/api/v1/group.py` および `app/routers/pages/group.py` (もし存在すれば) から、グループ作成・更新時に関連するビジネスロジック（例: グループ名の重複チェックなど）を `app/services/group_service.py` にサービス関数として切り出します。
+       - 例: `validate_group_creation`, `validate_group_update`
+   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/group_service.py` に作成します。
+       - 例: `create_group_with_validation`, `update_group_with_validation`
+   - [ ] `app/routers/api/v1/group.py` の `create_group` および `update_group` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [ ] **テスト実行(1):** 関連する既存APIテスト (`tests/routers/api/v1/test_group_api.py`) を実行し、意図しない挙動破壊がないか確認、必要に応じて修正します。
+   - [ ] **テスト実装(1):** サービス層のテスト (`tests/services/test_group_service.py`) の実装を開始します。
 
-## 8. 考慮事項
+**ステップ 4: CRUD 層の修正 (必要に応じて)**
 
-- **エラーハンドリング:** バックエンドはエラー時に `_form_error.html` を適切なステータスコードで返し、フロントエンドはそれを表示できるように `hx-target` や `HX-Retarget` を設定します。
-- **ローディングインジケータ:** `hx-indicator` を適切に設定します。
-- **URL生成:** `url_for()` を使用します。
-- **Alpine.js との連携:** モーダル表示は `onclick`, 非表示は `htmx:afterRequest` などで連携します。
-- **フォームデータの受け取り:** 各スキーマに実装された `as_form` を利用し、`Depends(schemas.<SchemaName>.as_form)` で受け取ります。
-- **テスト:**
-    - **テストディレクトリ構造:** `app/tests/` 下に `services/`, `routers/api/v1/`, `routers/pages/` といった形でテストファイルを配置します (例: `app/tests/routers/pages/test_user_page.py`)。
-    - **テストカバレッジ:** リファクタリングと同時にテストを追加することで、コードカバレッジの向上を目指します。
-    - **テストの実行:** 各機能の実装完了時に `pytest` を実行し、追加・修正したテストがパスすることを確認します。
+   - [ ] (グループ管理では通常不要。関連情報が少ないため)
 
-</rewritten_file> 
+**ステップ 5: 部分テンプレートの作成 (`app/templates/components/group/`)**
+
+   - [ ] **`app/templates/components/group/_group_row.html` を新規作成**します。
+   - [ ] **`app/templates/components/group/_group_edit_form.html` を新規作成**します。
+
+**ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/group.py`)**
+
+   - [ ] **`app/routers/pages/group.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+       - **`get_group_edit_form` (GET `/pages/group/edit/{group_id}`)**: 編集フォーム (`_group_edit_form.html`) をレンダリングして返す。
+       - **`handle_create_group_row` (POST `/pages/group/row`)**: 新規グループを作成し、新しいテーブル行 (`_group_row.html`) を返す。サービス層関数 (`create_group_with_validation`) を呼び出す。
+       - **`handle_update_group_row` (PUT `/pages/group/row/{group_id}`)**: 既存グループを更新し、更新されたテーブル行 (`_group_row.html`) を返す。サービス層関数 (`update_group_with_validation`) を呼び出す。
+   - [ ] **テスト実装・実行(2):** ページAPIエンドポイントのテスト (`tests/routers/pages/test_group_page.py`) を実装し、実行します。
+
+**ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/group/index.html`)**
+
+   - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
+   - [ ] **テスト実行(3):** 関連する自動テストを再度実行し、問題がないことを確認します。手動での確認も推奨。
+
+**ステップ 8: テストの最終確認と実装**
+
+   - [ ] これまでのステップで追加・修正したテストがすべて実装され、パスすることを確認します。
+       - [ ] サービス層テスト (`test_group_service.py`)
+       - [ ] ページ API テスト (`test_group_page.py`)
+       - [ ] 既存 API テスト (`test_group_api.py`)
+
+**ステップ 9: JavaScript のクリーンアップ (`group` 関連部分)**
+
+   - [ ] `modal-handlers.js` からグループ管理関連処理を削除します。
+   - [ ] **テスト実行(4):** 関連する自動テストをすべて再実行します。
+
+### 7.3 社員種別管理 (user_type)
+
+**ステップ 3: ビジネスロジックのサービス層への移行**
+
+   - [ ] `app/routers/api/v1/user_type.py` および `app/routers/pages/user_type.py` (もし存在すれば) から、社員種別作成・更新時に関連するビジネスロジック（例: 社員種別名の重複チェックなど）を `app/services/user_type_service.py` にサービス関数として切り出します。
+       - 例: `validate_user_type_creation`, `validate_user_type_update`
+   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/user_type_service.py` に作成します。
+       - 例: `create_user_type_with_validation`, `update_user_type_with_validation`
+   - [ ] `app/routers/api/v1/user_type.py` の `create_user_type` および `update_user_type` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [ ] **テスト実行(1):** `test_user_type_api.py` を実行・修正。
+   - [ ] **テスト実装(1):** `test_user_type_service.py` の実装開始。
+
+**ステップ 4: CRUD 層の修正 (必要に応じて)**
+
+   - [ ] (通常不要)
+
+**ステップ 5: 部分テンプレートの作成 (`app/templates/components/user_type/`)**
+
+   - [ ] **`app/templates/components/user_type/_user_type_row.html` を新規作成**します。
+   - [ ] **`app/templates/components/user_type/_user_type_edit_form.html` を新規作成**します。
+
+**ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/user_type.py`)**
+
+   - [ ] **`app/routers/pages/user_type.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+       - **`get_user_type_edit_form` (GET `/pages/user_type/edit/{user_type_id}`)**: 編集フォーム (`_user_type_edit_form.html`) をレンダリングして返す。
+       - **`handle_create_user_type_row` (POST `/pages/user_type/row`)**: 新規社員種別を作成し、新しいテーブル行 (`_user_type_row.html`) を返す。サービス層関数 (`create_user_type_with_validation`) を呼び出す。
+       - **`handle_update_user_type_row` (PUT `/pages/user_type/row/{user_type_id}`)**: 既存社員種別を更新し、更新されたテーブル行 (`_user_type_row.html`) を返す。サービス層関数 (`update_user_type_with_validation`) を呼び出す。
+   - [ ] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_type_page.py`) を実装し、実行します。
+
+**ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/user_type/index.html`)**
+
+   - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
+   - [ ] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
+
+**ステップ 8: テストの最終確認と実装**
+
+   - [ ] 全テストの実装・パスを確認。
+       - [ ] `test_user_type_service.py`
+       - [ ] `test_user_type_page.py`
+       - [ ] `test_user_type_api.py`
+
+**ステップ 9: JavaScript のクリーンアップ (`user_type` 関連部分)**
+
+   - [ ] `modal-handlers.js` から関連処理を削除します。
+   - [ ] **テスト実行(4):** 自動テスト再実行。
+
+### 7.4 勤務場所管理 (location)
+
+**ステップ 3: ビジネスロジックのサービス層への移行**
+
+   - [ ] `app/routers/api/v1/location.py` および `app/routers/pages/location.py` (もし存在すれば) から、勤務場所作成・更新時に関連するビジネスロジック（例: 勤務場所名の重複チェックなど）を `app/services/location_service.py` にサービス関数として切り出します。
+       - 例: `validate_location_creation`, `validate_location_update`
+   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/location_service.py` に作成します。
+       - 例: `create_location_with_validation`, `update_location_with_validation`
+   - [ ] `app/routers/api/v1/location.py` の `create_location` および `update_location` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [ ] **テスト実行(1):** `test_location_api.py` を実行・修正。
+   - [ ] **テスト実装(1):** `test_location_service.py` の実装開始。
+
+**ステップ 4: CRUD 層の修正 (必要に応じて)**
+
+   - [ ] (通常不要)
+
+**ステップ 5: 部分テンプレートの作成 (`app/templates/components/location/`)**
+
+   - [ ] **`app/templates/components/location/_location_row.html` を新規作成**します。
+   - [ ] **`app/templates/components/location/_location_edit_form.html` を新規作成**します。
+
+**ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/location.py`)**
+
+   - [ ] **`app/routers/pages/location.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+       - **`get_location_edit_form` (GET `/pages/location/edit/{location_id}`)**: 編集フォーム (`_location_edit_form.html`) をレンダリングして返す。
+       - **`handle_create_location_row` (POST `/pages/location/row`)**: 新規勤務場所を作成し、新しいテーブル行 (`_location_row.html`) を返す。サービス層関数 (`create_location_with_validation`) を呼び出す。
+       - **`handle_update_location_row` (PUT `/pages/location/row/{location_id}`)**: 既存勤務場所を更新し、更新されたテーブル行 (`_location_row.html`) を返す。サービス層関数 (`update_location_with_validation`) を呼び出す。
+   - [ ] **テスト実装・実行(2):** ページAPIエンドポイントのテスト (`tests/routers/pages/test_location_page.py`) を実装し、実行します。
+
+**ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/location/index.html`)**
+
+   - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
+   - [ ] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
+
+**ステップ 8: テストの最終確認と実装**
+
+   - [ ] 全テストの実装・パスを確認。
+       - [ ] `test_location_service.py`
+       - [ ] `test_location_page.py`
+       - [ ] `test_location_api.py`
+
+**ステップ 9: JavaScript のクリーンアップ (`location` 関連部分)**
+
+   - [ ] `modal-handlers.js` から関連処理を削除します。
+   - [ ] **テスト実行(4):** 自動テスト再実行。
+
+## 8. 実施順序
+
+以下の順序でリファクタリングを進めます。
+
+1.  **共通準備:** ステップ 0, 1, 2 を実施済み。
+2.  **管理機能別実施:** 次に、「7. 管理機能別リファクタリング」の各サブセクションを以下の順序で実施します。**各管理機能のステップ内では、実装とテストを適宜交互に行い、問題を早期に発見します。**
+    1.  **7.1 社員管理 (`user`)** (ステップ3, 4 完了済み)
+    2.  **7.2 グループ管理 (`group`)**
+    3.  **7.3 社員種別管理 (`user_type`)**
+    4.  **7.4 勤務場所管理 (`location`)**
+3.  **最終クリーンアップ:** 全ての管理機能のリファクタリングとテストが完了したら、... (略)
+
+## 9. 考慮事項
+
+// ... existing code ...

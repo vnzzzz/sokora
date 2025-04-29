@@ -1,0 +1,46 @@
+{# テーブルの単一行を表示する部分テンプレート #} {# Context: user (models.User, joinedload 済みを想定) #}
+
+<tr id="user-row-{{ user.id }}">
+  <td class="border px-4 py-2">{{ user.id }}</td>
+  <td class="border px-4 py-2">{{ user.username }}</td>
+  <td class="border px-4 py-2">{{ user.group.name if user.group else '-' }}</td>
+  {# グループ名 #}
+  <td class="border px-4 py-2">{{ user.user_type.name if user.user_type else '-' }}</td>
+  {# 社員種別名 #}
+  <td class="border px-4 py-2">
+    {# 編集ボタン（HTMX属性はステップ7で追加） #}
+    <button
+      class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm"
+      {#
+      alpine.js
+      でモーダルを開く想定
+      #}
+      @click="$dispatch('open-modal', 'edit-user-modal-' + '{{ user.id }}')"
+      {#
+      HTMX
+      でフォームコンテンツをロード
+      #}
+      hx-get="{{ url_for('get_user_edit_form', user_id=user.id) }}"
+      hx-target="#modal-content-edit-user-{{ user.id }}"
+      hx-swap="innerHTML"
+    >
+      編集
+    </button>
+    {# 削除ボタン（HTMX属性はステップ7で追加） #}
+    <button
+      class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm ml-2"
+      hx-delete="{{ url_for('delete_user', user_id=user.id) }}"
+      hx-target="closest tr"
+      hx-swap="outerHTML swap:1s"
+      hx-confirm="ユーザー '{{ user.username }}' (ID: {{ user.id }}) を本当に削除しますか？関連する勤怠データも削除されます。"
+    >
+      削除
+    </button>
+
+    {# 編集モーダルコンテナ (テンプレート自体は index.html 側にある想定だが、hx-target のために ID をここに記載) #} {#
+    <dialog id="edit-user-modal-{{ user.id }}">...</dialog>
+    #} {# モーダルの中身をロードする場所 (テンプレート自体は index.html 側にある想定) #} {#
+    <div id="modal-content-edit-user-{{ user.id }}"></div>
+    #}
+  </td>
+</tr>
