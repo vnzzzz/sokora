@@ -132,15 +132,17 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             ModelType: 更新されたオブジェクト
         """
         try:
-            obj_data = jsonable_encoder(db_obj)
+            # obj_data = jsonable_encoder(db_obj) # 不要
             if isinstance(obj_in, dict):
                 update_data = obj_in
             else:
                 # Pydantic v2互換: dict()からmodel_dump()に変更
                 update_data = obj_in.model_dump(exclude_unset=True)
-            for field in obj_data:
-                if field in update_data:
-                    setattr(db_obj, field, update_data[field])
+            # update_data のキーを直接ループして更新
+            for field, value in update_data.items():
+                # hasattr で存在確認を追加するとより安全
+                if hasattr(db_obj, field):
+                    setattr(db_obj, field, value)
             db.add(db_obj)
             db.commit()
             db.refresh(db_obj)
