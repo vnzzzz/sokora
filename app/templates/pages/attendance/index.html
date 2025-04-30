@@ -90,8 +90,9 @@
                 <span class="label-text">勤務場所</span>
               </div>
               <div class="space-y-2">
-                {% for location_type in location_types %} {% set location_id = loop.index %} {% set input_id =
-                "location_" ~ location_id %} {% set style_class = location_styles[location_type]|default('') %}
+                {% for location in location_objects %} {% set location_id = location.id %} {% set location_name =
+                location.name %} {% set input_id = "location_" ~ location_id %} {% set style_class =
+                location_styles[location_name]|default('') %}
                 <label for="{{ input_id }}" class="flex items-center p-2 cursor-pointer {{ style_class }}">
                   <input
                     type="radio"
@@ -99,10 +100,10 @@
                     value="{{ location_id }}"
                     id="{{ input_id }}"
                     class="radio radio-sm mr-2"
-                    x-model="selectedLocationId"
+                    x-model.number="selectedLocationId"
                     x-on:change="selectedLocationId = {{ location_id }}"
                   />
-                  <span>{{ location_type }}</span>
+                  <span>{{ location_name }}</span>
                 </label>
                 {% endfor %}
               </div>
