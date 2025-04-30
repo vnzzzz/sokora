@@ -168,25 +168,25 @@
 
 **ステップ 4: CRUD 層の修正 (必要に応じて)**
 
-   - [ ] (グループ管理では通常不要。関連情報が少ないため)
+   - [x] (グループ管理では通常不要。関連情報が少ないため)
 
 **ステップ 5: 部分テンプレートの作成 (`app/templates/components/group/`)**
 
-   - [ ] **`app/templates/components/group/_group_row.html` を新規作成**します。
-   - [ ] **`app/templates/components/group/_group_edit_form.html` を新規作成**します。
+   - [x] **`app/templates/components/group/_group_row.html` を新規作成**します。
+   - [x] **`app/templates/components/group/_group_edit_form.html` を新規作成**します。
 
 **ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/group.py`)**
 
-   - [ ] **`app/routers/pages/group.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+   - [x] **`app/routers/pages/group.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
        - **`get_group_edit_form` (GET `/pages/group/edit/{group_id}`)**: 編集フォーム (`_group_edit_form.html`) をレンダリングして返す。
        - **`handle_create_group_row` (POST `/pages/group/row`)**: 新規グループを作成し、新しいテーブル行 (`_group_row.html`) を返す。サービス層関数 (`create_group_with_validation`) を呼び出す。
        - **`handle_update_group_row` (PUT `/pages/group/row/{group_id}`)**: 既存グループを更新し、更新されたテーブル行 (`_group_row.html`) を返す。サービス層関数 (`update_group_with_validation`) を呼び出す。
-   - [ ] **テスト実装・実行(2):** ページAPIエンドポイントのテスト (`tests/routers/pages/test_group_page.py`) を実装し、実行します。
+   - [x] **テスト実装・実行(2):** ページAPIエンドポイントのテスト (`tests/routers/pages/test_group_page.py`) を実装し、実行します。
 
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/group/index.html`)**
 
-   - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
-   - [ ] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
+   - [x] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
+   - [x] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
 
 **ステップ 8: テストの最終確認と実装**
 
