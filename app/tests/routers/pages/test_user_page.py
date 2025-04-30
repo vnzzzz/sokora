@@ -56,14 +56,7 @@ async def test_read_users_page(async_client: AsyncClient, db: Session) -> None:
     assert re.search(rf'<span>{re.escape(group_name_str)}<\/span>', html) is not None, "Group name not found"
     assert re.search(rf'<span\s+.*?id="user-type-{re.escape(user1_id_str)}".*?>{re.escape(user_type_name_str)}<\/span>', html) is not None, "User type name not found"
     assert f'hx-get="/pages/user/edit/{user1_id_str}"' in html # これは単純な文字列で大丈夫そう
-    # 修正: 正規表現でテーブル行の存在を確認
-    assert re.search(rf'<tr\s+.*?id="user-row-{user1.id}".*?>', html) is not None, "User row TR tag not found using regex"
-    # 修正: 正規表現で内容を確認 (空白や改行に柔軟に対応)
-    assert re.search(rf'>{re.escape(user1.username)}\s*\({re.escape(user1.id)}\)<\/span>', html) is not None, "Username/ID not found"
-    assert re.search(rf'<span>{re.escape(group.name)}<\/span>', html) is not None, "Group name not found"
-    assert re.search(rf'<span\s+.*?id="user-type-{user1.id}".*?>{re.escape(user_type.name)}<\/span>', html) is not None, "User type name not found"
-    assert f'hx-get="/pages/user/edit/{user1.id}"' in html # これは単純な文字列で大丈夫そう
-    assert f'delete-form-{user1.id}' in html # これも大丈夫そう
+    assert f'delete-form-{user1_id_str}' in html # これも大丈夫そう
 
 # --- GET /pages/user/edit/{user_id} --- 
 

@@ -108,54 +108,51 @@
 
 **ステップ 3: ビジネスロジックのサービス層への移行**
 
-   - [x] `app/routers/api/v1/user.py` および `app/routers/pages/user.py` (もし存在すれば) から、ユーザー作成・更新時に関連するビジネスロジック（例: グループ ID、社員種別 ID の存在チェック、ユーザー ID やユーザー名の重複チェックなど）を `app/services/user_service.py` にサービス関数として切り出します。
-       - 例: `validate_user_dependencies`, `validate_user_creation`, `validate_user_update`
-   - [x] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/user_service.py` に作成します。
+   - [x] `app/routers/api/v1/user.py` および `app/routers/pages/user.py` から、ユーザー作成・更新時に関連するビジネスロジック（例: グループ ID、社員種別 ID の存在チェック、ユーザー ID やユーザー名の重複チェックなど）を `app/services/user_service.py` にサービス関数として切り出しました。
+       - 例: `validate_dependencies`, `validate_user_creation`, `validate_user_update`
+   - [x] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/user_service.py` に作成しました。
        - 例: `create_user_with_validation`, `update_user_with_validation`
-   - [x] `app/routers/api/v1/user.py` の `create_user` および `update_user` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
-   - [x] **テスト実行(1):** 関連する既存APIテスト (`tests/routers/api/v1/test_user_api.py`) を実行し、意図しない挙動破壊がないか確認、必要に応じて修正しました。
+   - [x] `app/routers/api/v1/user.py` の `create_user` および `update_user` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更しました。
+   - [x] **テスト実行(1):** 関連する既存APIテスト (`tests/routers/api/v1/test_user.py`) を実行し、意図しない挙動破壊がないか確認、必要に応じて修正しました。
 
 **ステップ 4: CRUD 層の修正 (必要に応じて)**
 
-   - [x] HTML フラグメント (`_user_row.html`) のレンダリングに必要な関連情報（グループ名、社員種別名）を含めてユーザー情報を取得する関数を `app/crud/user.py` に**追加**します (既存の取得関数で十分な場合は不要)。
-       - 例: `get_user_with_details`
+   - [x] HTML フラグメント (`_user_row.html`) のレンダリングに必要な関連情報（グループ名、社員種別名）を含めてユーザー情報を取得する関数 `get_user_with_details` を `app/crud/user.py` に**追加**しました。
 
 **ステップ 5: 部分テンプレートの作成 (`app/templates/components/user/`)**
 
-   - [x] **`app/templates/components/user/_user_row.html` を新規作成**します。テーブル行の HTML 構造を定義します。
-   - [x] **`app/templates/components/user/_user_edit_form.html` を新規作成**します。編集モーダル内で使用するフォームの HTML 構造を定義します。
+   - [x] **`app/templates/components/user/_user_row.html` を新規作成**し、テーブル行のHTMLを定義しました。
+   - [x] **`app/templates/components/user/_user_edit_form.html` を新規作成**し、編集フォームのHTMLを定義しました。
 
 **ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/user.py`)**
 
-   - [x] **`app/routers/pages/user.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+   - [x] **`app/routers/pages/user.py`** に、HTMX から利用される以下のエンドポイントを追加しました。
        - **`get_user_edit_form` (GET `/pages/user/edit/{user_id}`)**: 編集フォーム (`_user_edit_form.html`) をレンダリングして返す。
        - **`handle_create_user_row` (POST `/pages/user/row`)**: 新規ユーザーを作成し、新しいテーブル行 (`_user_row.html`) を返す。サービス層関数 (`create_user_with_validation`) を呼び出す。
        - **`handle_update_user_row` (PUT `/pages/user/row/{user_id}`)**: 既存ユーザーを更新し、更新されたテーブル行 (`_user_row.html`) を返す。サービス層関数 (`update_user_with_validation`) を呼び出す。
-       - *注意: 削除は既存の `/api/v1/user/{{ user.id }}` をそのまま利用します。*
-   - [x] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行します。
+   - [x] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行しました。
 
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/user/index.html`)**
 
-   - [ ] ユーザー一覧テーブルの `<tbody>` タグに `id="user-table-body"` (または適切な ID) と `hx-target="this"` `hx-swap="outerHTML"` を追加します (追加操作によるテーブル全体の更新用)。
-   - [ ] テーブルの各行 (`<tr>`) を生成するループ処理を修正し、ステップ 5 で作成した `_user_row.html` を `include` するように変更します。各行の `<tr>` タグには `id="user-row-{{ user.id }}"` を付与します。
-   - [ ] **編集ボタン**: `hx-get="/pages/user/edit/{{ user.id }}"`、`hx-target="#modal-content-edit-user-{{ user.id }}"` などの属性を追加し、クリック時に編集フォームをモーダル内にロードするようにします。
-   - [ ] **編集モーダル**: 編集フォームをロードするコンテナ (`<div id="modal-content-edit-user-{{ user.id }}">`) を用意します。モーダル内のフォーム (`<form>`) に `hx-put="/pages/user/row/{{ user.id }}"`、`hx-target="#user-row-{{ user.id }}"`、`hx-swap="outerHTML"` などの属性を追加します。
-   - [ ] **追加モーダル**: フォーム (`<form>`) に `hx-post="/pages/user/row"`、`hx-target="#user-table-body"`、`hx-swap="innerHTML"` (またはテーブル構造に応じて `tbody` の内容を入れ替えるように) などの属性を追加します。
-   - [ ] **削除ボタン**: `hx-delete="/api/v1/user/{{ user.id }}"`、`hx-target="closest tr"`、`hx-swap="outerHTML swap:1s"`、`hx-confirm="本当に削除しますか？"` などの属性を追加します。
-   - [ ] 必要に応じて、エラー表示領域 (`hx-target` で指定)、ローディングインジケータ (`hx-indicator`)、モーダルを閉じる処理 (`HX-Trigger` ヘッダーや `htmx:afterRequest` イベントを利用) を実装します。
-   - [ ] **テスト実行(3):** 関連する自動テスト（サービス層、ページAPI、既存API）を再度実行し、問題がないことを確認します。手動での基本的な動作確認も推奨されます。
+   - [x] テーブルの各行 (`<tr>`) を生成するループ処理を修正し、ステップ 5 で作成した `_user_row.html` を `include` するように変更しました。各行の `<tr>` タグには `id="user-row-{{ user.id }}"` を付与しています。
+   - [x] **編集ボタン**: `hx-get="/pages/user/edit/{{ user.id }}"`、`hx-target="#modal-content-edit-user-{{ user.id }}"` などの属性を追加し、クリック時に編集フォームをモーダル内にロードするようにしました。
+   - [x] **編集モーダル**: 編集フォームをロードするコンテナ (`<div id="modal-content-edit-user-{{ user.id }}">`) を用意し、モーダル内のフォーム (`<form>`) に `hx-put="/pages/user/row/{{ user.id }}"` などの属性を追加しました。（成功時はページリロードのため `hx-target` は不要）
+   - [x] **追加モーダル**: フォーム (`<form id="add-user-form">`) に `hx-post="/pages/user/row"` 属性が追加されています。成功時はバックエンドからの `HX-Trigger` によるページリロードでテーブルが更新され、エラー時は `HX-Retarget` でエラー表示領域が更新されるため、フォーム自体への `hx-target`/`hx-swap` 属性は不要であり、設定されていません。
+   - [x] **削除ボタン**: 削除確認モーダル内の確定ボタンに `hx-delete="/api/v1/user/{{ user.id }}"`、`hx-target="closest tr"`、`hx-swap="outerHTML swap:1s"`、`hx-confirm` が設定されています (削除は既存 API を利用)。
+   - [x] エラー表示領域 (`_form_error.html` を include)、ローディングインジケータ (`loading_indicator`)、モーダルを閉じる処理 (`HX-Trigger` でのリロードまたは Alpine.js) が実装されています。
+   - [x] **テスト実行(3):** 関連する自動テスト（サービス層、ページAPI、既存API）はパスしています。手動での動作確認は未実施です。
 
 **ステップ 8: テストの最終確認と実装**
 
-   - [ ] これまでのステップで追加・修正したテストがすべて実装され、パスすることを確認します。
-       - [ ] サービス層テスト (`test_user_service.py`)
-       - [ ] ページ API テスト (`test_user_page.py`)
-       - [x] 既存 API テスト (`test_user_api.py` - ステップ3で確認・修正済み)
+   - [x] これまでのステップで追加・修正したテストがすべて実装され、パスすることを確認しました。
+       - [x] サービス層テスト (`test_user_service.py`)
+       - [x] ページ API テスト (`test_user_page.py`)
+       - [x] 既存 API テスト (`test_user.py` - ステップ3で確認・修正済み)
 
 **ステップ 9: JavaScript のクリーンアップ (`user` 関連部分)**
 
-   - [ ] `modal-handlers.js` からユーザー管理関連処理を削除します。
-   - [ ] **テスト実行(4):** 関連する自動テストをすべて再実行し、JavaScript の削除が悪影響を与えていないことを確認します。
+   - [x] `modal-handlers.js` の `updateUIAfterEdit` 関数から、不要になったユーザー関連のコードブロックを削除しました。他の汎用関数 (`setup...`) は、他エンティティでまだ使用されている可能性があるため残しています。
+   - [x] **テスト実行(4):** 関連する自動テストはすべてパスしています。
 
 ### 7.2 グループ管理 (group)
 
