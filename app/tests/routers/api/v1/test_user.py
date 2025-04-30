@@ -163,7 +163,7 @@ async def test_create_user_duplicate_id(async_client: AsyncClient, db: Session) 
 
 async def test_create_user_invalid_dependency_id(async_client: AsyncClient, db: Session) -> None:
     """
-    存在しない group_id または user_type_id を指定した場合に 404 エラーが返されることをテストします。
+    存在しない group_id または user_type_id を指定した場合に 400 エラーが返されることをテストします。
     """
     test_group, test_user_type = create_test_dependencies(db)
     non_existent_id = 9999
@@ -176,8 +176,9 @@ async def test_create_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "user_type_id": test_user_type.id
     }
     response_group = await async_client.post("/api/users", json=payload_invalid_group)
-    assert response_group.status_code == status.HTTP_404_NOT_FOUND
-    assert "Group with id" in response_group.json()["detail"] # crud の get_or_404 メッセージに依存
+    assert response_group.status_code == status.HTTP_400_BAD_REQUEST
+    expected_detail_group = f"指定されたグループID({non_existent_id})は存在しません。"
+    assert expected_detail_group in response_group.json()["detail"]
 
     # ケース2: 無効な user_type_id
     payload_invalid_user_type = {
@@ -187,8 +188,9 @@ async def test_create_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "user_type_id": non_existent_id
     }
     response_user_type = await async_client.post("/api/users", json=payload_invalid_user_type)
-    assert response_user_type.status_code == status.HTTP_404_NOT_FOUND
-    assert "UserType with id" in response_user_type.json()["detail"] # crud の get_or_404 メッセージに依存 
+    assert response_user_type.status_code == status.HTTP_400_BAD_REQUEST
+    expected_detail_ut = f"指定された社員種別ID({non_existent_id})は存在しません。"
+    assert expected_detail_ut in response_user_type.json()["detail"]
 
 
 # --- PUT /api/users/{user_id} Tests ---
@@ -244,7 +246,7 @@ async def test_update_user_not_found(async_client: AsyncClient, db: Session) -> 
 
 async def test_update_user_invalid_dependency_id(async_client: AsyncClient, db: Session) -> None:
     """
-    更新時に存在しない group_id または user_type_id を指定した場合に 404 エラーが返されることをテストします。
+    更新時に存在しない group_id または user_type_id を指定した場合に 400 エラーが返されることをテストします。
     """
     # 依存関係と初期ユーザーを作成
     group1, ut1 = create_test_dependencies(db)
@@ -260,8 +262,9 @@ async def test_update_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "user_type_id": ut1.id
     }
     response_group = await async_client.put(f"/api/users/{user_id_to_update}", json=payload_invalid_group)
-    assert response_group.status_code == status.HTTP_404_NOT_FOUND
-    assert "Group with id" in response_group.json()["detail"]
+    assert response_group.status_code == status.HTTP_400_BAD_REQUEST
+    expected_detail_group = f"指定されたグループID({non_existent_id})は存在しません。"
+    assert expected_detail_group in response_group.json()["detail"]
 
     # ケース2: 無効な user_type_id
     payload_invalid_user_type = {
@@ -270,8 +273,9 @@ async def test_update_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "user_type_id": non_existent_id
     }
     response_user_type = await async_client.put(f"/api/users/{user_id_to_update}", json=payload_invalid_user_type)
-    assert response_user_type.status_code == status.HTTP_404_NOT_FOUND
-    assert "UserType with id" in response_user_type.json()["detail"] 
+    assert response_user_type.status_code == status.HTTP_400_BAD_REQUEST
+    expected_detail_ut = f"指定された社員種別ID({non_existent_id})は存在しません。"
+    assert expected_detail_ut in response_user_type.json()["detail"]
 
 
 # --- DELETE /api/users/{user_id} Tests ---

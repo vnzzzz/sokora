@@ -92,14 +92,17 @@ async def test_create_user_type_duplicate_name(async_client: AsyncClient, db: Se
     POST /api/user_types - 重複する社員種別名で作成しようとした場合に 400 エラーが返されることをテストします。
     """
     user_type_name = "Duplicate UserType"
-    crud_user_type.create(db, obj_in=UserTypeCreate(name=user_type_name))
-    db.commit()
+    # 最初に社員種別を作成しておく（API経由で）
+    await async_client.post("/api/user_types", json={"name": user_type_name})
+    # db.commit() # APIコール内でコミットされるはず
 
+    # 同じ名前で再度作成しようとする
     payload = {"name": user_type_name}
     response = await async_client.post("/api/user_types", json=payload)
-    
+
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()["detail"] == "この社員種別は既に存在します"
+    # サービス層が返すエラーメッセージに合わせる
+    assert response.json()["detail"] == "この社員種別名は既に存在します"
 
 
 # --- PUT /api/user_types/{user_type_id} Tests ---

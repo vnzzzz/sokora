@@ -1,10 +1,8 @@
-{% extends "layout/base.html" %}
-{% set title_text = "社員管理" %}
-{% from "components/common/modal.html" import add_modal, edit_modal, delete_confirm_modal %}
-
-{% block content %}
+{% extends "layout/base.html" %} {% set title_text = "社員管理" %} {% from "components/common/modal.html" import
+add_modal, edit_modal, delete_confirm_modal %} {% from "components/common/htmx_helpers.html" import loading_indicator %}
+{% block content %} {{ loading_indicator() }}
 <div class="p-4">
-  <div class="flex justify-between items-center max-w-[700px] mb-4">
+  <div class="flex justify-between items-center max-w-4xl mb-4">
     <div>
       <h2 class="text-lg font-bold text-base-content">社員管理</h2>
     </div>
@@ -35,20 +33,40 @@
         <label class="label" for="add-username">
           <span class="label-text">社員名</span>
         </label>
-        <input type="text" id="add-username" name="username" class="input input-bordered focus:border-neutral" required autocomplete="name" />
+        <input
+          type="text"
+          id="add-username"
+          name="username"
+          class="input input-bordered focus:border-neutral"
+          required
+          autocomplete="name"
+        />
       </div>
       <div class="form-control">
         <label class="label" for="add-user-id">
           <span class="label-text">社員ID</span>
         </label>
-        <input type="text" id="add-user-id" name="user_id" class="input input-bordered focus:border-neutral" required autocomplete="off" />
+        <input
+          type="text"
+          id="add-user-id"
+          name="id"
+          class="input input-bordered focus:border-neutral"
+          required
+          autocomplete="off"
+        />
       </div>
       <div class="form-control">
         <label class="label" for="add-group-id">
           <span class="label-text">グループ</span>
           <span class="label-text-alt text-error">*</span>
         </label>
-        <select id="add-group-id" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+        <select
+          id="add-group-id"
+          name="group_id"
+          class="select select-bordered focus:border-neutral"
+          required
+          autocomplete="off"
+        >
           <option value="">選択してください</option>
           {% for group in groups %}
           <option value="{{ group.id }}">{{ group.name }}</option>
@@ -60,27 +78,27 @@
           <span class="label-text">社員種別</span>
           <span class="label-text-alt text-error">*</span>
         </label>
-        <select id="add-user-type-id" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+        <select
+          id="add-user-type-id"
+          name="user_type_id"
+          class="select select-bordered focus:border-neutral"
+          required
+          autocomplete="off"
+        >
           <option value="">選択してください</option>
           {% for user_type in user_types %}
           <option value="{{ user_type.id }}">{{ user_type.name }}</option>
           {% endfor %}
         </select>
       </div>
-      {% endset %}
-      {{ add_modal("社員追加", "add-user-form", add_content) }}
+      {% endset %} {{ add_modal("社員追加", "add-user-form", add_content, "/pages/user/row") }}
     </div>
   </div>
 
   <div class="mt-4">
     {% if users|length == 0 %}
     <div class="alert alert-info shadow-sm">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        class="stroke-current shrink-0 w-6 h-6"
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -95,177 +113,95 @@
     {% for group_name in group_names %}
     <div class="mb-6">
       <h3 class="text-lg font-bold text-base-content mb-3">{{ group_name }}</h3>
-      <div class="overflow-x-auto rounded-lg max-w-[700px]">
+      <div class="overflow-x-auto rounded-lg max-w-4xl">
         <table class="table table-zebra w-full">
           <thead class="bg-base-300 text-base-content">
             <tr>
               <th class="rounded-tl-lg">社員名</th>
+              <th>グループ</th>
               <th>社員種別</th>
               <th class="text-right rounded-tr-lg">操作</th>
             </tr>
           </thead>
-          <tbody>
-            {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %}
-            <tr class="hover:bg-base-200" id="user-row-{{ user_id }}">
-              <td class="font-medium">
-                <span id="user-name-{{ user_id }}">{{ user_name }} ({{ user_id }})</span>
-              </td>
-              <td>
-                {% if user_obj.user_type %}
-                  <span id="user-type-{{ user_id }}">{{ user_obj.user_type.name }}</span>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td class="text-right">
-                <div class="flex justify-end gap-2">
-                  <div x-data="{ showEditModal: false }">
-                    <button
-                      @click="showEditModal = true"
-                      class="btn btn-sm btn-outline shadow-sm hover:shadow"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-4 h-4 mr-1"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                        />
-                      </svg>
-                      編集
-                    </button>
-                    
-                    <!-- 編集モーダル -->
-                    {% set edit_content %}
-                    <div class="form-control">
-                      <label class="label" for="edit-username-{{ user_id }}">
-                        <span class="label-text">社員名</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="edit-username-{{ user_id }}"
-                        name="username"
-                        value="{{ user_name }}"
-                        class="input input-bordered focus:border-neutral"
-                        required
-                        autocomplete="name"
-                      />
-                    </div>
-                    <div class="form-control">
-                      <label class="label" for="edit-group-id-{{ user_id }}">
-                        <span class="label-text">グループ</span>
-                        <span class="label-text-alt text-error">*</span>
-                      </label>
-                      <select id="edit-group-id-{{ user_id }}" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
-                        <option value="">選択なし</option>
-                        {% for group in groups %}
-                        <option value="{{ group.id }}" {% if user_obj and user_obj.group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <div class="form-control">
-                      <label class="label" for="edit-user-type-id-{{ user_id }}">
-                        <span class="label-text">社員種別</span>
-                        <span class="label-text-alt text-error">*</span>
-                      </label>
-                      <select id="edit-user-type-id-{{ user_id }}" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
-                        <option value="">選択なし</option>
-                        {% for user_type in user_types %}
-                        <option value="{{ user_type.id }}" {% if user_obj and user_obj.user_type_id == user_type.id %}selected{% endif %}>{{ user_type.name }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    {% endset %}
-                    {{ edit_modal("社員編集", "edit-form", edit_content, user_id) }}
-                  </div>
-                  <div x-data="{ showDeleteConfirm: false }">
-                    <button
-                      @click="showDeleteConfirm = true"
-                      class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-4 h-4"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                        />
-                      </svg>
-                      削除
-                    </button>
-
-                    <!-- 削除確認モーダル -->
-                    {% set delete_warning %}
-                    ※勤怠データが登録されている場合は削除できません。
-                    {% endset %}
-                    {{ delete_confirm_modal("削除の確認", delete_warning, user_id, user_name ~ " (" ~ user_id ~ ")", "削除") }}
-                  </div>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
+          <tbody id="user-table-body-{{ group_name|urlencode }}">
+            {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %} {% with user=user_obj,
+            groups=groups, user_types=user_types %} {% include "components/user/_user_row.html" %} {% endwith %} {%
+            endfor %}
           </tbody>
         </table>
       </div>
     </div>
-    {% endfor %}
-    {% endif %}
+    {% endfor %} {% endif %}
   </div>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script src="/static/js/modal-handlers.js"></script>
+{% endblock %} {% block extra_scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // 社員追加フォームの送信処理
-    setupAddFormHandler('add-user-form', '/api/users/')
-
-    // 社員編集の処理
-    setupEditFormHandlers('.btn[data-item-id][class*="btn-neutral"]', 'edit-form', '/api/users/{id}', function(data, itemId) {
-      // 成功したら該当行のデータを更新
-      if (data && itemId) {
-        // 社員名を更新
-        const nameElement = document.getElementById('user-name-' + itemId);
-        if (nameElement && data.username) {
-          nameElement.textContent = data.username + ' (' + data.user_id + ')';
-        }
-
-        // 社員種別を更新
-        const typeElement = document.getElementById('user-type-' + itemId);
-        if (typeElement && data.user_type && data.user_type.name) {
-          typeElement.textContent = data.user_type.name;
-        }
+  document.body.addEventListener('htmx:afterRequest', function (event) {
+    // 成功時のレスポンスヘッダーを確認
+    const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
+    let triggers = {}
+    if (triggerHeader) {
+      try {
+        triggers = JSON.parse(triggerHeader)
+      } catch (e) {
+        console.error('Failed to parse HX-Trigger header:', e)
       }
-    })
+    }
 
-    // 社員削除の処理
-    setupDeleteHandlers('.btn[data-item-id][class*="btn-error"]', '/api/users/{id}', function (data, itemId) {
-      // 成功したら該当行を削除
-      const row = document.getElementById('user-row-' + itemId);
-      if (row) {
-        const tbody = row.closest('tbody'); // 行を削除する前に tbody を取得
-        row.remove(); // 行を削除
+    let showMessage = triggers.showMessage
+    let refreshPage = triggers.refreshPage
+    let isError = triggers.isError || !event.detail.successful
 
-        // 行がなくなったら「データなし」表示を出す (or reload)
-        if (tbody && tbody.children.length === 0) {
-          // テーブルボディが空になったらリロード
-          window.location.reload();
-        }
-      }
-    });
-  });
+    // DELETE 成功時もリフレッシュフラグを立てる
+    if (event.detail.requestConfig.verb === 'delete' && event.detail.successful) {
+      refreshPage = true
+      // DELETE API はメッセージを返さないので、ここで設定
+      showMessage = '削除しました。'
+      isError = false
+    }
+
+    // メッセージ表示
+    if (showMessage) {
+      showToast(showMessage, isError ? 'error' : 'success')
+    }
+
+    // ページリフレッシュ
+    if (refreshPage) {
+      window.location.reload()
+    }
+
+    // エラー特定（もしあれば）
+    // if (!event.detail.successful && event.detail.targetError) {
+    //   showToast(event.detail.targetError, 'error');
+    // }
+
+    // モーダルを閉じる処理（リフレッシュするので通常は不要）
+    // ... (コメントアウトされたまま)
+  })
+
+  // 仮のトースト表示関数 (daisyUI toast などに置き換え推奨)
+  function showToast(message, type = 'success') {
+    const toastId = 'toast-' + Date.now()
+    const toastClass = type === 'error' ? 'alert-error' : 'alert-success'
+    const toastHtml = `
+      <div id="${toastId}" class="alert ${toastClass} shadow-lg w-auto">
+        <div>
+          <span>${message}</span>
+        </div>
+      </div>
+    `
+    const toastContainer = document.getElementById('toast-container')
+    if (!toastContainer) {
+      console.warn(
+        'Toast container not found. Add <div id="toast-container" class="toast toast-top toast-center"></div> to your layout.'
+      )
+      return
+    }
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml)
+    setTimeout(() => {
+      const toastElement = document.getElementById(toastId)
+      if (toastElement) toastElement.remove()
+    }, 3000)
+  }
 </script>
 {% endblock %}

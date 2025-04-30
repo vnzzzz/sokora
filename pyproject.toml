@@ -29,6 +29,7 @@ pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.23.7"
 httpx = "^0.27.0"
 ruff = "^0.5.0"
+pytest-playwright = "^0.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -46,3 +47,7 @@ line_length = 88
 python_version = "3.13"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+# 必要に応じて他の pytest オプションを追加
+asyncio_mode = "strict"

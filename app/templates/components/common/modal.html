@@ -1,4 +1,4 @@
-{% macro add_modal(title, form_id, content_block, submit_btn_text="追加") %}
+{% macro add_modal(title, form_id, content_block, endpoint_url, submit_btn_text="追加") %}
 <!-- 追加モーダル -->
 <div
   x-show="showAddModal"
@@ -7,7 +7,8 @@
 >
   <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
     <h3 class="font-bold text-lg mb-4 text-base-content">{{ title }}</h3>
-    <form id="{{ form_id }}" class="space-y-4">
+    <form id="{{ form_id }}" class="space-y-4" hx-post="{{ endpoint_url }}" hx-indicator="#loading-indicator">
+      <div id="add-form-error"></div>
       {{ content_block | safe }}
       <div class="flex justify-end space-x-3 mt-6">
         <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
@@ -27,18 +28,12 @@
 >
   <div class="bg-base-100 p-6 rounded-xl shadow-2xl max-w-md w-full" @click.stop>
     <h3 class="font-bold text-lg mb-4 {{ btn_color_class }}">{{ title }}</h3>
-    <form id="{{ form_id }}-{{ item_id }}" class="space-y-4">
-      {{ content_block | safe }}
-      <div class="flex justify-end space-x-3 mt-6">
-        <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
-        <button type="submit" class="btn btn-neutral shadow-sm" data-item-id="{{ item_id }}">
-          {{ submit_btn_text }}
-        </button>
-      </div>
-    </form>
+    <div id="modal-content-edit-user-{{ item_id }}">{{ content_block | safe }}</div>
+    <div id="edit-form-error-{{ item_id }}"></div>
   </div>
 </div>
-{% endmacro %} {% macro delete_confirm_modal(title, content_block, item_id, item_name, submit_btn_text="削除") %}
+{% endmacro %} {% macro delete_confirm_modal(title, content_block, item_id, item_name, endpoint_url,
+submit_btn_text="削除") %}
 <!-- 削除確認モーダル -->
 <div
   x-show="showDeleteConfirm"
@@ -57,10 +52,10 @@
       <div class="flex justify-end space-x-3">
         <button type="button" class="btn btn-outline" @click="showDeleteConfirm = false">キャンセル</button>
         <button
-          type="submit"
+          type="button"
           class="btn btn-error shadow-sm"
-          data-item-id="{{ item_id }}"
-          data-item-name="{{ item_name }}"
+          hx-delete="{{ endpoint_url }}"
+          hx-indicator="#loading-indicator"
         >
           {{ submit_btn_text }}
         </button>

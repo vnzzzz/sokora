@@ -48,6 +48,25 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         users = db.query(User).all()
         return [(str(user.username), str(user.id), int(user.user_type_id)) for user in users]
 
+    def get_user_with_details(self, db: Session, *, id: str) -> Optional[User]:
+        """
+        指定されたIDのユーザー情報を、関連情報（グループ、社員種別）を含めて取得します。
+        関連情報がない場合でもユーザー情報は返されます。
+
+        Args:
+            db: データベースセッション
+            id: 取得するユーザーのID
+
+        Returns:
+            Optional[User]: 関連情報を含むユーザーモデルオブジェクト、見つからない場合はNone
+        """
+        return (
+            db.query(self.model)
+            .options(joinedload(self.model.group), joinedload(self.model.user_type))
+            .filter(self.model.id == id)
+            .first()
+        )
+
     def get_all_users_with_details(
         self, db: Session
     ) -> List[Tuple[str, str, Optional[str], Optional[str]]]:

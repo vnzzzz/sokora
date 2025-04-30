@@ -100,16 +100,17 @@ async def test_create_location_duplicate_name(async_client: AsyncClient, db: Ses
     POST /api/locations - 重複する勤務場所名で作成しようとした場合に 400 エラーが返されることをテストします。
     """
     location_name = "Duplicate Location"
-    # 最初に勤務場所を作成しておく
-    crud_location.create(db, obj_in=LocationCreate(name=location_name))
-    db.commit()
+    # 最初に勤務場所を作成しておく（API経由で）
+    await async_client.post("/api/locations", json={"name": location_name})
+    # db.commit() # APIコール内でコミットされるはず
 
     # 同じ名前で再度作成しようとする
     payload = {"name": location_name}
     response = await async_client.post("/api/locations", json=payload)
-    
+
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()["detail"] == "この勤務場所は既に存在します"
+    # サービス層が返すエラーメッセージに合わせる
+    assert response.json()["detail"] == "この勤務場所名は既に存在します"
 
 
 # --- PUT /api/locations/{location_id} Tests ---

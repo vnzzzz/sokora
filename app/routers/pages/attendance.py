@@ -9,8 +9,9 @@ import logging
 from typing import Any, Dict, List, Optional
 from datetime import date, timedelta
 import calendar
+import operator
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -22,6 +23,7 @@ from app.crud.calendar import calendar_crud
 from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
+from app.models.location import Location
 from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted
 from app.utils.ui_utils import generate_location_styles
 
@@ -160,12 +162,17 @@ def attendance_page(
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])
 
-    # 利用可能な全勤務場所名を取得します。
-    location_types_unsorted = location_crud.get_all_locations(db)
-    location_types = sorted(location_types_unsorted) # 名前でソート
+    # 利用可能な全勤務場所を取得します。（オブジェクトのリストとして）
+    location_objects_unsorted: List[Location] = location_crud.get_multi(db)
+    # IDでソートした Location オブジェクトのリストをテンプレートに渡す
+    location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
 
-    # 勤務場所名に対応するCSSクラスを生成します。
-    location_styles = generate_location_styles(location_types)
+    # 勤務場所名に対応するCSSクラスを生成します。(名前のリストが必要)
+    location_names = [str(loc.name) for loc in location_objects]
+    location_styles = generate_location_styles(location_names)
+
+    # JavaScript用に Location ID と Name のマッピングを作成
+    location_data_for_js = {loc.id: str(loc.name) for loc in location_objects}
 
     # 各ユーザーの勤怠データを日付をキーとして取得・整形します。
     user_attendances = {}
@@ -203,8 +210,9 @@ def attendance_page(
         "month_name": calendar_data["month_name"],
         "prev_month": calendar_data["prev_month"],
         "next_month": calendar_data["next_month"],
-        "location_types": location_types,
+        "location_objects": location_objects, # オブジェクトリストを渡す
         "location_styles": location_styles,
+        "location_data_for_js": location_data_for_js, # JS 用データ
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
         "calendar_day_count": calendar_day_count,

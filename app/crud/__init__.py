@@ -10,3 +10,4 @@ from .attendance import attendance
 from .location import location
 from .calendar import calendar
 from .group import group
+from .user_type import user_type

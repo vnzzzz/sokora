@@ -1,0 +1,98 @@
+{% from "components/common/modal.html" import edit_modal, delete_confirm_modal %} {#
+テーブルの単一行を表示する部分テンプレート #} {# Context: user (User オブジェクト, group と user_type が joinedload
+済みであること) #} {# user_name, user_id は user オブジェクトから取得可能 #}
+
+<tr class="hover:bg-base-200" id="user-row-{{ user.id }}">
+  <td class="font-medium">
+    {# user オブジェクトから表示 #}
+    <span id="user-name-{{ user.id }}">{{ user.username }} ({{ user.id }})</span>
+  </td>
+  {# 追加: グループ名表示 #}
+  <td>
+    {% if user.group %}
+    <span>{{ user.group.name }}</span>
+    {% else %} - {% endif %}
+  </td>
+  <td>
+    {# user オブジェクトから関連情報を表示 #} {% if user.user_type %}
+    <span id="user-type-{{ user.id }}">{{ user.user_type.name }}</span>
+    {% else %} - {% endif %}
+  </td>
+  <td class="text-right">
+    <div class="flex justify-end gap-2">
+      {# 編集ボタンスコープ #}
+      <div x-data="{ showEditModal: false }" @click.away="showEditModal = false">
+        {# 編集ボタン #}
+        <button
+          @click="showEditModal = true"
+          {#
+          Alpine
+          で対応するモーダルを開く
+          #}
+          class="btn btn-sm btn-outline shadow-sm hover:shadow whitespace-nowrap"
+          hx-get="/pages/user/edit/{{ user.id }}"
+          hx-target="#modal-content-edit-user-{{ user.id }}"
+          {#
+          モーダル内のコンテンツ領域ID
+          #}
+          hx-swap="innerHTML"
+          hx-indicator="#loading-indicator"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-4 h-4 mr-1"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+            />
+          </svg>
+          編集
+        </button>
+        {# 編集モーダルをこのスコープ内に定義 #} {% set edit_content_placeholder %}
+        <div class="text-center p-4">Loading...</div>
+        {% endset %} {{ edit_modal("社員編集", "edit-form", edit_content_placeholder, user.id) }}
+      </div>
+      {# 削除ボタンスコープ #}
+      <div x-data="{ showDeleteConfirm: false }" @click.away="showDeleteConfirm = false">
+        {# 削除ボタン #}
+        <button
+          @click="showDeleteConfirm = true"
+          {#
+          Alpine
+          で対応する削除確認モーダルを開く
+          #}
+          class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow whitespace-nowrap"
+          {#
+          hx-delete
+          はモーダル内のボタンに付ける
+          #}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+            />
+          </svg>
+          削除
+        </button>
+        {# 削除確認モーダルをこのスコープ内に定義 #} {% set delete_warning %}
+        ※勤怠データが登録されている場合は削除できません。 {% endset %} {{ delete_confirm_modal("削除の確認",
+        delete_warning, user.id, user.username ~ " (" ~ user.id ~ ")", "/api/users/" ~ user.id) }}
+      </div>
+    </div>
+  </td>
+</tr>

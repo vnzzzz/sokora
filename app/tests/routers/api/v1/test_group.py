@@ -118,7 +118,7 @@ async def test_create_group_duplicate_name(async_client: AsyncClient, db: Sessio
     response = await async_client.post("/api/groups", json=payload)
     
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()["detail"] == "このグループは既に存在します"
+    assert response.json()["detail"] == "このグループ名は既に存在します"
 
 
 async def test_update_group_success(async_client: AsyncClient, db: Session) -> None:
