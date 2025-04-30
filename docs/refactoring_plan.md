@@ -130,7 +130,7 @@
        - **`get_user_edit_form` (GET `/pages/user/edit/{user_id}`)**: 編集フォーム (`_user_edit_form.html`) をレンダリングして返す。
        - **`handle_create_user_row` (POST `/pages/user/row`)**: 新規ユーザーを作成し、新しいテーブル行 (`_user_row.html`) を返す。サービス層関数 (`create_user_with_validation`) を呼び出す。
        - **`handle_update_user_row` (PUT `/pages/user/row/{user_id}`)**: 既存ユーザーを更新し、更新されたテーブル行 (`_user_row.html`) を返す。サービス層関数 (`update_user_with_validation`) を呼び出す。
-   - [x] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行しました。
+   - [x] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_page.py`) を実装し、実行します。
 
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/user/index.html`)**
 
@@ -177,7 +177,7 @@
 
 **ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/group.py`)**
 
-   - [x] **`app/routers/pages/group.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+   - [x] **`app/routers/pages/group.py`** に、HTMX から利用される以下のエンドポイントを追加します。
        - **`get_group_edit_form` (GET `/pages/group/edit/{group_id}`)**: 編集フォーム (`_group_edit_form.html`) をレンダリングして返す。
        - **`handle_create_group_row` (POST `/pages/group/row`)**: 新規グループを作成し、新しいテーブル行 (`_group_row.html`) を返す。サービス層関数 (`create_group_with_validation`) を呼び出す。
        - **`handle_update_group_row` (PUT `/pages/group/row/{group_id}`)**: 既存グループを更新し、更新されたテーブル行 (`_group_row.html`) を返す。サービス層関数 (`update_group_with_validation`) を呼び出す。
@@ -204,93 +204,95 @@
 
 **ステップ 3: ビジネスロジックのサービス層への移行**
 
-   - [ ] `app/routers/api/v1/user_type.py` および `app/routers/pages/user_type.py` (もし存在すれば) から、社員種別作成・更新時に関連するビジネスロジック（例: 社員種別名の重複チェックなど）を `app/services/user_type_service.py` にサービス関数として切り出します。
+   - [x] `app/routers/api/v1/user_type.py` および `app/routers/pages/user_type.py` (もし存在すれば) から、社員種別作成・更新時に関連するビジネスロジック（例: 社員種別名の重複チェックなど）を `app/services/user_type_service.py` にサービス関数として切り出します。
        - 例: `validate_user_type_creation`, `validate_user_type_update`
-   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/user_type_service.py` に作成します。
+   - [x] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/user_type_service.py` に作成します。
        - 例: `create_user_type_with_validation`, `update_user_type_with_validation`
-   - [ ] `app/routers/api/v1/user_type.py` の `create_user_type` および `update_user_type` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
-   - [ ] **テスト実行(1):** `test_user_type_api.py` を実行・修正。
-   - [ ] **テスト実装(1):** `test_user_type_service.py` の実装開始。
+   - [x] `app/routers/api/v1/user_type.py` の `create_user_type` および `update_user_type` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [x] **テスト実行(1):** `test_user_type_api.py` を実行・修正。
+   - [x] **テスト実装(1):** `test_user_type_service.py` の実装完了。
 
 **ステップ 4: CRUD 層の修正 (必要に応じて)**
 
-   - [ ] (通常不要)
+   - [x] (通常不要)
 
 **ステップ 5: 部分テンプレートの作成 (`app/templates/components/user_type/`)**
 
-   - [ ] **`app/templates/components/user_type/_user_type_row.html` を新規作成**します。
-   - [ ] **`app/templates/components/user_type/_user_type_edit_form.html` を新規作成**します。
+   - [x] **`app/templates/components/user_type/_user_type_row.html` を新規作成**します。
+   - [x] **`app/templates/components/user_type/_user_type_edit_form.html` を新規作成**します。
 
 **ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/user_type.py`)**
 
-   - [ ] **`app/routers/pages/user_type.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+   - [x] **`app/routers/pages/user_type.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
        - **`get_user_type_edit_form` (GET `/pages/user_type/edit/{user_type_id}`)**: 編集フォーム (`_user_type_edit_form.html`) をレンダリングして返す。
        - **`handle_create_user_type_row` (POST `/pages/user_type/row`)**: 新規社員種別を作成し、新しいテーブル行 (`_user_type_row.html`) を返す。サービス層関数 (`create_user_type_with_validation`) を呼び出す。
        - **`handle_update_user_type_row` (PUT `/pages/user_type/row/{user_type_id}`)**: 既存社員種別を更新し、更新されたテーブル行 (`_user_type_row.html`) を返す。サービス層関数 (`update_user_type_with_validation`) を呼び出す。
-   - [ ] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_type_page.py`) を実装し、実行します。
+   - [x] **テスト実装・実行(2):** このステップで追加・修正したページAPIエンドポイントのテスト (`tests/routers/pages/test_user_type_page.py`) を実装し、実行します。
 
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/user_type/index.html`)**
 
-   - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
-   - [ ] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
+   - [x] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
+   - [x] **テスト実行(3):** 自動テスト再実行し、パスを確認しました。
 
 **ステップ 8: テストの最終確認と実装**
 
-   - [ ] 全テストの実装・パスを確認。
-       - [ ] `test_user_type_service.py`
-       - [ ] `test_user_type_page.py`
-       - [ ] `test_user_type_api.py`
+   - [x] 全テストの実装・パスを確認。
+       - [x] `test_user_type_service.py`
+       - [x] `test_user_type_page.py`
+       - [x] `test_user_type_api.py`
+       - [x] `test_user_type.py` (修正含む)
 
 **ステップ 9: JavaScript のクリーンアップ (`user_type` 関連部分)**
 
-   - [ ] `modal-handlers.js` から関連処理を削除します。
-   - [ ] **テスト実行(4):** 自動テスト再実行。
+   - [x] `modal-handlers.js` から関連処理を削除します。
+   - [x] **テスト実行(4):** 自動テスト再実行し、パスを確認しました。
 
 ### 7.4 勤務場所管理 (location)
 
 **ステップ 3: ビジネスロジックのサービス層への移行**
 
-   - [ ] `app/routers/api/v1/location.py` および `app/routers/pages/location.py` (もし存在すれば) から、勤務場所作成・更新時に関連するビジネスロジック（例: 勤務場所名の重複チェックなど）を `app/services/location_service.py` にサービス関数として切り出します。
+   - [x] `app/routers/api/v1/location.py` および `app/routers/pages/location.py` (もし存在すれば) から、勤務場所作成・更新時に関連するビジネスロジック（例: 勤務場所名の重複チェックなど）を `app/services/location_service.py` にサービス関数として切り出します。
        - 例: `validate_location_creation`, `validate_location_update`
-   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/location_service.py` に作成します。
+   - [x] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/location_service.py` に作成します。
        - 例: `create_location_with_validation`, `update_location_with_validation`
-   - [ ] `app/routers/api/v1/location.py` の `create_location` および `update_location` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
-   - [ ] **テスト実行(1):** `test_location_api.py` を実行・修正。
-   - [ ] **テスト実装(1):** `test_location_service.py` の実装開始。
+   - [x] `app/routers/api/v1/location.py` の `create_location` および `update_location` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
+   - [x] **テスト実行(1):** `test_location_api.py` を実行・修正。
+   - [x] **テスト実装(1):** `test_location_service.py` の実装完了。
 
 **ステップ 4: CRUD 層の修正 (必要に応じて)**
 
-   - [ ] (通常不要)
+   - [x] (通常不要)
 
 **ステップ 5: 部分テンプレートの作成 (`app/templates/components/location/`)**
 
-   - [ ] **`app/templates/components/location/_location_row.html` を新規作成**します。
-   - [ ] **`app/templates/components/location/_location_edit_form.html` を新規作成**します。
+   - [x] **`app/templates/components/location/_location_row.html` を新規作成**します。
+   - [x] **`app/templates/components/location/_location_edit_form.html` を新規作成**します。
 
 **ステップ 6: バックエンド API の追加・修正 (`app/routers/pages/location.py`)**
 
-   - [ ] **`app/routers/pages/location.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
+   - [x] **`app/routers/pages/location.py`** (なければ新規作成) に、HTMX から利用される以下のエンドポイントを追加します。
        - **`get_location_edit_form` (GET `/pages/location/edit/{location_id}`)**: 編集フォーム (`_location_edit_form.html`) をレンダリングして返す。
        - **`handle_create_location_row` (POST `/pages/location/row`)**: 新規勤務場所を作成し、新しいテーブル行 (`_location_row.html`) を返す。サービス層関数 (`create_location_with_validation`) を呼び出す。
        - **`handle_update_location_row` (PUT `/pages/location/row/{location_id}`)**: 既存勤務場所を更新し、更新されたテーブル行 (`_location_row.html`) を返す。サービス層関数 (`update_location_with_validation`) を呼び出す。
-   - [ ] **テスト実装・実行(2):** ページAPIエンドポイントのテスト (`tests/routers/pages/test_location_page.py`) を実装し、実行します。
+   - [x] **テスト実装・実行(2):** ページAPIエンドポイントのテスト (`tests/routers/pages/test_location_page.py`) を実装し、実行します。
 
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/location/index.html`)**
 
-   - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
-   - [ ] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
+   - [x] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
+   - [x] **テスト実行(3):** 自動テスト再実行し、パスを確認しました。
 
 **ステップ 8: テストの最終確認と実装**
 
-   - [ ] 全テストの実装・パスを確認。
-       - [ ] `test_location_service.py`
-       - [ ] `test_location_page.py`
-       - [ ] `test_location_api.py`
+   - [x] 全テストの実装・パスを確認。
+       - [x] `test_location_service.py`
+       - [x] `test_location_page.py`
+       - [x] `test_location_api.py`
+       - [x] `test_location.py` (修正含む)
 
 **ステップ 9: JavaScript のクリーンアップ (`location` 関連部分)**
 
-   - [ ] `modal-handlers.js` から関連処理を削除します。
-   - [ ] **テスト実行(4):** 自動テスト再実行。
+   - [x] `modal-handlers.js` から関連処理を削除します。
+   - [x] **テスト実行(4):** 自動テスト再実行し、パスを確認しました。
 
 ## 8. 実施順序
 

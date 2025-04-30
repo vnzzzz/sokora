@@ -160,23 +160,7 @@ function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, success
 function updateUIAfterEdit(data, itemId) {
   if (!data || !itemId) return
 
-  // 社員種別の場合
-  const userTypeRow = document.getElementById(`user-type-row-${itemId}`)
-  if (userTypeRow && data.name) {
-    const nameCell = userTypeRow.querySelector('td:first-child')
-    if (nameCell) {
-      nameCell.textContent = data.name
-    }
-  }
-
-  // 勤務場所の場合
-  const locationRow = document.getElementById(`location-row-${itemId}`)
-  if (locationRow && data.name) {
-    const nameCell = locationRow.querySelector('td:first-child span')
-    if (nameCell) {
-      nameCell.textContent = data.name
-    }
-  }
+  // 勤務場所の更新処理もHTMXで行うため、この関数内の処理は不要
 }
 
 /**

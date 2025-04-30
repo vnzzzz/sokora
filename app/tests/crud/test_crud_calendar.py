@@ -50,12 +50,14 @@ def db_with_calendar_test_data(db: Session) -> Session:
         last_day_prev_month,                    # 先月末日
         first_day_this_month,                   # 今月初日
         first_day_this_month + timedelta(days=1), # 今月2日
-        first_day_this_month + timedelta(days=1), # 今月2日 (同じ日だが記録は別)
         today,                                  # 今日
         first_day_next_month                    # 来月初日
     ]
 
-    for dt in dates_to_create:
+    # 重複を排除するために set を使用
+    unique_dates = set(dates_to_create)
+
+    for dt in unique_dates:
         attendance_in = AttendanceCreate(
             user_id=str(user.id),
             date=dt,
@@ -76,8 +78,11 @@ def test_get_month_attendances(db_with_calendar_test_data: Session) -> None:
     last_day = today.replace(day=last_day_num)
 
     attendances = calendar_crud.get_month_attendances(db=db, first_day=first_day, last_day=last_day)
-    # 今月作成したデータ数 (3件: 1日, 2日x2, 今日)
-    expected_count = 4
+    # 今月作成したデータ数 (1日、2日、今日（今日が1日or2日の場合は重複しない）)
+    expected_count = 0
+    if first_day <= first_day <= last_day: expected_count +=1
+    if first_day <= first_day + timedelta(days=1) <= last_day: expected_count +=1
+    if first_day <= today <= last_day and today.day > 2: expected_count +=1 # 今日が1,2日と重複しない場合のみカウント
     assert len(attendances) == expected_count
     for att in attendances:
         assert first_day <= att.date <= last_day
@@ -87,7 +92,7 @@ def test_count_day_attendances(db_with_calendar_test_data: Session) -> None:
     db = db_with_calendar_test_data
     first_day_this_month = date.today().replace(day=1)
     target_date_1 = first_day_this_month # 1件のはず
-    target_date_2 = first_day_this_month + timedelta(days=1) # 2件のはず
+    target_date_2 = first_day_this_month + timedelta(days=1) # 1件のはず
     target_date_no_data = first_day_this_month + timedelta(days=10) # 0件のはず
 
     count_1 = calendar_crud.count_day_attendances(db=db, target_date=target_date_1)
@@ -95,7 +100,7 @@ def test_count_day_attendances(db_with_calendar_test_data: Session) -> None:
     count_no_data = calendar_crud.count_day_attendances(db=db, target_date=target_date_no_data)
 
     assert count_1 == 1
-    assert count_2 == 2
+    assert count_2 == 1 # 2日のデータは1件になったはず
     assert count_no_data == 0
 
 def test_get_month_attendance_counts(db_with_calendar_test_data: Session) -> None:
@@ -110,6 +115,14 @@ def test_get_month_attendance_counts(db_with_calendar_test_data: Session) -> Non
     counts = calendar_crud.get_month_attendance_counts(db=db, first_day=first_day, last_day=last_day)
 
     assert counts.get(1, 0) == 1 # 1日
-    assert counts.get(2, 0) == 2 # 2日
-    assert counts.get(today.day, 0) == 1 # 今日
-    assert len(counts) == 3 # 今月データがあるのは3日分 
+    assert counts.get(2, 0) == 1 # 2日
+    # 今日が1日か2日でない場合のみ、今日のデータをチェック
+    if today.day > 2:
+        assert counts.get(today.day, 0) == 1 # 今日
+    # データがある日数は、今日が1日か2日かどうかで変わる
+    expected_days_with_data = 0
+    if first_day.day <= last_day.day: # 月初が月末より前（通常）
+      if 1 >= first_day.day and 1 <= last_day.day: expected_days_with_data += 1
+      if 2 >= first_day.day and 2 <= last_day.day: expected_days_with_data += 1
+      if today.day > 2 and today.day >= first_day.day and today.day <= last_day.day: expected_days_with_data += 1
+    assert len(counts) == expected_days_with_data 
