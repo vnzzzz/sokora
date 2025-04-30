@@ -158,13 +158,13 @@
 
 **ステップ 3: ビジネスロジックのサービス層への移行**
 
-   - [ ] `app/routers/api/v1/group.py` および `app/routers/pages/group.py` (もし存在すれば) から、グループ作成・更新時に関連するビジネスロジック（例: グループ名の重複チェックなど）を `app/services/group_service.py` にサービス関数として切り出します。
+   - [x] `app/routers/api/v1/group.py` および `app/routers/pages/group.py` (もし存在すれば) から、グループ作成・更新時に関連するビジネスロジック（例: グループ名の重複チェックなど）を `app/services/group_service.py` にサービス関数として切り出しました。
        - 例: `validate_group_creation`, `validate_group_update`
-   - [ ] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/group_service.py` に作成します。
+   - [x] バリデーションと CRUD 操作を組み合わせたサービス関数を `app/services/group_service.py` に作成しました。
        - 例: `create_group_with_validation`, `update_group_with_validation`
-   - [ ] `app/routers/api/v1/group.py` の `create_group` および `update_group` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更します。
-   - [ ] **テスト実行(1):** 関連する既存APIテスト (`tests/routers/api/v1/test_group_api.py`) を実行し、意図しない挙動破壊がないか確認、必要に応じて修正します。
-   - [ ] **テスト実装(1):** サービス層のテスト (`tests/services/test_group_service.py`) の実装を開始します。
+   - [x] `app/routers/api/v1/group.py` の `create_group` および `update_group` エンドポイントを修正し、切り出したビジネスロジックの代わりに、上記で作成したサービス関数を呼び出すように変更しました。
+   - [x] **テスト実行(1):** 関連する既存APIテスト (`tests/routers/api/v1/test_group_api.py`) を実行し、意図しない挙動破壊がないことを確認しました。
+   - [x] **テスト実装(1):** サービス層のテスト (`tests/services/test_group_service.py`) を実装し、実行しました。
 
 **ステップ 4: CRUD 層の修正 (必要に応じて)**
 
@@ -186,19 +186,19 @@
 **ステップ 7: フロントエンド テンプレートの修正 (`app/templates/pages/group/index.html`)**
 
    - [ ] テーブルやボタン、モーダルにHTMX属性を追加・修正します。
-   - [ ] **テスト実行(3):** 関連する自動テストを再度実行し、問題がないことを確認します。手動での確認も推奨。
+   - [ ] **テスト実行(3):** 自動テスト再実行。手動確認推奨。
 
 **ステップ 8: テストの最終確認と実装**
 
-   - [ ] これまでのステップで追加・修正したテストがすべて実装され、パスすることを確認します。
-       - [ ] サービス層テスト (`test_group_service.py`)
-       - [ ] ページ API テスト (`test_group_page.py`)
-       - [ ] 既存 API テスト (`test_group_api.py`)
+   - [x] これまでのステップで追加・修正したテストがすべて実装され、パスすることを確認しました。
+       - [x] サービス層テスト (`test_group_service.py`)
+       - [x] ページ API テスト (`test_group_page.py`)
+       - [x] 既存 API テスト (`test_group.py`)
 
 **ステップ 9: JavaScript のクリーンアップ (`group` 関連部分)**
 
-   - [ ] `modal-handlers.js` からグループ管理関連処理を削除します。
-   - [ ] **テスト実行(4):** 関連する自動テストをすべて再実行します。
+   - [x] `modal-handlers.js` の `updateUIAfterEdit` 関数から、不要になったグループ関連のコードブロックを削除しました。
+   - [x] **テスト実行(4):** 関連する自動テストをすべて再実行し、パスすることを確認しました。
 
 ### 7.3 社員種別管理 (user_type)
 
