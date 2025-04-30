@@ -91,7 +91,7 @@
         </button>
         {# 削除確認モーダルをこのスコープ内に定義 #} {% set delete_warning %}
         ※勤怠データが登録されている場合は削除できません。 {% endset %} {{ delete_confirm_modal("削除の確認",
-        delete_warning, user.id, user.username ~ " (" ~ user.id ~ ")", "削除") }}
+        delete_warning, user.id, user.username ~ " (" ~ user.id ~ ")", "/api/users/" ~ user.id) }}
       </div>
     </div>
   </td>

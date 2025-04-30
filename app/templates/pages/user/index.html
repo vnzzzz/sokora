@@ -91,7 +91,7 @@ add_modal, edit_modal, delete_confirm_modal %} {% from "components/common/htmx_h
           {% endfor %}
         </select>
       </div>
-      {% endset %} {{ add_modal("社員追加", "add-user-form", add_content) }}
+      {% endset %} {{ add_modal("社員追加", "add-user-form", add_content, "/pages/user/row") }}
     </div>
   </div>
 
