@@ -32,9 +32,6 @@ RUN curl -Lo /app/app/static/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx
 # scriptのコピー
 COPY ./scripts ./scripts
 
-# testsのコピー
-COPY ./tests ./tests
-
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
