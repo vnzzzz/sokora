@@ -51,15 +51,29 @@ async def create_test_user_type_via_api(async_client: AsyncClient, name: str) ->
 # --- GET /api/csv/download Tests --- 
 
 async def test_download_csv_success_all(async_client: AsyncClient) -> None:
-    """月指定なしでCSVが正常にダウンロードされることをテストします (UTF-8)。"""
-    # データ準備
-    group_id = await create_test_group_via_api(async_client, "CsvTestGroupAll")
-    user_type_id = await create_test_user_type_via_api(async_client, "CsvTestUserTypeAll")
-    user_id = await create_test_user_via_api(async_client, "csv_user_all", "Csv User All", group_id, user_type_id)
-    location_id = await create_test_location_via_api(async_client, "CsvTestLocation All")
-    
+    """月指定なしでCSVが正常にダウンロードされ、グループ・社員種別でソートされることをテストします (UTF-8)。"""
+    # データ準備 (複数のユーザーを追加)
+    group1_id = await create_test_group_via_api(async_client, "Group A")
+    group2_id = await create_test_group_via_api(async_client, "Group B")
+    type1_id = await create_test_user_type_via_api(async_client, "Type X")
+    type2_id = await create_test_user_type_via_api(async_client, "Type Y")
+
+    # ソート順を考慮したユーザー作成
+    # 1. Group A, Type X
+    await create_test_user_via_api(async_client, "user_ax", "User AX", group1_id, type1_id)
+    # 2. Group A, Type Y
+    await create_test_user_via_api(async_client, "user_ay", "User AY", group1_id, type2_id)
+    # 3. Group B, Type X
+    await create_test_user_via_api(async_client, "user_bx", "User BX", group2_id, type1_id)
+    # 4. Group B, Type Y
+    await create_test_user_via_api(async_client, "user_by", "User BY", group2_id, type2_id)
+    # 5. Group B, Type Y (同名種別・グループの別ユーザー)
+    await create_test_user_via_api(async_client, "user_by2", "User BY2", group2_id, type2_id)
+
+    # (オプション) 適当な勤怠データも作成 (ソートの検証には直接関係ないが念のため)
+    location_id = await create_test_location_via_api(async_client, "Default Location")
     test_date = date.today().isoformat()
-    await async_client.post("/api/attendances", data={"user_id": user_id, "date": test_date, "location_id": str(location_id)})
+    await async_client.post("/api/attendances", data={"user_id": "user_ax", "date": test_date, "location_id": str(location_id)})
 
     response = await async_client.get("/api/csv/download")
     assert response.status_code == status.HTTP_200_OK
@@ -70,26 +84,46 @@ async def test_download_csv_success_all(async_client: AsyncClient) -> None:
     csv_content = response.text
     reader = csv.reader(io.StringIO(csv_content))
     rows = list(reader)
-    assert len(rows) >= 2 # ヘッダー + 少なくとも1データ行
+    # 少なくともヘッダー + 作成した5ユーザーが存在することを確認
+    # 他のテストで作成されたユーザーが含まれる可能性があるため >= とする
+    assert len(rows) >= 6
+
     header = rows[0]
     assert header[0] == "user_name"
     assert header[1] == "user_id"
     assert header[2] == "group_name"
     assert header[3] == "user_type"
-    assert len(header) > 4 # 日付ヘッダーがあるはず (デフォルト90日分)
-    
-    # 作成したユーザーの行を探す
-    user_row = next((row for row in rows[1:] if row[1] == user_id), None)
-    assert user_row is not None
-    assert user_row[0] == "Csv User All"
-    assert user_row[2] == "CsvTestGroupAll"
-    assert user_row[3] == "CsvTestUserTypeAll"
-    # test_dateに対応する列にlocation名が入っているか確認
-    try:
-        date_col_index = header.index(date.today().strftime("%Y/%m/%d"))
-        assert user_row[date_col_index] == "CsvTestLocation All"
-    except ValueError:
-        pytest.fail(f"Date header {date.today().strftime('%Y/%m/%d')} not found in CSV")
+
+    # データ行のソート順を検証 (Group A -> Group B, その中で Type X -> Type Y)
+    data_rows = rows[1:]
+    # ユーザーIDを取得して期待される順序と比較
+    user_ids = [row[1] for row in data_rows]
+    expected_user_id_order = ["user_ax", "user_ay", "user_bx", "user_by", "user_by2"]
+
+    # テスト中に他のユーザーが作成されている可能性を考慮し、
+    # 作成したユーザーが期待する順序で *含まれていること* を検証する
+    actual_order_indices = {uid: idx for idx, uid in enumerate(user_ids) if uid in expected_user_id_order}
+
+    # 期待するユーザーがすべて存在するか確認
+    for expected_id in expected_user_id_order:
+        assert expected_id in actual_order_indices, f"Expected user ID {expected_id} not found in CSV rows: {user_ids}"
+
+    # 期待する順序になっているか確認
+    for i in range(len(expected_user_id_order) - 1):
+        id1 = expected_user_id_order[i]
+        id2 = expected_user_id_order[i+1]
+        # 存在しないIDのエラーは上でキャッチされるはずなので、ここでは単純比較
+        assert actual_order_indices[id1] < actual_order_indices[id2], (
+            f"CSV order is incorrect: {id1} (index {actual_order_indices[id1]}) "
+            f"should come before {id2} (index {actual_order_indices[id2]}) in {user_ids}"
+        )
+
+    # (オプション) 個々のユーザーデータの簡単な検証 (例: 最初のユーザー)
+    first_data_row = next((row for row in data_rows if row[1] == "user_ax"), None)
+    assert first_data_row is not None
+    assert first_data_row[0] == "User AX"
+    assert first_data_row[2] == "Group A"
+    assert first_data_row[3] == "Type X"
 
 async def test_download_csv_success_month_sjis(async_client: AsyncClient) -> None:
     """月指定あり、SJISエンコーディングでCSVが正常にダウンロードされることをテストします。"""

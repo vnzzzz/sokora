@@ -86,7 +86,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             )
             .outerjoin(Group, User.group_id == Group.id)
             .outerjoin(UserType, User.user_type_id == UserType.id)
-            .order_by(User.username)
+            # .order_by(User.username) # 既存のソートをコメントアウトまたは削除
+            .order_by(Group.name, UserType.name) # 新しいソート順を追加
             .all()
         )
         # 結果をタプルのリストとして返す
