@@ -32,7 +32,6 @@
         type="button"
         class="btn btn-error"
         hx-delete="/api/attendances/?user_id={{ user_id }}&date={{ date }}"
-        hx-confirm="本当に「{{ user_name }}」の「{{ formatted_date }}」の勤怠データを削除しますか？"
         hx-indicator="#modal-loading-{{ user_id }}-{{ date }}"
       >
         削除
