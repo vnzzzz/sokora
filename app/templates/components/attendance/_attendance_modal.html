@@ -1,0 +1,62 @@
+<dialog id="attendance-modal-{{ user_id }}-{{ date }}" class="modal modal-open bg-black/30">
+  <form method="dialog" class="modal-box" id="attendance-form-{{ user_id }}-{{ date }}">
+    <h3 class="font-bold text-lg">勤怠編集: {{ user_name }} ({{ formatted_date }})</h3>
+
+    <input type="hidden" name="user_id" value="{{ user_id }}">
+    <input type="hidden" name="date" value="{{ date }}">
+    {% if attendance_id %}
+    <input type="hidden" name="_method" value="PUT"> {# 更新の場合 #}
+    {% endif %}
+
+    <div class="py-4">
+      <label class="label" for="location-{{ user_id }}-{{ date }}">
+        <span class="label-text">勤務場所</span>
+      </label>
+      <select id="location-{{ user_id }}-{{ date }}" name="location_id" class="select select-bordered w-full">
+        <option value="">-----</option> {# 未選択も可能にする #}
+        {% for location in locations %}
+        <option value="{{ location.id }}" {% if location.id == current_location_id %}selected{% endif %}>
+          {{ location.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="modal-action">
+      {# HTMXによる閉じるボタン #}
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('attendance-modal-{{ user_id }}-{{ date }}').remove()">閉じる</button> {# .close() から .remove() に変更し、要素ごと削除 #}
+
+      {# 削除ボタン (勤怠データが存在する場合のみ表示) #}
+      {% if attendance_id %}
+      <button
+        type="button"
+        class="btn btn-error"
+        hx-delete="/api/attendances/?user_id={{ user_id }}&date={{ date }}"
+        hx-confirm="本当に「{{ user_name }}」の「{{ formatted_date }}」の勤怠データを削除しますか？"
+        hx-indicator="#modal-loading-{{ user_id }}-{{ date }}"
+      >
+        削除
+      </button>
+      {% endif %}
+
+      {# 登録/更新ボタン #}
+      <button
+        type="submit"
+        class="btn btn-neutral"
+        {% if attendance_id %}
+          hx-put="/api/attendances/{{ attendance_id }}" {# 更新 #}
+          hx-ext="json-enc" {# PUTの時だけJSON送信 #}
+        {% else %}
+          hx-post="/api/attendances/"                 {# 登録 #}
+        {% endif %}
+        hx-indicator="#modal-loading-{{ user_id }}-{{ date }}"
+        {# フォームデータをインクルード #}
+        hx-include="#attendance-form-{{ user_id }}-{{ date }}"
+      >
+        {% if attendance_id %}更新{% else %}登録{% endif %}
+      </button>
+      {# ローディングインジケータ #}
+      <span class="loading loading-spinner loading-sm hidden" id="modal-loading-{{ user_id }}-{{ date }}"></span>
+    </div>
+  </form>
+</dialog> 

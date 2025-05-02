@@ -171,6 +171,9 @@
           data-has-data="{{ has_data|lower }}"
           data-location="{{ location_name }}"
           style="min-width: 70px; width: 70px"
+          hx-get="/pages/attendances/modal/{{ user_id }}/{{ day.date }}"
+          hx-target="#modal-container"
+          hx-swap="innerHTML"
         >
           {% if has_data %}
           <div class="text-[11px] font-medium px-0.5 rounded {{ style_class }} block w-full">{{ location_name }}</div>

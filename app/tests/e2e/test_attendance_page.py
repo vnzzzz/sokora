@@ -3,6 +3,9 @@ import datetime
 import re
 import time
 
+# テスト対象の関数をインポート
+from app.utils.calendar_utils import format_date_jp
+
 # このテストは /attendance ページの勤怠マトリックスからの登録・更新・削除を対象とする
 
 def test_edit_attendance_via_modal(page: Page) -> None:
@@ -59,38 +62,34 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     initial_location_name = target_cell_locator.get_attribute("data-location") or ""
     target_cell_locator.click()
 
-    # 3. 勤怠登録/編集モーダルが表示されるのを待つ
-    modal_locator = page.locator('.attendance-modal-container div[x-show="showAttendanceModal"]')
-    form_locator = modal_locator.locator("#attendance-form")
-    expect(modal_locator).to_be_visible(timeout=10000)
+    # 3. 勤怠登録/編集モーダルが表示されるのを待つ (HTMX対応)
+    modal_container_locator = page.locator('#modal-container')
+    modal_dialog_locator = modal_container_locator.locator("dialog")
+    expect(modal_dialog_locator).to_be_visible(timeout=10000)
+    form_locator = modal_dialog_locator.locator("form")
     expect(form_locator).to_be_visible()
     # モーダルタイトルにユーザー名と日付が表示されているか確認
-    expect(modal_locator.locator("h3")).to_contain_text(user_name)
-    expect(modal_locator.locator("h3")).to_contain_text(target_date_str) # 日付フォーマットはYYYY-MM-DDで確認
+    expect(modal_dialog_locator.locator("h3")).to_contain_text(user_name)
+    # target_date_str を date オブジェクトに変換
+    target_date_obj = datetime.date.fromisoformat(target_date_str)
+    # 日本語形式の日付文字列を期待値とする
+    expected_date_jp = format_date_jp(target_date_obj)
+    expect(modal_dialog_locator.locator("h3")).to_contain_text(expected_date_jp)
 
-    # 4. 勤務場所を選択 (例: 最初の選択肢)
-    location_radios = form_locator.locator('input[type="radio"][name="location_id"]')
-    expect(location_radios.first).to_be_visible(timeout=5000) # ラジオボタンが表示されるのを待つ
-    first_radio = location_radios.first
-    first_radio_value = first_radio.get_attribute("value")
-    assert first_radio_value is not None, "最初の勤務場所ラジオボタンの値が取得できませんでした"
-    selected_location_id_str = first_radio_value
-    first_radio.check() # ラジオボタンを選択
-
-    # 選択したラジオボタンのラベル (勤務場所名) を取得 (後で検証用)
-    label_selector = f'label[for="{first_radio.get_attribute("id")}"] span'
-    selected_location_name_locator = form_locator.locator(label_selector)
-    expect(selected_location_name_locator).to_be_visible() # ラベルが表示されるのを待つ
-    selected_location_name = selected_location_name_locator.inner_text() or ""
-    assert selected_location_name, "選択した勤務場所名が取得できませんでした"
-
+    # 4. 勤務場所を選択 (セレクトボックス対応)
+    location_select_locator = form_locator.locator('select[name="location_id"]')
+    expect(location_select_locator).to_be_visible(timeout=5000)
+    first_option_locator = location_select_locator.locator("option").nth(1)
+    selected_location_id_str = first_option_locator.get_attribute("value")
+    assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤務場所の値が取得できませんでした"
+    selected_location_name = first_option_locator.inner_text() or ""
+    assert selected_location_name, "最初の有効な勤務場所名が取得できませんでした"
+    location_select_locator.select_option(value=selected_location_id_str)
 
     # 5. 「登録」または「更新」ボタンをクリック
-    #    ボタンのテキストで判断する
-    register_button = form_locator.locator('button:has-text("登録")')
-    update_button = form_locator.locator('button:has-text("更新")')
+    register_button = form_locator.locator('button[type="submit"]:has-text("登録")')
+    update_button = form_locator.locator('button[type="submit"]:has-text("更新")')
 
-    # どちらかのボタンが表示されているはず
     expect(register_button.or_(update_button)).to_be_visible(timeout=5000)
 
     if update_button.is_visible():
@@ -103,8 +102,8 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     expect(submit_button_locator).to_be_enabled()
     submit_button_locator.click()
 
-    # 6. モーダルが閉じるのを待つ
-    expect(modal_locator).not_to_be_visible(timeout=10000)
+    # 6. モーダルが閉じるのを待つ (要素が削除される)
+    expect(modal_dialog_locator).to_be_hidden(timeout=10000)
 
     # 7. カレンダー部分がリフレッシュされ、セルの内容が更新されるのを待つ
     #    htmxにより #attendance-content が更新される
@@ -128,7 +127,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     # 更新後のセルのテキストが選択した勤務場所名を含むことを期待
     expect(reloaded_cell_locator).to_contain_text(selected_location_name, timeout=10000)
     # 更新後の data-location 属性が選択した勤務場所名になっていることを期待
-    expect(reloaded_cell_locator).to_have_attribute("data-location", selected_location_name, timeout=5000)
+    expect(reloaded_cell_locator).to_have_attribute("data-location", selected_location_name.strip(), timeout=5000)
 
 
 def test_delete_attendance_via_modal(page: Page) -> None:
@@ -171,39 +170,44 @@ def test_delete_attendance_via_modal(page: Page) -> None:
 
     # 3. [準備] 削除対象のデータがなければ作成する
     target_cell_locator.click()
-    modal_locator = page.locator('.attendance-modal-container div[x-show="showAttendanceModal"]')
-    form_locator = modal_locator.locator("#attendance-form")
-    expect(modal_locator).to_be_visible(timeout=10000)
+    # モーダル表示待機 (HTMX対応)
+    modal_container_locator = page.locator('#modal-container')
+    modal_dialog_locator = modal_container_locator.locator("dialog")
+    expect(modal_dialog_locator).to_be_visible(timeout=10000)
+    form_locator = modal_dialog_locator.locator("form")
+    expect(form_locator).to_be_visible()
 
-    delete_button = form_locator.locator('button:has-text("削除")')
-    register_button = form_locator.locator('button:has-text("登録")')
+    delete_button = form_locator.locator('button[type="button"]:has-text("削除")')
+    register_button = form_locator.locator('button[type="submit"]:has-text("登録")')
 
     if not delete_button.is_visible(timeout=1000): # 削除ボタンがなければ登録が必要
         print(f"INFO: Deletion target data not found for {user_name} on {target_date_str}. Registering first...")
-        # 最初の勤務場所を選択して登録
-        location_radios = form_locator.locator('input[type="radio"][name="location_id"]')
-        expect(location_radios.first).to_be_visible(timeout=5000)
-        first_radio = location_radios.first
-        first_radio.check()
+        location_select_locator = form_locator.locator('select[name="location_id"]')
+        expect(location_select_locator).to_be_visible(timeout=5000)
+        first_option_locator = location_select_locator.locator("option").nth(1)
+        selected_location_id_str = first_option_locator.get_attribute("value")
+        assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤務場所の値が取得できませんでした"
+        location_select_locator.select_option(value=selected_location_id_str)
+
         expect(register_button).to_be_enabled()
         register_button.click()
-        # モーダルが閉じてリフレッシュされるのを待つ
-        expect(modal_locator).not_to_be_visible(timeout=10000)
-        # 少し待機してhtmxのリフレッシュを確実にする
-        page.wait_for_timeout(1000) # 必要に応じて調整
-        # 再度セルをクリックしてモーダルを開く
+        expect(modal_dialog_locator).not_to_be_visible(timeout=10000)
         target_cell_locator.click()
-        expect(modal_locator).to_be_visible(timeout=10000)
-        # 今度は削除ボタンがあるはず
+        # 新しいモーダルが表示されるのを待つ (再取得)
+        modal_dialog_locator = modal_container_locator.locator("dialog") # 再度 dialog を探す
+        expect(modal_dialog_locator).to_be_visible(timeout=10000)
+        # 削除ボタンがあるはず (再取得)
+        delete_button = modal_dialog_locator.locator('form button[type="button"]:has-text("削除")') # dialogから辿る
         expect(delete_button).to_be_visible(timeout=5000)
 
     # 4. 削除ボタンをクリック
     print(f"INFO: Deleting attendance for {user_name} on {target_date_str}")
     expect(delete_button).to_be_enabled()
+    page.once("dialog", lambda dialog: dialog.accept())
     delete_button.click()
 
     # 5. モーダルが閉じるのを待つ
-    expect(modal_locator).not_to_be_visible(timeout=10000)
+    expect(modal_dialog_locator).not_to_be_visible(timeout=10000)
 
     # 6. カレンダー部分がリフレッシュされ、セルの内容が空になるのを待つ
     row_selector = f"#{row_id}" if row_id else f'tbody tr:has(td:text-matches("{user_name}.*\\({user_id}\\)"))'

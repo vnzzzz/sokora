@@ -48,6 +48,21 @@ def format_date(date: datetime.date) -> str:
     """
     return date.strftime(DATE_FORMAT)
 
+def format_date_jp(date_obj: Optional[datetime.date]) -> str:
+    """日付を日本語形式（YYYY年M月D日(曜)）にフォーマットします。
+
+    Args:
+        date_obj: フォーマットする日付オブジェクト (Optional)
+
+    Returns:
+        str: 日本語形式の日付文字列、または date_obj が None の場合は空文字列
+    """
+    if date_obj is None:
+        return ""
+    weekdays = ["月", "火", "水", "木", "金", "土", "日"] # Pythonの weekday() に合わせる (0=月曜)
+    weekday_str = weekdays[date_obj.weekday()]
+    return f"{date_obj.year}年{date_obj.month}月{date_obj.day}日({weekday_str})"
+
 def get_today_formatted() -> str:
     """今日の日付をYYYY-MM-DD形式で取得します。
 

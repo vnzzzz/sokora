@@ -37,9 +37,57 @@
       </main>
     </div>
 
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+
     <!-- JavaScript -->
     {% block extra_scripts %}
     <!-- ページ固有のスクリプトはここに挿入されます -->
     {% endblock %}
+
+    <script>
+      // HTMXイベントリスナー (モーダルクローズ用)
+      document.body.addEventListener('htmx:beforeSwap', function (event) {
+        // ステータスコードで成功判定 (2xx)
+        if (event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) {
+          const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
+          console.log(
+            '[htmx:beforeSwap] Status:',
+            event.detail.xhr.status,
+            'URL:',
+            event.detail.pathInfo.requestPath,
+            'Header:',
+            triggerHeader
+          )
+
+          if (triggerHeader) {
+            try {
+              const triggers = JSON.parse(triggerHeader)
+              console.log('[htmx:beforeSwap] Parsed HX-Trigger:', triggers)
+
+              // closeModal イベントを探す
+              if (triggers && triggers.closeModal) {
+                const modalId = triggers.closeModal
+                console.log('[htmx:beforeSwap] closeModal trigger found. Modal ID:', modalId)
+                const modalElement = document.getElementById(modalId)
+
+                if (modalElement) {
+                  console.log(`[htmx:beforeSwap] Attempting to close modal: ${modalId}`)
+                  // HTMXにDOMの変更をさせないように指示
+                  event.detail.shouldSwap = false
+                  // モーダル要素を削除
+                  modalElement.remove()
+                  console.log('[htmx:beforeSwap] Modal element removed.')
+                } else {
+                  console.warn('[htmx:beforeSwap] Modal element not found for ID:', modalId)
+                }
+              }
+            } catch (e) {
+              console.error('[htmx:beforeSwap] Failed to parse HX-Trigger header:', triggerHeader, e)
+            }
+          }
+        }
+      })
+    </script>
   </body>
 </html>

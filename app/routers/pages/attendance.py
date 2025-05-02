@@ -24,7 +24,8 @@ from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.models.location import Location
-from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted
+from app.models.attendance import Attendance as AttendanceModel
+from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted, format_date_jp
 from app.utils.ui_utils import generate_location_styles
 
 # ルーター定義
@@ -234,6 +235,65 @@ def attendance_page(
     logger.debug("通常リクエスト。完全なページを返します。")
     return templates.TemplateResponse(
         "pages/attendance/index.html", context
+    )
+
+
+@router.get("/pages/attendances/modal/{user_id}/{date_str}", response_class=HTMLResponse)
+def get_attendance_modal(
+    request: Request,
+    user_id: str,
+    date_str: str, # パスパラメータは YYYY-MM-DD 形式を期待
+    db: Session = Depends(get_db),
+) -> Any:
+    """指定されたユーザーと日付の勤怠編集モーダルを返します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_id: 編集対象のユーザーID
+        date_str: 編集対象の日付（YYYY-MM-DD形式）
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: レンダリングされたHTMLページ
+    """
+    logger.info(f"勤怠モーダルリクエスト受信: User={user_id}, Date={date_str}")
+    try:
+        target_date = date.fromisoformat(date_str)
+    except ValueError:
+        logger.warning(f"無効な日付形式: {date_str}")
+        # エラーを示す空のコンテナを返すか、エラーメッセージを含むHTMLを返す
+        return HTMLResponse(content="", status_code=status.HTTP_400_BAD_REQUEST)
+
+    user_obj = user.get(db, id=user_id)
+    if not user_obj:
+        logger.warning(f"ユーザーが見つかりません: {user_id}")
+        return HTMLResponse(content="", status_code=status.HTTP_404_NOT_FOUND)
+
+    # 既存の勤怠データを取得 (CRUD関数名を修正)
+    attendance_obj: Optional[AttendanceModel] = attendance.get_by_user_and_date(db, user_id=user_id, date=target_date)
+    attendance_id = attendance_obj.id if attendance_obj else None
+    current_location_id = attendance_obj.location_id if attendance_obj else None
+
+    # 全勤務場所を取得
+    locations: List[Location] = sorted(location_crud.get_multi(db), key=operator.attrgetter('id'))
+
+    # モーダルテンプレートに必要なコンテキストを作成
+    context = {
+        "request": request,
+        "user_id": user_id,
+        "user_name": str(user_obj.username),
+        "date": date_str,
+        "formatted_date": format_date_jp(target_date), # 日本語形式の日付 (calendar_utilsからインポート)
+        "attendance_id": attendance_id,
+        "current_location_id": current_location_id,
+        "locations": locations,
+    }
+    logger.debug(f"モーダルコンテキスト: {context}")
+
+    # モーダルコンポーネントをレンダリング (テンプレートパスを修正)
+    return templates.TemplateResponse(
+        "components/attendance/_attendance_modal.html", # _content.html を削除
+        context,
     )
 
 
