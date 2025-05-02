@@ -7,7 +7,7 @@ import contextlib # finally でのエラー抑制用
 # ヘルパー関数：テストに必要なグループ名と社員種別名を取得
 def get_required_data(page: Page) -> tuple[str, str, str, str]:
     """ユーザー追加/編集に必要なグループ名と社員種別名を取得"""
-    page.goto("http://localhost:8000/user")
+    page.goto("http://localhost:8000/users")
     page.locator('button:has-text("社員追加")').click()
     add_modal_locator = page.locator("form#add-user-form").locator("..") # form の親 (modal-box)
     expect(add_modal_locator).to_be_visible()
@@ -106,7 +106,7 @@ def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
 def delete_test_user_ui(page: Page, user_id: str) -> None:
     """UI操作で指定されたIDの社員を削除する"""
     print(f"Attempting to delete user ID: {user_id}")
-    page.goto("http://localhost:8000/user") # ユーザーページへ移動
+    page.goto("http://localhost:8000/users") # ユーザーページへ移動
     row_locator = page.locator(f'#user-row-{user_id}')
     if not row_locator.is_visible():
         print(f"User row {user_id} not visible, skipping deletion.")
@@ -135,7 +135,7 @@ def test_add_new_user(page: Page) -> None:
         created_user_type_id = create_test_user_type_ui(page, user_type_name)
 
         # 2. 社員追加テスト本体
-        page.goto("http://localhost:8000/user")
+        page.goto("http://localhost:8000/users")
         page.locator('button:has-text("社員追加")').click()
         add_modal_locator = page.locator("form#add-user-form").locator("..")
         expect(add_modal_locator).to_be_visible()
@@ -190,7 +190,7 @@ def test_edit_user(page: Page) -> None:
         new_group_id = create_test_group_ui(page, new_group_name) # 編集後のグループも作成
 
         # 2. テスト用社員作成 (編集対象)
-        page.goto("http://localhost:8000/user")
+        page.goto("http://localhost:8000/users")
         page.locator('button:has-text("社員追加")').click()
         add_modal = page.locator("form#add-user-form").locator("..")
         expect(add_modal).to_be_visible()
@@ -266,7 +266,7 @@ def test_delete_user(page: Page) -> None:
         created_user_type_id = create_test_user_type_ui(page, user_type_name)
 
         # 2. テスト用社員作成 (削除対象)
-        page.goto("http://localhost:8000/user")
+        page.goto("http://localhost:8000/users")
         page.locator('button:has-text("社員追加")').click()
         add_modal = page.locator("form#add-user-form").locator("..")
         expect(add_modal).to_be_visible()

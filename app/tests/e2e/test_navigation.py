@@ -20,7 +20,7 @@ def test_navigate_to_users(page: Page) -> None:
     """トップページから社員管理ページへ遷移するテスト"""
     page.goto("http://localhost:8000/")
     page.locator('a[title="社員管理"]').click()
-    expect(page).to_have_url("http://localhost:8000/user") # 実際のURLに修正
+    expect(page).to_have_url("http://localhost:8000/users") # 実際のURLに修正
     expect(page.locator("h2")).to_have_text("社員管理")
 
 
