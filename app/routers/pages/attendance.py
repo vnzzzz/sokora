@@ -26,7 +26,7 @@ from app.db.session import get_db
 from app.models.location import Location
 from app.models.attendance import Attendance as AttendanceModel
 from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted, format_date_jp
-from app.utils.ui_utils import generate_location_styles
+from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
 router = APIRouter(tags=["Pages"])
@@ -168,9 +168,10 @@ def attendance_page(
     # IDでソートした Location オブジェクトのリストをテンプレートに渡す
     location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
 
-    # 勤務場所名に対応するCSSクラスを生成します。(名前のリストが必要)
-    location_names = [str(loc.name) for loc in location_objects]
-    location_styles = generate_location_styles(location_names)
+    # 勤務場所名に対応するCSSクラス情報 (テキストと背景) を生成します。
+    location_styles: Dict[str, Dict[str, str]] = {}
+    for loc in location_objects:
+        location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
 
     # JavaScript用に Location ID と Name のマッピングを作成
     location_data_for_js = {loc.id: str(loc.name) for loc in location_objects}
@@ -212,7 +213,7 @@ def attendance_page(
         "prev_month": calendar_data["prev_month"],
         "next_month": calendar_data["next_month"],
         "location_objects": location_objects, # オブジェクトリストを渡す
-        "location_styles": location_styles,
+        "location_styles": location_styles, # 更新されたスタイル辞書
         "location_data_for_js": location_data_for_js, # JS 用データ
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,

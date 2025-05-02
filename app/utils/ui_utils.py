@@ -36,9 +36,36 @@ def _get_color_for_index(index: int) -> str:
         index: 色のインデックス
 
     Returns:
-        str: 色名
+        str: 色名 (例: "success", "primary")
     """
-    return TAILWIND_COLORS[index % len(TAILWIND_COLORS)]
+    # 常に正のインデックスを保証するために剰余演算子の前にリスト長を加算
+    # (location ID が 0 以下の場合も考慮)
+    positive_index = (index % len(TAILWIND_COLORS)) + len(TAILWIND_COLORS)
+    return TAILWIND_COLORS[positive_index % len(TAILWIND_COLORS)]
+
+
+def get_location_color_classes(location_id: Optional[int]) -> Dict[str, str]:
+    """Location IDに基づいて文字色と背景色のCSSクラスを決定します。
+
+    Args:
+        location_id: 勤務場所のID。Noneの場合はデフォルトの色を返します。
+
+    Returns:
+        Dict[str, str]: "text_class" と "bg_class" をキーに持つ辞書。
+                         例: {"text_class": "text-success", "bg_class": "bg-success/15"}
+    """
+    if location_id is None:
+        # IDがない場合 (例: 未分類など) はデフォルトの色 (例: neutralやbase) を返すか、
+        # またはエラーを示す色にするか、仕様に応じて決定します。
+        # ここではシンプルに最初の色を使いますが、必要に応じて変更してください。
+        color_name = _get_color_for_index(0) 
+    else:
+        color_name = _get_color_for_index(location_id)
+
+    return {
+        "text_class": f"text-{color_name}",
+        "bg_class": f"bg-{color_name}/15",  # DaisyUI v4 opacity format
+    }
 
 
 # 型変数の定義

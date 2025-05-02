@@ -28,11 +28,15 @@ from app.utils.calendar_utils import (
     build_calendar_data,
     get_current_month_formatted,
     get_today_formatted,
-    parse_month
+    parse_month,
+    format_date_jp,
+    parse_date
 )
 from app.utils.ui_utils import (
     generate_location_badges,
+    get_location_color_classes,
 )
+from app.models.location import Location
 
 # ルーター定義
 router = APIRouter(tags=["Pages"])
@@ -76,18 +80,44 @@ def get_calendar(
 
             attendances = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
             attendance_counts = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
-            location_types_unsorted = location_crud.get_all_locations(db)
-            location_types = sorted(location_types_unsorted)
             
-            # カレンダーデータを生成してキャッシュする
+            # Location オブジェクトを取得 (IDを含む)
+            location_objects_unsorted: List[Location] = location_crud.get_multi(db)
+            location_objects = sorted(location_objects_unsorted, key=lambda loc: int(loc.id))
+            location_names = [str(loc.name) for loc in location_objects]
+
+            # 色情報を事前に生成 (Location ID -> Color Classes)
+            location_color_map: Dict[int, Dict[str, str]] = {
+                int(loc.id): get_location_color_classes(int(loc.id)) for loc in location_objects
+            }
+
+            # カレンダーデータを生成 (location_names を渡す)
             calendar_data = build_calendar_data(
                 month=month, 
                 attendances=attendances, 
                 attendance_counts=attendance_counts, 
-                location_types=location_types
+                location_types=location_names # build_calendar_data は名前のリストを期待
             )
+            
+            # build_calendar_dataが生成したlocationsリストに色クラスを追加
+            # calendar_data['locations'] の構造は [{ 'name': str, 'color': str, 'key': str, 'badge': str }, ...]
+            updated_locations = []
+            for loc_data in calendar_data.get("locations", []):
+                # 対応する Location オブジェクトを見つける (名前でマッチング)
+                matched_loc_obj = next((loc for loc in location_objects if str(loc.name) == loc_data["name"]), None)
+                if matched_loc_obj:
+                    color_info = location_color_map.get(int(matched_loc_obj.id), {})
+                    loc_data["text_class"] = color_info.get("text_class", "")
+                    loc_data["bg_class"] = color_info.get("bg_class", "")
+                else:
+                    # マッチしない場合 (エラーケース) はデフォルトを設定
+                    loc_data["text_class"] = "text-gray"
+                    loc_data["bg_class"] = "bg-gray/15"
+                updated_locations.append(loc_data)
+            calendar_data["locations"] = updated_locations
+
             # 取得した元データもキャッシュに含めるか、または build_calendar_data の結果だけをキャッシュするかは要検討
-            # ここでは build_calendar_data の結果のみキャッシュする
+            # ここでは加工後の calendar_data をキャッシュする
             _calendar_cache[month] = calendar_data
             _calendar_cache_timestamp[month] = current_time
         except ValueError as e:
@@ -163,13 +193,24 @@ def get_day_detail(
     user_types = user_type.get_multi(db)
     user_types_map = {ut.id: ut for ut in user_types}
 
-    # 全勤務場所名を取得します。
-    location_types_unsorted = location_crud.get_all_locations(db)
-    location_types = sorted(location_types_unsorted) # 名前でソート
+    # 全勤務場所オブジェクトを取得します。
+    location_objects_unsorted: List[Location] = location_crud.get_multi(db)
+    location_objects = sorted(location_objects_unsorted, key=lambda loc: int(loc.id))
 
-    # 勤務場所名に対応するUIバッジ情報を生成します。
-    locations = generate_location_badges(location_types)
-    locations_badge_map = {loc["name"]: loc["badge"] for loc in locations}
+    # 勤務場所IDに対応するUIカラークラス情報を生成します。
+    location_color_map: Dict[int, Dict[str, str]] = {
+        int(loc.id): get_location_color_classes(int(loc.id)) for loc in location_objects
+    }
+    # テンプレートで使用する勤務場所情報リスト (名前と色クラスを含む)
+    locations_for_template = []
+    for loc in location_objects:
+        color_info = location_color_map.get(int(loc.id), {})
+        locations_for_template.append({
+            "id": int(loc.id),
+            "name": str(loc.name),
+            "text_class": color_info.get("text_class", ""),
+            "bg_class": color_info.get("bg_class", "")
+        })
 
     # UI表示用に、勤務場所ごとにユーザーをグルーピングします。
     organized_data: Dict[str, Dict[str, Any]] = {}
@@ -215,12 +256,18 @@ def get_day_detail(
 
     # 全勤怠データを再度ループし、グループ主キーのデータ構造を構築します。
     for location_name, users_list in attendance_data.items():
-        location_badge = locations_badge_map.get(location_name, "neutral")
+        # 対応する Location オブジェクトを探す
+        matched_loc = next((loc for loc in location_objects if str(loc.name) == location_name), None)
+        location_id = int(matched_loc.id) if matched_loc else None
+        color_info = get_location_color_classes(location_id)
+        location_text_class = color_info.get("text_class", "")
+        location_bg_class = color_info.get("bg_class", "")
 
         for user_data in users_list:
             # ユーザーデータに必要な情報を追加します。
             user_data["location_name"] = location_name
-            user_data["location_badge"] = location_badge
+            user_data["location_text_class"] = location_text_class # テキストクラスを追加
+            user_data["location_bg_class"] = location_bg_class   # 背景クラスを追加
 
             user_obj = user.get(db, id=user_data["user_id"])
             if not user_obj:
@@ -282,14 +329,17 @@ def get_day_detail(
     # テンプレートに渡すコンテキストを作成します。
     context = {
         "request": request,
-        "day": day,
-        "data": detail, # 元の get_day_data の結果も渡す
-        "locations": locations, # UI用バッジ情報
+        "date_str": day,
+        "date_jp": format_date_jp(parse_date(day)),
+        "organized_data": organized_data, # 勤務場所主キーデータ (使用箇所があれば更新が必要)
+        "locations": locations_for_template, # 更新された勤務場所リスト
+        "organized_by_group": sorted_organized_by_group, # グループ主キーデータ (テンプレートで使用)
+        "sorted_group_names": sorted_group_names, # ソート済みグループ名リスト
         "has_data": has_data,
         "attendance_data": attendance_data, # 加工前の勤怠データ
-        "organized_data": organized_data, # 勤務場所主キーで整理されたデータ
-        "organized_by_group": sorted_organized_by_group, # グループ主キーで整理・ソートされたデータ
         "target_date": day
     }
 
-    return templates.TemplateResponse("pages/main/day_detail.html", context) 
+    return templates.TemplateResponse(
+        "pages/main/day_detail.html", context
+    ) 
