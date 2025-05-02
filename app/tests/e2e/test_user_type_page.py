@@ -26,6 +26,21 @@ def test_add_new_user_type(page: Page) -> None:
     table_body_selector = "#user-type-table-body"
     expect(page.locator(table_body_selector)).to_contain_text(unique_user_type_name, timeout=10000) # リロード待機
 
+    # --- テストデータ削除 ---
+    row_locator = page.locator(f'#user-type-table-body tr:has-text("{unique_user_type_name}")')
+    expect(row_locator).to_be_visible()
+    row_id = row_locator.get_attribute('id')
+    assert row_id is not None
+    user_type_id_str = row_id.split('-')[-1]
+    assert user_type_id_str.isdigit()
+    user_type_id = int(user_type_id_str)
+    row_locator.locator('button.btn-sm.btn-error.btn-outline:has-text("削除")').click()
+    delete_form_locator = page.locator(f"#delete-form-{user_type_id}")
+    expect(delete_form_locator).to_be_visible()
+    delete_form_locator.locator('button[hx-delete]').click()
+    expect(row_locator).not_to_be_visible(timeout=10000)
+    # -----------------------
+
 def test_edit_user_type(page: Page) -> None:
     """既存の社員種別を編集するテスト"""
     # --- テストデータ準備 (UI操作で追加) ---
@@ -70,6 +85,21 @@ def test_edit_user_type(page: Page) -> None:
     # ページがリロードされ、行が更新されるのを待機・確認
     updated_row_locator = page.locator(f"#user-type-row-{user_type_id}")
     expect(updated_row_locator.locator('td').first).to_have_text(new_name, timeout=10000)
+
+    # --- テストデータ削除 ---
+    row_locator = page.locator(f'#user-type-table-body tr:has-text("{new_name}")')
+    expect(row_locator).to_be_visible()
+    row_id = row_locator.get_attribute('id')
+    assert row_id is not None
+    user_type_id_str = row_id.split('-')[-1]
+    assert user_type_id_str.isdigit()
+    user_type_id = int(user_type_id_str) # 再取得
+    row_locator.locator('button.btn-sm.btn-error.btn-outline:has-text("削除")').click()
+    delete_form_locator = page.locator(f"#delete-form-{user_type_id}")
+    expect(delete_form_locator).to_be_visible()
+    delete_form_locator.locator('button[hx-delete]').click()
+    expect(row_locator).not_to_be_visible(timeout=10000)
+    # -----------------------
 
 def test_delete_user_type(page: Page) -> None:
     """既存の社員種別を削除するテスト"""

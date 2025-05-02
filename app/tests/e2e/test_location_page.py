@@ -25,6 +25,21 @@ def test_add_new_location(page: Page) -> None:
     expect(page.locator("#location-table-body")).to_contain_text(unique_location_name)
     expect(add_modal_locator).not_to_be_visible() # モーダルが閉じることを確認
 
+    # --- テストデータ削除 ---
+    row_locator = page.locator(f'#location-table-body tr:has-text("{unique_location_name}")')
+    expect(row_locator).to_be_visible()
+    row_id = row_locator.get_attribute('id')
+    assert row_id is not None
+    location_id_str = row_id.split('-')[-1]
+    assert location_id_str.isdigit()
+    location_id = int(location_id_str)
+    row_locator.locator('button.btn-sm.btn-error.btn-outline:has-text("削除")').click()
+    delete_form_locator = page.locator(f"#delete-form-{location_id}")
+    expect(delete_form_locator).to_be_visible()
+    delete_form_locator.locator('button[hx-delete]').click()
+    expect(row_locator).not_to_be_visible()
+    # -----------------------
+
 def test_edit_location(page: Page) -> None:
     """既存の勤務場所を編集するテスト"""
     # --- テストデータ準備 (UI操作で追加) ---
@@ -73,6 +88,21 @@ def test_edit_location(page: Page) -> None:
     # 行内の最初の <td> 要素のテキストをチェック
     expect(updated_row_locator.locator("td").first).to_have_text(new_location_name)
     expect(edit_modal_locator).not_to_be_visible()
+
+    # --- テストデータ削除 ---
+    row_locator = page.locator(f'#location-table-body tr:has-text("{new_location_name}")')
+    expect(row_locator).to_be_visible()
+    row_id = row_locator.get_attribute('id')
+    assert row_id is not None
+    location_id_str = row_id.split('-')[-1]
+    assert location_id_str.isdigit()
+    location_id = int(location_id_str) # 再取得
+    row_locator.locator('button.btn-sm.btn-error.btn-outline:has-text("削除")').click()
+    delete_form_locator = page.locator(f"#delete-form-{location_id}")
+    expect(delete_form_locator).to_be_visible()
+    delete_form_locator.locator('button[hx-delete]').click()
+    expect(row_locator).not_to_be_visible()
+    # -----------------------
 
 def test_delete_location(page: Page) -> None:
     """既存の勤務場所を削除するテスト"""
