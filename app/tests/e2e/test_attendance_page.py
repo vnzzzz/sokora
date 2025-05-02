@@ -15,7 +15,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     # 1. 勤怠マトリックスが表示されるのを待つ
     attendance_content_locator = page.locator("#attendance-content")
     matrix_table_locator = attendance_content_locator.locator("table")
-    expect(matrix_table_locator).to_be_visible(timeout=10000)
+    expect(matrix_table_locator).to_be_visible(timeout=1000)
 
     # 2. 特定のユーザーと日付のセルをクリック
     #    最初のユーザーデータ行を探す
@@ -27,7 +27,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     )
     user_name_cells = matrix_table_locator.locator(user_name_cell_selector)
     # 最初のユーザー名セルが表示されるのを待つ
-    expect(user_name_cells.first).to_be_visible(timeout=10000)
+    expect(user_name_cells.first).to_be_visible(timeout=1000)
     first_user_name_cell = user_name_cells.first
 
     # その親のtr要素を取得
@@ -65,7 +65,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     # 3. 勤怠登録/編集モーダルが表示されるのを待つ (HTMX対応)
     modal_container_locator = page.locator('#modal-container')
     modal_dialog_locator = modal_container_locator.locator("dialog")
-    expect(modal_dialog_locator).to_be_visible(timeout=10000)
+    expect(modal_dialog_locator).to_be_visible(timeout=1000)
     form_locator = modal_dialog_locator.locator("form")
     expect(form_locator).to_be_visible()
     # モーダルタイトルにユーザー名と日付が表示されているか確認
@@ -103,7 +103,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     submit_button_locator.click()
 
     # 6. モーダルが閉じるのを待つ (要素が削除される)
-    expect(modal_dialog_locator).to_be_hidden(timeout=10000)
+    expect(modal_dialog_locator).to_be_hidden(timeout=1000)
 
     # 7. カレンダー部分がリフレッシュされ、セルの内容が更新されるのを待つ
     #    htmxにより #attendance-content が更新される
@@ -115,7 +115,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     # リフレッシュ後のテーブルで再度行を探す (より安定させるため matrix_table_locator から再検索)
     reloaded_row_locator = matrix_table_locator.locator(row_selector)
     # 行が表示されるのを待つ
-    expect(reloaded_row_locator.first).to_be_visible(timeout=10000) # 最初の行が表示されることを確認
+    expect(reloaded_row_locator.first).to_be_visible(timeout=1000) # 最初の行が表示されることを確認
 
     # ユーザー名が一致する行を探す (より正確に)
     target_row_locator = reloaded_row_locator.filter(has_text=f"{user_name} ({user_id})")
@@ -125,7 +125,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     reloaded_cell_locator = target_row_locator.locator(target_cell_selector)
 
     # 更新後のセルのテキストが選択した勤務場所名を含むことを期待
-    expect(reloaded_cell_locator).to_contain_text(selected_location_name, timeout=10000)
+    expect(reloaded_cell_locator).to_contain_text(selected_location_name, timeout=1000)
     # 更新後の data-location 属性が選択した勤務場所名になっていることを期待
     expect(reloaded_cell_locator).to_have_attribute("data-location", selected_location_name.strip(), timeout=5000)
 
@@ -137,7 +137,7 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     # 1. 勤怠マトリックスが表示されるのを待つ
     attendance_content_locator = page.locator("#attendance-content")
     matrix_table_locator = attendance_content_locator.locator("table")
-    expect(matrix_table_locator).to_be_visible(timeout=10000)
+    expect(matrix_table_locator).to_be_visible(timeout=1000)
 
     # 2. 削除対象のユーザーと日付のセルを特定 (例: 最初のユーザー, 11日)
     user_name_cell_selector = (
@@ -145,7 +145,7 @@ def test_delete_attendance_via_modal(page: Page) -> None:
         ':has-text("(")'
     )
     user_name_cells = matrix_table_locator.locator(user_name_cell_selector)
-    expect(user_name_cells.first).to_be_visible(timeout=10000)
+    expect(user_name_cells.first).to_be_visible(timeout=1000)
     first_user_name_cell = user_name_cells.first
     first_user_row = first_user_name_cell.locator("xpath=..")
     row_id = first_user_row.get_attribute("id")
@@ -173,7 +173,7 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     # モーダル表示待機 (HTMX対応)
     modal_container_locator = page.locator('#modal-container')
     modal_dialog_locator = modal_container_locator.locator("dialog")
-    expect(modal_dialog_locator).to_be_visible(timeout=10000)
+    expect(modal_dialog_locator).to_be_visible(timeout=1000)
     form_locator = modal_dialog_locator.locator("form")
     expect(form_locator).to_be_visible()
 
@@ -191,11 +191,11 @@ def test_delete_attendance_via_modal(page: Page) -> None:
 
         expect(register_button).to_be_enabled()
         register_button.click()
-        expect(modal_dialog_locator).not_to_be_visible(timeout=10000)
+        expect(modal_dialog_locator).not_to_be_visible(timeout=1000)
         target_cell_locator.click()
         # 新しいモーダルが表示されるのを待つ (再取得)
         modal_dialog_locator = modal_container_locator.locator("dialog") # 再度 dialog を探す
-        expect(modal_dialog_locator).to_be_visible(timeout=10000)
+        expect(modal_dialog_locator).to_be_visible(timeout=1000)
         # 削除ボタンがあるはず (再取得)
         delete_button = modal_dialog_locator.locator('form button[type="button"]:has-text("削除")') # dialogから辿る
         expect(delete_button).to_be_visible(timeout=5000)
@@ -207,18 +207,18 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     delete_button.click()
 
     # 5. モーダルが閉じるのを待つ
-    expect(modal_dialog_locator).not_to_be_visible(timeout=10000)
+    expect(modal_dialog_locator).not_to_be_visible(timeout=1000)
 
     # 6. カレンダー部分がリフレッシュされ、セルの内容が空になるのを待つ
     row_selector = f"#{row_id}" if row_id else f'tbody tr:has(td:text-matches("{user_name}.*\\({user_id}\\)"))'
     reloaded_row_locator = matrix_table_locator.locator(row_selector)
-    expect(reloaded_row_locator.first).to_be_visible(timeout=10000)
+    expect(reloaded_row_locator.first).to_be_visible(timeout=1000)
     target_row_locator = reloaded_row_locator.filter(has_text=f"{user_name} ({user_id})")
     expect(target_row_locator).to_be_visible(timeout=5000)
     reloaded_cell_locator = target_row_locator.locator(target_cell_selector)
 
     # セルの中身が空であることを確認 (テキストがない)
-    expect(reloaded_cell_locator).to_be_empty(timeout=10000)
+    expect(reloaded_cell_locator).to_be_empty(timeout=1000)
     # data-location 属性が空になっていることを確認
     expect(reloaded_cell_locator).to_have_attribute("data-location", "", timeout=5000)
 

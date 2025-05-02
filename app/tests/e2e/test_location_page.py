@@ -22,7 +22,7 @@ def test_add_new_location(page: Page) -> None:
     add_modal_locator.locator('button[type="submit"]').click()
 
     # テーブルが更新され、新しい勤務場所が表示されるのを待機・確認
-    expect(page.locator("#location-table-body")).to_contain_text(unique_location_name)
+    expect(page.locator("#location-table-body")).to_contain_text(unique_location_name, timeout=1000)
     expect(add_modal_locator).not_to_be_visible() # モーダルが閉じることを確認
 
     # --- テストデータ削除 ---
@@ -37,7 +37,7 @@ def test_add_new_location(page: Page) -> None:
     delete_form_locator = page.locator(f"#delete-form-{location_id}")
     expect(delete_form_locator).to_be_visible()
     delete_form_locator.locator('button[hx-delete]').click()
-    expect(row_locator).not_to_be_visible()
+    expect(row_locator).not_to_be_visible(timeout=1000)
     # -----------------------
 
 def test_edit_location(page: Page) -> None:
@@ -53,7 +53,7 @@ def test_edit_location(page: Page) -> None:
     add_modal.locator('#add-location-name').fill(initial_name)
     add_modal.locator('button[type="submit"]').click()
     # 追加されたことをテーブルで確認 (待機も兼ねる)
-    expect(page.locator("#location-table-body")).to_contain_text(initial_name)
+    expect(page.locator("#location-table-body")).to_contain_text(initial_name, timeout=1000)
     expect(add_modal).not_to_be_visible()
     # ------------------------------------
 
@@ -74,7 +74,7 @@ def test_edit_location(page: Page) -> None:
     edit_modal_locator = page.locator(f"#edit-form-location-{location_id}")
     expect(edit_modal_locator).to_be_visible()
     # HTMXでロードされるコンテンツ内の input を待機
-    expect(edit_modal_locator.locator('input[name="name"]')).to_have_value(initial_name, timeout=5000)
+    expect(edit_modal_locator.locator('input[name="name"]')).to_have_value(initial_name, timeout=1000)
 
     # 新しい勤務場所名を入力
     edit_modal_locator.locator('input[name="name"]').fill(new_location_name)
@@ -86,7 +86,7 @@ def test_edit_location(page: Page) -> None:
     # 更新後も行 ID は変わらないはず
     updated_row_locator = page.locator(f"#location-row-{location_id}")
     # 行内の最初の <td> 要素のテキストをチェック
-    expect(updated_row_locator.locator("td").first).to_have_text(new_location_name)
+    expect(updated_row_locator.locator("td").first).to_have_text(new_location_name, timeout=1000)
     expect(edit_modal_locator).not_to_be_visible()
 
     # --- テストデータ削除 ---
@@ -101,7 +101,7 @@ def test_edit_location(page: Page) -> None:
     delete_form_locator = page.locator(f"#delete-form-{location_id}")
     expect(delete_form_locator).to_be_visible()
     delete_form_locator.locator('button[hx-delete]').click()
-    expect(row_locator).not_to_be_visible()
+    expect(row_locator).not_to_be_visible(timeout=1000)
     # -----------------------
 
 def test_delete_location(page: Page) -> None:
@@ -115,7 +115,7 @@ def test_delete_location(page: Page) -> None:
     expect(add_modal).to_be_visible()
     add_modal.locator('#add-location-name').fill(location_name_to_delete)
     add_modal.locator('button[type="submit"]').click()
-    expect(page.locator("#location-table-body")).to_contain_text(location_name_to_delete)
+    expect(page.locator("#location-table-body")).to_contain_text(location_name_to_delete, timeout=1000)
     expect(add_modal).not_to_be_visible()
     # ------------------------------------
 
@@ -139,6 +139,6 @@ def test_delete_location(page: Page) -> None:
     delete_form_locator.locator('button[hx-delete]').click()
 
     # 行が削除されたことを確認 (見えなくなる)
-    expect(row_locator).not_to_be_visible()
+    expect(row_locator).not_to_be_visible(timeout=1000)
     # (オプション) 成功のトーストメッセージが表示されることを確認
     # expect(page.locator("#toast-container")).to_contain_text("削除しました") 
