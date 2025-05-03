@@ -7,7 +7,7 @@ import contextlib # finally でのエラー抑制用
 # ヘルパー関数：テストに必要なグループ名と社員種別名を取得
 def get_required_data(page: Page) -> tuple[str, str, str, str]:
     """ユーザー追加/編集に必要なグループ名と社員種別名を取得"""
-    page.goto("http://localhost:8000/users")
+    page.goto("http://localhost:8000/user")
     page.locator('button:has-text("社員追加")').click()
     add_modal_locator = page.locator("form#add-user-form").locator("..") # form の親 (modal-box)
     expect(add_modal_locator).to_be_visible()
@@ -37,7 +37,7 @@ def get_required_data(page: Page) -> tuple[str, str, str, str]:
 
 def create_test_group_ui(page: Page, group_name: str) -> int:
     """UI操作でテスト用グループを作成し、そのIDを返す"""
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
     page.locator('button:has-text("グループ追加")').click()
     add_form = page.locator("#add-group-form")
     expect(add_form).to_be_visible()
@@ -55,7 +55,7 @@ def create_test_group_ui(page: Page, group_name: str) -> int:
 def delete_test_group_ui(page: Page, group_id: int) -> None:
     """UI操作で指定されたIDのグループを削除する"""
     print(f"Attempting to delete group ID: {group_id}")
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
     row_locator = page.locator(f"#group-row-{group_id}")
     # 要素が存在しない場合は何もしない (既に削除されているか、作成失敗)
     if not row_locator.is_visible():
@@ -73,7 +73,7 @@ def delete_test_group_ui(page: Page, group_id: int) -> None:
 
 def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
     """UI操作でテスト用社員種別を作成し、そのIDを返す"""
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
     page.locator('button:has-text("社員種別追加")').click()
     add_modal = page.locator("#add-user-type-modal")
     expect(add_modal).to_be_visible()
@@ -91,7 +91,7 @@ def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
 def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
     """UI操作で指定されたIDの社員種別を削除する"""
     print(f"Attempting to delete user type ID: {user_type_id}")
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
     row_locator = page.locator(f"#user-type-row-{user_type_id}")
     if not row_locator.is_visible():
         print(f"User type row {user_type_id} not visible, skipping deletion.")
@@ -106,7 +106,7 @@ def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
 def delete_test_user_ui(page: Page, user_id: str) -> None:
     """UI操作で指定されたIDの社員を削除する"""
     print(f"Attempting to delete user ID: {user_id}")
-    page.goto("http://localhost:8000/users") # ユーザーページへ移動
+    page.goto("http://localhost:8000/user") # ユーザーページへ移動
     row_locator = page.locator(f'#user-row-{user_id}')
     if not row_locator.is_visible():
         print(f"User row {user_id} not visible, skipping deletion.")
@@ -135,7 +135,7 @@ def test_add_new_user(page: Page) -> None:
         created_user_type_id = create_test_user_type_ui(page, user_type_name)
 
         # 2. 社員追加テスト本体
-        page.goto("http://localhost:8000/users")
+        page.goto("http://localhost:8000/user")
         page.locator('button:has-text("社員追加")').click()
         add_modal_locator = page.locator("form#add-user-form").locator("..")
         expect(add_modal_locator).to_be_visible()
@@ -190,7 +190,7 @@ def test_edit_user(page: Page) -> None:
         new_group_id = create_test_group_ui(page, new_group_name) # 編集後のグループも作成
 
         # 2. テスト用社員作成 (編集対象)
-        page.goto("http://localhost:8000/users")
+        page.goto("http://localhost:8000/user")
         page.locator('button:has-text("社員追加")').click()
         add_modal = page.locator("form#add-user-form").locator("..")
         expect(add_modal).to_be_visible()
@@ -266,7 +266,7 @@ def test_delete_user(page: Page) -> None:
         created_user_type_id = create_test_user_type_ui(page, user_type_name)
 
         # 2. テスト用社員作成 (削除対象)
-        page.goto("http://localhost:8000/users")
+        page.goto("http://localhost:8000/user")
         page.locator('button:has-text("社員追加")').click()
         add_modal = page.locator("form#add-user-form").locator("..")
         expect(add_modal).to_be_visible()

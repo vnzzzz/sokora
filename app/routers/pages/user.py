@@ -26,7 +26,7 @@ router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/users", response_class=HTMLResponse)
+@router.get("/user", response_class=HTMLResponse)
 def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """社員管理ページを表示します
 

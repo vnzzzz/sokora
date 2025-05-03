@@ -23,7 +23,7 @@ router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/user_types", response_class=HTMLResponse)
+@router.get("/user_type", response_class=HTMLResponse)
 def get_user_type_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """社員種別管理ページを表示します"""
     user_types = user_type.get_multi(db)

@@ -24,7 +24,7 @@ router = APIRouter(tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/locations", response_class=HTMLResponse)
+@router.get("/location", response_class=HTMLResponse)
 def get_location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """勤務場所管理ページを表示します
 

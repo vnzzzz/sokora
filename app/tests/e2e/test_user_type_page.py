@@ -7,7 +7,7 @@ def test_add_new_user_type(page: Page) -> None:
     timestamp = int(time.time())
     unique_user_type_name = f"テスト種別_{timestamp}"
 
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
 
     # 「社員種別追加」ボタンをクリック
     page.locator('button:has-text("社員種別追加")').click()
@@ -48,7 +48,7 @@ def test_edit_user_type(page: Page) -> None:
     initial_name = f"編集前種別_{timestamp}"
     new_name = f"編集済_{initial_name}"
 
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
     page.locator('button:has-text("社員種別追加")').click()
     add_modal = page.locator("#add-user-type-modal")
     expect(add_modal).to_be_visible()
@@ -107,7 +107,7 @@ def test_delete_user_type(page: Page) -> None:
     timestamp = int(time.time())
     name_to_delete = f"削除用種別_{timestamp}"
 
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
     page.locator('button:has-text("社員種別追加")').click()
     add_modal = page.locator("#add-user-type-modal")
     expect(add_modal).to_be_visible()

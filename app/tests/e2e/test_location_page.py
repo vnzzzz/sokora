@@ -6,7 +6,7 @@ def test_add_new_location(page: Page) -> None:
     unique_location_name = f"テスト勤務地_追加_{int(time.time())}"
 
     # 勤務場所管理ページにアクセス
-    page.goto("http://localhost:8000/locations")
+    page.goto("http://localhost:8000/location")
 
     # 「勤務場所追加」ボタンをクリックしてモーダルを開く
     page.locator('button:has-text("勤務場所追加")').click()
@@ -46,7 +46,7 @@ def test_edit_location(page: Page) -> None:
     initial_name = f"テスト勤務地_編集前_{int(time.time())}"
     new_location_name = f"編集済_{initial_name}"
 
-    page.goto("http://localhost:8000/locations")
+    page.goto("http://localhost:8000/location")
     page.locator('button:has-text("勤務場所追加")').click()
     add_modal = page.locator("#add-location-modal") # ID で特定
     expect(add_modal).to_be_visible()
@@ -109,7 +109,7 @@ def test_delete_location(page: Page) -> None:
     # --- テストデータ準備 (UI操作で追加) ---
     location_name_to_delete = f"テスト勤務地_削除用_{int(time.time())}"
 
-    page.goto("http://localhost:8000/locations")
+    page.goto("http://localhost:8000/location")
     page.locator('button:has-text("勤務場所追加")').click()
     add_modal = page.locator("#add-location-modal") # ID で特定
     expect(add_modal).to_be_visible()
