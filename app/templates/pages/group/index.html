@@ -8,7 +8,7 @@ add_modal, edit_modal, delete_confirm_modal %} {% from "components/common/htmx_h
     </div>
 
     <!-- 新規追加ボタン -->
-    <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
+    <div x-data="{ showAddModal: false }">
       <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
         <svg
           xmlns="http://www.w3.org/2000/svg"

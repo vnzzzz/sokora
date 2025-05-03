@@ -2,6 +2,7 @@
 <!-- 追加モーダル -->
 <div
   x-show="showAddModal"
+  @click.away="showAddModal = false"
   style="display: none"
   class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
 >

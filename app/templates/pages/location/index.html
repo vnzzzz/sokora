@@ -7,7 +7,7 @@ add_modal %} {# 編集・削除モーダルは_location_row.html 内で定義 #}
     </div>
 
     <!-- 新規追加ボタン -->
-    <div x-data="{ showAddModal: false }" @click.away="showAddModal = false">
+    <div x-data="{ showAddModal: false }">
       <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
         <svg
           xmlns="http://www.w3.org/2000/svg"
