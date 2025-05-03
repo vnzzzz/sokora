@@ -341,5 +341,5 @@ def get_day_detail(
     }
 
     return templates.TemplateResponse(
-        "pages/main/day_detail.html", context
+        "components/attendance/day_detail.html", context
     ) 
