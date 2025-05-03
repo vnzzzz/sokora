@@ -37,7 +37,7 @@ def get_location_manage_page(request: Request, db: Session = Depends(get_db)) ->
     """
     locations = location.get_multi(db)
     return templates.TemplateResponse(
-        "pages/location/index.html", {"request": request, "locations": locations}
+        "pages/location.html", {"request": request, "locations": locations}
     )
 
 

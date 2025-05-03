@@ -36,7 +36,7 @@ def group_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """
     groups = group.get_multi(db)
     return templates.TemplateResponse(
-        "pages/group/index.html", {"request": request, "groups": groups}
+        "pages/group.html", {"request": request, "groups": groups}
     )
 
 

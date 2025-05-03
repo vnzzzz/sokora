@@ -72,7 +72,7 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
     # テンプレートに渡すコンテキストを作成します。
     return templates.TemplateResponse(
-        "pages/user/index.html", {
+        "pages/user.html", {
             "request": request,
             "users": users, # Userオブジェクトを含むユーザーリスト
             "groups": groups, # 全グループのリスト

@@ -32,6 +32,6 @@ def csv_page(request: Request) -> Any:
     months = get_available_months()
     
     return templates.TemplateResponse(
-        "pages/csv/index.html", 
+        "pages/csv.html", 
         {"request": request, "months": months}
     ) 

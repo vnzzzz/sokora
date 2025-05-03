@@ -235,7 +235,7 @@ def attendance_page(
     # 通常のGETリクエストの場合、完全なHTMLページをレンダリングして返します。
     logger.debug("通常リクエスト。完全なページを返します。")
     return templates.TemplateResponse(
-        "pages/attendance/index.html", context
+        "pages/attendance.html", context
     )
 
 
