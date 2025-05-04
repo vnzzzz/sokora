@@ -1,0 +1,128 @@
+<!-- ユーザー個別勤怠カレンダー -->
+<div class="space-y-4">
+  <!-- 月表示と切り替え -->
+  <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
+    <span class="text-xl font-bold">{{ current_month }}</span>
+    <!-- シンプルな月切り替えボタングループ - 直接URLを指定 -->
+    <div class="btn-group shadow-sm ml-2">
+      <button
+        class="btn btn-sm btn-outline"
+        hx-get="/attendance/user/{{ user_id }}?month={{ prev_month }}"
+        hx-target="#attendance-content"
+        hx-swap="innerHTML"
+      >
+        ＜
+      </button>
+      <button
+        class="btn btn-sm btn-neutral"
+        hx-get="/attendance/user/{{ user_id }}"
+        hx-target="#attendance-content"
+        hx-swap="innerHTML"
+      >
+        今月
+      </button>
+      <button
+        class="btn btn-sm btn-outline"
+        hx-get="/attendance/user/{{ user_id }}?month={{ next_month }}"
+        hx-target="#attendance-content"
+        hx-swap="innerHTML"
+      >
+        ＞
+      </button>
+    </div>
+  </div>
+
+  <!-- ヘッダー部分 -->
+  <div class="flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <h3 class="text-lg font-bold">{{ user_obj.username }} ({{ user_obj.user_id }}) の勤怠</h3>
+      <span class="badge badge-outline">{{ user_obj.user_type.name }}</span>
+    </div>
+    <button class="btn btn-sm btn-outline" hx-get="/attendance" hx-target="#attendance-content" hx-swap="innerHTML">
+      一覧に戻る
+    </button>
+  </div>
+
+  <!-- カレンダーコンテナ -->
+  <div class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-4">
+      <!-- カレンダー表示 -->
+      <div class="overflow-x-auto">
+        <table class="table table-sm border-collapse w-full">
+          <thead>
+            <tr>
+              <!-- 曜日ヘッダー -->
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {% for weekday in weekdays %} {% set
+              is_weekend = loop.index0 == 0 or loop.index0 == 6 %}
+              <th
+                class="text-center p-1 {% if loop.index0 == 0 %}text-red-600 dark:text-red-400{% elif loop.index0 == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+              >
+                {{ weekday }}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 週ごとのループ -->
+            {% for week in calendar_data %}
+            <tr>
+              <!-- 日ごとのループ -->
+              {% for day in week %} {% set weekday_index = loop.index0 %} {% set is_weekend = weekday_index == 0 or
+              weekday_index == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class =
+              "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10" if weekday_index == 0 or is_holiday else
+              "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "") %}
+
+              <!-- 日付があるセルのみ表示 -->
+              {% if day and day.day != 0 %} {% set has_data = day.date in user_attendances[user_id]|default({}) %} {%
+              set location_name = user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set
+              style_info = location_styles[location_name]|default({}) if location_name else {} %}
+
+              <td
+                class="text-center p-2 cursor-pointer attendance-cell border {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} h-20 align-top"
+                data-date="{{ day.date }}"
+                data-user-id="{{ user_id }}"
+                data-user-name="{{ user_obj.username }}"
+                data-has-data="{{ has_data|lower }}"
+                data-location="{{ location_name }}"
+                hx-get="/pages/attendances/modal/{{ user_id }}/{{ day.date }}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML"
+              >
+                <div class="flex flex-col h-full">
+                  <!-- 日付表示 -->
+                  <div
+                    class="text-left font-medium {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+                  >
+                    {{ day.day }}
+                  </div>
+
+                  <!-- 祝日表示 -->
+                  {% if day.holiday_name|default('') %}
+                  <div class="text-xs text-red-600 dark:text-red-400 mt-1">{{ day.holiday_name }}</div>
+                  {% endif %}
+
+                  <!-- 勤務場所表示 -->
+                  {% if has_data %}
+                  <div
+                    class="mt-2 text-sm {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} p-1 rounded"
+                  >
+                    {{ location_name }}
+                  </div>
+                  {% endif %}
+                </div>
+              </td>
+              {% else %}
+              <!-- 当月ではないセル -->
+              <td class="p-2 border bg-base-200/50"></td>
+              {% endif %} {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル表示用のコンテナ -->
+<div id="modal-container"></div>

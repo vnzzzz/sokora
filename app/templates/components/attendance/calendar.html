@@ -140,9 +140,9 @@
           幅を50pxに
           #}
         ></td>
-        {# 社員名セル (sticky, left調整) #}
+        {# 社員名セル (sticky, left調整) - クリックで個別表示に切り替わるよう修正 #}
         <td
-          class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1"
+          class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1 hover:bg-base-200 cursor-pointer"
           {#
           left
           を
@@ -150,6 +150,9 @@
           に
           #}
           style="width: 200px; min-width: 200px; max-width: 200px"
+          hx-get="/attendance/user/{{ user_id }}"
+          hx-target="#attendance-content"
+          hx-swap="innerHTML"
         >
           {{ user_name }} ({{ user_id }})
         </td>
