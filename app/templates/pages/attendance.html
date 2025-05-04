@@ -1,0 +1,49 @@
+{% extends "layout/base.html" %} {% set title_text = "勤怠登録" %} {% block content %}
+<div class="p-4">
+  <div class="flex justify-between items-center mb-3">
+    <div>
+      <h2 class="text-lg font-bold text-base-content">勤怠登録</h2>
+    </div>
+    <form id="month-nav-form" class="hidden">
+      <input type="hidden" name="month" id="month-value" value="" />
+    </form>
+  </div>
+
+  <div class="mt-4">
+    {% if users|length == 0 %}
+    <div class="alert alert-info shadow-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        ></path>
+      </svg>
+      <span>社員情報がありません。社員管理ページから社員を追加してください。</span>
+    </div>
+    {% else %}
+
+    <!-- コンテンツ全体をHTMXターゲットとするコンテナ -->
+    <div
+      id="attendance-content"
+      hx-get="/attendance"
+      hx-trigger="refreshAttendance from:body"
+      hx-target="#attendance-content"
+      hx-swap="innerHTML"
+    >
+      {# 部分テンプレートを読み込む #} {% include "components/attendance/calendar.html" %}
+    </div>
+
+    {% endif %}
+  </div>
+</div>
+
+<!-- 勤怠マトリックス用スタイル -->
+<style>
+  .attendance-cell:hover {
+    opacity: 0.8;
+    transition: all 0.2s;
+  }
+</style>
+{% endblock %}

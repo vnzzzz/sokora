@@ -58,10 +58,10 @@
         {% for location in calendar.locations %}
         <tr class="border-b border-base-300">
           <td
-            class="font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap"
+            class="font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap bg-base-100 p-1"
             style="width: 130px; min-width: 130px"
           >
-            <span class="text-{{ location.badge }}">{{ location.name }}</span>
+            <span class="{{ location.text_class }}">{{ location.name }}</span>
           </td>
 
           {# 各勤務場所のデータを一度のループで効率的に表示 #} {% for item in day_data_array %} {% set day = item.day %}
@@ -69,14 +69,14 @@
           {% set weekend_class = item.weekend_class %}
 
           <td
-            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {{ location.bg_class }} {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
             hx-get="/day/{{ day.date }}"
             hx-target="#detail-area"
             data-date="{{ day.date }}"
             data-day="{{ day.day }}"
             style="width: 40px; min-width: 40px; max-width: 40px"
           >
-            <span class="{{ location.color }} whitespace-nowrap text-base">
+            <span class="{{ location.text_class }} whitespace-nowrap text-base">
               {% if day and location.key in day and day[location.key] != 0 %} {{ day[location.key] }} {% endif %}
             </span>
           </td>

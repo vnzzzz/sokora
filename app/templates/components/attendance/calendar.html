@@ -140,9 +140,9 @@
           幅を50pxに
           #}
         ></td>
-        {# 社員名セル (sticky, left調整) #}
+        {# 社員名セル (sticky, left調整) - クリックで個別表示に切り替わるよう修正 #}
         <td
-          class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1"
+          class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1 hover:bg-base-200 cursor-pointer"
           {#
           left
           を
@@ -150,6 +150,9 @@
           に
           #}
           style="width: 200px; min-width: 200px; max-width: 200px"
+          hx-get="/attendance/user/{{ user_id }}"
+          hx-target="#attendance-content"
+          hx-swap="innerHTML"
         >
           {{ user_name }} ({{ user_id }})
         </td>
@@ -160,8 +163,8 @@
         day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
         if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "") %}
         {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
-        user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set style_class =
-        location_styles[location_name]|default('') if location_name else '' %}
+        user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
+        location_styles[location_name]|default({}) if location_name else {} %} {# location_stylesから辞書を取得 #}
 
         <td
           class="text-center p-0.5 cursor-pointer attendance-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
@@ -171,9 +174,16 @@
           data-has-data="{{ has_data|lower }}"
           data-location="{{ location_name }}"
           style="min-width: 70px; width: 70px"
+          hx-get="/pages/attendances/modal/{{ user_id }}/{{ day.date }}"
+          hx-target="#modal-container"
+          hx-swap="innerHTML"
         >
-          {% if has_data %}
-          <div class="text-[11px] font-medium px-0.5 rounded {{ style_class }} block w-full">{{ location_name }}</div>
+          {% if has_data %} {# style_infoからtext_classとbg_classを適用 #}
+          <div
+            class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full"
+          >
+            {{ location_name }}
+          </div>
           {% endif %}
         </td>
         {% endif %} {% endfor %} {% endfor %}

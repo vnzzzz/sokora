@@ -9,7 +9,7 @@ def test_add_new_group(page: Page) -> None:
     timestamp = int(time.time())
     unique_group_name = f"テストグループ_{timestamp}"
 
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
 
     # 「グループ追加」ボタンをクリック
     page.locator('button:has-text("グループ追加")').click()
@@ -26,7 +26,22 @@ def test_add_new_group(page: Page) -> None:
 
     # ページがリロードされ、テーブルに新しいグループが表示されるのを待機・確認
     table_body_selector = "#group-table-body"
-    expect(page.locator(table_body_selector)).to_contain_text(unique_group_name, timeout=10000)
+    expect(page.locator(table_body_selector)).to_contain_text(unique_group_name, timeout=1000)
+
+    # --- テストデータ削除 ---
+    row_locator = page.locator(f'#group-table-body tr:has-text("{unique_group_name}")')
+    expect(row_locator).to_be_visible()
+    row_id = row_locator.get_attribute('id')
+    assert row_id is not None
+    group_id_str = row_id.split('-')[-1]
+    assert group_id_str.isdigit()
+    group_id = int(group_id_str)
+    row_locator.locator('button.btn-sm.btn-error.btn-outline:has-text("削除")').click()
+    delete_form_locator = page.locator(f"#delete-form-{group_id}")
+    expect(delete_form_locator).to_be_visible()
+    delete_form_locator.locator('button[hx-delete]').click()
+    expect(row_locator).not_to_be_visible(timeout=1000)
+    # -----------------------
 
 def test_edit_group(page: Page) -> None:
     """既存のグループを編集するテスト"""
@@ -35,13 +50,13 @@ def test_edit_group(page: Page) -> None:
     initial_name = f"編集前グループ_{timestamp}"
     new_name = f"編集済_{initial_name}"
 
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
     page.locator('button:has-text("グループ追加")').click()
     add_form = page.locator("#add-group-form")
     expect(add_form).to_be_visible()
     add_form.locator('#add-group-name').fill(initial_name)
     add_form.locator('button[type="submit"]').click()
-    expect(page.locator("#group-table-body")).to_contain_text(initial_name, timeout=10000)
+    expect(page.locator("#group-table-body")).to_contain_text(initial_name, timeout=1000)
     # ------------------------------------
 
     # 編集対象の行を見つける (テキストで特定)
@@ -71,7 +86,22 @@ def test_edit_group(page: Page) -> None:
 
     # ページがリロードされ、行が更新されるのを待機・確認
     updated_row_locator = page.locator(f"#group-row-{group_id}")
-    expect(updated_row_locator.locator('td').first).to_have_text(new_name, timeout=10000)
+    expect(updated_row_locator.locator('td').first).to_have_text(new_name, timeout=1000)
+
+    # --- テストデータ削除 ---
+    row_locator = page.locator(f'#group-table-body tr:has-text("{new_name}")')
+    expect(row_locator).to_be_visible()
+    row_id = row_locator.get_attribute('id')
+    assert row_id is not None
+    group_id_str = row_id.split('-')[-1]
+    assert group_id_str.isdigit()
+    group_id = int(group_id_str) # group_id はここで再取得
+    row_locator.locator('button.btn-sm.btn-error.btn-outline:has-text("削除")').click()
+    delete_form_locator = page.locator(f"#delete-form-{group_id}")
+    expect(delete_form_locator).to_be_visible()
+    delete_form_locator.locator('button[hx-delete]').click()
+    expect(row_locator).not_to_be_visible(timeout=1000)
+    # -----------------------
 
 def test_delete_group(page: Page) -> None:
     """既存のグループを削除するテスト"""
@@ -79,13 +109,13 @@ def test_delete_group(page: Page) -> None:
     timestamp = int(time.time())
     name_to_delete = f"削除用グループ_{timestamp}"
 
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
     page.locator('button:has-text("グループ追加")').click()
     add_form = page.locator("#add-group-form")
     expect(add_form).to_be_visible()
     add_form.locator('#add-group-name').fill(name_to_delete)
     add_form.locator('button[type="submit"]').click()
-    expect(page.locator("#group-table-body")).to_contain_text(name_to_delete, timeout=10000)
+    expect(page.locator("#group-table-body")).to_contain_text(name_to_delete, timeout=1000)
     # ------------------------------------
 
     # 削除対象の行を見つける (テキストで特定)
@@ -109,4 +139,4 @@ def test_delete_group(page: Page) -> None:
     delete_form_locator.locator('button[hx-delete]').click()
 
     # API 呼び出し -> JS でリロードされるのを待機し、行が消えていることを確認
-    expect(row_locator).not_to_be_visible(timeout=10000) 
+    expect(row_locator).not_to_be_visible(timeout=1000) 
