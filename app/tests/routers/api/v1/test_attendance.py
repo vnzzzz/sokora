@@ -435,7 +435,8 @@ async def test_delete_attendance_by_user_date_user_not_found(async_client: Async
     test_date = date.today().isoformat()
     response = await async_client.delete(f"/api/attendances?user_id={non_existent_user_id}&date={test_date}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert "対象の勤怠データが見つかりません" in response.json()["detail"]
+    assert f"ユーザー '{non_existent_user_id}' の日付" in response.json()["detail"]
+    assert "勤怠データが見つかりません" in response.json()["detail"]
 
 async def test_delete_attendance_by_user_date_record_not_found(async_client: AsyncClient) -> None:
     """削除対象のレコードが存在しない場合でも404エラーが発生することを確認します。"""
@@ -446,7 +447,8 @@ async def test_delete_attendance_by_user_date_record_not_found(async_client: Asy
 
     response = await async_client.delete(f"/api/attendances?user_id={user_id}&date={test_date}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert "対象の勤怠データが見つかりません" in response.json()["detail"]
+    assert f"ユーザー '{user_id}' の日付" in response.json()["detail"]
+    assert "勤怠データが見つかりません" in response.json()["detail"]
 
 async def test_delete_attendance_by_user_date_invalid_date(async_client: AsyncClient) -> None:
     """無効な日付形式でDELETEすると422エラーが発生することをテストします。"""

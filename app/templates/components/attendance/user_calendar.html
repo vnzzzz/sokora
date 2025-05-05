@@ -35,7 +35,7 @@
   <!-- ヘッダー部分 -->
   <div class="flex justify-between items-center">
     <div class="flex items-center space-x-2">
-      <h3 class="text-lg font-bold">{{ user_obj.username }} ({{ user_obj.user_id }}) の勤怠</h3>
+      <h3 class="text-lg font-bold">{{ user_obj.username }} ({{ user_obj.id }}) の勤怠</h3>
       <span class="badge badge-outline">{{ user_obj.user_type.name }}</span>
     </div>
     <button class="btn btn-sm btn-outline" hx-get="/attendance" hx-target="#attendance-content" hx-swap="innerHTML">
@@ -44,20 +44,18 @@
   </div>
 
   <!-- カレンダーコンテナ -->
-  <div class="card bg-base-100 shadow-sm border border-base-300">
-    <div class="card-body p-4">
-      <!-- カレンダー表示 -->
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
       <div class="overflow-x-auto">
-        <table class="table table-sm border-collapse w-full">
+        <table class="table table-md border-collapse" style="min-width: max-content; table-layout: fixed">
           <thead>
             <tr>
-              <!-- 曜日ヘッダー -->
-              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {% for weekday in weekdays %} {% set
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {% for day_name in weekdays %} {% set
               is_weekend = loop.index0 == 0 or loop.index0 == 6 %}
               <th
-                class="text-center p-1 {% if loop.index0 == 0 %}text-red-600 dark:text-red-400{% elif loop.index0 == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+                class="text-center border {% if is_weekend %}{% if loop.index0 == 0 %}text-red-600 dark:text-red-400{% else %}text-blue-600 dark:text-blue-400{% endif %}{% endif %}"
               >
-                {{ weekday }}
+                {{ day_name }}
               </th>
               {% endfor %}
             </tr>
@@ -126,3 +124,39 @@
 
 <!-- モーダル表示用のコンテナ -->
 <div id="modal-container"></div>
+
+<!-- HTMX トリガーイベントのリスナー: ユーザーの勤怠更新時 -->
+<div
+  id="user-attendance-listener"
+  hx-trigger="refreshUserAttendance from:body"
+  hx-target="#attendance-content"
+  hx-swap="innerHTML"
+></div>
+
+<!-- カスタムスクリプト: イベントリスナーを拡張し、ユーザーと月情報を保持 -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // refreshUserAttendanceイベントのリスナーを拡張
+    document.body.addEventListener('refreshUserAttendance', function (evt) {
+      const userId = evt.detail ? evt.detail.user_id : null
+      const monthInfo = evt.detail ? evt.detail.month : null
+
+      if (userId) {
+        const listenerEl = document.getElementById('user-attendance-listener')
+        let url = `/attendance/user/${userId}`
+
+        // 月情報がある場合はクエリパラメータとして追加
+        if (monthInfo) {
+          url += `?month=${monthInfo}`
+        } else if ('{{ current_month_param }}') {
+          // 現在の月情報が渡されていればそれを使用
+          url += `?month={{ current_month_param }}`
+        }
+
+        // URLを更新して即時実行
+        listenerEl.setAttribute('hx-get', url)
+        htmx.trigger(listenerEl, 'refreshUserAttendance')
+      }
+    })
+  })
+</script>

@@ -46,4 +46,33 @@
     transition: all 0.2s;
   }
 </style>
+
+<!-- カスタムスクリプト: イベントリスナーを拡張し、月情報を保持 -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // refreshAttendanceイベントを拡張してmonth情報を処理
+    document.body.addEventListener('refreshAttendance', function (evt) {
+      const monthInfo = evt.detail ? evt.detail.month : null
+      if (monthInfo) {
+        // 既存のリスナーを一時的に解除
+        const contentEl = document.getElementById('attendance-content')
+        const origGet = contentEl.getAttribute('hx-get')
+        const origTrigger = contentEl.getAttribute('hx-trigger')
+
+        // 月情報を追加したURLを設定
+        contentEl.setAttribute('hx-get', `/attendance?month=${monthInfo}`)
+        contentEl.setAttribute('hx-trigger', 'revealed')
+
+        // リクエストをトリガー
+        htmx.trigger(contentEl, 'revealed')
+
+        // 元の設定に戻す
+        setTimeout(function () {
+          contentEl.setAttribute('hx-get', origGet)
+          contentEl.setAttribute('hx-trigger', origTrigger)
+        }, 100)
+      }
+    })
+  })
+</script>
 {% endblock %}

@@ -327,141 +327,87 @@ def user_attendance_page(
     month: Optional[str] = None,
     db: Session = Depends(get_db)
 ) -> Any:
-    """特定ユーザーの勤怠カレンダーを表示します
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 表示対象のユーザーID
-        month: 月（YYYY-MM形式、指定がない場合は現在の月）
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
     """
-    # ユーザーの存在確認
+    特定ユーザーの勤怠カレンダーを表示します。
+    """
     user_obj = user.get(db, id=user_id)
     if not user_obj:
-        logger.warning(f"ユーザーが見つかりません: {user_id}")
-        # 全体の勤怠登録画面にリダイレクト
         return RedirectResponse(url="/attendance")
 
     # 月パラメータの処理と検証 (指定がない場合は現在の月を使用)
     if month is None:
         month = get_current_month_formatted()
-        logger.debug(f"月パラメータなし。デフォルト設定: {month}")
     else:
         # YYYY-MM 形式に正規化し、無効な場合は現在の月にリダイレクト
         try:
             year, month_num = parse_month(month)
             month = f"{year}-{month_num:02d}"
-            logger.debug(f"月パラメータ検証成功: {month}")
-        except ValueError as e:
-            logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
+        except ValueError:
             current_month = get_current_month_formatted()
             return RedirectResponse(url=f"/attendance/user/{user_id}?month={current_month}")
 
-    # DBからカレンダー構築に必要なデータを取得
     try:
+        # カレンダーデータ構築に必要なデータを取得
         year, month_num = parse_month(month)
         first_day = date(year, month_num, 1)
         last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
 
+        # カレンダー表示用のデータを取得
         attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
         attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
         location_types_unsorted_for_cal = location_crud.get_all_locations(db)
         location_types_for_cal = sorted(location_types_unsorted_for_cal)
 
-        # 指定された月のカレンダーデータを構築します。
-        logger.debug(f"カレンダーデータ構築: {month}")
+        # ユーザーの勤怠履歴データを取得
+        user_entries = attendance.get_user_data(db, user_id=user_id)
+        
+        user_dates = {}  # 特定の日に勤怠データが存在するか (True/False)
+        locations_map = {}  # 特定の日の勤務場所名
+        
+        for entry in user_entries:
+            date_str = entry["date"]
+            user_dates[date_str] = True
+            locations_map[date_str] = entry["location_name"]
+            
+        user_attendances = {user_id: user_dates}
+        user_attendance_locations = {user_id: locations_map}
+        
+        # 利用可能な勤務場所とそのスタイル情報を取得
+        location_objects_unsorted = location_crud.get_multi(db)
+        location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
+        
+        location_styles = {}
+        for loc in location_objects:
+            location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
+            
+        # カレンダーデータを構築
         calendar_data = build_calendar_data(
             month=month,
             attendances=attendances_for_cal,
             attendance_counts=attendance_counts_for_cal,
             location_types=location_types_for_cal
         )
-    except ValueError as e:
-        logger.error(f"月解析エラー ({month}): {e}")
-        calendar_data = None # エラー発生
+        
     except Exception as e:
-        logger.error(f"カレンダーデータ構築中にエラー ({month}): {e}", exc_info=True)
-        calendar_data = None # エラー発生
-
-    # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
-    if not calendar_data or "weeks" not in calendar_data:
-        logger.error(f"カレンダーデータの構築に失敗: {month}")
-        month = get_current_month_formatted()
-        # 再度データを取得して構築（エラーハンドリングは簡略化）
-        try:
-            year, month_num = parse_month(month)
-            first_day = date(year, month_num, 1)
-            last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
-            attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
-            attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
-            location_types_unsorted_for_cal = location_crud.get_all_locations(db)
-            location_types_for_cal = sorted(location_types_unsorted_for_cal)
-            calendar_data = build_calendar_data(
-                month=month,
-                attendances=attendances_for_cal,
-                attendance_counts=attendance_counts_for_cal,
-                location_types=location_types_for_cal
-            )
-        except:
-            logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {month}")
-            # さらにエラーなら空データを設定
-            calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
-
-    # 勤務場所データを取得
-    location_objects_unsorted = location_crud.get_multi(db)
-    location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
-
-    # 勤務場所スタイル情報
-    location_styles = {}
-    for loc in location_objects:
-        location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
-
-    # JavaScript用データ
-    location_data_for_js = {loc.id: str(loc.name) for loc in location_objects}
-
-    # ユーザーの勤怠データを取得
-    user_entries = attendance.get_user_data(db, user_id=user_id)
-    user_dates = {}
-    locations_map = {}
-
-    for entry in user_entries:
-        date_str = entry["date"]
-        user_dates[date_str] = True
-        locations_map[date_str] = entry["location_name"]
-
-    user_attendances = {user_id: user_dates}
-    user_attendance_locations = {user_id: locations_map}
-
-    # テンプレートコンテキスト
+        logger.error(f"ユーザー {user_id} の勤怠カレンダーデータ構築中にエラー: {e}", exc_info=True)
+        return RedirectResponse(url="/attendance")
+    
+    # テンプレートに渡すコンテキスト
     context = {
         "request": request,
         "user_id": user_id,
         "user_obj": user_obj,
         "calendar_data": calendar_data["weeks"],
-        "month_name": calendar_data["month_name"],
+        "current_month": calendar_data["month_name"],
+        "current_month_param": month,  # 現在の月パラメータをテンプレートに渡す
         "prev_month": calendar_data["prev_month"],
         "next_month": calendar_data["next_month"],
-        "current_month": month,
-        "location_objects": location_objects,
-        "location_styles": location_styles,
-        "location_data_for_js": location_data_for_js,
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
+        "location_styles": location_styles
     }
-
-    # HTMXリクエストへの対応 (部分コンテンツのみ返す)
-    if request.headers.get("HX-Request") == "true":
-        logger.debug("HTMXリクエストを検出。個別ユーザーカレンダーを返します。")
-        return templates.TemplateResponse(
-            "components/attendance/user_calendar.html", context,
-            headers={"HX-Reswap": "innerHTML"}
-        )
-
-    # 通常リクエスト (通常はHTMXのみ)
-    logger.debug("通常リクエスト。完全なページのコンテンツにユーザーカレンダーを埋め込んで返します。")
+    
     return templates.TemplateResponse(
-        "pages/attendance.html", context
+        "components/attendance/user_calendar.html", 
+        context
     ) 

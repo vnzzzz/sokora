@@ -13,7 +13,6 @@
         <span class="label-text">勤務場所</span>
       </label>
       <select id="location-{{ user_id }}-{{ date }}" name="location_id" class="select select-bordered w-full">
-        <option value="">-----</option> {# 未選択も可能にする #}
         {% for location in locations %}
         <option value="{{ location.id }}" {% if location.id == current_location_id %}selected{% endif %}>
           {{ location.name }}
