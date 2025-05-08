@@ -10,6 +10,7 @@ def test_add_new_group(page: Page) -> None:
     unique_group_name = f"テストグループ_{timestamp}"
 
     page.goto("http://localhost:8000/group")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 「グループ追加」ボタンをクリック
     page.locator('button:has-text("グループ追加")').click()
@@ -51,6 +52,7 @@ def test_edit_group(page: Page) -> None:
     new_name = f"編集済_{initial_name}"
 
     page.goto("http://localhost:8000/group")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("グループ追加")').click()
     add_form = page.locator("#add-group-form")
     expect(add_form).to_be_visible()
@@ -110,6 +112,7 @@ def test_delete_group(page: Page) -> None:
     name_to_delete = f"削除用グループ_{timestamp}"
 
     page.goto("http://localhost:8000/group")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("グループ追加")').click()
     add_form = page.locator("#add-group-form")
     expect(add_form).to_be_visible()

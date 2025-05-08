@@ -7,6 +7,7 @@ def test_add_new_location(page: Page) -> None:
 
     # 勤務場所管理ページにアクセス
     page.goto("http://localhost:8000/location")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 「勤務場所追加」ボタンをクリックしてモーダルを開く
     page.locator('button:has-text("勤務場所追加")').click()
@@ -47,6 +48,7 @@ def test_edit_location(page: Page) -> None:
     new_location_name = f"編集済_{initial_name}"
 
     page.goto("http://localhost:8000/location")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("勤務場所追加")').click()
     add_modal = page.locator("#add-location-modal") # ID で特定
     expect(add_modal).to_be_visible()
@@ -110,6 +112,7 @@ def test_delete_location(page: Page) -> None:
     location_name_to_delete = f"テスト勤務地_削除用_{int(time.time())}"
 
     page.goto("http://localhost:8000/location")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("勤務場所追加")').click()
     add_modal = page.locator("#add-location-modal") # ID で特定
     expect(add_modal).to_be_visible()

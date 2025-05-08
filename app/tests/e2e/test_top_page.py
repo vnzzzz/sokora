@@ -5,6 +5,7 @@ from playwright.sync_api import Page, expect
 def test_top_page_title(page: Page) -> None:
     """トップページにアクセスし、タイトルを確認するテスト"""
     page.goto("http://localhost:8000/") # アプリケーションのURLにアクセス
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # タイトルに "Sokora" が含まれていることを確認
     expect(page).to_have_title(re.compile("Sokora")) 
@@ -12,6 +13,7 @@ def test_top_page_title(page: Page) -> None:
 def test_top_page_elements(page: Page) -> None:
     """トップページの主要要素の存在を確認するテスト"""
     page.goto("http://localhost:8000/")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # ヘッダーテキストの確認
     header = page.locator("h2")
@@ -30,6 +32,7 @@ def test_top_page_elements(page: Page) -> None:
 def test_initial_day_detail(page: Page) -> None:
     """初期表示で本日日付の詳細が表示されることを確認するテスト"""
     page.goto("http://localhost:8000/")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 詳細エリアが表示されるのを待つ（HTMXのロード完了を期待）
     detail_area = page.locator("#detail-area")
@@ -44,6 +47,7 @@ def test_initial_day_detail(page: Page) -> None:
 def test_click_day_shows_detail(page: Page) -> None:
     """特定の日付をクリックするとその日の詳細が表示されるテスト"""
     page.goto("http://localhost:8000/")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # カレンダーが表示されるのを待つ (最初のセルが表示されるかで判断)
     expect(page.locator("#calendar-area .calendar-cell").first).to_be_visible(timeout=1000)
@@ -58,7 +62,7 @@ def test_click_day_shows_detail(page: Page) -> None:
 
         # 詳細エリアが更新されるのを待つ
         detail_area = page.locator("#detail-area")
-        expect(detail_area).to_contain_text(re.compile(rf"\s*{date_str}\s*の勤怠情報"), timeout=1000)
+        expect(detail_area).to_contain_text(re.compile(rf"{date_str}の勤怠情報"), timeout=1000)
         expect(detail_area).to_contain_text(date_str)
     else:
         print(f"Skipping test: Day {day_to_click} not visible on the calendar.")
@@ -66,6 +70,7 @@ def test_click_day_shows_detail(page: Page) -> None:
 def test_month_navigation(page: Page) -> None:
     """月遷移ボタンが機能することを確認するテスト"""
     page.goto("http://localhost:8000/")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # カレンダーエリアが表示されるのを待つ
     expect(page.locator("#calendar-area")).to_be_visible(timeout=1000)
