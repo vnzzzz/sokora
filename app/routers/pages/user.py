@@ -5,7 +5,7 @@
 社員管理ページに関連するルートハンドラー
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import json
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
@@ -83,6 +83,263 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
     )
 
 
+@router.get("/users/modal", response_class=HTMLResponse)
+@router.get("/users/modal/{user_id}", response_class=HTMLResponse)
+async def user_modal(
+    request: Request,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> Any:
+    """社員の追加または編集モーダルを表示します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_id: 編集する場合の社員ID (None の場合は新規追加)
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: モーダルHTMLフラグメント
+    """
+    user_obj = None
+    if user_id:
+        user_obj = user.get(db, id=user_id)
+        if not user_obj:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found")
+    
+    # グループと社員種別の一覧を取得
+    groups = group.get_multi(db)
+    user_types = user_type.get_multi(db)
+    
+    modal_id = f"user-modal-{user_id or 'new'}"
+    
+    ctx: Dict[str, Any] = {
+        "request": request,
+        "user": user_obj,
+        "groups": groups,
+        "user_types": user_types,
+        "modal_id": modal_id,
+        "errors": {}
+    }
+    
+    # JSONオブジェクトとして正しい形式のトリガーを返す
+    headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
+    return templates.TemplateResponse(
+        "partials/users/user_modal.html", ctx, headers=headers
+    )
+
+
+@router.get("/users/delete-modal/{user_id}", response_class=HTMLResponse)
+async def user_delete_modal(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
+    """社員の削除確認モーダルを表示します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_id: 削除する社員ID
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: 削除確認モーダルHTMLフラグメント
+    """
+    user_obj = user.get(db, id=user_id)
+    if not user_obj:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found")
+    
+    # 勤怠データの有無をチェック
+    warning_message = "※この社員の勤怠データが存在する場合は削除できません。"
+    
+    modal_id = f"user-delete-modal-{user_id}"
+    
+    ctx: Dict[str, Any] = {
+        "request": request,
+        "user": user_obj,
+        "modal_id": modal_id,
+        "warning_message": warning_message
+    }
+    
+    # JSONオブジェクトとして正しい形式のトリガーを返す
+    headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
+    return templates.TemplateResponse(
+        "partials/users/user_delete_modal.html", ctx, headers=headers
+    )
+
+
+@router.post("/users", response_class=HTMLResponse)
+async def create_user(
+    request: Request,
+    user_in: schemas.UserCreate = Depends(schemas.UserCreate.as_form),
+    db: Session = Depends(get_db)
+) -> Any:
+    """新規社員を作成します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_in: 社員作成スキーマ（フォームデータ）
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
+    """
+    modal_id = "user-modal-new"
+    
+    try:
+        # 社員作成を試みる
+        created_user = user_service.create_user_with_validation(db=db, user_in=user_in)
+        
+        # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
+        return templates.TemplateResponse(
+            "partials/users/user_modal.html",
+            {
+                "request": request,
+                "user": created_user,
+                "groups": group.get_multi(db),
+                "user_types": user_type.get_multi(db),
+                "modal_id": modal_id
+            },
+            headers={
+                "HX-Trigger": json.dumps({
+                    "closeModal": modal_id,
+                    "refreshPage": True,
+                    "showMessage": f"社員 {created_user.username} を追加しました。"
+                })
+            }
+        )
+    except HTTPException as e:
+        # エラー時は同じモーダルを表示し、エラーメッセージを表示
+        errors = {"error": [e.detail]}
+        
+        # フィールド別エラー
+        if e.status_code == 422 and hasattr(e, 'detail') and isinstance(e.detail, list):
+            errors = {}
+            for err in e.detail:
+                if 'loc' in err and len(err['loc']) > 1:
+                    field = err['loc'][1]
+                    if field not in errors:
+                        errors[field] = []
+                    errors[field].append(err['msg'])
+        
+        print(f"Create user error: {errors}")
+        
+        return templates.TemplateResponse(
+            "partials/users/user_modal.html",
+            {
+                "request": request, 
+                "user": None,
+                "groups": group.get_multi(db),
+                "user_types": user_type.get_multi(db),
+                "modal_id": modal_id,
+                "errors": errors
+            },
+            status_code=200  # エラー時でもHTMXにはステータス200で返す
+        )
+
+
+@router.put("/users/{user_id}", response_class=HTMLResponse)
+async def update_user(
+    request: Request,
+    user_id: str,
+    user_in: schemas.UserUpdate = Depends(schemas.UserUpdate.as_form),
+    db: Session = Depends(get_db)
+) -> Any:
+    """社員を更新します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_id: 更新する社員ID
+        user_in: 社員更新スキーマ（フォームデータ）
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
+    """
+    modal_id = f"user-modal-{user_id}"
+    
+    try:
+        # 社員更新を試みる
+        updated_user = user_service.update_user_with_validation(
+            db=db, user_id=user_id, user_in=user_in
+        )
+        
+        # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
+        return templates.TemplateResponse(
+            "partials/users/user_modal.html",
+            {
+                "request": request,
+                "user": updated_user,
+                "groups": group.get_multi(db),
+                "user_types": user_type.get_multi(db),
+                "modal_id": modal_id
+            },
+            headers={
+                "HX-Trigger": json.dumps({
+                    "closeModal": modal_id,
+                    "refreshPage": True,
+                    "showMessage": f"社員 {updated_user.username} を更新しました。"
+                })
+            }
+        )
+    except HTTPException as e:
+        # エラー時は同じモーダルを表示し、エラーメッセージを表示
+        return templates.TemplateResponse(
+            "partials/users/user_modal.html",
+            {
+                "request": request, 
+                "user": user.get(db, id=user_id),
+                "groups": group.get_multi(db),
+                "user_types": user_type.get_multi(db),
+                "modal_id": modal_id,
+                "errors": {"username": [e.detail]}
+            }
+        )
+
+
+@router.delete("/users/{user_id}", response_class=HTMLResponse)
+async def delete_user(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
+    """社員を削除します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        user_id: 削除する社員ID
+        db: データベースセッション
+
+    Returns:
+        HTMLResponse: 削除完了後のレスポンス
+    """
+    try:
+        # 社員が存在するか確認
+        user_obj = user.get(db, id=user_id)
+        if not user_obj:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found")
+        
+        # 社員の削除処理
+        user.remove(db=db, id=user_id)
+        
+        # モーダルを閉じて画面をリロードするトリガーを返す
+        modal_id = f"user-delete-modal-{user_id}"
+        return HTMLResponse(
+            content="",
+            status_code=200,
+            headers={
+                "HX-Trigger": json.dumps({
+                    "closeModal": modal_id,
+                    "refreshPage": True,
+                    "showMessage": f"社員 {user_obj.username} を削除しました。"
+                })
+            }
+        )
+    except HTTPException as e:
+        # エラー時は同じモーダルを表示し、エラーメッセージを表示
+        modal_id = f"user-delete-modal-{user_id}"
+        ctx = {
+            "request": request,
+            "user": user.get(db, id=user_id),
+            "modal_id": modal_id,
+            "warning_message": e.detail
+        }
+        return templates.TemplateResponse(
+            "partials/users/user_delete_modal.html", ctx
+        )
+
+
 @router.get("/pages/user/edit/{user_id}", response_class=HTMLResponse)
 def get_user_edit_form(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
     """指定されたユーザーの編集フォームをHTMLフラグメントとして返します。
@@ -155,10 +412,9 @@ def handle_create_user_row(
             "components/common/_form_error.html",
             {"request": request, "error_message": e.detail}
         )
-        response.status_code = e.status_code # エラーに応じたステータスコードを設定
-        # HTMXがエラーメッセージを正しい場所に挿入するようにHX-Retargetヘッダーを追加
+        response.status_code = e.status_code
         response.headers["HX-Retarget"] = "#add-form-error" # 追加フォームのエラー表示領域ID
-        # 変更: エラー時にもメッセージ表示をトリガー (Toast用)
+        # エラー時にもメッセージ表示をトリガー
         response.headers["HX-Trigger"] = json.dumps({"showMessage": e.detail, "isError": True})
         return response
 
@@ -207,8 +463,7 @@ def handle_update_user_row(
             {"request": request, "error_message": e.detail}
         )
         response.status_code = e.status_code
-        # HX-Retargetヘッダーを追加（編集フォームのエラー表示領域ID）
         response.headers["HX-Retarget"] = f"#edit-form-error-{user_id}"
-        # 変更: エラー時にもメッセージ表示をトリガー (Toast用)
+        # エラー時にもメッセージ表示をトリガー
         response.headers["HX-Trigger"] = json.dumps({"showMessage": e.detail, "isError": True})
         return response 

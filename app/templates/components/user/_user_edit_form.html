@@ -1,5 +1,6 @@
 {# ユーザー編集フォームの部分テンプレート #}
 {# Context: user (models.User), groups (List[models.Group]), user_types (List[models.UserType]), error_message (Optional[str]) #}
+{% import "components/macros/ui.html" as ui %}
 
 {% set form_id = "edit-form-" + user.id %}
 <form id="{{ form_id }}" 
@@ -8,9 +9,9 @@
       {# hx-target と hx-swap は成功時リフレッシュのため不要 #}
       hx-indicator="#loading-indicator"
 >
-    {# エラーメッセージ表示領域（共通テンプレートを include） #}
+    {# エラーメッセージ表示領域 #}
     <div id="edit-form-error-{{ user.id }}">
-      {% include 'components/common/_form_error.html' %}
+      {{ ui.simple_error(error_message) }}
     </div>
 
     <div>

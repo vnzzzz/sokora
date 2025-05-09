@@ -1,0 +1,61 @@
+{% import "components/macros/ui.html" as ui %}
+
+{% call ui.modal_form(
+       id          = modal_id,
+       title       = user and "社員編集" or "社員追加",
+       action      = user and ("/users/" ~ user.id) or "/users",
+       method      = user and "PUT" or "POST",
+       submit_text = user and "更新" or "登録",
+       size="lg"
+) %}
+
+  {{ ui.form_errors(errors) if errors }}
+
+  {% if user %}
+  <div class="mb-4">
+    <label class="label"><span class="label-text">社員ID</span></label>
+    <input type="text" name="user_id_display" class="input input-bordered w-full bg-gray-100" 
+           value="{{ user.id }}" disabled>
+    <input type="hidden" name="id" value="{{ user.id }}">
+  </div>
+  {% else %}
+  <div class="mb-4">
+    <label class="label"><span class="label-text">社員ID</span></label>
+    <input type="text" name="id" class="input input-bordered w-full" 
+           value="{{ user.id if user else '' }}" required>
+  </div>
+  {% endif %}
+
+  <div class="mb-4">
+    <label class="label"><span class="label-text">社員名</span></label>
+    <input type="text" name="username" class="input input-bordered w-full"
+          value="{{ user.username if user else '' }}" required>
+  </div>
+
+  <div class="mb-4">
+    <label class="label"><span class="label-text">社員種別</span></label>
+    <select name="user_type_id" class="select select-bordered w-full" required>
+      <option value="">選択してください</option>
+      {% for ut in user_types %}
+        <option value="{{ ut.id }}"
+                {% if user and ut.id == user.user_type_id %}selected{% endif %}>
+          {{ ut.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-4">
+    <label class="label"><span class="label-text">所属グループ</span></label>
+    <select name="group_id" class="select select-bordered w-full" required>
+      <option value="">選択してください</option>
+      {% for g in groups %}
+        <option value="{{ g.id }}"
+                {% if user and g.id == user.group_id %}selected{% endif %}>
+          {{ g.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+{% endcall %} 

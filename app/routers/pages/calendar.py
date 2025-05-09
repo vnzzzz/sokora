@@ -160,7 +160,7 @@ def get_calendar(
     headers = {"HX-Reswap": "innerHTML"} if request.headers.get("HX-Request") == "true" else {}
     logger.debug(f"Returning template with headers: {headers}")
     return templates.TemplateResponse(
-        "components/calendar/summary_calendar.html", 
+        "components/top/summary_calendar.html", 
         context,
         headers=headers
     )
@@ -341,5 +341,5 @@ def get_day_detail(
     }
 
     return templates.TemplateResponse(
-        "components/attendance/day_detail.html", context
+        "components/top/day_detail.html", context
     ) 

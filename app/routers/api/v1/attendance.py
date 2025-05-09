@@ -40,63 +40,6 @@ def get_attendances(db: Session = Depends(get_db)) -> Any:
     return {"records": attendances}
 
 
-@router.get("/user/{user_id}", response_model=UserAttendance)
-def get_user_attendance(
-    user_id: str, 
-    date: Optional[str] = None,
-    db: Session = Depends(get_db)
-) -> Any:
-    """
-    特定ユーザーの勤怠データを取得します。
-    date パラメータを指定すると、特定日の勤怠データのみを返します。
-    """
-    user_obj = user.get(db, id=user_id)
-    if not user_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"ユーザー '{user_id}' が見つかりません"
-        )
-
-    user_entries = attendance.get_user_data(db, user_id=user_id)
-    user_name = user.get_username_by_id(db, id=user_id)
-
-    # 取得したデータをレスポンススキーマ形式に整形します。
-    dates = []
-    for entry in user_entries:
-        entry_date = entry["date"]
-
-        # dateパラメータが指定されている場合、一致する日付のデータのみを抽出します。
-        if date and entry_date != date:
-            continue
-
-        entry_data = {
-            "date": entry_date,
-            "location_id": entry["location_id"],
-            "location": entry["location_name"]
-        }
-
-        # 勤怠レコードID (attendance_id) が存在すればレスポンスに含めます。
-        if "id" in entry:
-            entry_data["attendance_id"] = entry["id"]
-
-        dates.append(entry_data)
-
-    # dateパラメータが指定され、かつ該当日のデータが見つからなかった場合の処理。
-    if date and not dates:
-        # レスポンスの構造を維持するため、空のdatesリストを含むデータを返します。
-        return {
-            "user_id": user_id,
-            "user_name": user_name,
-            "dates": []
-        }
-
-    return {
-        "user_id": user_id,
-        "user_name": user_name,
-        "dates": dates
-    }
-
-
 @router.get("/day/{day}")
 def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
     """

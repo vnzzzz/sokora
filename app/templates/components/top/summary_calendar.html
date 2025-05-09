@@ -1,12 +1,12 @@
+{% import "components/macros/ui.html" as ui %}
 <section>
   {# JavaScriptに渡すためのメタデータ #}
   <div id="calendar-metadata" data-today-date="{{ today_date }}" class="hidden"></div>
 
   <div class="flex items-center justify-start space-x-4 mb-2">
     <span class="text-xl font-bold">{{ current_month }}</span>
-    {% with prev_month=calendar.prev_month, next_month=calendar.next_month, current_month=current_month, use_htmx=true,
-    target_id="calendar-area", url_base="/calendar" %} {% include "components/common/month_switcher.html" %} {% endwith
-    %}
+    {{ ui.month_switcher( prev_month=calendar.prev_month, next_month=calendar.next_month, current_month=current_month,
+    use_htmx=true, target_id="calendar-area", url_base="/calendar" ) }}
   </div>
 
   <div class="overflow-x-auto max-w-[850px]">

@@ -79,17 +79,21 @@ def test_month_navigation(page: Page) -> None:
     initial_month_text = current_month_locator.text_content()
     assert initial_month_text is not None
 
-    # 次月ボタンをクリック
-    next_month_button = page.locator('.btn-group button:has-text("＞")')
+    # 次月ボタンをクリック - セレクタを修正
+    next_month_button = page.locator('#calendar-area .btn-group button:last-child')
+    expect(next_month_button).to_be_visible(timeout=1000)
     next_month_button.click()
+    
     # 月が変わるのを待つ（テキストが変わることを期待）
     expect(current_month_locator).not_to_have_text(initial_month_text, timeout=1000)
     next_month_text = current_month_locator.text_content()
     assert next_month_text is not None
 
-    # 前月ボタンをクリック
-    prev_month_button = page.locator('.btn-group button:has-text("＜")')
+    # 前月ボタンをクリック - セレクタを修正
+    prev_month_button = page.locator('#calendar-area .btn-group button:first-child')
+    expect(prev_month_button).to_be_visible(timeout=1000)
     prev_month_button.click()
+    
     # 月が初期状態に戻るのを待つ
     expect(current_month_locator).to_have_text(initial_month_text, timeout=1000)
 
@@ -97,8 +101,10 @@ def test_month_navigation(page: Page) -> None:
     next_month_button.click()
     expect(current_month_locator).to_have_text(next_month_text, timeout=1000)
 
-    # 今月ボタンをクリック
-    today_button = page.locator('.btn-group button:has-text("今月")')
+    # 今月ボタンをクリック - セレクタを修正
+    today_button = page.locator('#calendar-area .btn-group button.btn-neutral')
+    expect(today_button).to_be_visible(timeout=1000)
     today_button.click()
+    
     # 月が初期状態に戻るのを待つ
     expect(current_month_locator).to_have_text(initial_month_text, timeout=1000)

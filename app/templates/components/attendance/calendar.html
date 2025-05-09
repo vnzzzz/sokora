@@ -1,10 +1,10 @@
+{% import "components/macros/ui.html" as ui %}
 <!-- Month display and switcher -->
 <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
   <span class="text-xl font-bold">{{ current_month }}</span> {# Style unified #}
-  <!-- 共通月切り替えコンポーネント -->
-  {% with use_htmx=true, target_id="attendance-content", url_base="/attendance", prev_month=prev_month,
-  next_month=next_month, current_month=current_month %} {% include "components/common/month_switcher.html" %} {% endwith
-  %}
+  <!-- 月切り替えコンポーネント -->
+  {{ ui.month_switcher( prev_month=prev_month, next_month=next_month, current_month=current_month,
+  url_base="/attendance", target_id="attendance-content", use_htmx=true ) }}
 </div>
 
 <!-- Search form -->
