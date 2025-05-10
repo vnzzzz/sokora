@@ -1,5 +1,5 @@
-{% extends "layout/base.html" %} {% set title_text = "社員種別管理" %} {% from "components/common/modal.html" import
-add_modal %} {# 編集・削除モーダルは_user_type_row.html 内で定義 #} {% block content %}
+{% extends "layout/base.html" %} {% set title_text = "社員種別管理" %} {% import "components/macros/ui.html" as ui %} {#
+編集・削除モーダルは_user_type_row.html 内で定義 #} {% block content %} {{ ui.loading_indicator() }}
 <div class="p-4">
   <div class="flex justify-between items-center max-w-[700px] mb-4">
     <div>
@@ -7,53 +7,28 @@ add_modal %} {# 編集・削除モーダルは_user_type_row.html 内で定義 #
     </div>
 
     <!-- 新規追加ボタン -->
-    <div x-data="{ showAddModal: false }">
-      <button @click="showAddModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-          class="w-4 h-4 mr-1"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
-          />
-        </svg>
-        社員種別追加
-      </button>
-
-      <!-- 社員種別追加モーダル -->
-      {% set add_content %} {# HTMX 用に form タグを追加し、hx-post と hx-indicator を設定 #} {#
-      <form id="new-user-type-form" class="space-y-4" hx-post="/pages/user_type/row" hx-indicator="#loading-indicator">
-        #} {# エラーメッセージ表示領域 #} {#
-        <div id="add-form-error">{% include 'components/common/_form_error.html' %}</div>
-        #}
-        <div class="form-control">
-          <label class="label" for="add-user-type-name">
-            <span class="label-text">社員種別名</span>
-          </label>
-          <input
-            type="text"
-            id="add-user-type-name"
-            name="name"
-            class="input input-bordered w-full focus:border-neutral"
-            required
-            autocomplete="off"
-          />
-        </div>
-        {# フォームボタン #} {#
-        <div class="flex justify-end space-x-3 mt-6">
-          <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
-          <button type="submit" class="btn btn-neutral shadow-sm">追加</button>
-        </div>
-        #} {#
-      </form>
-      #} {% endset %} {{ add_modal("社員種別追加", "add-user-type-modal", add_content, "/pages/user_type/row") }}
-    </div>
+    <button
+      class="btn btn-sm btn-outline shadow-sm hover:shadow"
+      hx-get="/user_types/modal"
+      hx-target="body"
+      hx-swap="beforeend"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="w-4 h-4 mr-1"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+        />
+      </svg>
+      社員種別追加
+    </button>
   </div>
 
   <!-- 社員種別一覧 -->
@@ -80,81 +55,13 @@ add_modal %} {# 編集・削除モーダルは_user_type_row.html 内で定義 #
           </tr>
         </thead>
         <tbody id="user-type-table-body">
-          {# 行の描画を部分テンプレートに委譲 #} {% for user_type in user_types %} {% include
-          "components/user_type/_user_type_row.html" %} {% endfor %}
+          {% for user_type in user_types %} {% include "components/user_type/_user_type_row.html" %} {% endfor %}
         </tbody>
       </table>
     </div>
     {% endif %}
   </div>
 </div>
-{% endblock %} {# HTMX 化により JavaScript は不要 #} {# {% block extra_scripts %}
-<script src="/static/js/modal-handlers.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // ... (既存のJSコードは削除)
-  })
-</script>
-{% endblock %} #} {% block extra_scripts %}
-<script>
-  document.body.addEventListener('htmx:afterRequest', function (event) {
-    // 成功時のレスポンスヘッダーを確認
-    const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
-    let triggers = {}
-    if (triggerHeader) {
-      try {
-        triggers = JSON.parse(triggerHeader)
-      } catch (e) {
-        console.error('Failed to parse HX-Trigger header:', e)
-      }
-    }
-
-    let showMessage = triggers.showMessage
-    let refreshPage = triggers.refreshPage
-    let isError = triggers.isError || !event.detail.successful
-
-    // DELETE 成功時もリフレッシュフラグを立てる
-    if (event.detail.requestConfig.verb === 'delete' && event.detail.successful) {
-      refreshPage = true
-      // DELETE API はメッセージを返さないので、ここで設定
-      showMessage = '削除しました。'
-      isError = false
-    }
-
-    // メッセージ表示
-    if (showMessage) {
-      showToast(showMessage, isError ? 'error' : 'success')
-    }
-
-    // ページリフレッシュ
-    if (refreshPage) {
-      window.location.reload()
-    }
-  })
-
-  // 仮のトースト表示関数 (daisyUI toast などに置き換え推奨)
-  function showToast(message, type = 'success') {
-    const toastId = 'toast-' + Date.now()
-    const toastClass = type === 'error' ? 'alert-error' : 'alert-success'
-    const toastHtml = `
-      <div id=\"${toastId}\" class=\"alert ${toastClass} shadow-lg w-auto\">
-        <div>
-          <span>${message}</span>
-        </div>
-      </div>
-    `
-    const toastContainer = document.getElementById('toast-container')
-    if (!toastContainer) {
-      console.warn(
-        'Toast container not found. Add <div id="toast-container" class="toast toast-top toast-center"></div> to your layout.'
-      )
-      return
-    }
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml)
-    setTimeout(() => {
-      const toastElement = document.getElementById(toastId)
-      if (toastElement) toastElement.remove()
-    }, 3000)
-  }
-</script>
+{% endblock %} {% block extra_scripts %}
+<script src="{{ url_for('static', path='js/modal.js') }}" defer></script>
 {% endblock %}

@@ -6,13 +6,17 @@ from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
 
-def test_csv_page_loads(page: Page) -> None:
-    """CSVページが正しく読み込まれるかテストします。"""
+def test_csv_page_title(page: Page) -> None:
+    """CSVページのタイトルが正しいかテストします。"""
     page.goto(f"{BASE_URL}/csv")
-    
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     # ページタイトルを確認
     expect(page).to_have_title(re.compile("CSV"))
 
+def test_csv_page_elements_visibility(page: Page) -> None:
+    """CSVページの主要な要素が表示されているかテストします。"""
+    page.goto(f"{BASE_URL}/csv") # 各テストでページの状態をリセットするため再度goto
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     # 主要な要素が存在することを確認
     expect(page.locator('h2:has-text("CSVデータダウンロード")')).to_be_visible()
     expect(page.locator('select[name="month-select"]')).to_be_visible()
@@ -28,6 +32,7 @@ def test_csv_page_loads(page: Page) -> None:
 # 例: ボタンクリックでダウンロードイベントが発生するかどうか
 # def test_csv_download_click(page: Page) -> None:
 #     page.goto(f"{BASE_URL}/csv")
+#     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 #     download_button = page.locator('button:has-text("ダウンロード"), a:has-text("ダウンロード")').first
 #
 #     # Start waiting for the download

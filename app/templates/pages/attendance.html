@@ -1,12 +1,10 @@
-{% extends "layout/base.html" %} {% set title_text = "勤怠登録" %} {% block content %}
+{% extends "layout/base.html" %} {% import "components/macros/ui.html" as ui %} {% set title_text = "勤怠登録" %} {%
+block content %}
 <div class="p-4">
   <div class="flex justify-between items-center mb-3">
     <div>
       <h2 class="text-lg font-bold text-base-content">勤怠登録</h2>
     </div>
-    <form id="month-nav-form" class="hidden">
-      <input type="hidden" name="month" id="month-value" value="" />
-    </form>
   </div>
 
   <div class="mt-4">
@@ -24,16 +22,8 @@
     </div>
     {% else %}
 
-    <!-- コンテンツ全体をHTMXターゲットとするコンテナ -->
-    <div
-      id="attendance-content"
-      hx-get="/attendance"
-      hx-trigger="refreshAttendance from:body"
-      hx-target="#attendance-content"
-      hx-swap="innerHTML"
-    >
-      {# 部分テンプレートを読み込む #} {% include "components/attendance/calendar.html" %}
-    </div>
+    <!-- カレンダー本体（初回のみサーバサイド描画） -->
+    <div id="calendar">{% include "partials/attendance/calendar.html" %}</div>
 
     {% endif %}
   </div>
@@ -46,4 +36,7 @@
     transition: all 0.2s;
   }
 </style>
+
+<!-- モーダル表示用のコンテナ -->
+<div id="modal-container"></div>
 {% endblock %}

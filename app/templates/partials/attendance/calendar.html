@@ -1,0 +1,202 @@
+{% import "components/macros/ui.html" as ui %}
+<!-- Month display and switcher -->
+<div id="calendar">
+  <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
+    <span class="text-xl font-bold">{{ month_name }}</span> {# 月名の表示 #}
+    <!-- 月切り替えコンポーネント -->
+    {{ ui.month_switcher( prev_month=prev_month, next_month=next_month, current_month=current_month,
+    url_base='/attendance', use_htmx=true ) }}
+  </div>
+
+  <!-- Search form -->
+  <div class="mt-2 mb-4 flex justify-end">
+    <form hx-get="/attendance" hx-target="#calendar" hx-swap="innerHTML">
+      <div class="form-control" style="width: 300px">
+        <div class="input-group">
+          <input
+            type="text"
+            placeholder="社員名またはIDを検索..."
+            class="input input-bordered input-sm w-full"
+            name="search_query"
+            value="{{ search_query or '' }}"
+          />
+          <button type="submit" class="btn btn-sm btn-square">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- JavaScriptへ渡すデータ -->
+  <script id="location-types-data" type="application/json" class="hidden">
+    {{ location_data_for_js|tojson|safe }}
+  </script>
+
+  <!-- 勤怠マトリックス -->
+  <div class="overflow-x-auto w-full">
+    {# テーブルレイアウトを固定し、列幅指定を有効にする #}
+    <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed">
+      <thead>
+        <tr>
+          {# --- 新しい固定列: グループ (ヘッダーテキスト削除、幅縮小) --- #}
+          <th class="bg-base-300 text-left sticky left-0 z-20" style="width: 50px; min-width: 50px; max-width: 50px">
+            {# グループヘッダーテキストを削除 #}
+          </th>
+          {# --- 固定列: 社員名 (leftを調整) --- #}
+          <th
+            class="bg-base-300 text-left sticky left-[50px] z-10 whitespace-nowrap"
+            {#
+            left
+            を
+            50px
+            に
+            #}
+            style="width: 200px; min-width: 200px; max-width: 200px"
+          >
+            社員名
+          </th>
+
+          <!-- 日付ヘッダー -->
+          {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
+          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
+          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          %}
+
+          <th
+            class="bg-base-300 text-center p-0.5 whitespace-nowrap {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
+            data-date="{{ day.date }}"
+            data-day="{{ day.day }}"
+            data-is-holiday="{{ is_holiday|lower }}"
+            data-holiday-name="{{ day.holiday_name|default('') }}"
+            style="min-width: 70px; width: 70px"
+          >
+            <div
+              class="font-bold text-sm {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+            >
+              {{ day.day }}
+            </div>
+            <div
+              class="text-xs opacity-70 {% if day.holiday_name|default('') %}custom-tooltip holiday-tooltip{% endif %}"
+            >
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[weekday_index] }} {% if
+              day.holiday_name|default('') %}
+              <span class="tooltip-text">{{ day.holiday_name }}</span>
+              {% endif %}
+            </div>
+          </th>
+          {% endif %} {% endfor %} {% endfor %}
+        </tr>
+      </thead>
+
+      <tbody>
+        {# --- グループごとのループ --- #} {% for group_name in group_names %} {# --- group_name
+        に対応するユーザーリストを取得 --- #} {% set users_in_group = grouped_users[group_name] %} {# ---
+        ユーザーリストを社員種別名でグルーピング (user_obj はタプルの4番目 index=3) --- #} {% for user_type_tuple in
+        users_in_group | groupby('3.user_type.name') %} {% set user_type_name = user_type_tuple.grouper %} {#
+        グループ化キー（社員種別名）を取得 #} {% set user_list = user_type_tuple.list %} {#
+        グループ化されたユーザーリストを取得 #} {# --- 社員種別ヘッダー行 --- #}
+        <tr class="bg-base-200/80">
+          {# グループ名セル (グループの最初の種別の行に表示、幅縮小) #}
+          <td
+            class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top"
+            style="width: 50px; min-width: 50px; max-width: 50px"
+            {#
+            幅を50pxに
+            #}
+          >
+            {% if loop.first %} {# このグループの最初の社員種別の場合のみグループ名を表示 #} {{ group_name }} {% endif
+            %}
+          </td>
+          {# 社員種別ヘッダーセル (sticky, left調整) #}
+          <td
+            class="font-medium text-xs py-1 px-2 text-base-content/70 sticky left-[50px] z-10 bg-base-200/80"
+            {#
+            left
+            を
+            50px
+            に
+            #}
+            style="width: 200px; min-width: 200px; max-width: 200px"
+          >
+            {# 未分類の場合も考慮 #} {{ user_type_name if user_type_name else "未分類" }}
+          </td>
+          {# 残りの日付セル分を埋めるためのセル #}
+          <td colspan="{{ calendar_day_count|default(31) }}" class="bg-base-200/80"></td>
+        </tr>
+
+        {# --- この社員種別に属する社員データ行 --- #} {% for user_name, user_id, user_type_id, user_obj in user_list %}
+        <tr class="hover:bg-base-300/30">
+          {# グループ名セル (空、幅縮小) #}
+          <td
+            class="sticky left-0 z-20 bg-base-100"
+            style="width: 50px; min-width: 50px; max-width: 50px"
+            {#
+            幅を50pxに
+            #}
+          ></td>
+          {# 社員名セル (sticky, left調整) - クリックで個別表示に切り替わるよう修正 #}
+          <td
+            class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1"
+            {#
+            left
+            を
+            50px
+            に
+            #}
+            style="width: 200px; min-width: 200px; max-width: 200px"
+          >
+            {{ user_name }} ({{ user_id }})
+          </td>
+
+          <!-- 日付ごとのセル -->
+          {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
+          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
+          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          %} {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
+          user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
+          location_styles[location_name]|default({}) if location_name else {} %} {# location_stylesから辞書を取得 #}
+
+          <td
+            class="text-center p-0.5 cursor-pointer attendance-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
+            data-date="{{ day.date }}"
+            data-user-id="{{ user_id }}"
+            data-user-name="{{ user_name }}"
+            data-has-data="{{ has_data|lower }}"
+            data-location="{{ location_name }}"
+            style="min-width: 70px; width: 70px"
+            hx-get="/pages/attendances/modal/{{ user_id }}/{{ day.date }}"
+            hx-target="#modal-container"
+            hx-swap="innerHTML"
+          >
+            {% if has_data %} {# style_infoからtext_classとbg_classを適用 #}
+            <div
+              class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full"
+            >
+              {{ location_name }}
+            </div>
+            {% endif %}
+          </td>
+          {% endif %} {% endfor %} {% endfor %}
+        </tr>
+        {% endfor %} {# End user loop for this user_type #} {% endfor %} {# End user_type loop #} {% endfor %} {# End
+        group loop #}
+      </tbody>
+    </table>
+  </div>
+</div>

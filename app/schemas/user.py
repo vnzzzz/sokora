@@ -24,22 +24,22 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """ユーザー作成用スキーマ"""
-    id: str = Field(..., alias="user_id")
+    id: str = Field(..., description="ユーザーID (半角英数-_)")
 
     @classmethod
     async def as_form(
         cls,
+        id: str = Form(...),  # idとして直接受け取る
         username: str = Form(...),
         group_id: str = Form(...),
         user_type_id: str = Form(...),
-        user_id: str = Form(..., alias="id"),  # alias に合わせて修正
     ) -> 'UserCreate':  # 戻り値の型アノテーションを追加
         """フォームデータからインスタンスを生成"""
         return cls(
+            id=id,  # idとして直接渡す
             username=username,
             group_id=group_id,
-            user_type_id=user_type_id,
-            user_id=user_id
+            user_type_id=user_type_id
         )
 
 

@@ -159,6 +159,30 @@
     // #calendar-metadata が DOM に存在するかどうかで summary_calendar がロードされたかを判断
     if (document.getElementById('calendar-metadata')) {
       setTimeout(initCalendar, 50)
+
+      // 選択されていた月があるか確認し、初期表示に反映
+      setTimeout(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const monthInUrl = urlParams.get('month')
+        // URLに月指定がなければ、localStorageの月情報を使用
+        if (!monthInUrl && window.location.pathname.includes('/attendance')) {
+          const savedMonth = localStorage.getItem('selectedMonth')
+          if (savedMonth) {
+            // 保存された月のカレンダーを表示（ページの再読み込みなしで可能かチェック）
+            const currentMonthDisplay = document.querySelector('.current-month-display')
+            if (currentMonthDisplay && !currentMonthDisplay.textContent.includes(savedMonth)) {
+              // 同一ページ内で月切り替えを行う
+              if (typeof htmx !== 'undefined') {
+                const calendarElement = document.getElementById('calendar')
+                if (calendarElement) {
+                  const url = `/attendance?month=${encodeURIComponent(savedMonth)}`
+                  htmx.ajax('GET', url, { target: '#calendar', swap: 'outerHTML' })
+                }
+              }
+            }
+          }
+        }
+      }, 100)
     }
   }
 
@@ -167,5 +191,31 @@
   } else {
     // DOMがすでに読み込まれている場合
     attemptInitialCalendarInit()
+  }
+
+  /**
+   * 指定された月のカレンダーページに遷移する
+   * @param {string} month - YYYY-MM形式の月、空文字の場合は現在の月
+   * @param {string|null} userId - ユーザーID（指定された場合）
+   * @param {string} urlBase - 基本URL
+   */
+  function navigateToMonth(month, userId, urlBase = '/attendance') {
+    // 月情報をlocalStorageに保存
+    if (month) {
+      localStorage.setItem('selectedMonth', month)
+    } else {
+      localStorage.removeItem('selectedMonth')
+    }
+
+    // URLを構築
+    let url
+    if (userId) {
+      url = `${urlBase}/${userId}${month ? `?month=${month}` : ''}`
+    } else {
+      url = `${urlBase}${month ? `?month=${month}` : ''}`
+    }
+
+    // ページ遷移
+    window.location.href = url
   }
 })()

@@ -19,7 +19,7 @@ def test_get_user_by_username(db_with_data: Session) -> None:
     assert group is not None
     assert user_type is not None
     user_in = schemas.UserCreate(
-        user_id="testuser1", username="Test User One", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="testuser1", username="Test User One", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     user = crud.user.create(db=db, obj_in=user_in)
 
@@ -67,7 +67,7 @@ def test_validate_user_creation_success(db_with_data: Session) -> None:
     assert group and user_type
 
     user_in = schemas.UserCreate(
-        user_id=random_lower_string(8),
+        id=random_lower_string(8),
         username=random_lower_string(10),
         group_id=int(group.id),
         user_type_id=int(user_type.id)
@@ -82,12 +82,12 @@ def test_validate_user_creation_fail_duplicate_id(db_with_data: Session) -> None
     user_type = db.query(models.UserType).filter(models.UserType.name == "Test Type").first()
     assert group and user_type
     existing_user_in = schemas.UserCreate(
-        user_id="existing_user", username="Existing User Name", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="existing_user", username="Existing User Name", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     existing_user = crud.user.create(db=db, obj_in=existing_user_in)
 
     user_in = schemas.UserCreate(
-        user_id=str(existing_user.id),
+        id=str(existing_user.id),
         username=random_lower_string(10),
         group_id=int(group.id),
         user_type_id=int(user_type.id)
@@ -105,12 +105,12 @@ def test_validate_user_creation_fail_duplicate_username(db_with_data: Session) -
     user_type = db.query(models.UserType).filter(models.UserType.name == "Test Type").first()
     assert group and user_type
     existing_user_in = schemas.UserCreate(
-        user_id="another_user", username="Existing UserName", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="another_user", username="Existing UserName", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     existing_user = crud.user.create(db=db, obj_in=existing_user_in)
 
     user_in = schemas.UserCreate(
-        user_id=random_lower_string(8),
+        id=random_lower_string(8),
         username=str(existing_user.username),
         group_id=int(group.id),
         user_type_id=int(user_type.id)
@@ -131,7 +131,7 @@ def test_create_user_with_validation_success(db_with_data: Session) -> None:
     user_id = random_lower_string(8)
     username = random_lower_string(10)
     user_in = schemas.UserCreate(
-        user_id=user_id,
+        id=user_id,
         username=username,
         group_id=int(group.id),
         user_type_id=int(user_type.id)
@@ -152,12 +152,12 @@ def test_create_user_with_validation_fail(db_with_data: Session) -> None:
     user_type = db.query(models.UserType).filter(models.UserType.name == "Test Type").first()
     assert group and user_type
     existing_user_in = schemas.UserCreate(
-        user_id="one_more_user", username="One More User Name", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="one_more_user", username="One More User Name", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     existing_user = crud.user.create(db=db, obj_in=existing_user_in)
 
     user_in = schemas.UserCreate(
-        user_id=str(existing_user.id),
+        id=str(existing_user.id),
         username=random_lower_string(10),
         group_id=int(group.id),
         user_type_id=int(user_type.id)
@@ -174,7 +174,7 @@ def test_update_user_with_validation_success(db_with_data: Session) -> None:
     user_type = db.query(models.UserType).filter(models.UserType.name == "Test Type").first()
     assert group and user_type
     user_to_update_in = schemas.UserCreate(
-        user_id="user_to_update", username="User To Update Name", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="user_to_update", username="User To Update Name", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     user_to_update = crud.user.create(db=db, obj_in=user_to_update_in)
 
@@ -206,11 +206,11 @@ def test_update_user_with_validation_fail_duplicate_username(db_with_data: Sessi
     user_type = db.query(models.UserType).filter(models.UserType.name == "Test Type").first()
     assert group and user_type
     user1_in = schemas.UserCreate(
-        user_id="user1", username="User One Name", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="user1", username="User One Name", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     user1 = crud.user.create(db=db, obj_in=user1_in)
     user2_in = schemas.UserCreate(
-        user_id="user2", username="User Two Name", group_id=int(group.id), user_type_id=int(user_type.id)
+        id="user2", username="User Two Name", group_id=int(group.id), user_type_id=int(user_type.id)
     )
     user2 = crud.user.create(db=db, obj_in=user2_in)
 

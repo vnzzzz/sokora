@@ -24,4 +24,4 @@ def read_root(request: Request) -> Response:
     """トップページをレンダリングして返す。"""
     logger.info("Top page accessed")
     context = {"request": request, "title_text": "Sokora - 勤怠管理"}
-    return templates.TemplateResponse("pages/main.html", context) 
+    return templates.TemplateResponse("pages/top.html", context) 

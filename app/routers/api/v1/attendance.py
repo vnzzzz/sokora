@@ -6,8 +6,9 @@
 """
 
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 import json # json をインポート
+import re # 正規表現を追加
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Form, Response
 from fastapi.responses import JSONResponse
@@ -39,63 +40,6 @@ def get_attendances(db: Session = Depends(get_db)) -> Any:
     return {"records": attendances}
 
 
-@router.get("/user/{user_id}", response_model=UserAttendance)
-def get_user_attendance(
-    user_id: str, 
-    date: Optional[str] = None,
-    db: Session = Depends(get_db)
-) -> Any:
-    """
-    特定ユーザーの勤怠データを取得します。
-    date パラメータを指定すると、特定日の勤怠データのみを返します。
-    """
-    user_obj = user.get(db, id=user_id)
-    if not user_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"ユーザー '{user_id}' が見つかりません"
-        )
-
-    user_entries = attendance.get_user_data(db, user_id=user_id)
-    user_name = user.get_username_by_id(db, id=user_id)
-
-    # 取得したデータをレスポンススキーマ形式に整形します。
-    dates = []
-    for entry in user_entries:
-        entry_date = entry["date"]
-
-        # dateパラメータが指定されている場合、一致する日付のデータのみを抽出します。
-        if date and entry_date != date:
-            continue
-
-        entry_data = {
-            "date": entry_date,
-            "location_id": entry["location_id"],
-            "location": entry["location_name"]
-        }
-
-        # 勤怠レコードID (attendance_id) が存在すればレスポンスに含めます。
-        if "id" in entry:
-            entry_data["attendance_id"] = entry["id"]
-
-        dates.append(entry_data)
-
-    # dateパラメータが指定され、かつ該当日のデータが見つからなかった場合の処理。
-    if date and not dates:
-        # レスポンスの構造を維持するため、空のdatesリストを含むデータを返します。
-        return {
-            "user_id": user_id,
-            "user_name": user_name,
-            "dates": []
-        }
-
-    return {
-        "user_id": user_id,
-        "user_name": user_name,
-        "dates": dates
-    }
-
-
 @router.get("/day/{day}")
 def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
     """
@@ -107,8 +51,34 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
     return {"success": True, "data": detail}
 
 
+# リクエストからmonth情報を抽出するヘルパー関数
+def extract_month_from_request(request: Request) -> Optional[str]:
+    """
+    リクエストから現在表示中の月情報を抽出します。
+    
+    Args:
+        request: FastAPIリクエストオブジェクト
+        
+    Returns:
+        Optional[str]: 抽出された月情報 (YYYY-MM形式)、見つからない場合はNone
+    """
+    # Refererヘッダーからの抽出を試みる
+    referer = request.headers.get("referer", "")
+    month_match = re.search(r"month=([0-9]{4}-[0-9]{2})", referer)
+    
+    if month_match:
+        return month_match.group(1)
+    
+    # X-Test-Monthヘッダー (テスト用)
+    if "x-test-month" in request.headers:
+        return request.headers.get("x-test-month")
+    
+    return None
+
+
 @router.post("", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 async def create_attendance(
+    request: Request,
     user_id: str = Form(...),
     date_str: str = Form(..., alias="date"),
     location_id: int = Form(...),
@@ -147,16 +117,23 @@ async def create_attendance(
 
         # 勤怠データ作成
         created_attendance = attendance.create(db=db, obj_in=attendance_in) # 作成されたオブジェクトを取得
+        
+        # 現在表示中の月情報を取得
+        current_month = extract_month_from_request(request)
+        
+        # トリガーデータを作成
         trigger_data = {
             "closeModal": f"attendance-modal-{user_id}-{date_str}",
-            "refreshAttendance": None
+            "refreshUserAttendance": {"user_id": user_id, "month": current_month},
+            "refreshAttendance": {"month": current_month} # 月情報を含める
         }
+        
         return Response(
             content="",
             status_code=status.HTTP_204_NO_CONTENT,
-            headers={"HX-Trigger": json.dumps(trigger_data)} # JSON文字列にする
+            headers={"HX-Trigger": json.dumps(trigger_data)}
         )
-
+        
     except HTTPException:
         raise # HTTPExceptionはそのまま再送出
     except Exception as e:
@@ -169,6 +146,7 @@ async def create_attendance(
 
 @router.put("/{attendance_id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 async def update_attendance(
+    request: Request,
     attendance_id: int,
     attendance_in: AttendanceUpdate,
     db: Session = Depends(get_db),
@@ -187,10 +165,17 @@ async def update_attendance(
         # 更新処理
         updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_in) # 更新後のオブジェクト取得
         logger.debug(f"勤怠ID {attendance_id} の更新に成功しました")
+        
+        # 現在表示中の月情報を取得
+        current_month = extract_month_from_request(request)
+        
+        # トリガーデータを作成
         trigger_data = {
-            "closeModal": f"attendance-modal-{updated_obj.user_id}-{updated_obj.date.isoformat()}", # 更新後のオブジェクトから取得
-            "refreshAttendance": None
+            "closeModal": f"attendance-modal-{updated_obj.user_id}-{updated_obj.date.isoformat()}",
+            "refreshUserAttendance": {"user_id": updated_obj.user_id, "month": current_month},
+            "refreshAttendance": {"month": current_month} # 月情報を含める
         }
+        
         logger.info(f"Sending HX-Trigger for modal close: {json.dumps(trigger_data)}")
         return Response(
             content="",
@@ -201,7 +186,6 @@ async def update_attendance(
     except HTTPException:
         raise # HTTPExceptionはそのまま再送出
     except Exception as e:
-        db.rollback() # update内でエラーがあればrollbackされるはずだが念のため
         logger.error(f"勤怠更新エラー: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -218,51 +202,36 @@ async def delete_attendance(
     """
     勤怠データを削除します。
     成功時には HX-Trigger ヘッダー付きで 204 No Content を返します。
+    
+    このエンドポイントは、JavaScript APIから直接勤怠IDを指定して削除する場合に使用します。
     """
     try:
-        # get_or_404 は HTTPException を送出する可能性がある
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
+        user_id = attendance_obj.user_id  # 削除前にユーザーIDを取得
+        date_str = attendance_obj.date.isoformat()  # 削除前に日付を取得
         
-        # ここに到達すればオブジェクトは存在する
-        # try:
-        #     attendance.remove(db=db, id=attendance_id)
-        #     db.commit()
-        #     logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
-            
-        #     return JSONResponse(
-        #         status_code=status.HTTP_200_OK,
-        #         content={"success": True, "message": "勤怠データを正常に削除しました"}
-        #     )
-        # except Exception as e:
-        #     db.rollback()
-        #     logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-        #     return JSONResponse(
-        #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        #         content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
-        #     )
-        
-        # remove処理自体はシンプルなので、内側のtry-exceptは不要かもしれない
-        attendance.remove(db=db, id=attendance_id) # removeは内部でcommitしない想定 (base.py次第)
-        # db.commit() # removeがcommitしない場合、ここでcommitが必要。base.pyを確認。
+        attendance.remove(db=db, id=attendance_id)
         logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
-        user_id_deleted = attendance_obj.user_id # 削除前に取得
-        date_deleted = attendance_obj.date.isoformat() # 削除前に取得
+        
+        # 現在表示中の月情報を取得
+        current_month = extract_month_from_request(request)
+        
+        # 勤怠UI更新用のトリガーデータ
         trigger_data = {
-            "closeModal": f"attendance-modal-{user_id_deleted}-{date_deleted}",
-            "refreshAttendance": None
+            "closeModal": f"attendance-modal-{user_id}-{date_str}",
+            "refreshUserAttendance": {"user_id": user_id, "month": current_month},
+            "refreshAttendance": {"month": current_month} # 月情報を含める
         }
+        
         return Response(
             content="",
             status_code=status.HTTP_204_NO_CONTENT,
             headers={"HX-Trigger": json.dumps(trigger_data)}
         )
-
-    except HTTPException as http_exc:
-        # get_or_404 が発生させた 404 エラーをそのまま返す
-        raise http_exc
+        
+    except HTTPException:
+        raise # HTTPExceptionはそのまま再送出
     except Exception as e:
-        # その他の予期せぬエラー
-        db.rollback() # 念のためロールバック
         logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -272,29 +241,53 @@ async def delete_attendance(
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 def delete_attendance_by_user_date(
+    request: Request,
     user_id: str,
     date: date, # FastAPIが "YYYY-MM-DD" から date オブジェクトに変換
     db: Session = Depends(get_db),
 ) -> Response:
     """
-    ユーザーIDと日付を指定して勤怠データを削除します。
+    特定ユーザーの特定日の勤怠データを削除します。
     成功時には HX-Trigger ヘッダー付きで 204 No Content を返します。
+    
+    このエンドポイントは、モーダルUIから user_id と date を指定して削除する場合に使用します。
     """
-    logger.info(f"ユーザーIDと日付による勤怠削除開始: User={user_id}, Date={date}")
-    deleted = attendance.delete_by_user_and_date(db=db, user_id=user_id, date_obj=date)
-    if not deleted:
-        # 削除対象が見つからなくてもエラーとはせず、404を返す
-        logger.warning(f"削除対象の勤怠データが見つかりません: User={user_id}, Date={date}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="対象の勤怠データが見つかりません")
-
-    db.commit() # delete_by_user_and_date が commit しないため、ここで commit
-    logger.info(f"ユーザーIDと日付による勤怠削除成功: User={user_id}, Date={date}")
-    trigger_data = {
-        "closeModal": f"attendance-modal-{user_id}-{date.isoformat()}", # 引数の date を使う
-        "refreshAttendance": None
-    }
-    return Response(
-        content="",
-        status_code=status.HTTP_204_NO_CONTENT,
-        headers={"HX-Trigger": json.dumps(trigger_data)}
-    )
+    try:
+        date_str = date.isoformat()
+        
+        # 勤怠データを検索
+        attendance_obj = attendance.get_by_user_and_date(db=db, user_id=user_id, date=date)
+        if not attendance_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"ユーザー '{user_id}' の日付 '{date_str}' の勤怠データが見つかりません"
+            )
+        
+        # 勤怠データを削除
+        attendance.remove(db=db, id=attendance_obj.id)
+        logger.debug(f"ユーザー '{user_id}' の日付 '{date_str}' の勤怠削除に成功しました")
+        
+        # 現在表示中の月情報を取得
+        current_month = extract_month_from_request(request)
+        
+        # モーダルを閉じて勤怠表示を更新するトリガー
+        trigger_data = {
+            "closeModal": f"attendance-modal-{user_id}-{date_str}",
+            "refreshUserAttendance": {"user_id": user_id, "month": current_month},
+            "refreshAttendance": {"month": current_month} # 月情報を含める
+        }
+        
+        return Response(
+            content="",
+            status_code=status.HTTP_204_NO_CONTENT,
+            headers={"HX-Trigger": json.dumps(trigger_data)}
+        )
+        
+    except HTTPException:
+        raise # HTTPExceptionはそのまま再送出
+    except Exception as e:
+        logger.error(f"ユーザー/日付指定の勤怠削除エラー: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"勤怠データの削除中にエラーが発生しました: {str(e)}"
+        )

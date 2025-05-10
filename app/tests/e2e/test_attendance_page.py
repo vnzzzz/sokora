@@ -11,10 +11,11 @@ from app.utils.calendar_utils import format_date_jp
 def test_edit_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を登録/更新するテスト"""
     page.goto("http://localhost:8000/attendance") # 勤怠登録ページ
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. 勤怠マトリックスが表示されるのを待つ
-    attendance_content_locator = page.locator("#attendance-content")
-    matrix_table_locator = attendance_content_locator.locator("table")
+    calendar_locator = page.locator("#calendar") # #attendance-content から #calendar に変更
+    matrix_table_locator = calendar_locator.locator("table")
     expect(matrix_table_locator).to_be_visible(timeout=1000)
 
     # 2. 特定のユーザーと日付のセルをクリック
@@ -106,7 +107,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     expect(modal_dialog_locator).to_be_hidden(timeout=1000)
 
     # 7. カレンダー部分がリフレッシュされ、セルの内容が更新されるのを待つ
-    #    htmxにより #attendance-content が更新される
+    #    htmxにより #calendar が更新される
     #    再度同じセレクタで要素を探し、内容が変わるのを待つ
 
     # 行を特定するセレクタを準備 (IDがあれば使う)
@@ -133,10 +134,11 @@ def test_edit_attendance_via_modal(page: Page) -> None:
 def test_delete_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を削除するテスト"""
     page.goto("http://localhost:8000/attendance") # 勤怠登録ページ
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. 勤怠マトリックスが表示されるのを待つ
-    attendance_content_locator = page.locator("#attendance-content")
-    matrix_table_locator = attendance_content_locator.locator("table")
+    calendar_locator = page.locator("#calendar") # #attendance-content から #calendar に変更
+    matrix_table_locator = calendar_locator.locator("table")
     expect(matrix_table_locator).to_be_visible(timeout=1000)
 
     # 2. 削除対象のユーザーと日付のセルを特定 (例: 最初のユーザー, 11日)
@@ -221,168 +223,6 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     expect(reloaded_cell_locator).to_be_empty(timeout=1000)
     # data-location 属性が空になっていることを確認
     expect(reloaded_cell_locator).to_have_attribute("data-location", "", timeout=5000)
-
-
-def test_view_user_individual_calendar(page: Page) -> None:
-    """勤怠ページの社員名をクリックし、個別のカレンダー表示に切り替わるかテスト"""
-    page.goto("http://localhost:8000/attendance")  # 勤怠登録ページ
-
-    # 1. 勤怠マトリックスが表示されるのを待つ
-    attendance_content_locator = page.locator("#attendance-content")
-    matrix_table_locator = attendance_content_locator.locator("table")
-    expect(matrix_table_locator).to_be_visible(timeout=1000)
-
-    # 2. 特定のユーザーのセルを探す
-    user_name_cell_selector = (
-        'td.font-medium.text-left.sticky.z-10.bg-base-100.whitespace-nowrap.p-1'
-        ':has-text("(")'  # 括弧が含まれるセルを探す
-    )
-    user_name_cells = matrix_table_locator.locator(user_name_cell_selector)
-    expect(user_name_cells.first).to_be_visible(timeout=1000)
-    first_user_name_cell = user_name_cells.first
-
-    # ユーザー名とIDを取得
-    user_name_cell_text = first_user_name_cell.inner_text() or ""
-    user_name_text_match = re.search(r"^(.*?)\s*\((\S+)\)$", user_name_cell_text)
-    assert user_name_text_match, f"ユーザー名とIDが期待した形式で取得できませんでした: '{user_name_cell_text}'"
-    user_id = user_name_text_match.group(2)
-    user_name = user_name_text_match.group(1).strip()
-    
-    print(f"テスト対象ユーザー: {user_name} ({user_id})")
-
-    # 3. 社員名セルをクリック
-    first_user_name_cell.click()
-
-    # 4. 個別カレンダー表示に切り替わるのを待つ
-    # ユーザー名を含むヘッダーが表示されるか確認
-    user_header_locator = page.locator("h3:has-text('" + user_name + "')").first
-    expect(user_header_locator).to_be_visible(timeout=5000)
-    
-    # カレンダー形式のテーブルが表示されるか確認
-    calendar_table_locator = page.locator(".card-body table")
-    expect(calendar_table_locator).to_be_visible(timeout=1000)
-    
-    # カレンダーの曜日ヘッダーが存在するか確認
-    weekday_header_locator = calendar_table_locator.locator("thead tr th:has-text('月')")
-    expect(weekday_header_locator).to_be_visible()
-    
-    # 5. 一覧に戻るボタンをクリック
-    back_button_locator = page.locator("button:has-text('一覧に戻る')")
-    expect(back_button_locator).to_be_visible()
-    back_button_locator.click()
-    
-    # 6. 元の勤怠マトリックスに戻ったことを確認
-    expect(matrix_table_locator).to_be_visible(timeout=5000)
-    
-
-def test_register_attendance_via_individual_calendar(page: Page) -> None:
-    """個別カレンダー表示から勤怠を登録・更新できるかテスト"""
-    page.goto("http://localhost:8000/attendance")  # 勤怠登録ページ
-
-    # 1. 勤怠マトリックスが表示されるのを待つ
-    attendance_content_locator = page.locator("#attendance-content")
-    matrix_table_locator = attendance_content_locator.locator("table")
-    expect(matrix_table_locator).to_be_visible(timeout=1000)
-
-    # 2. 特定のユーザーのセルを探す
-    user_name_cell_selector = (
-        'td.font-medium.text-left.sticky.z-10.bg-base-100.whitespace-nowrap.p-1'
-        ':has-text("(")'
-    )
-    user_name_cells = matrix_table_locator.locator(user_name_cell_selector)
-    expect(user_name_cells.first).to_be_visible(timeout=1000)
-    first_user_name_cell = user_name_cells.first
-
-    # ユーザー名とIDを取得
-    user_name_cell_text = first_user_name_cell.inner_text() or ""
-    user_name_text_match = re.search(r"^(.*?)\s*\((\S+)\)$", user_name_cell_text)
-    assert user_name_text_match, f"ユーザー名とIDが期待した形式で取得できませんでした: '{user_name_cell_text}'"
-    user_id = user_name_text_match.group(2)
-    user_name = user_name_text_match.group(1).strip()
-    
-    # 3. 社員名セルをクリック
-    first_user_name_cell.click()
-
-    # 4. 個別カレンダー表示に切り替わるのを待つ
-    calendar_table_locator = page.locator(".card-body table")
-    expect(calendar_table_locator).to_be_visible(timeout=5000)
-    
-    # 5. 日付セルを探して選択
-    # 直接 attendance-cell クラスを持つセルをクリック
-    day_cell_locator = calendar_table_locator.locator("td.attendance-cell").first
-    
-    # セルが見つかった場合のみ処理を続行
-    if day_cell_locator.count() > 0:
-        # セルの属性を確認
-        date_attr = day_cell_locator.get_attribute("data-date")
-        user_id_attr = day_cell_locator.get_attribute("data-user-id")
-        
-        print(f"クリック対象のセル: 日付={date_attr}, ユーザーID={user_id_attr}")
-        
-        # テスト前の状態を記録
-        initial_content = day_cell_locator.inner_text() or ""
-        initial_has_data = day_cell_locator.get_attribute("data-has-data") == "true"
-        print(f"初期状態: コンテンツ='{initial_content}', データあり={initial_has_data}")
-        
-        # セルをクリック
-        day_cell_locator.click()
-        
-        # 6. 勤怠登録/編集モーダルが表示されるのを待つ
-        modal_container_locator = page.locator('#modal-container')
-        modal_dialog_locator = modal_container_locator.locator("dialog")
-        expect(modal_dialog_locator).to_be_visible(timeout=1000)
-        
-        # 7. 勤務場所を選択
-        form_locator = modal_dialog_locator.locator("form")
-        location_select_locator = form_locator.locator('select[name="location_id"]')
-        expect(location_select_locator).to_be_visible(timeout=5000)
-        first_option_locator = location_select_locator.locator("option").nth(1)
-        selected_location_id_str = first_option_locator.get_attribute("value")
-        assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤務場所の値が取得できませんでした"
-        selected_location_name = first_option_locator.inner_text() or ""
-        location_select_locator.select_option(value=selected_location_id_str)
-        
-        # 8. 登録/更新ボタンをクリック
-        register_button = form_locator.locator('button[type="submit"]:has-text("登録")')
-        update_button = form_locator.locator('button[type="submit"]:has-text("更新")')
-        
-        submit_button_locator = update_button if update_button.is_visible() else register_button
-        expect(submit_button_locator).to_be_enabled()
-        submit_button_locator.click()
-        
-        # 9. モーダルが閉じるのを待つ
-        expect(modal_dialog_locator).to_be_hidden(timeout=1000)
-        
-        # 登録が完了したことで、テストの主目的は達成されたとみなす
-        print("✅ 勤怠データの登録/更新に成功しました")
-        
-        # 10. HTMX更新後のページの状態確認（テスト成功の補足確認）
-        # 新しいコンテンツがロードされるのを少し待つ
-        time.sleep(2)
-        
-        # ページ上に何らかのコンテンツがあることを確認（柔軟に対応）
-        try:
-            # カレンダーテーブルが表示されている場合
-            calendar_container = page.locator(".card-body")
-            if calendar_container.is_visible(timeout=2000):
-                print("カレンダー表示が確認できました")
-                calendar_table = calendar_container.locator("table")
-                if calendar_table.is_visible(timeout=2000):
-                    # 更新されたセルを再度検索
-                    reloaded_cell = calendar_table.locator(f"td.attendance-cell[data-date='{date_attr}']").first
-                    if reloaded_cell.is_visible(timeout=2000):
-                        print(f"更新後のセル確認: {reloaded_cell.inner_text()}")
-            
-            # または勤怠マトリックスが表示されている場合（ビュー切り替えの可能性）
-            matrix_table = page.locator("#attendance-content table")
-            if matrix_table.is_visible(timeout=2000):
-                print("勤怠マトリックス表示に戻りました")
-        
-        except Exception as e:
-            # エラーをログに残すが、テスト自体は失敗としない
-            print(f"注意: 登録後の表示確認中にエラーが発生しましたが、登録自体は成功しています: {str(e)}")
-    else:
-        print("警告: 日付セルが見つかりませんでした。テストをスキップします。")
 
 # TODO: 削除のテストケースも追加する
 # -def test_delete_attendance_via_modal(page: Page) -> None: ...
