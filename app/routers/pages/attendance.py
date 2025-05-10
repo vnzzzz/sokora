@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from datetime import date, timedelta
 import calendar
 import operator
+import json
 
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -293,30 +294,12 @@ def get_attendance_modal(
     }
     logger.debug(f"モーダルコンテキスト: {context}")
 
+    modal_id = f"attendance-modal-{user_id}-{date_str}"
+    headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
+
     # マクロを直接呼び出して表示
     return templates.TemplateResponse(
-        "components/attendance/modal_wrapper.html",
+        "partials/attendance/attendance_modal.html",
         context,
+        headers=headers
     )
-
-
-@router.get("/attendance/edit/{user_id}", response_class=HTMLResponse)
-def edit_user_attendance(
-    request: Request,
-    user_id: str,
-    month: Optional[str] = None,
-    db: Session = Depends(get_db),
-) -> Any:
-    """ユーザーの勤怠編集ページを表示します（レガシーサポート用）
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 編集対象のユーザーID
-        month: 月（YYYY-MM形式、指定がない場合は現在の月）
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
-    """
-    # 新しい勤怠登録画面にリダイレクト
-    return RedirectResponse(url="/attendance") 

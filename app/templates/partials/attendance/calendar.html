@@ -5,12 +5,12 @@
     <span class="text-xl font-bold">{{ month_name }}</span> {# 月名の表示 #}
     <!-- 月切り替えコンポーネント -->
     {{ ui.month_switcher( prev_month=prev_month, next_month=next_month, current_month=current_month,
-    url_base='/attendance', target_id='calendar', use_htmx=true ) }}
+    url_base='/attendance', use_htmx=true ) }}
   </div>
 
   <!-- Search form -->
   <div class="mt-2 mb-4 flex justify-end">
-    <form hx-get="/attendance" hx-target="#calendar" hx-swap="outerHTML">
+    <form hx-get="/attendance" hx-target="#calendar" hx-swap="innerHTML">
       <div class="form-control" style="width: 300px">
         <div class="input-group">
           <input

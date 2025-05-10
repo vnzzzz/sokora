@@ -26,7 +26,7 @@ def db_with_calendar_test_data(db: Session) -> Session:
     user_id = random_lower_string(8)
     username = "Calendar Test User"
     user_in = UserCreate(
-        user_id=user_id,
+        id=user_id,
         username=username,
         group_id=int(group.id),
         user_type_id=int(user_type.id)

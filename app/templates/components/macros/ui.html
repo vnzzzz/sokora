@@ -15,18 +15,18 @@
 
 {% macro form_errors(errors, field=None) -%}
 {%- if errors %}
-{%- if field %}
-{%- set msgs = errors.get(field, []) %}
-{%- for msg in msgs %}
+  {%- if field %}
+    {%- set msgs = errors.get(field, []) %}
+    {%- for msg in msgs %}
 <p class="text-error text-sm">{{ msg }}</p>
-{%- endfor %}
-{%- else %}
-{%- for fld, msgs in errors.items() %}
-{%- for msg in msgs %}
+    {%- endfor %}
+  {%- else %}
+    {%- for fld, msgs in errors.items() %}
+      {%- for msg in msgs %}
 <p class="text-error text-sm">{{ fld }}: {{ msg }}</p>
-{%- endfor %}
-{%- endfor %}
-{%- endif %}
+      {%- endfor %}
+    {%- endfor %}
+  {%- endif %}
 {%- endif %}
 {%- endmacro %}
 
@@ -58,8 +58,7 @@
 </div>
 {%- endmacro %}
 
-{% macro edit_modal(title, form_id, content_block, item_id, btn_color_class="", submit_btn_text="保存")
--%}
+{% macro edit_modal(title, form_id, content_block, item_id, btn_color_class="", submit_btn_text="保存") -%}
 <!-- 編集モーダル -->
 <div
   x-show="showEditModal"
@@ -75,8 +74,7 @@
 </div>
 {%- endmacro %}
 
-{% macro delete_confirm_modal(title, content_block, item_id, item_name, endpoint_url,
-submit_btn_text="削除") -%}
+{% macro delete_confirm_modal(title, content_block, item_id, item_name, endpoint_url, submit_btn_text="削除") -%}
 <!-- 削除確認モーダル -->
 <div
   x-show="showDeleteConfirm"
@@ -108,102 +106,56 @@ submit_btn_text="削除") -%}
 </div>
 {%- endmacro %}
 
-{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance',
-target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 <!-- 月切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
-  <!-- 前月ボタン -->
   <button
     class="btn btn-sm btn-outline"
-    {%
-    if
-    use_htmx
-    %}
-    {%
-    if
-    user_id
-    %}
-    hx-get="{{ url_base }}/{{ user_id }}?month={{ prev_month }}"
-    {%
-    else
-    %}
-    hx-get="{{ url_base }}?month={{ prev_month }}"
-    {%
-    endif
-    %}
-    hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
-    {%
-    else
-    %}
-    onclick="navigateToMonth('{{ prev_month }}', '{{ user_id }}', '{{ url_base }}')"
-    {%
-    endif
-    %}
+    {% if use_htmx %}
+      {% if user_id %}
+        hx-get="{{ url_base }}/{{ user_id }}?month={{ prev_month }}"
+      {% else %}
+        hx-get="{{ url_base }}?month={{ prev_month }}"
+      {% endif %}
+      hx-target="#{{ target_id }}"
+      hx-swap="outerHTML"
+    {% else %}
+      onclick="navigateToMonth('{{ prev_month }}', '{{ user_id }}', '{{ url_base }}')"
+    {% endif %}
   >
     ◀︎
   </button>
 
-  <!-- 今月ボタン -->
   <button
     class="btn btn-sm btn-neutral"
-    {%
-    if
-    use_htmx
-    %}
-    {%
-    if
-    user_id
-    %}
-    hx-get="{{ url_base }}/{{ user_id }}"
-    {%
-    else
-    %}
-    hx-get="{{ url_base }}"
-    {%
-    endif
-    %}
-    hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
-    {%
-    else
-    %}
-    onclick="navigateToMonth('', '{{ user_id }}', '{{ url_base }}')"
-    {%
-    endif
-    %}
+    {% if use_htmx %}
+      {% if user_id %}
+        hx-get="{{ url_base }}/{{ user_id }}"
+      {% else %}
+        hx-get="{{ url_base }}"
+      {% endif %}
+      hx-target="#{{ target_id }}"
+      hx-swap="outerHTML"
+    {% else %}
+      onclick="navigateToMonth('', '{{ user_id }}', '{{ url_base }}')"
+    {% endif %}
   >
     今月
   </button>
 
-  <!-- 翌月ボタン -->
   <button
     class="btn btn-sm btn-outline"
-    {%
-    if
-    use_htmx
-    %}
-    {%
-    if
-    user_id
-    %}
-    hx-get="{{ url_base }}/{{ user_id }}?month={{ next_month }}"
-    {%
-    else
-    %}
-    hx-get="{{ url_base }}?month={{ next_month }}"
-    {%
-    endif
-    %}
-    hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
-    {%
-    else
-    %}
-    onclick="navigateToMonth('{{ next_month }}', '{{ user_id }}', '{{ url_base }}')"
-    {%
-    endif
-    %}
+    {% if use_htmx %}
+      {% if user_id %}
+        hx-get="{{ url_base }}/{{ user_id }}?month={{ next_month }}"
+      {% else %}
+        hx-get="{{ url_base }}?month={{ next_month }}"
+      {% endif %}
+      hx-target="#{{ target_id }}"
+      hx-swap="outerHTML"
+    {% else %}
+      onclick="navigateToMonth('{{ next_month }}', '{{ user_id }}', '{{ url_base }}')"
+    {% endif %}
   >
     ▶︎
   </button>
@@ -211,107 +163,49 @@ target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 {%- endmacro %}
 
 {% macro loading_indicator(id='loading-indicator') -%}
-{# HTMX Loading Indicator: https://htmx.org/indicators/ #}
 <style>
   .htmx-indicator {
     display: none;
     opacity: 0;
     transition: opacity 200ms ease-in;
   }
+
   .htmx-request .htmx-indicator {
     display: inline;
     opacity: 1;
   }
+
   .htmx-request.htmx-indicator {
     display: inline;
     opacity: 1;
   }
 </style>
 <span id="{{ id }}" class="htmx-indicator ml-2">
-  {# daisyUI spinner #}
   <span class="loading loading-spinner loading-sm"></span>
 </span>
 {%- endmacro %}
 
-{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations) -%}
-<dialog id="attendance-modal-{{ user_id }}-{{ date }}" class="modal modal-open bg-black/30">
-  <form method="dialog" class="modal-box" id="attendance-form-{{ user_id }}-{{ date }}">
-    <h3 class="font-bold text-lg">勤怠編集: {{ user_name }} ({{ formatted_date }})</h3>
-
-    <input type="hidden" name="user_id" value="{{ user_id }}">
-    <input type="hidden" name="date" value="{{ date }}">
-    {% if attendance_id %}
-    <input type="hidden" name="_method" value="PUT"> {# 更新の場合 #}
-    {% endif %}
-
-    <div class="py-4">
-      <label class="label" for="location-{{ user_id }}-{{ date }}">
-        <span class="label-text">勤務場所</span>
-      </label>
-      <select id="location-{{ user_id }}-{{ date }}" name="location_id" class="select select-bordered w-full">
-        {% for location in locations %}
-        <option value="{{ location.id }}" {% if location.id == current_location_id %}selected{% endif %}>
-          {{ location.name }}
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="modal-action">
-      {# HTMXによる閉じるボタン #}
-      <button type="button" class="btn btn-ghost" onclick="document.getElementById('attendance-modal-{{ user_id }}-{{ date }}').remove()">閉じる</button> {# .close() から .remove() に変更し、要素ごと削除 #}
-
-      {# 削除ボタン (勤怠データが存在する場合のみ表示) #}
-      {% if attendance_id %}
-      <button
-        type="button"
-        class="btn btn-error"
-        hx-delete="/api/attendances/?user_id={{ user_id }}&date={{ date }}"
-        hx-indicator="#modal-loading-{{ user_id }}-{{ date }}"
-      >
-        削除
-      </button>
-      {% endif %}
-
-      {# 登録/更新ボタン #}
-      <button
-        type="submit"
-        class="btn btn-neutral"
-        {% if attendance_id %}
-          hx-put="/api/attendances/{{ attendance_id }}" {# 更新 #}
-          hx-ext="json-enc" {# PUTの時だけJSON送信 #}
-        {% else %}
-          hx-post="/api/attendances/"                 {# 登録 #}
-        {% endif %}
-        hx-indicator="#modal-loading-{{ user_id }}-{{ date }}"
-        {# フォームデータをインクルード #}
-        hx-include="#attendance-form-{{ user_id }}-{{ date }}"
-      >
-        {% if attendance_id %}更新{% else %}登録{% endif %}
-      </button>
-      {# ローディングインジケータ #}
-      <span class="loading loading-spinner loading-sm hidden" id="modal-loading-{{ user_id }}-{{ date }}"></span>
-    </div>
-  </form>
-</dialog>
-{%- endmacro %}
-
-{# モーダル＋フォーム送信の汎用マクロ #}
-{% macro modal_form(id, title, action, method="POST",
-                    submit_text="保存", size="md", extra_cls="") -%}
+{% macro modal_form(id, title, action, method="POST", submit_text="保存", size="md", extra_cls="", extra_buttons="") -%}
 <dialog id="{{ id }}" class="modal modal-{{ size }} {{ extra_cls }}">
   <div class="modal-box">
     <h3 class="font-bold text-lg">{{ title }}</h3>
     <div class="py-4">
-      <form id="{{ id }}-form"
-            hx-{{ method|lower }}="{{ action }}"
-            hx-target="closest dialog"
-            hx-swap="outerHTML"
-            class="space-y-4">
+      <form
+        id="{{ id }}-form"
+        hx-{{ method|lower }}="{{ action }}"
+        hx-target="closest dialog"
+        hx-swap="outerHTML"
+        {% if method == "PUT" %}
+        hx-ext="json-enc"
+        hx-headers='{"Content-Type": "application/json"}'
+        {% endif %}
+        class="space-y-4"
+      >
         {{ caller() }}
       </form>
     </div>
-    <div class="modal-action">
+    <div class="modal-action space-x-3">
+      {% if extra_buttons %}{{ extra_buttons | safe }}{% endif %}
       <button form="{{ id }}-form" class="btn btn-neutral">{{ submit_text }}</button>
     </div>
   </div>
@@ -321,9 +215,7 @@ target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 </dialog>
 {%- endmacro %}
 
-{# 削除確認モーダルの汎用マクロ #}
-{% macro delete_modal_form(id, title, action, item_name, 
-                          submit_text="削除", size="sm", extra_cls="") -%}
+{% macro delete_modal_form(id, title, action, item_name, submit_text="削除", size="sm", extra_cls="") -%}
 <dialog id="{{ id }}" class="modal modal-{{ size }} {{ extra_cls }}">
   <div class="modal-box">
     <h3 class="font-bold text-lg text-error">{{ title }}</h3>
@@ -338,10 +230,12 @@ target_id='calendar', use_htmx=true, user_id=None, class='') -%}
       <form method="dialog">
         <button class="btn btn-outline mr-2">キャンセル</button>
       </form>
-      <button class="btn btn-error"
-              hx-delete="{{ action }}"
-              hx-target="closest dialog"
-              hx-swap="outerHTML">
+      <button
+        class="btn btn-error"
+        hx-delete="{{ action }}"
+        hx-target="closest dialog"
+        hx-swap="outerHTML"
+      >
         {{ submit_text }}
       </button>
     </div>
@@ -350,4 +244,41 @@ target_id='calendar', use_htmx=true, user_id=None, class='') -%}
     <button>close</button>
   </form>
 </dialog>
+{%- endmacro %}
+
+{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations) -%}
+{% set del_btn = "" %}
+{% if attendance_id %}
+  {% set del_btn = "<button type='button' class='btn btn-error' " 
+    ~ "hx-delete=\"/api/attendances/" ~ attendance_id ~ "\" " 
+    ~ "hx-target='closest dialog' hx-swap='outerHTML'>削除</button>" %}
+{% endif %}
+
+{% call modal_form(
+  id = "attendance-modal-" ~ user_id ~ "-" ~ date,
+  title = "勤怠編集: " ~ user_name ~ " (" ~ formatted_date ~ ")",
+  action = attendance_id and ("/api/attendances/" ~ attendance_id) or "/api/attendances",
+  method = attendance_id and "PUT" or "POST",
+  submit_text = attendance_id and "更新" or "登録",
+  size = "lg",
+  extra_buttons = del_btn
+) %}
+
+<input type="hidden" name="user_id" value="{{ user_id }}">
+<input type="hidden" name="date" value="{{ date }}">
+
+<div class="space-y-4">
+  <div>
+    <label class="label"><span class="label-text">勤務場所</span></label>
+    <select name="location_id" class="select select-bordered w-full">
+      {% for loc in locations %}
+      <option value="{{ loc.id }}" {{ loc.id == current_location_id and "selected" }}>
+        {{ loc.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+{% endcall %}
 {%- endmacro %}

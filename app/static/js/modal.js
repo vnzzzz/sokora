@@ -1,31 +1,66 @@
-window.addEventListener('htmx:afterOnLoad', (e) => {
-  const trigHeader = e.detail.xhr.getResponseHeader('HX-Trigger')
-  if (!trigHeader) return
+/* eslint-env browser */
+/* globals htmx */
+;(function () {
+  'use strict'
 
-  try {
-    // JSONとしてパースを試みる
-    const triggers = JSON.parse(trigHeader)
+  /**
+   * #calendar を丸ごと再取得して置き換える
+   * @param {string|null} month - YYYY-MM
+   */
+  function refreshCalendar(month) {
+    const url = month ? `/attendance?month=${encodeURIComponent(month)}` : '/attendance'
+    htmx.ajax('GET', url, { target: '#calendar', swap: 'innerHTML' })
+  }
 
-    // openModalアクション
+  /**
+   * HX-Trigger ヘッダーを共通で処理
+   * @param {XMLHttpRequest} xhr
+   */
+  function handleTrigger(xhr) {
+    const trigHeader = xhr.getResponseHeader('HX-Trigger')
+    if (!trigHeader) return
+
+    let triggers
+    try {
+      triggers = JSON.parse(trigHeader)
+    } catch {
+      if (trigHeader.startsWith('openModal:')) {
+        document.getElementById(trigHeader.split(':')[1])?.showModal()
+      }
+      if (trigHeader.startsWith('closeModal:')) {
+        document.getElementById(trigHeader.split(':')[1])?.close()
+      }
+      return
+    }
+
+    // モーダル開閉
     if (triggers.openModal) {
-      const id = triggers.openModal
-      document.getElementById(id)?.showModal()
+      document.getElementById(triggers.openModal)?.showModal()
+      console.log('モーダルが開きました')
+    }
+    if (triggers.closeModal) {
+      document.getElementById(triggers.closeModal)?.close()
+      console.log('モーダルが閉じられました')
     }
 
-    // closeModalアクション
-    if (triggers.closeModal) {
-      const id = triggers.closeModal
-      document.getElementById(id)?.close()
+    // カレンダー再描画（登録／更新／削除後）
+    if (triggers.refreshUserAttendance) {
+      refreshCalendar(triggers.refreshUserAttendance.month)
+      console.log('カレンダーがリフレッシュされました')
     }
-  } catch (e) {
-    // JSONでない場合は文字列として処理（後方互換性のため）
-    if (trigHeader.startsWith('openModal:')) {
-      const id = trigHeader.split(':')[1]
-      document.getElementById(id)?.showModal()
-    }
-    if (trigHeader.startsWith('closeModal:')) {
-      const id = trigHeader.split(':')[1]
-      document.getElementById(id)?.close()
+    if (triggers.refreshAttendance) {
+      refreshCalendar(triggers.refreshAttendance.month)
+      console.log('カレンダーがリフレッシュされました')
     }
   }
-})
+
+  // コンテンツ置換後
+  window.addEventListener('htmx:afterOnLoad', (e) => {
+    handleTrigger(e.detail.xhr)
+  })
+
+  // 204 No Content などで置換が発生しないケース
+  window.addEventListener('htmx:afterRequest', (e) => {
+    handleTrigger(e.detail.xhr)
+  })
+})()

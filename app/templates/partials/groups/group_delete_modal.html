@@ -1,4 +1,13 @@
-{% import "components/macros/ui.html" as ui %} {% call ui.delete_modal_form( id = modal_id, title = "グループの削除",
-action = "/groups/" ~ group.id, item_name = group.name, submit_text = "削除" ) %} {% if warning_message %}
-<div class="text-warning text-sm mt-2">{{ warning_message }}</div>
-{% endif %} {% endcall %}
+{% import "components/macros/ui.html" as ui %}
+
+{% call ui.delete_modal_form(
+  id = modal_id,
+  title = "グループの削除",
+  action = "/groups/" ~ group.id,
+  item_name = group.name,
+  submit_text = "削除"
+) %}
+  {% if warning_message %}
+    <div class="text-warning text-sm mt-2">{{ warning_message }}</div>
+  {% endif %}
+{% endcall %}
