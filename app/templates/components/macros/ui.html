@@ -196,7 +196,7 @@
         hx-target="closest dialog"
         hx-swap="outerHTML"
         {% if method == "PUT" %}
-        hx-ext="json-enc"
+        hx-encoding="json"
         hx-headers='{"Content-Type": "application/json"}'
         {% endif %}
         class="space-y-4"
