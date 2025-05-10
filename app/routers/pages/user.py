@@ -144,16 +144,12 @@ async def user_delete_modal(request: Request, user_id: str, db: Session = Depend
     if not user_obj:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found")
     
-    # 勤怠データの有無をチェック
-    warning_message = "※この社員の勤怠データが存在する場合は削除できません。"
-    
     modal_id = f"user-delete-modal-{user_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
         "user": user_obj,
         "modal_id": modal_id,
-        "warning_message": warning_message
     }
     
     # JSONオブジェクトとして正しい形式のトリガーを返す
