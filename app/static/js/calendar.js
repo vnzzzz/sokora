@@ -171,7 +171,6 @@
             // 保存された月のカレンダーを表示（ページの再読み込みなしで可能かチェック）
             const currentMonthDisplay = document.querySelector('.current-month-display')
             if (currentMonthDisplay && !currentMonthDisplay.textContent.includes(savedMonth)) {
-              console.log('初期表示: 保存された月情報でカレンダーを表示します:', savedMonth)
               // 同一ページ内で月切り替えを行う
               if (typeof htmx !== 'undefined') {
                 const calendarElement = document.getElementById('calendar')

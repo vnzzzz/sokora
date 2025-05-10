@@ -54,38 +54,24 @@
         // ステータスコードで成功判定 (2xx)
         if (event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) {
           const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
-          console.log(
-            '[htmx:beforeSwap] Status:',
-            event.detail.xhr.status,
-            'URL:',
-            event.detail.pathInfo.requestPath,
-            'Header:',
-            triggerHeader
-          )
-
           if (triggerHeader) {
             // まずJSONとして解析を試みる
             try {
               const triggers = JSON.parse(triggerHeader)
-              console.log('[htmx:beforeSwap] Parsed HX-Trigger:', triggers)
 
               // closeModal イベントを探す
               if (triggers && triggers.closeModal) {
                 const modalId = triggers.closeModal
-                console.log('[htmx:beforeSwap] closeModal trigger found. Modal ID:', modalId)
                 const modalElement = document.getElementById(modalId)
 
                 if (modalElement) {
-                  console.log(`[htmx:beforeSwap] Attempting to close modal: ${modalId}`)
                   // HTMXにDOMの変更をさせないように指示
                   event.detail.shouldSwap = false
                   // モーダル要素を削除
                   modalElement.remove()
-                  console.log('[htmx:beforeSwap] Modal element removed.')
 
                   // ページリフレッシュイベントがあれば実行
                   if (triggers.refreshPage) {
-                    console.log('[htmx:beforeSwap] Refreshing page...')
                     setTimeout(() => {
                       window.location.reload()
                     }, 100)
@@ -95,38 +81,22 @@
                 }
               }
             } catch (e) {
-              // JSONでない場合は単純な文字列として処理
-              console.log('[htmx:beforeSwap] Not JSON format, processing as plain text:', triggerHeader)
-
               // openModal: 処理
               if (triggerHeader.startsWith('openModal:')) {
                 const modalId = triggerHeader.split(':')[1]
-                console.log('[htmx:beforeSwap] openModal trigger found. Modal ID:', modalId)
                 // モーダルを開くのはmodal.jsで処理するので何もしない
               }
-
               // closeModal: 処理
               else if (triggerHeader.startsWith('closeModal:')) {
                 const modalId = triggerHeader.split(':')[1]
-                console.log('[htmx:beforeSwap] closeModal trigger found. Modal ID:', modalId)
                 const modalElement = document.getElementById(modalId)
 
                 if (modalElement) {
-                  console.log(`[htmx:beforeSwap] Attempting to close modal: ${modalId}`)
                   // HTMXにDOMの変更をさせないように指示
                   event.detail.shouldSwap = false
                   // モーダル要素を削除
                   modalElement.remove()
-                  console.log('[htmx:beforeSwap] Modal element removed.')
-
-                  // 閉じた後にページ全体をリロード（通常は必要ないが今回は確実に反映させる）
-                  console.log('[htmx:beforeSwap] Refreshing page...')
-                  setTimeout(() => {
-                    window.location.reload()
-                  }, 100)
-                } else {
-                  console.warn('[htmx:beforeSwap] Modal element not found for ID:', modalId)
-                }
+                } 
               }
             }
           }
