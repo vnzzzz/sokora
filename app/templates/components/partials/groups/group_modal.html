@@ -1,0 +1,24 @@
+{% import "components/macros/ui.html" as ui %}
+
+{% call ui.modal_form(
+  id          = modal_id,
+  title       = group.id and "グループ編集" or "グループ追加",
+  action      = group.id and ("/groups/" ~ group.id) or "/groups",
+  method      = group.id and "PUT" or "POST",
+  submit_text = group.id and "更新" or "登録",
+  size="sm"
+) %}
+
+  {{ ui.form_errors(errors) if errors else "" }}
+
+  <label class="label"><span class="label-text">グループ名</span></label>
+  <input
+    type="text"
+    name="name"
+    id="{{ group.id and ('edit-group-name-' ~ group.id) or 'add-group-name' }}"
+    class="input input-bordered w-full"
+    value="{{ group.name | default('') }}"
+    required
+  />
+
+{% endcall %}

@@ -1,0 +1,50 @@
+{% import "components/macros/ui.html" as ui %}
+
+<div class="bg-base-200 rounded-lg p-3">
+  <div class="mb-3">
+    <h3 class="text-base font-bold">社員一覧</h3>
+  </div>
+  
+  <!-- 検索ボックスを削除 -->
+
+  <!-- ユーザーリスト -->
+  <div id="user-list" class="overflow-y-auto max-h-[75vh]">
+    {% for group_name in group_names %}
+      {% set users_in_group = grouped_users[group_name] %}
+      
+      <div class="mb-4">
+        <!-- グループ名ヘッダー -->
+        <div class="bg-base-300 text-base-content py-1 px-2 rounded-lg font-medium mb-1 text-sm">
+          {{ group_name }}
+        </div>
+        
+        <!-- ユーザータイプでグループ化 -->
+        {% for user_type_tuple in users_in_group | groupby('3.user_type.name') %}
+          {% set user_type_name = user_type_tuple.grouper %}
+          {% set user_list = user_type_tuple.list %}
+          
+          <!-- ユーザータイプヘッダー -->
+          <div class="text-xs font-medium text-base-content/70 px-2 py-1">
+            {{ user_type_name if user_type_name else "未分類" }}
+          </div>
+          
+          <!-- このタイプのユーザーリスト -->
+          <ul class="menu menu-sm py-0 px-1">
+            {% for user_name, user_id, user_type_id, user_obj in user_list %}
+              <li>
+                <a 
+                  class="py-1 px-2" 
+                  hx-get="/register/{{ user_id }}?month={{ current_month }}" 
+                  hx-target="#user-calendar" 
+                  hx-swap="innerHTML"
+                >
+                  <span class="truncate">{{ user_name }}</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+</div> 

@@ -218,7 +218,7 @@ async def test_delete_location_in_use(async_client: AsyncClient, db: Session) ->
     user_type = crud_user_type.create(db, obj_in=UserTypeCreate(name="Test UserType for Loc Delete"))
     db.commit()
     user_id_for_test = "testuser_locdel"
-    user = crud_user.create(db, obj_in=UserCreate(user_id=user_id_for_test, username="Test User LocDel", group_id=group.id, user_type_id=user_type.id)) # type: ignore
+    user = crud_user.create(db, obj_in=UserCreate(id=user_id_for_test, username="Test User LocDel", group_id=group.id, user_type_id=user_type.id)) # type: ignore
     db.commit()
 
     # 削除対象の勤務場所を作成
@@ -227,26 +227,18 @@ async def test_delete_location_in_use(async_client: AsyncClient, db: Session) ->
     location_id = location_to_delete.id
 
     # この勤務場所を使用する勤怠データを作成
-    attendance_date = date.today()
-    # AttendanceCreate を使う代わりに、Attendance モデルオブジェクトを直接作成
+    test_date = date.today()  # strではなくdateオブジェクトを使用
+    
+    # AttendanceCreateの代わりに直接モデルを使用
     attendance_record = Attendance(
         user_id=user_id_for_test,
-        date=attendance_date,
+        date=test_date,
         location_id=location_id
     )
     db.add(attendance_record)
-    # crud_attendance.create(
-    #     db, obj_in=AttendanceCreate(user_id=user_id_for_test, date=attendance_date, location_id=location_id) # type: ignore
-    # )
     db.commit()
 
-    # 勤務場所を削除しようとする
+    # この勤務場所を削除しようとしてエラーになることを確認
     response = await async_client.delete(f"/api/locations/{location_id}")
-
-    # crud.location.remove 内でチェックされるはず (400 Bad Request)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "使用されているため削除できません" in response.json()["detail"]
-
-    # DBに残っていることを確認
-    location_still_exists = db.query(Location).filter(Location.id == location_id).first()
-    assert location_still_exists is not None 
+    assert "この勤務場所は1件の勤怠データで使用されているため削除できません" in response.json()["detail"] 

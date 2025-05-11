@@ -59,7 +59,7 @@ async def group_modal(request: Request, group_id: Optional[int] = None, db: Sess
         if not group_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
     
-    modal_id = f"group-modal-{group_id or 'new'}"
+    modal_id = "add-group" if group_id is None else f"edit-group-{group_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
@@ -71,7 +71,7 @@ async def group_modal(request: Request, group_id: Optional[int] = None, db: Sess
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/groups/group_modal.html", ctx, headers=headers
+        "components/partials/groups/group_modal.html", ctx, headers=headers
     )
 
 
@@ -104,7 +104,7 @@ async def group_delete_modal(request: Request, group_id: int, db: Session = Depe
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/groups/group_delete_modal.html", ctx, headers=headers
+        "components/partials/groups/group_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -151,24 +151,8 @@ async def delete_group(request: Request, group_id: int, db: Session = Depends(ge
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "partials/groups/group_delete_modal.html", ctx
+            "components/partials/groups/group_delete_modal.html", ctx
         )
-
-
-@router.get("/pages/group/edit/{group_id}", response_class=HTMLResponse)
-def get_group_edit_form(request: Request, group_id: int, db: Session = Depends(get_db)) -> Any:
-    """指定されたグループの編集フォームをHTMLフラグメントとして返します。"""
-    group_data = group.get(db, id=group_id)
-    if not group_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
-
-    return templates.TemplateResponse(
-        "components/group/_group_edit_form.html",
-        {
-            "request": request,
-            "group": group_data,
-        }
-    )
 
 
 @router.post("/groups", response_class=HTMLResponse)
@@ -187,7 +171,7 @@ async def create_group(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "group-modal-new"
+    modal_id = "add-group"  
     
     try:
         # グループ作成を試みる
@@ -195,7 +179,7 @@ async def create_group(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/groups/group_modal.html",
+            "components/partials/groups/group_modal.html",
             {
                 "request": request,
                 "group": created_group,
@@ -211,7 +195,7 @@ async def create_group(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/groups/group_modal.html",
+            "components/partials/groups/group_modal.html",
             {
                 "request": request, 
                 "group": None,
@@ -239,7 +223,7 @@ async def update_group(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"group-modal-{group_id}"
+    modal_id = f"edit-group-{group_id}" 
     
     try:
         # グループ更新を試みる
@@ -249,7 +233,7 @@ async def update_group(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/groups/group_modal.html",
+            "components/partials/groups/group_modal.html",
             {
                 "request": request,
                 "group": updated_group,
@@ -265,7 +249,7 @@ async def update_group(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/groups/group_modal.html",
+            "components/partials/groups/group_modal.html",
             {
                 "request": request, 
                 "group": group.get(db, id=group_id),

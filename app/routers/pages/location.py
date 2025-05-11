@@ -60,7 +60,7 @@ async def location_modal(request: Request, location_id: Optional[int] = None, db
         if not location_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Location with id {location_id} not found")
     
-    modal_id = f"location-modal-{location_id or 'new'}"
+    modal_id = "add-location" if location_id is None else f"edit-location-{location_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
@@ -72,7 +72,7 @@ async def location_modal(request: Request, location_id: Optional[int] = None, db
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/locations/location_modal.html", ctx, headers=headers
+        "components/partials/locations/location_modal.html", ctx, headers=headers
     )
 
 
@@ -103,7 +103,7 @@ async def location_delete_modal(request: Request, location_id: int, db: Session 
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/locations/location_delete_modal.html", ctx, headers=headers
+        "components/partials/locations/location_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -123,7 +123,7 @@ async def create_location(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "location-modal-new"
+    modal_id = "add-location" 
     
     try:
         # 勤務場所作成を試みる
@@ -131,7 +131,7 @@ async def create_location(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/locations/location_modal.html",
+            "components/partials/locations/location_modal.html",
             {
                 "request": request,
                 "location": created_location,
@@ -147,7 +147,7 @@ async def create_location(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/locations/location_modal.html",
+            "components/partials/locations/location_modal.html",
             {
                 "request": request, 
                 "location": None,
@@ -175,7 +175,7 @@ async def update_location(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"location-modal-{location_id}"
+    modal_id = f"edit-location-{location_id}" 
     
     try:
         # 勤務場所更新を試みる
@@ -185,7 +185,7 @@ async def update_location(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/locations/location_modal.html",
+            "components/partials/locations/location_modal.html",
             {
                 "request": request,
                 "location": updated_location,
@@ -201,7 +201,7 @@ async def update_location(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/locations/location_modal.html",
+            "components/partials/locations/location_modal.html",
             {
                 "request": request, 
                 "location": location.get(db, id=location_id),
@@ -254,24 +254,8 @@ async def delete_location(request: Request, location_id: int, db: Session = Depe
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "partials/locations/location_delete_modal.html", ctx
+            "components/partials/locations/location_delete_modal.html", ctx
         )
-
-
-@router.get("/pages/location/edit/{location_id}", response_class=HTMLResponse)
-def get_location_edit_form(request: Request, location_id: int, db: Session = Depends(get_db)) -> Any:
-    """指定された勤務場所の編集フォームをHTMLフラグメントとして返します。"""
-    location_data = location.get(db, id=location_id)
-    if not location_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Location with id {location_id} not found")
-
-    return templates.TemplateResponse(
-        "components/location/_location_edit_form.html",
-        {
-            "request": request,
-            "location": location_data,
-        }
-    )
 
 
 @router.post("/pages/location/row", response_class=HTMLResponse)
