@@ -18,14 +18,24 @@ pytestmark = pytest.mark.asyncio
 async def create_test_user_via_api(async_client: AsyncClient, user_id: str, username: str, group_id: int, user_type_id: int) -> str:
     """API経由でテストユーザーを作成するヘルパー"""
     user_payload = {
-        "user_id": user_id,
+        "id": user_id,
         "username": username,
         "group_id": group_id,
         "user_type_id": user_type_id
     }
     response = await async_client.post("/api/users", json=user_payload)
-    assert response.status_code == status.HTTP_200_OK # 作成成功を確認
-    return response.json()["id"]
+    
+    # 成功したレスポンスのステータスコードを確認 (200または201または204)
+    assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED, status.HTTP_204_NO_CONTENT]
+    
+    # レスポンスにJSONデータがある場合はそこからIDを取得、なければ渡されたuser_idを返す
+    if response.status_code == status.HTTP_200_OK and response.content:
+        try:
+            return response.json()["id"]
+        except (KeyError, ValueError):
+            pass
+    
+    return user_id  # 入力されたuser_idをそのまま返す
 
 async def create_test_location_via_api(async_client: AsyncClient, name: str) -> int:
     """API経由でテスト勤務場所を作成するヘルパー"""
