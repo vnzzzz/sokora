@@ -1,0 +1,89 @@
+{% import "components/macros/ui.html" as ui %}
+
+<div class="bg-base-200 rounded-lg p-4" id="user-calendar" data-user-id="{{ user.id }}" data-month="{{ current_month }}">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <div>
+      <h3 class="text-base font-bold">{{ user.username }}（{{ user.id }}）</h3>
+
+    </div>
+    <span class="text-xl font-bold">{{ month_name }}</span>
+    <!-- 月切り替えコンポーネント -->
+    {{ ui.month_switcher(
+      prev_month=prev_month, 
+      next_month=next_month, 
+      current_month=current_month,
+      url_base='/register',
+      target_id='user-calendar',
+      user_id=user.id
+    ) }}
+  </div>
+  
+  <!-- カレンダー表示 -->
+  <div class="overflow-x-auto mt-4">
+    <table class="table table-sm bg-base-100 rounded-lg w-full">
+      <thead>
+        <tr>
+          <!-- 曜日ヘッダー -->
+          {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+          {% for day in weekdays %}
+            <th class="text-center w-1/7 {% if loop.first %}text-red-600 dark:text-red-400{% elif loop.last %}text-blue-600 dark:text-blue-400{% endif %}">
+              {{ day }}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <!-- カレンダー本体 -->
+        {% for week in calendar_data %}
+          <tr>
+            {% for day in week %}
+              {% if day and day.day != 0 %}
+                {% set weekday_index = loop.index0 %}
+                {% set is_weekend = weekday_index == 0 or weekday_index == 6 %}
+                {% set is_holiday = day.is_holiday|default(false) %}
+                {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10" if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "") %}
+                {% set has_data = day.date in user_attendances %}
+                {% set attendance_data = user_attendances[day.date] if has_data else None %}
+                {% set location_name = attendance_data.location_name if attendance_data else '' %}
+                {% set style_info = location_styles[location_name]|default({}) if location_name else {} %}
+                
+                <td 
+                  class="text-center cursor-pointer attendance-cell p-2 h-20 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
+                  hx-get="/pages/attendances/modal/{{ user.id }}/{{ day.date }}?mode=register"
+                  hx-target="#modal-container"
+                  hx-swap="innerHTML"
+                  data-date="{{ day.date }}"
+                  data-user-id="{{ user.id }}"
+                  data-user-name="{{ user.username }}"
+                  data-has-data="{{ has_data|lower }}"
+                  data-location="{{ location_name }}"
+                >
+                  <!-- 日付 -->
+                  <div class="text-sm mb-1 {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}">
+                    {{ day.day }}
+                  </div>
+                  
+                  <!-- 勤怠情報（あれば表示） -->
+                  {% if has_data %}
+                    <div class="text-xs font-medium px-1 py-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }}">
+                      {{ location_name }}
+                    </div>
+                  {% endif %}
+                  
+                  <!-- 祝日情報 -->
+                  {% if day.holiday_name|default('') %}
+                    <div class="text-xs text-red-600 dark:text-red-400 mt-1">
+                      {{ day.holiday_name }}
+                    </div>
+                  {% endif %}
+                </td>
+              {% else %}
+                <td class="w-1/7"></td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div> 

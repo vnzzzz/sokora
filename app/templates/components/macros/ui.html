@@ -183,7 +183,7 @@
 </span>
 {%- endmacro %}
 
-{% macro modal_form(id, title, action, method="POST", submit_text="保存", size="md", extra_cls="", extra_buttons="") -%}
+{% macro modal_form(id, title, action, method="POST", submit_text="保存", size="md", extra_cls="", extra_buttons="", extra_attrs="") -%}
 <dialog id="{{ id }}" class="modal modal-{{ size }} {{ extra_cls }}">
   <div class="modal-box">
     <h3 class="font-bold text-lg">{{ title }}</h3>
@@ -193,11 +193,8 @@
         hx-{{ method|lower }}="{{ action }}"
         hx-target="closest dialog"
         hx-swap="outerHTML"
-        {% if method == "PUT" %}
-        hx-encoding="json"
-        hx-headers='{"Content-Type": "application/json"}'
-        {% endif %}
         class="space-y-4"
+        {{ extra_attrs }}
       >
         {{ caller() }}
       </form>
@@ -242,12 +239,31 @@
 </dialog>
 {%- endmacro %}
 
-{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations) -%}
+{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations, mode=None) -%}
 {% set del_btn = "" %}
 {% if attendance_id %}
+  {% set is_register_mode = mode == "register" %}
+  
+  {% if is_register_mode %}
+    {% set trigger_attrs = "hx-headers='{\"HX-Trigger\": " ~ 
+        "{\"refreshRegisterCalendar\": {\"userId\": \"" ~ user_id ~ "\", \"month\": \"" ~ (date | default(""))[0:7] ~ "\"}}}'"%}
+  {% else %}
+    {% set trigger_attrs = "" %}
+  {% endif %}
+  
   {% set del_btn = "<button type='button' class='btn btn-error' " 
     ~ "hx-delete=\"/api/attendances/" ~ attendance_id ~ "\" " 
-    ~ "hx-target='closest dialog' hx-swap='outerHTML'>削除</button>" %}
+    ~ "hx-target='closest dialog' hx-swap='outerHTML' "
+    ~ trigger_attrs
+    ~ (is_register_mode and " hx-trigger-after-settle=\"modalSuccess\"" or "") 
+    ~ ">削除</button>" %}
+{% endif %}
+
+{% if mode == "register" %}
+  {% set form_trigger_attrs = "hx-headers='{\"HX-Trigger\": " ~ 
+      "{\"refreshRegisterCalendar\": {\"userId\": \"" ~ user_id ~ "\", \"month\": \"" ~ (date | default(""))[0:7] ~ "\"}}}'"%}
+{% else %}
+  {% set form_trigger_attrs = "" %}
 {% endif %}
 
 {% call modal_form(
@@ -257,7 +273,8 @@
   method = attendance_id and "PUT" or "POST",
   submit_text = attendance_id and "更新" or "登録",
   size = "lg",
-  extra_buttons = del_btn
+  extra_buttons = del_btn,
+  extra_attrs = form_trigger_attrs ~ " " ~ (mode == "register" and "hx-trigger-after-settle=\"modalSuccess\"" or "")
 ) %}
 
 <input type="hidden" name="user_id" value="{{ user_id }}">

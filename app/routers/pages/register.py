@@ -1,8 +1,8 @@
 """
-勤怠管理ページエンドポイント
+勤怠登録ページエンドポイント
 ----------------
 
-勤怠登録・管理ページに関連するルートハンドラー
+勤怠登録ページに関連するルートハンドラー
 """
 
 import logging
@@ -37,8 +37,8 @@ templates = Jinja2Templates(directory="app/templates")
 logger = logging.getLogger(__name__)
 
 
-@router.get("/attendance", response_class=HTMLResponse)
-def attendance_page(
+@router.get("/register", response_class=HTMLResponse)
+def register_page(
     request: Request, 
     search_query: Optional[str] = None,
     month: Optional[str] = None,
@@ -68,7 +68,7 @@ def attendance_page(
         except ValueError as e:
             logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
             current_month = get_current_month_formatted()
-            return RedirectResponse(url=f"/attendance?month={current_month}")
+            return RedirectResponse(url=f"/register?month={current_month}")
 
     # DBからカレンダー構築に必要なデータを取得
     try:
@@ -177,30 +177,6 @@ def attendance_page(
     # JavaScript用に Location ID と Name のマッピングを作成
     location_data_for_js = {loc.id: str(loc.name) for loc in location_objects}
 
-    # 各ユーザーの勤怠データを日付をキーとして取得・整形します。
-    user_attendances = {}
-    user_attendance_locations = {}
-    for user_name, user_id, user_type_id, user_obj in users:
-        user_entries = attendance.get_user_data(db, user_id=user_id)
-
-        user_dates = {} # 特定の日に勤怠データが存在するか (True/False)
-        locations_map = {} # 特定の日の勤務場所名
-
-        for entry in user_entries:
-            date_str = entry["date"]
-            user_dates[date_str] = True
-            locations_map[date_str] = entry["location_name"]
-
-        user_attendances[user_id] = user_dates
-        user_attendance_locations[user_id] = locations_map
-
-    # カレンダーの表示日数を計算 (テーブルのcolspan用)
-    calendar_day_count = 0
-    for week in calendar_data["weeks"]:
-        for day in week:
-            if day and day.get("day", 0) != 0:
-                calendar_day_count += 1
-
     # テンプレートに渡すコンテキストを作成します。
     context = {
         "request": request,
@@ -216,93 +192,121 @@ def attendance_page(
         "location_objects": location_objects, # オブジェクトリストを渡す
         "location_styles": location_styles, # 更新されたスタイル辞書
         "location_data_for_js": location_data_for_js, # JS 用データ
-        "user_attendances": user_attendances,
-        "user_attendance_locations": user_attendance_locations,
-        "calendar_day_count": calendar_day_count,
         "search_query": search_query,
     }
 
     # 現在選択中の月 (YYYY-MM) をコンテキストに追加
     context["current_month"] = month
 
-    # HTMXリクエストの場合、勤怠テーブル部分のみをレンダリングして返します。
+    # HTMXリクエストの場合、ユーザーリスト部分のみをレンダリングして返します。
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
-            "components/partials/attendance/calendar.html", context,
+            "components/partials/register/user_list.html", context,
             headers={"HX-Reswap": "outerHTML"} # HTMXに入れ替え方法を指定
         )
 
     # 通常のGETリクエストの場合、完全なHTMLページをレンダリングして返します。
     logger.debug("通常リクエスト。完全なページを返します。")
     return templates.TemplateResponse(
-        "pages/attendance.html", context
+        "pages/register.html", context
     )
 
 
-@router.get("/pages/attendances/modal/{user_id}/{date_str}", response_class=HTMLResponse)
-def get_attendance_modal(
+@router.get("/register/{user_id}", response_class=HTMLResponse)
+def user_calendar(
     request: Request,
     user_id: str,
-    date_str: str, # パスパラメータは YYYY-MM-DD 形式を期待
-    mode: Optional[str] = None,
-    db: Session = Depends(get_db),
+    month: Optional[str] = None,
+    db: Session = Depends(get_db)
 ) -> Any:
-    """指定されたユーザーと日付の勤怠編集モーダルを返します。
+    """特定ユーザーのカレンダーを表示します
 
     Args:
         request: FastAPIリクエストオブジェクト
-        user_id: 編集対象のユーザーID
-        date_str: 編集対象の日付（YYYY-MM-DD形式）
-        mode: モード指定（registerの場合は登録用モーダル）
+        user_id: ユーザーID
+        month: 月（YYYY-MM形式、指定がない場合は現在の月）
         db: データベースセッション
 
     Returns:
-        HTMLResponse: レンダリングされたHTMLページ
+        HTMLResponse: レンダリングされたHTMLの部分テンプレート
     """
-    logger.info(f"勤怠モーダルリクエスト受信: User={user_id}, Date={date_str}, Mode={mode}")
-    try:
-        target_date = date.fromisoformat(date_str)
-    except ValueError:
-        logger.warning(f"無効な日付形式: {date_str}")
-        # エラーを示す空のコンテナを返すか、エラーメッセージを含むHTMLを返す
-        return HTMLResponse(content="", status_code=status.HTTP_400_BAD_REQUEST)
+    # 月パラメータの処理と検証 (指定がない場合は現在の月を使用)
+    if month is None:
+        month = get_current_month_formatted()
+    else:
+        try:
+            year, month_num = parse_month(month)
+            month = f"{year}-{month_num:02d}"
+        except ValueError:
+            month = get_current_month_formatted()
 
+    # ユーザー情報の取得
     user_obj = user.get(db, id=user_id)
     if not user_obj:
-        logger.warning(f"ユーザーが見つかりません: {user_id}")
-        return HTMLResponse(content="", status_code=status.HTTP_404_NOT_FOUND)
+        logger.error(f"ユーザーが見つかりません: {user_id}")
+        return HTMLResponse(content="ユーザーが見つかりません。", status_code=404)
 
-    # 既存の勤怠データを取得 (CRUD関数名を修正)
-    attendance_obj: Optional[AttendanceModel] = attendance.get_by_user_and_date(db, user_id=user_id, date=target_date)
-    attendance_id = attendance_obj.id if attendance_obj else None
-    current_location_id = attendance_obj.location_id if attendance_obj else None
+    # カレンダーデータの構築
+    try:
+        year, month_num = parse_month(month)
+        first_day = date(year, month_num, 1)
+        last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+        
+        attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
+        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+        location_types_unsorted_for_cal = location_crud.get_all_locations(db)
+        location_types_for_cal = sorted(location_types_unsorted_for_cal)
+        
+        calendar_data = build_calendar_data(
+            month=month,
+            attendances=attendances_for_cal,
+            attendance_counts=attendance_counts_for_cal,
+            location_types=location_types_for_cal
+        )
+    except:
+        logger.exception(f"カレンダーデータの構築に失敗: {month}")
+        calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
 
-    # 全勤務場所を取得
-    locations: List[Location] = sorted(location_crud.get_multi(db), key=operator.attrgetter('id'))
+    # ユーザーの勤怠データを取得
+    user_entries = attendance.get_user_data(db, user_id=user_id)
+    user_attendances = {}
+    
+    for entry in user_entries:
+        date_str = entry["date"]
+        user_attendances[date_str] = {
+            "location_name": entry["location_name"],
+            "attendance_id": entry["id"]
+        }
 
-    # マクロを使用するためのコンテキストを作成
+    # 勤務場所情報を取得
+    location_objects = location_crud.get_multi(db)
+    location_styles = {}
+    for loc in location_objects:
+        location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
+
+    # テンプレートに渡すコンテキスト
     context = {
         "request": request,
-        "attendance_modal_params": {
-            "user_id": user_id,
-            "date": date_str,
-            "user_name": str(user_obj.username),
-            "formatted_date": format_date_jp(target_date),
-            "attendance_id": attendance_id,
-            "current_location_id": current_location_id,
-            "locations": locations,
-            "mode": mode,  # モード情報を追加
-        }
+        "user": user_obj,
+        "calendar_data": calendar_data["weeks"],
+        "month_name": calendar_data["month_name"],
+        "prev_month": calendar_data["prev_month"],
+        "next_month": calendar_data["next_month"],
+        "current_month": month,
+        "user_attendances": user_attendances,
+        "location_styles": location_styles,
+        "location_objects": location_objects,
     }
-    logger.debug(f"モーダルコンテキスト: {context}")
 
-    modal_id = f"attendance-modal-{user_id}-{date_str}"
-    headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
+    # HTMXリクエストの場合、カレンダー部分のみを返す
+    if request.headers.get("HX-Request") == "true":
+        return templates.TemplateResponse(
+            "components/partials/register/user_calendar.html", context,
+            headers={"HX-Reswap": "outerHTML"}
+        )
 
-    # マクロを直接呼び出して表示
+    # 通常リクエストの場合も同じテンプレートを使用
     return templates.TemplateResponse(
-        "components/partials/attendance/attendance_modal.html",
-        context,
-        headers=headers
-    )
+        "components/partials/register/user_calendar.html", context
+    ) 

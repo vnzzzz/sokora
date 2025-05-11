@@ -1,0 +1,48 @@
+{% extends "layout/base.html" %} 
+{% import "components/macros/ui.html" as ui %} 
+{% set title_text = "勤怠登録" %}
+
+{% block content %}
+<div class="p-4">
+  <div class="flex justify-between items-center mb-3">
+    <div>
+      <h2 class="text-lg font-bold text-base-content">勤怠登録</h2>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    {% if users|length == 0 %}
+    <div class="alert alert-info shadow-sm">
+      <!-- 社員情報がありません。 -->
+    </div>
+    {% else %}
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+      <!-- 左側：ユーザーリスト -->
+      <div class="md:col-span-4 lg:col-span-3">
+        {% include "components/partials/register/user_list.html" %}
+      </div>
+
+      <!-- 右側：カレンダー -->
+      <div class="md:col-span-8 lg:col-span-9" id="calendar-container">
+        <div
+          id="user-calendar"
+          hx-ext="trigger"
+          hx-trigger="refreshUserAttendance from:body"
+        >
+          <div class="flex h-full items-center justify-center bg-base-200 rounded-lg p-8 text-center">
+            <div>
+              <!-- 左側のリストからユーザーを選択してください -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% endif %}
+  </div>
+</div>
+
+<!-- モーダル表示用のコンテナ -->
+<div id="modal-container"></div>
+{% endblock %}

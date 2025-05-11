@@ -148,7 +148,7 @@ async def create_attendance(
 async def update_attendance(
     request: Request,
     attendance_id: int,
-    attendance_in: AttendanceUpdate,
+    location_id: int = Form(...),
     db: Session = Depends(get_db),
 ) -> Response:
     """
@@ -159,8 +159,10 @@ async def update_attendance(
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         
         # 新しい勤務場所IDの存在確認
-        if attendance_in.location_id is not None:
-            location.get_or_404(db, id=attendance_in.location_id)
+        location.get_or_404(db, id=location_id)
+        
+        # 更新データを作成
+        attendance_in = AttendanceUpdate(location_id=location_id)
                 
         # 更新処理
         updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_in) # 更新後のオブジェクト取得
