@@ -155,22 +155,6 @@ async def delete_group(request: Request, group_id: int, db: Session = Depends(ge
         )
 
 
-@router.get("/pages/group/edit/{group_id}", response_class=HTMLResponse)
-def get_group_edit_form(request: Request, group_id: int, db: Session = Depends(get_db)) -> Any:
-    """指定されたグループの編集フォームをHTMLフラグメントとして返します。"""
-    group_data = group.get(db, id=group_id)
-    if not group_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
-
-    return templates.TemplateResponse(
-        "components/group/_group_edit_form.html",
-        {
-            "request": request,
-            "group": group_data,
-        }
-    )
-
-
 @router.post("/groups", response_class=HTMLResponse)
 async def create_group(
     request: Request,

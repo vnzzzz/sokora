@@ -258,22 +258,6 @@ async def delete_location(request: Request, location_id: int, db: Session = Depe
         )
 
 
-@router.get("/pages/location/edit/{location_id}", response_class=HTMLResponse)
-def get_location_edit_form(request: Request, location_id: int, db: Session = Depends(get_db)) -> Any:
-    """指定された勤務場所の編集フォームをHTMLフラグメントとして返します。"""
-    location_data = location.get(db, id=location_id)
-    if not location_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Location with id {location_id} not found")
-
-    return templates.TemplateResponse(
-        "components/location/_location_edit_form.html",
-        {
-            "request": request,
-            "location": location_data,
-        }
-    )
-
-
 @router.post("/pages/location/row", response_class=HTMLResponse)
 def handle_create_location_row(
     request: Request,

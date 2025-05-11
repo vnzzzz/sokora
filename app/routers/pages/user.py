@@ -336,38 +336,6 @@ async def delete_user(request: Request, user_id: str, db: Session = Depends(get_
         )
 
 
-@router.get("/pages/user/edit/{user_id}", response_class=HTMLResponse)
-def get_user_edit_form(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
-    """指定されたユーザーの編集フォームをHTMLフラグメントとして返します。
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: ユーザーID
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
-    """
-    # 関連情報を含めてユーザーを取得 (見つからなければ404)
-    user_data = user.get_user_with_details(db, id=user_id)
-    if not user_data:
-        # ここで404を返す代わりに、エラーメッセージを含むHTMLを返すことも検討できるが、
-        # 一般的にはリソースが存在しない場合は 404 が適切
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found")
-
-    groups = group.get_multi(db, limit=1000) # 十分な数を取得
-    user_types = user_type.get_multi(db, limit=1000) # 十分な数を取得
-
-    return templates.TemplateResponse(
-        "components/user/_user_edit_form.html",
-        {
-            "request": request,
-            "user": user_data,
-            "groups": groups,
-            "user_types": user_types,
-        }
-    )
-
 
 @router.post("/pages/user/row", response_class=HTMLResponse)
 def handle_create_user_row(

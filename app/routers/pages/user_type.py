@@ -249,22 +249,6 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
         )
 
 
-@router.get("/pages/user_type/edit/{user_type_id}", response_class=HTMLResponse)
-def get_user_type_edit_form(request: Request, user_type_id: int, db: Session = Depends(get_db)) -> Any:
-    """指定された社員種別の編集フォームをHTMLフラグメントとして返します。"""
-    user_type_data = user_type.get(db, id=user_type_id)
-    if not user_type_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
-
-    return templates.TemplateResponse(
-        "components/user_type/_user_type_edit_form.html",
-        {
-            "request": request,
-            "user_type": user_type_data,
-        }
-    )
-
-
 @router.post("/pages/user_type/row", response_class=HTMLResponse)
 def handle_create_user_type_row(
     request: Request,
