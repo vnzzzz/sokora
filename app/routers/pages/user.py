@@ -124,7 +124,7 @@ async def user_modal(
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/users/user_modal.html", ctx, headers=headers
+        "components/partials/users/user_modal.html", ctx, headers=headers
     )
 
 
@@ -155,7 +155,7 @@ async def user_delete_modal(request: Request, user_id: str, db: Session = Depend
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/users/user_delete_modal.html", ctx, headers=headers
+        "components/partials/users/user_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -183,7 +183,7 @@ async def create_user(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request,
                 "user": created_user,
@@ -216,7 +216,7 @@ async def create_user(
         print(f"Create user error: {errors}")
         
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request, 
                 "user": None,
@@ -257,7 +257,7 @@ async def update_user(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request,
                 "user": updated_user,
@@ -276,7 +276,7 @@ async def update_user(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request, 
                 "user": user.get(db, id=user_id),
@@ -332,7 +332,7 @@ async def delete_user(request: Request, user_id: str, db: Session = Depends(get_
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "partials/users/user_delete_modal.html", ctx
+            "components/partials/users/user_delete_modal.html", ctx
         )
 
 

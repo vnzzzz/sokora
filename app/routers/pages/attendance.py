@@ -229,7 +229,7 @@ def attendance_page(
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
-            "partials/attendance/calendar.html", context,
+            "components/partials/attendance/calendar.html", context,
             headers={"HX-Reswap": "outerHTML"} # HTMXに入れ替え方法を指定
         )
 
@@ -299,7 +299,7 @@ def get_attendance_modal(
 
     # マクロを直接呼び出して表示
     return templates.TemplateResponse(
-        "partials/attendance/attendance_modal.html",
+        "components/partials/attendance/attendance_modal.html",
         context,
         headers=headers
     )
