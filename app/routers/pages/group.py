@@ -59,7 +59,7 @@ async def group_modal(request: Request, group_id: Optional[int] = None, db: Sess
         if not group_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
     
-    modal_id = f"group-modal-{group_id or 'new'}"
+    modal_id = "add-group" if group_id is None else f"edit-group-{group_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
@@ -171,7 +171,7 @@ async def create_group(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "group-modal-new"
+    modal_id = "add-group"  
     
     try:
         # グループ作成を試みる
@@ -223,7 +223,7 @@ async def update_group(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"group-modal-{group_id}"
+    modal_id = f"edit-group-{group_id}" 
     
     try:
         # グループ更新を試みる

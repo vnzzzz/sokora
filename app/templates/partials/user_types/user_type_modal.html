@@ -1,22 +1,21 @@
 {% import "components/macros/ui.html" as ui %}
 
 {% call ui.modal_form(
-  id = modal_id,
-  title = user_type.id and "社員種別編集" or "社員種別追加",
-  action = user_type.id and ("/user_types/" ~ user_type.id) or "/user_types",
-  method = user_type.id and "PUT" or "POST",
+  id          = modal_id,
+  title       = user_type.id and "社員種別編集" or "社員種別追加",
+  action      = user_type.id and ("/user_types/" ~ user_type.id) or "/user_types",
+  method      = user_type.id and "PUT" or "POST",
   submit_text = user_type.id and "更新" or "登録",
-  size = "sm"
+  size="sm"
 ) %}
 
   {{ ui.form_errors(errors) if errors else "" }}
 
-  <label class="label">
-    <span class="label-text">社員種別名</span>
-  </label>
+  <label class="label"><span class="label-text">社員種別名</span></label>
   <input
     type="text"
     name="name"
+    id="{{ user_type.id and ('edit-user-type-name-' ~ user_type.id) or 'add-user-type-name' }}"
     class="input input-bordered w-full"
     value="{{ user_type.name | default('') }}"
     required

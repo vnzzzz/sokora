@@ -51,7 +51,7 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
         if not user_type_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
     
-    modal_id = f"user-type-modal-{user_type_id or 'new'}"
+    modal_id = "add-user-type" if user_type_id is None else f"edit-user-type-{user_type_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
@@ -114,7 +114,7 @@ async def create_user_type(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "user-type-modal-new"
+    modal_id = "add-user-type"
     
     try:
         # 社員種別作成を試みる
@@ -166,7 +166,7 @@ async def update_user_type(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"user-type-modal-{user_type_id}"
+    modal_id = f"edit-user-type-{user_type_id}"
     
     try:
         # 社員種別更新を試みる

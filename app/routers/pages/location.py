@@ -60,7 +60,7 @@ async def location_modal(request: Request, location_id: Optional[int] = None, db
         if not location_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Location with id {location_id} not found")
     
-    modal_id = f"location-modal-{location_id or 'new'}"
+    modal_id = "add-location" if location_id is None else f"edit-location-{location_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
@@ -123,7 +123,7 @@ async def create_location(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "location-modal-new"
+    modal_id = "add-location" 
     
     try:
         # 勤務場所作成を試みる
@@ -175,7 +175,7 @@ async def update_location(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"location-modal-{location_id}"
+    modal_id = f"edit-location-{location_id}" 
     
     try:
         # 勤務場所更新を試みる
