@@ -63,17 +63,17 @@
                     {{ day.day }}
                   </div>
                   
+                  <!-- 祝日情報 -->
+                  {% if day.holiday_name|default('') %}
+                    <div class="text-xs text-red-600 dark:text-red-400 mb-1">
+                      {{ day.holiday_name }}
+                    </div>
+                  {% endif %}
+                  
                   <!-- 勤怠情報（あれば表示） -->
                   {% if has_data %}
                     <div class="text-xs font-medium px-1 py-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }}">
                       {{ location_name }}
-                    </div>
-                  {% endif %}
-                  
-                  <!-- 祝日情報 -->
-                  {% if day.holiday_name|default('') %}
-                    <div class="text-xs text-red-600 dark:text-red-400 mt-1">
-                      {{ day.holiday_name }}
                     </div>
                   {% endif %}
                 </td>
