@@ -1,0 +1,41 @@
+{
+  "name": "Sokora Development",
+  "dockerComposeFile": "docker-compose.dev.yml",
+  "service": "sokora",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "editor.formatOnSave": true,
+        "[html]": {
+          "editor.formatOnSave": false
+        },
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "python.formatting.provider": "black",
+        "python.linting.enabled": true,
+        "python.linting.mypyEnabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.sortImports.args": [
+          "--profile",
+          "black"
+        ]
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "matangover.mypy",
+        "njpwerner.autodocstring",
+        "tamasfe.even-better-toml",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [
+    8000
+  ],
+  "postCreateCommand": "poetry install --no-root",
+  "remoteUser": "root"
+}

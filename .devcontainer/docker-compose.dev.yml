@@ -1,0 +1,31 @@
+services:
+  sokora:
+    container_name: sokora-dev
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.dev
+    ports:
+      - '${SERVICE_PORT:-8000}:8000'
+    volumes:
+      # app/static/js ディレクトリを除外したマウント設定
+      - ../app:/app/app:cached
+      - ../app/static:/app/app/static:cached
+      - ../app/static/js/main.js:/app/app/static/js/main.js:cached
+      - ../data:/app/data
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../poetry.lock:/app/poetry.lock
+      - ../README.md:/app/README.md
+      - ../docs:/app/docs
+      - ../scripts:/app/scripts
+      - ../.cursor:/app/.cursor
+      - ../.git:/app/.git
+      - ../.gitignore:/app/.gitignore
+      - ../.prettierrc:/app/.prettierrc
+      - ../Dockerfile:/app/Dockerfile
+      - ../docker-compose.yml:/app/docker-compose.yml
+      - ../.env.sample:/app/.env.sample
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=development
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
