@@ -29,7 +29,9 @@
         "matangover.mypy",
         "njpwerner.autodocstring",
         "tamasfe.even-better-toml",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ecmel.vscode-html-css"
       ]
     }
   },

@@ -1,3 +1,13 @@
+# 1) CSS ビルド用ステージ
+FROM node:18-alpine AS css-builder
+WORKDIR /src
+COPY builder/package.json builder/tailwind.config.js builder/postcss.config.js ./
+COPY builder/input.css ./src/input.css
+RUN npm install
+RUN mkdir -p /build/css
+RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
+
+# 2) 開発コンテナ
 FROM python:3.13-slim-bullseye
 
 # 開発用のツールインストール
@@ -29,6 +39,12 @@ COPY pyproject.toml poetry.lock* README.md ./
 RUN poetry config virtualenvs.create false && \
   poetry install --no-root --no-interaction --no-ansi --with dev
 RUN poetry run playwright install --with-deps
+
+# アプリケーションコード（マウントされるので必要ない）
+
+# CSS 成果物をコピー
+RUN mkdir -p /app/app/static/css
+COPY --from=css-builder /build/css/main.css /app/app/static/css/main.css
 
 # フロントエンドライブラリの取得
 RUN mkdir -p /app/app/static/js && \

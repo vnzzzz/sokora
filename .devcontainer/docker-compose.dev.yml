@@ -7,10 +7,23 @@ services:
     ports:
       - '${SERVICE_PORT:-8000}:8000'
     volumes:
-      # app/static/js ディレクトリを除外したマウント設定
-      - ../app:/app/app:cached
-      - ../app/static:/app/app/static:cached
-      - ../app/static/js/main.js:/app/app/static/js/main.js:cached
+      - ../app/core:/app/app/core
+      - ../app/crud:/app/app/crud
+      - ../app/db:/app/app/db
+      - ../app/models:/app/app/models
+      - ../app/routers:/app/app/routers
+      - ../app/schemas:/app/app/schemas
+      - ../app/services:/app/app/services
+      - ../app/static/css/calendar.css:/app/app/static/css/calendar.css
+      - ../app/static/js/main.js:/app/app/static/js/main.js
+      - ../app/static/js/calendar.js:/app/app/static/js/calendar.js
+      - ../app/static/js/modal.js:/app/app/static/js/modal.js
+      - ../app/static/favicon.ico:/app/app/static/favicon.ico
+      - ../app/templates:/app/app/templates
+      - ../app/tests:/app/app/tests
+      - ../app/utils:/app/app/utils
+      - ../app/__init__.py:/app/app/__init__.py
+      - ../app/main.py:/app/app/main.py
       - ../data:/app/data
       - ../pyproject.toml:/app/pyproject.toml
       - ../poetry.lock:/app/poetry.lock
