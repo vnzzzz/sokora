@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* カスタムツールチップスタイル */
+.holiday-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.holiday-tooltip .tooltip-text {
+  visibility: hidden;
+  background-color: var(--tooltip-bg, #374151);
+  color: var(--tooltip-text, #ffffff);
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 10px;
+  position: absolute;
+  z-index: 100;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 200px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.holiday-tooltip .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--tooltip-bg, #374151) transparent transparent transparent;
+}
+
+.holiday-tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ダークモード対応 */
+:is([data-theme="dark"]) .holiday-tooltip .tooltip-text {
+  --tooltip-bg: #e5e7eb;
+  --tooltip-text: #111827;
+}
+
+/* テーブル幅制御 */
+.table-responsive {
+  max-width: 100%;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .table-responsive {
+    max-width: 700px;
+  }
+}
+
+/* カレンダーセル幅 */
+.w-1\/7 {
+  width: 14.285714%;
+}
