@@ -245,8 +245,8 @@
   {% set is_register_mode = mode == "register" %}
   
   {% if is_register_mode %}
-    {% set trigger_attrs = "hx-headers='{\"HX-Trigger\": " ~ 
-        "{\"refreshRegisterCalendar\": {\"userId\": \"" ~ user_id ~ "\", \"month\": \"" ~ (date | default(""))[0:7] ~ "\"}}}'"%}
+    {% set trigger_attrs = 'hx-trigger-after-settle="refreshRegisterCalendar" ' ~ 
+        'data-user-id="' ~ user_id ~ '" data-month="' ~ (date | default(""))[0:7] ~ '"' %}
   {% else %}
     {% set trigger_attrs = "" %}
   {% endif %}
@@ -260,8 +260,8 @@
 {% endif %}
 
 {% if mode == "register" %}
-  {% set form_trigger_attrs = "hx-headers='{\"HX-Trigger\": " ~ 
-      "{\"refreshRegisterCalendar\": {\"userId\": \"" ~ user_id ~ "\", \"month\": \"" ~ (date | default(""))[0:7] ~ "\"}}}'"%}
+  {% set form_trigger_attrs = 'hx-trigger-after-settle="refreshRegisterCalendar" ' ~ 
+      'data-user-id="' ~ user_id ~ '" data-month="' ~ (date | default(""))[0:7] ~ '"' %}
 {% else %}
   {% set form_trigger_attrs = "" %}
 {% endif %}

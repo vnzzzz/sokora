@@ -34,6 +34,7 @@ services:
       - ../.git:/app/.git
       - ../.gitignore:/app/.gitignore
       - ../.prettierrc:/app/.prettierrc
+      - ../.devcontainer:/app/.devcontainer
       - ../Dockerfile:/app/Dockerfile
       - ../docker-compose.yml:/app/docker-compose.yml
       - ../.env.sample:/app/.env.sample
