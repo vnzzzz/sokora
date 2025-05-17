@@ -139,7 +139,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             db: データベースセッション
             user_id: 対象のユーザーID
             date_obj: 対象の日付オブジェクト
-            location_id: 設定する勤務場所ID
+            location_id: 設定する勤怠種別ID
 
         Returns:
             Optional[Attendance]: 作成または更新された勤怠記録オブジェクト、エラー時はNone
@@ -177,7 +177,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             db: データベースセッション
             user_id: 対象のユーザーID文字列
             date_str: 対象の日付文字列 (YYYY-MM-DD形式)
-            location_id: 設定する勤務場所ID。削除の場合は -1 を指定。
+            location_id: 設定する勤怠種別ID。削除の場合は -1 を指定。
 
         Returns:
             bool: 処理が成功した場合はTrue、失敗した場合はFalse
@@ -247,7 +247,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             user_id: 対象のユーザーID文字列
 
         Returns:
-            List[Dict[str, Any]]: 勤怠データのリスト。各要素は日付、勤務場所ID、勤務場所名を含む辞書。
+            List[Dict[str, Any]]: 勤怠データのリスト。各要素は日付、勤怠種別ID、勤怠種別名を含む辞書。
                                  ユーザーが存在しない場合やエラー時は空リストを返します。
         """
         try:
@@ -257,7 +257,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 logger.warning(f"データ取得対象のユーザーが見つかりません: user_id={user_id}")
                 return []
 
-            # ユーザーの勤怠記録と関連する勤務場所情報を結合して取得
+            # ユーザーの勤怠記録と関連する勤怠種別情報を結合して取得
             results = (
                 db.query(Attendance, Location)
                 .filter(Attendance.user_id == user.id)
@@ -291,7 +291,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             day: 日付文字列 (YYYY-MM-DD)
 
         Returns:
-            Dict[str, List[Dict[str, str]]]: 勤務場所ごとにグループ化された勤怠データ
+            Dict[str, List[Dict[str, str]]]: 勤怠種別ごとにグループ化された勤怠データ
         """
         # キャッシュチェック（パフォーマンス最適化）
         current_time = time.time()
@@ -324,7 +324,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             # 1回のクエリで効率的に結果を取得
             results = query.all()
 
-            # 勤務場所ごとにユーザーをグループ化
+            # 勤怠種別ごとにユーザーをグループ化
             location_groups: Dict[str, List[Dict[str, str]]] = {}
             for row in results:
                 location_name = row.location_name
@@ -365,7 +365,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             end_date: 終了日（指定された場合）
             
         Returns:
-            Dict[str, str]: ユーザーID+日付をキー、勤務場所名を値とするマッピング
+            Dict[str, str]: ユーザーID+日付をキー、勤怠種別名を値とするマッピング
         """
         try:
             query = db.query(
@@ -386,7 +386,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 
             results = query.all()
             
-            # ユーザー×日付ごとの勤務場所をマッピング
+            # ユーザー×日付ごとの勤怠種別をマッピング
             user_locations = {}
             for entry in results:
                 date_key = entry.date.strftime("%Y-%m-%d")

@@ -18,6 +18,7 @@ services:
       - ../app/static/js/main.js:/app/app/static/js/main.js
       - ../app/static/js/calendar.js:/app/app/static/js/calendar.js
       - ../app/static/js/modal.js:/app/app/static/js/modal.js
+      - ../app/static/js/circle-favicon.js:/app/app/static/js/circle-favicon.js
       - ../app/static/favicon.ico:/app/app/static/favicon.ico
       - ../app/templates:/app/app/templates
       - ../app/tests:/app/app/tests
@@ -38,6 +39,7 @@ services:
       - ../Dockerfile:/app/Dockerfile
       - ../docker-compose.yml:/app/docker-compose.yml
       - ../.env.sample:/app/.env.sample
+      - ../builder:/app/builder
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1

@@ -2,7 +2,7 @@
 
 {% call ui.modal_form(
   id          = modal_id,
-  title       = location.id and "勤務場所編集" or "勤務場所追加",
+  title       = location.id and "勤怠種別編集" or "勤怠種別追加",
   action      = location.id and ("/locations/" ~ location.id) or "/locations",
   method      = location.id and "PUT" or "POST",
   submit_text = location.id and "更新" or "登録",
@@ -11,7 +11,7 @@
 
   {{ ui.form_errors(errors) if errors else "" }}
 
-  <label class="label"><span class="label-text">勤務場所名</span></label>
+  <label class="label"><span class="label-text">勤怠種別名</span></label>
   <input
     type="text"
     name="name"

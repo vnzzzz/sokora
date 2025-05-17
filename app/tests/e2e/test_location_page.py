@@ -2,27 +2,27 @@ from playwright.sync_api import Page, expect
 import time # アサーション前の待機用
 
 def test_add_new_location(page: Page) -> None:
-    """勤務場所管理ページで新しい勤務場所を追加するテスト"""
+    """勤怠種別管理ページで新しい勤怠種別を追加するテスト"""
     unique_location_name = f"テスト勤務地_追加_{int(time.time())}"
 
-    # 勤務場所管理ページにアクセス
+    # 勤怠種別管理ページにアクセス
     page.goto("http://localhost:8000/location")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
-    # 「勤務場所追加」ボタンをクリックしてモーダルを開く
-    page.locator('button:has-text("勤務場所追加")').click()
+    # 「勤怠種別追加」ボタンをクリックしてモーダルを開く
+    page.locator('button:has-text("勤怠種別追加")').click()
 
     # モーダルを ID で特定
     add_modal_locator = page.locator("#add-location-modal")
     expect(add_modal_locator).to_be_visible()
 
-    # 勤務場所名を入力
+    # 勤怠種別名を入力
     add_modal_locator.locator('#add-location-name').fill(unique_location_name)
 
     # 「追加」ボタンをクリックしてフォームを送信
     add_modal_locator.locator('button[type="submit"]').click()
 
-    # テーブルが更新され、新しい勤務場所が表示されるのを待機・確認
+    # テーブルが更新され、新しい勤怠種別が表示されるのを待機・確認
     expect(page.locator("#location-table-body")).to_contain_text(unique_location_name, timeout=1000)
     expect(add_modal_locator).not_to_be_visible() # モーダルが閉じることを確認
 
@@ -42,14 +42,14 @@ def test_add_new_location(page: Page) -> None:
     # -----------------------
 
 def test_edit_location(page: Page) -> None:
-    """既存の勤務場所を編集するテスト"""
+    """既存の勤怠種別を編集するテスト"""
     # --- テストデータ準備 (UI操作で追加) ---
     initial_name = f"テスト勤務地_編集前_{int(time.time())}"
     new_location_name = f"編集済_{initial_name}"
 
     page.goto("http://localhost:8000/location")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-    page.locator('button:has-text("勤務場所追加")').click()
+    page.locator('button:has-text("勤怠種別追加")').click()
     add_modal = page.locator("#add-location-modal") # ID で特定
     expect(add_modal).to_be_visible()
     add_modal.locator('#add-location-name').fill(initial_name)
@@ -78,7 +78,7 @@ def test_edit_location(page: Page) -> None:
     # HTMXでロードされるコンテンツ内の input を待機
     expect(edit_modal_locator.locator('input[name="name"]')).to_have_value(initial_name, timeout=1000)
 
-    # 新しい勤務場所名を入力
+    # 新しい勤怠種別名を入力
     edit_modal_locator.locator('input[name="name"]').fill(new_location_name)
 
     # 「保存」ボタンをクリックしてフォームを送信 (テキスト修正)
@@ -107,13 +107,13 @@ def test_edit_location(page: Page) -> None:
     # -----------------------
 
 def test_delete_location(page: Page) -> None:
-    """既存の勤務場所を削除するテスト"""
+    """既存の勤怠種別を削除するテスト"""
     # --- テストデータ準備 (UI操作で追加) ---
     location_name_to_delete = f"テスト勤務地_削除用_{int(time.time())}"
 
     page.goto("http://localhost:8000/location")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-    page.locator('button:has-text("勤務場所追加")').click()
+    page.locator('button:has-text("勤怠種別追加")').click()
     add_modal = page.locator("#add-location-modal") # ID で特定
     expect(add_modal).to_be_visible()
     add_modal.locator('#add-location-name').fill(location_name_to_delete)

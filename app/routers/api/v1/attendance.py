@@ -98,7 +98,7 @@ async def create_attendance(
                 detail="日付の形式が無効です。YYYY-MM-DD形式で入力してください。"
             )
 
-        # ユーザーと勤務場所の存在確認
+        # ユーザーと勤怠種別の存在確認
         user.get_or_404(db, id=user_id)
         location.get_or_404(db, id=location_id)
 
@@ -158,7 +158,7 @@ async def update_attendance(
     try:
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         
-        # 新しい勤務場所IDの存在確認
+        # 新しい勤怠種別IDの存在確認
         location.get_or_404(db, id=location_id)
         
         # 更新データを作成

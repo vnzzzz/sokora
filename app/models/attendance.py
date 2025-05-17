@@ -12,7 +12,7 @@ from app.db.session import Base
 
 
 class Attendance(Base):  # type: ignore
-    """ユーザーの日々の勤務場所を表す勤怠モデル"""
+    """ユーザーの日々の勤怠種別を表す勤怠モデル"""
 
     __tablename__ = "attendance"
 

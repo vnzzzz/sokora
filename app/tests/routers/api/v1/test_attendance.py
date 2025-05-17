@@ -38,7 +38,7 @@ async def create_test_user_via_api(async_client: AsyncClient, user_id: str, user
     return user_id  # 入力されたuser_idをそのまま返す
 
 async def create_test_location_via_api(async_client: AsyncClient, name: str) -> int:
-    """API経由でテスト勤務場所を作成するヘルパー"""
+    """API経由でテスト勤怠種別を作成するヘルパー"""
     location_payload = {"name": name}
     response = await async_client.post("/api/locations", json=location_payload)
     assert response.status_code == status.HTTP_200_OK
@@ -148,7 +148,7 @@ async def test_create_attendance_invalid_user(async_client: AsyncClient) -> None
 
 async def test_create_attendance_invalid_location(async_client: AsyncClient) -> None:
     """
-    存在しない勤務場所IDで勤怠データを作成しようとすると404エラーが発生することをテストします。
+    存在しない勤怠種別IDで勤怠データを作成しようとすると404エラーが発生することをテストします。
     """
     group_id = await create_test_group_via_api(async_client, "AttTestGroupInvLoc")
     user_type_id = await create_test_user_type_via_api(async_client, "AttTestUserTypeInvLoc")
@@ -285,7 +285,7 @@ async def test_update_attendance_not_found(async_client: AsyncClient) -> None:
     assert f"Attendance with id {non_existent_attendance_id} not found" in response.json()["detail"]
 
 async def test_update_attendance_invalid_location(async_client: AsyncClient) -> None:
-    """更新時に存在しない勤務場所IDを指定すると404エラーが発生することをテストします。"""
+    """更新時に存在しない勤怠種別IDを指定すると404エラーが発生することをテストします。"""
     group_id = await create_test_group_via_api(async_client, "AttTestGroupPutInvLoc")
     user_type_id = await create_test_user_type_via_api(async_client, "AttTestUserTypePutInvLoc")
     user_id = await create_test_user_via_api(async_client, "att_user_put_invloc", "Att User Put InvLoc", group_id, user_type_id)

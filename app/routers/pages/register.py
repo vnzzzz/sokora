@@ -164,12 +164,12 @@ def register_page(
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])
 
-    # 利用可能な全勤務場所を取得します。（オブジェクトのリストとして）
+    # 利用可能な全勤怠種別を取得します。（オブジェクトのリストとして）
     location_objects_unsorted: List[Location] = location_crud.get_multi(db)
     # IDでソートした Location オブジェクトのリストをテンプレートに渡す
     location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
 
-    # 勤務場所名に対応するCSSクラス情報 (テキストと背景) を生成します。
+    # 勤怠種別名に対応するCSSクラス情報 (テキストと背景) を生成します。
     location_styles: Dict[str, Dict[str, str]] = {}
     for loc in location_objects:
         location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
@@ -279,7 +279,7 @@ def user_calendar(
             "attendance_id": entry["id"]
         }
 
-    # 勤務場所情報を取得
+    # 勤怠種別情報を取得
     location_objects = location_crud.get_multi(db)
     location_styles = {}
     for loc in location_objects:

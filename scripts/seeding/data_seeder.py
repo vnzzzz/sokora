@@ -5,7 +5,7 @@
 既存のデータベースに追加のテストデータを投入するためのユーティリティモジュール。
 ユーザーと勤怠記録を水増しして、アプリケーションのテストや開発を支援します。
 
-マスターデータ（グループ、勤務場所、社員種別）が存在しない場合は、
+マスターデータ（グループ、勤怠種別、社員種別）が存在しない場合は、
 定義済みのリストに基づいて作成します。
 
 実行方法:
@@ -147,7 +147,7 @@ SAMPLE_USERS = [
 
 def seed_master_data(db: Session) -> Dict[str, Dict[str, Any]]:
     """
-    グループ、勤務場所、社員種別のマスターデータを作成します。
+    グループ、勤怠種別、社員種別のマスターデータを作成します。
     既に同名のデータが存在する場合は作成しません。
 
     Args:
@@ -177,7 +177,7 @@ def seed_master_data(db: Session) -> Dict[str, Dict[str, Any]]:
         else:
             created_data["groups"][name] = existing_groups[name]
 
-    # 勤務場所作成 (キーを str() でキャスト)
+    # 勤怠種別作成 (キーを str() でキャスト)
     existing_locations = {str(loc.name): loc for loc in db.scalars(select(Location)).all()}
     for name in LOCATION_NAMES:
         if name not in existing_locations:
@@ -272,19 +272,19 @@ def create_location_preferences(
     primary_location_name: str,
     primary_weight: float = 0.7
 ) -> Dict[int, float]:
-    """指定された勤務場所辞書に基づき、特定の場所を優先する確率分布を生成します。
+    """指定された勤怠種別辞書に基づき、特定の場所を優先する確率分布を生成します。
 
     Args:
-        locations: 勤務場所の名前をキー、Locationオブジェクトを値とする辞書。
-        primary_location_name: 優先的に選択される勤務場所の名前。
-        primary_weight: 優先勤務場所が選択される確率の重み (デフォルト0.7)。
+        locations: 勤怠種別の名前をキー、Locationオブジェクトを値とする辞書。
+        primary_location_name: 優先的に選択される勤怠種別の名前。
+        primary_weight: 優先勤怠種別が選択される確率の重み (デフォルト0.7)。
 
     Returns:
-        Dict[int, float]: 各勤務場所IDをキーとし、選択確率の重みを値とする辞書。
+        Dict[int, float]: 各勤怠種別IDをキーとし、選択確率の重みを値とする辞書。
                           存在しないprimary_location_nameが指定された場合は空辞書。
     """
     if primary_location_name not in locations:
-        logger.warning(f"優先勤務場所 '{primary_location_name}' が見つかりません。")
+        logger.warning(f"優先勤怠種別 '{primary_location_name}' が見つかりません。")
         return {}
 
     # キーを int() でキャスト
@@ -299,7 +299,7 @@ def seed_attendance(db: Session, master_data: Dict[str, Dict[str, Any]],
                    days_back: int = 30, days_forward: int = 30) -> List[Attendance]:
     """
     指定されたユーザーリストまたは全ユーザーに対して、ダミーの勤怠記録を生成します。
-    勤務場所は提供されたマスターデータから選択されます。
+    勤怠種別は提供されたマスターデータから選択されます。
 
     Args:
         db: データベースセッション
@@ -316,10 +316,10 @@ def seed_attendance(db: Session, master_data: Dict[str, Dict[str, Any]],
     else:
         users_to_process = users
 
-    # マスターデータから勤務場所の辞書を取得
+    # マスターデータから勤怠種別の辞書を取得
     locations_dict = master_data.get("locations", {})
     if not locations_dict:
-        logger.error("マスターデータに勤務場所が存在しません。勤怠シードをスキップします。")
+        logger.error("マスターデータに勤怠種別が存在しません。勤怠シードをスキップします。")
         return []
 
     # 既存レコードを効率的にチェックするための準備
@@ -354,7 +354,7 @@ def seed_attendance(db: Session, master_data: Dict[str, Dict[str, Any]],
         else:
             preferred_office_name = random.choice(list(possible_offices.keys()))
 
-        # 曜日ごとの勤務場所選択確率を格納する辞書を初期化します。
+        # 曜日ごとの勤怠種別選択確率を格納する辞書を初期化します。
         weekday_patterns: Dict[int, Dict[int, float]] = {}
 
         # 平日 (月曜=0 〜 金曜=4) の勤務パターンを設定します。
@@ -383,12 +383,12 @@ def seed_attendance(db: Session, master_data: Dict[str, Dict[str, Any]],
             attendance_probability = 0.9 if day.weekday() < 5 else 0.05
 
             if random.random() < attendance_probability:
-                # その曜日の勤務場所パターンを取得します。
+                # その曜日の勤怠種別パターンを取得します。
                 current_pattern = weekday_patterns.get(day.weekday(), {}) # weekdayは整数なのでstr()は不要
                 if not current_pattern: # パターンがない場合はスキップ（念のため）
                     continue
 
-                # パターンに基づいて勤務場所を選択します。
+                # パターンに基づいて勤怠種別を選択します。
                 location_ids_in_pattern = list(current_pattern.keys())
                 weights = list(current_pattern.values())
                 # locations_dict から ID を取得するようにする
@@ -445,7 +445,7 @@ def run_seeder(user_count: int = 20, days_back: int = 60, days_forward: int = 30
         # users リストが None でないことを確認 (seed_usersが空リストを返す場合があるため)
         users_to_seed = users if 'users' in locals() and users else None
         if not master_data.get("locations"):
-             logger.error("マスターデータ(勤務場所)の準備に失敗したため、勤怠をシードできません。")
+             logger.error("マスターデータ(勤怠種別)の準備に失敗したため、勤怠をシードできません。")
              attendances_created_count = 0
         elif users_to_seed is None and user_count > 0:
              logger.warning("勤怠をシードする対象ユーザーが存在しません。")

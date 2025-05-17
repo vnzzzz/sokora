@@ -12,13 +12,13 @@ def create_test_location(db: Session, name: str) -> models.Location:
     return crud.location.create(db=db, obj_in=location_in)
 
 def test_validate_location_creation_success(db: Session) -> None:
-    """勤務場所作成バリデーション成功（重複なし）"""
+    """勤怠種別作成バリデーション成功（重複なし）"""
     location_in = schemas.location.LocationCreate(name=random_lower_string())
     # 例外が発生しないことを確認
     location_service.validate_location_creation(db, location_in=location_in)
 
 def test_validate_location_creation_fail_duplicate_name(db: Session) -> None:
-    """勤務場所作成バリデーション失敗（名前重複）"""
+    """勤怠種別作成バリデーション失敗（名前重複）"""
     existing_name = random_lower_string()
     create_test_location(db, name=existing_name)
     db.commit()
@@ -30,7 +30,7 @@ def test_validate_location_creation_fail_duplicate_name(db: Session) -> None:
     assert "既に存在します" in excinfo.value.detail
 
 def test_validate_location_creation_fail_empty_name(db: Session) -> None:
-    """勤務場所作成バリデーション失敗（名前が空）"""
+    """勤怠種別作成バリデーション失敗（名前が空）"""
     location_in = schemas.location.LocationCreate(name="")
     with pytest.raises(HTTPException) as excinfo:
         location_service.validate_location_creation(db, location_in=location_in)
@@ -38,8 +38,8 @@ def test_validate_location_creation_fail_empty_name(db: Session) -> None:
     assert "入力してください" in excinfo.value.detail
 
 def test_validate_location_update_success(db: Session) -> None:
-    """勤務場所更新バリデーション成功"""
-    # 更新対象と、別名の勤務場所を作成
+    """勤怠種別更新バリデーション成功"""
+    # 更新対象と、別名の勤怠種別を作成
     location_to_update = create_test_location(db, name=random_lower_string())
     other_location = create_test_location(db, name=random_lower_string())
     db.commit()
@@ -57,7 +57,7 @@ def test_validate_location_update_success(db: Session) -> None:
     )
 
 def test_validate_location_update_fail_duplicate_name(db: Session) -> None:
-    """勤務場所更新バリデーション失敗（他勤務場所と名前重複）"""
+    """勤怠種別更新バリデーション失敗（他勤怠種別と名前重複）"""
     location_to_update = create_test_location(db, name=random_lower_string())
     other_location = create_test_location(db, name=random_lower_string())
     db.commit()
@@ -71,7 +71,7 @@ def test_validate_location_update_fail_duplicate_name(db: Session) -> None:
     assert "既に使用されています" in excinfo.value.detail
 
 def test_validate_location_update_fail_empty_name(db: Session) -> None:
-    """勤務場所更新バリデーション失敗（名前が空）"""
+    """勤怠種別更新バリデーション失敗（名前が空）"""
     location_to_update = create_test_location(db, name=random_lower_string())
     db.commit()
 
@@ -84,7 +84,7 @@ def test_validate_location_update_fail_empty_name(db: Session) -> None:
     assert "入力してください" in excinfo.value.detail
 
 def test_create_location_with_validation_success(db: Session) -> None:
-    """バリデーション付き勤務場所作成成功"""
+    """バリデーション付き勤怠種別作成成功"""
     location_name = random_lower_string()
     location_in = schemas.location.LocationCreate(name=location_name)
 
@@ -98,7 +98,7 @@ def test_create_location_with_validation_success(db: Session) -> None:
     assert db_location.id == created_location.id
 
 def test_create_location_with_validation_fail(db: Session) -> None:
-    """バリデーション付き勤務場所作成失敗（重複）"""
+    """バリデーション付き勤怠種別作成失敗（重複）"""
     existing_name = random_lower_string()
     create_test_location(db, name=existing_name)
     db.commit()
@@ -108,7 +108,7 @@ def test_create_location_with_validation_fail(db: Session) -> None:
         location_service.create_location_with_validation(db, location_in=location_in)
 
 def test_update_location_with_validation_success(db: Session) -> None:
-    """バリデーション付き勤務場所更新成功"""
+    """バリデーション付き勤怠種別更新成功"""
     location_to_update = create_test_location(db, name=random_lower_string())
     db.commit()
 
@@ -127,7 +127,7 @@ def test_update_location_with_validation_success(db: Session) -> None:
     assert updated_location.name == new_name
 
 def test_update_location_with_validation_fail_duplicate(db: Session) -> None:
-    """バリデーション付き勤務場所更新失敗（他勤務場所と重複）"""
+    """バリデーション付き勤怠種別更新失敗（他勤怠種別と重複）"""
     location_to_update = create_test_location(db, name=random_lower_string())
     other_location = create_test_location(db, name=random_lower_string())
     db.commit()
@@ -139,7 +139,7 @@ def test_update_location_with_validation_fail_duplicate(db: Session) -> None:
         )
 
 def test_update_location_with_validation_fail_not_found(db: Session) -> None:
-    """バリデーション付き勤務場所更新失敗（対象が存在しない）"""
+    """バリデーション付き勤怠種別更新失敗（対象が存在しない）"""
     non_existent_id = 99999
     location_in_update = schemas.location.LocationUpdate(name=random_lower_string())
     with pytest.raises(HTTPException) as excinfo:

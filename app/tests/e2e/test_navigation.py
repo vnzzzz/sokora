@@ -1,12 +1,12 @@
 from playwright.sync_api import Page, expect
 
 def test_navigate_to_locations(page: Page) -> None:
-    """トップページから勤務場所管理ページへ遷移するテスト"""
+    """トップページから勤怠種別管理ページへ遷移するテスト"""
     page.goto("http://localhost:8000/")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-    page.locator('a[title="勤務場所管理"]').click()
+    page.locator('a[title="勤怠種別管理"]').click()
     expect(page).to_have_url("http://localhost:8000/location")
-    expect(page.locator("h2")).to_have_text("勤務場所管理")
+    expect(page.locator("h2")).to_have_text("勤怠種別管理")
 
 
 def test_navigate_to_attendance(page: Page) -> None:

@@ -193,15 +193,15 @@ def get_day_detail(
     user_types = user_type.get_multi(db)
     user_types_map = {ut.id: ut for ut in user_types}
 
-    # 全勤務場所オブジェクトを取得します。
+    # 全勤怠種別オブジェクトを取得します。
     location_objects_unsorted: List[Location] = location_crud.get_multi(db)
     location_objects = sorted(location_objects_unsorted, key=lambda loc: int(loc.id))
 
-    # 勤務場所IDに対応するUIカラークラス情報を生成します。
+    # 勤怠種別IDに対応するUIカラークラス情報を生成します。
     location_color_map: Dict[int, Dict[str, str]] = {
         int(loc.id): get_location_color_classes(int(loc.id)) for loc in location_objects
     }
-    # テンプレートで使用する勤務場所情報リスト (名前と色クラスを含む)
+    # テンプレートで使用する勤怠種別情報リスト (名前と色クラスを含む)
     locations_for_template = []
     for loc in location_objects:
         color_info = location_color_map.get(int(loc.id), {})
@@ -212,10 +212,10 @@ def get_day_detail(
             "bg_class": color_info.get("bg_class", "")
         })
 
-    # UI表示用に、勤務場所ごとにユーザーをグルーピングします。
+    # UI表示用に、勤怠種別ごとにユーザーをグルーピングします。
     organized_data: Dict[str, Dict[str, Any]] = {}
     for location_name, users_list in attendance_data.items():
-        # 各勤務場所内で、ユーザーを所属グループごとに整理します。
+        # 各勤怠種別内で、ユーザーを所属グループごとに整理します。
         grouped_users: Dict[str, List] = {}
         for user_data in users_list:
             user_obj = user.get(db, id=user_data["user_id"])
@@ -237,7 +237,7 @@ def get_day_detail(
         for g_name in list(grouped_users.keys()):
             grouped_users[g_name].sort(key=lambda u: u.get("user_type_id", 999))
 
-        # 整理したデータを勤務場所名をキーとして格納します。
+        # 整理したデータを勤怠種別名をキーとして格納します。
         organized_data[location_name] = {
             "groups": grouped_users,
             "group_names": sorted(list(grouped_users.keys())) # グループ名をソートして格納
@@ -331,8 +331,8 @@ def get_day_detail(
         "request": request,
         "date_str": day,
         "date_jp": format_date_jp(parse_date(day)),
-        "organized_data": organized_data, # 勤務場所主キーデータ (使用箇所があれば更新が必要)
-        "locations": locations_for_template, # 更新された勤務場所リスト
+        "organized_data": organized_data, # 勤怠種別主キーデータ (使用箇所があれば更新が必要)
+        "locations": locations_for_template, # 更新された勤怠種別リスト
         "organized_by_group": sorted_organized_by_group, # グループ主キーデータ (テンプレートで使用)
         "sorted_group_names": sorted_group_names, # ソート済みグループ名リスト
         "has_data": has_data,

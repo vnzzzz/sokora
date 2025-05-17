@@ -13,7 +13,7 @@
     <table class="table table-xs w-full" style="table-layout: fixed">
       <thead>
         <tr>
-          <th class="text-left sticky left-0 z-10 w-32" style="width: 130px; min-width: 130px">勤務場所</th>
+          <th class="text-left sticky left-0 z-10 w-32" style="width: 130px; min-width: 130px">勤怠種別</th>
 
           {# 日付データを前処理して配列に格納 - パフォーマンス最適化 #} {% set day_data_array = [] %} {% set
           weekday_array = [] %} {% for week in calendar.weeks %} {% for day_idx in range(7) %} {% if week[day_idx] and
@@ -54,7 +54,7 @@
         </tr>
       </thead>
       <tbody>
-        <!-- 勤務場所の行 -->
+        <!-- 勤怠種別の行 -->
         {% for location in calendar.locations %}
         <tr class="border-b border-base-300">
           <td
@@ -64,7 +64,7 @@
             <span class="{{ location.text_class }}">{{ location.name }}</span>
           </td>
 
-          {# 各勤務場所のデータを一度のループで効率的に表示 #} {% for item in day_data_array %} {% set day = item.day %}
+          {# 各勤怠種別のデータを一度のループで効率的に表示 #} {% for item in day_data_array %} {% set day = item.day %}
           {% set day_idx = item.day_idx %} {% set is_weekend = item.is_weekend %} {% set is_holiday = item.is_holiday %}
           {% set weekend_class = item.weekend_class %}
 

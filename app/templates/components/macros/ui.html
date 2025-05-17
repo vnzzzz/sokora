@@ -282,7 +282,7 @@
 
 <div class="space-y-4">
   <div>
-    <label class="label"><span class="label-text">勤務場所</span></label>
+    <label class="label"><span class="label-text">勤怠種別</span></label>
     <select name="location_id" class="select select-bordered w-full">
       {% for loc in locations %}
       <option value="{{ loc.id }}" {{ loc.id == current_location_id and "selected" }}>

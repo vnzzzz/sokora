@@ -1,5 +1,5 @@
 """
-勤務場所のスキーマを定義するモジュール
+勤怠種別のスキーマを定義するモジュール
 """
 
 from typing import List, Optional
@@ -8,12 +8,12 @@ from fastapi import Form
 
 
 class LocationBase(BaseModel):
-    """勤務場所の基本スキーマ"""
+    """勤怠種別の基本スキーマ"""
     name: Optional[str] = None
 
 
 class LocationCreate(LocationBase):
-    """勤務場所の作成スキーマ"""
+    """勤怠種別の作成スキーマ"""
     name: str
 
     @classmethod
@@ -26,7 +26,7 @@ class LocationCreate(LocationBase):
 
 
 class LocationUpdate(LocationBase):
-    """勤務場所の更新スキーマ"""
+    """勤怠種別の更新スキーマ"""
     pass
 
     @classmethod
@@ -39,7 +39,7 @@ class LocationUpdate(LocationBase):
 
 
 class LocationInDBBase(LocationBase):
-    """データベース内の勤務場所スキーマ"""
+    """データベース内の勤怠種別スキーマ"""
     id: int
     name: str
 
@@ -49,10 +49,10 @@ class LocationInDBBase(LocationBase):
 
 
 class Location(LocationInDBBase):
-    """APIレスポンスなどで使用する勤務場所読み取り用スキーマ。"""
+    """APIレスポンスなどで使用する勤怠種別読み取り用スキーマ。"""
     pass
 
 
 class LocationList(BaseModel):
-    """勤務場所一覧スキーマ"""
+    """勤怠種別一覧スキーマ"""
     locations: List[Location]
