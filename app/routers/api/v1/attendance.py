@@ -82,6 +82,7 @@ async def create_attendance(
     user_id: str = Form(...),
     date_str: str = Form(..., alias="date"),
     location_id: int = Form(...),
+    note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ) -> Response:
     """
@@ -113,7 +114,7 @@ async def create_attendance(
             )
 
         # AttendanceCreateオブジェクトを手動で作成
-        attendance_in = AttendanceCreate(user_id=user_id, date=attendance_date, location_id=location_id)
+        attendance_in = AttendanceCreate(user_id=user_id, date=attendance_date, location_id=location_id, note=note)
 
         # 勤怠データ作成
         created_attendance = attendance.create(db=db, obj_in=attendance_in) # 作成されたオブジェクトを取得
@@ -149,6 +150,7 @@ async def update_attendance(
     request: Request,
     attendance_id: int,
     location_id: int = Form(...),
+    note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ) -> Response:
     """
@@ -162,7 +164,7 @@ async def update_attendance(
         location.get_or_404(db, id=location_id)
         
         # 更新データを作成
-        attendance_in = AttendanceUpdate(location_id=location_id)
+        attendance_in = AttendanceUpdate(location_id=location_id, note=note)
                 
         # 更新処理
         updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_in) # 更新後のオブジェクト取得

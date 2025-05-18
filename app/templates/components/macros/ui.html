@@ -239,7 +239,7 @@
 </dialog>
 {%- endmacro %}
 
-{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations, mode=None) -%}
+{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations, mode=None, note=None) -%}
 {% set del_btn = "" %}
 {% if attendance_id %}
   {% set is_register_mode = mode == "register" %}
@@ -287,7 +287,7 @@
     
     {# カテゴリーごとにグループ化 #}
     {% set categories = {} %}
-    {% for loc in locations %}
+      {% for loc in locations %}
       {% set category = loc.category or '未分類' %}
       {% if category not in categories %}
         {% set _ = categories.update({category: []}) %}
@@ -321,12 +321,22 @@
               data-location-id="{{ loc.id }}"
               onclick="selectLocation('{{ user_id }}', '{{ date }}', '{{ loc.id }}')"
             >
-              {{ loc.name }}
+        {{ loc.name }}
             </button>
           {% endfor %}
         </div>
       </div>
-    {% endfor %}
+      {% endfor %}
+  </div>
+
+  <div>
+    <label class="label"><span class="label-text font-medium text-base">備考（任意）</span></label>
+    <textarea 
+      name="note" 
+      class="textarea textarea-bordered w-full" 
+      placeholder="備考を入力してください（任意）"
+      rows="3"
+    >{{ note or '' }}</textarea>
   </div>
 </div>
 

@@ -128,7 +128,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             raise  # エラーを再送出して呼び出し元に通知
 
     def update_attendance(
-        self, db: Session, *, user_id: str, date_obj: date, location_id: int
+        self, db: Session, *, user_id: str, date_obj: date, location_id: int, note: Optional[str] = None
     ) -> Optional[Attendance]:
         """
         指定されたユーザーIDと日付の勤怠記録を作成または更新します。
@@ -140,6 +140,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             user_id: 対象のユーザーID
             date_obj: 対象の日付オブジェクト
             location_id: 設定する勤怠種別ID
+            note: 備考
 
         Returns:
             Optional[Attendance]: 作成または更新された勤怠記録オブジェクト、エラー時はNone
@@ -150,13 +151,14 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
             if attendance:
                 # 既存レコードを更新
-                return self.update(db, db_obj=attendance, obj_in={"location_id": location_id})
+                return self.update(db, db_obj=attendance, obj_in={"location_id": location_id, "note": note})
             else:
                 # 新規レコードを作成
                 attendance_in = AttendanceCreate(
                     user_id=user_id,
                     date=date_obj,
-                    location_id=location_id
+                    location_id=location_id,
+                    note=note
                 )
                 return self.create(db, obj_in=attendance_in)
         except Exception as e:
@@ -164,7 +166,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             return None
 
     def update_user_entry(
-        self, db: Session, *, user_id: str, date_str: str, location_id: int
+        self, db: Session, *, user_id: str, date_str: str, location_id: int, note: Optional[str] = None
     ) -> bool:
         """
         ユーザーの特定の日付における勤怠情報を更新または削除します。
@@ -178,6 +180,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             user_id: 対象のユーザーID文字列
             date_str: 対象の日付文字列 (YYYY-MM-DD形式)
             location_id: 設定する勤怠種別ID。削除の場合は -1 を指定。
+            note: 備考
 
         Returns:
             bool: 処理が成功した場合はTrue、失敗した場合はFalse
@@ -219,7 +222,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 # location_id が有効な場合は更新または新規作成処理を実行
                 logger.debug(f"勤怠レコード更新/作成処理開始: user_id={user.id}, date={date_obj}, location_id={location_id}")
                 attendance_result = self.update_attendance(
-                    db, user_id=str(user.id), date_obj=date_obj, location_id=location_id
+                    db, user_id=str(user.id), date_obj=date_obj, location_id=location_id, note=note
                 )
                 if attendance_result is not None:
                     db.commit() # 変更を確定
@@ -247,7 +250,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             user_id: 対象のユーザーID文字列
 
         Returns:
-            List[Dict[str, Any]]: 勤怠データのリスト。各要素は日付、勤怠種別ID、勤怠種別名を含む辞書。
+            List[Dict[str, Any]]: 勤怠データのリスト。各要素は日付、勤怠種別ID、勤怠種別名、備考を含む辞書。
                                  ユーザーが存在しない場合やエラー時は空リストを返します。
         """
         try:
@@ -273,7 +276,8 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                         "id": attendance.id, # レコード識別用のID
                         "date": attendance.date.strftime("%Y-%m-%d"),
                         "location_id": attendance.location_id,
-                        "location_name": location.name
+                        "location_name": location.name,
+                        "note": attendance.note  # 備考フィールドを追加
                     }
                 )
 
@@ -310,6 +314,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             query = (
                 db.query(
                     Attendance.user_id,
+                    Attendance.note,  # 備考フィールドを追加
                     User.username,
                     User.user_type_id,
                     Location.name.label('location_name'),
@@ -336,7 +341,8 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                         "user_name": row.username,
                         "user_id": row.user_id,
                         "user_type_id": row.user_type_id,
-                        "user_type_name": row.user_type_name or ""
+                        "user_type_name": row.user_type_name or "",
+                        "note": row.note  # 備考フィールドを追加
                     }
                 )
 

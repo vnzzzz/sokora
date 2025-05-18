@@ -277,6 +277,7 @@ def get_attendance_modal(
     attendance_obj: Optional[AttendanceModel] = attendance.get_by_user_and_date(db, user_id=user_id, date=target_date)
     attendance_id = attendance_obj.id if attendance_obj else None
     current_location_id = attendance_obj.location_id if attendance_obj else None
+    note = attendance_obj.note if attendance_obj else None  # 備考フィールドを取得
 
     # 全勤怠種別を取得
     locations: List[Location] = sorted(location_crud.get_multi(db), key=operator.attrgetter('id'))
@@ -293,6 +294,7 @@ def get_attendance_modal(
             "current_location_id": current_location_id,
             "locations": locations,
             "mode": mode,  # モード情報を追加
+            "note": note,  # 備考フィールドを追加
         }
     }
     logger.debug(f"モーダルコンテキスト: {context}")
