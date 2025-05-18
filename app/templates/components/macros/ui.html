@@ -279,19 +279,75 @@
 
 <input type="hidden" name="user_id" value="{{ user_id }}">
 <input type="hidden" name="date" value="{{ date }}">
+<input type="hidden" name="location_id" id="selected-location-id-{{ user_id }}-{{ date }}" value="{{ current_location_id }}">
 
-<div class="space-y-4">
+<div class="space-y-6">
   <div>
-    <label class="label"><span class="label-text">勤怠種別</span></label>
-    <select name="location_id" class="select select-bordered w-full">
-      {% for loc in locations %}
-      <option value="{{ loc.id }}" {{ loc.id == current_location_id and "selected" }}>
-        {{ loc.name }}
-      </option>
-      {% endfor %}
-    </select>
+    <label class="label"><span class="label-text font-medium text-base">勤怠種別選択</span></label>
+    
+    {# カテゴリーごとにグループ化 #}
+    {% set categories = {} %}
+    {% for loc in locations %}
+      {% set category = loc.category or '未分類' %}
+      {% if category not in categories %}
+        {% set _ = categories.update({category: []}) %}
+      {% endif %}
+      {% set _ = categories[category].append(loc) %}
+    {% endfor %}
+    
+    {# 分類でソートしたカテゴリーリストを作成 #}
+    {% set sorted_categories = [] %}
+    {% for category_name in categories.keys()|sort %}
+      {% set _ = sorted_categories.append(category_name) %}
+    {% endfor %}
+    
+    {# 未分類カテゴリーは最後に表示 #}
+    {% if '未分類' in sorted_categories %}
+      {% set _ = sorted_categories.remove('未分類') %}
+      {% set _ = sorted_categories.append('未分類') %}
+    {% endif %}
+    
+    {# 各カテゴリーごとに表示 #}
+    {% for category in sorted_categories %}
+      {% set category_locations = categories[category] %}
+      <div class="mt-4">
+        <h4 class="font-medium text-base-content mb-2 border-b pb-1 text-sm">{{ category }}</h4>
+        <div class="grid grid-cols-3 gap-x-2 gap-y-1">
+          {# 表示順（order）でソート #}
+          {% for loc in category_locations|sort(attribute='order') %}
+            <button
+              type="button"
+              class="btn btn-outline btn-sm location-select-btn {{ loc.id == current_location_id and 'btn-active' or '' }} whitespace-normal h-auto py-1 text-xs"
+              data-location-id="{{ loc.id }}"
+              onclick="selectLocation('{{ user_id }}', '{{ date }}', '{{ loc.id }}')"
+            >
+              {{ loc.name }}
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
   </div>
 </div>
+
+<script>
+function selectLocation(userId, date, locationId) {
+  // 選択された勤怠種別のボタンをアクティブにし、他のボタンを非アクティブにする
+  const modalId = `attendance-modal-${userId}-${date}`;
+  const modal = document.getElementById(modalId);
+  const buttons = modal.querySelectorAll('.location-select-btn');
+  buttons.forEach(btn => {
+    if (btn.dataset.locationId === locationId) {
+      btn.classList.add('btn-active');
+    } else {
+      btn.classList.remove('btn-active');
+    }
+  });
+  
+  // hidden inputの値を更新
+  document.getElementById(`selected-location-id-${userId}-${date}`).value = locationId;
+}
+</script>
 
 {% endcall %}
 {%- endmacro %}

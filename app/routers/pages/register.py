@@ -144,7 +144,7 @@ def register_page(
     # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
     groups_map = {g.id: g for g in groups}
-    
+
     # グループのorder情報を保存する辞書
     group_orders = {g.id: (g.order if g.order is not None else float('inf')) for g in groups}
 
