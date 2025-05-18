@@ -46,19 +46,31 @@
       <span>勤怠種別が登録されていません。新しい勤怠種別を追加してください。</span>
     </div>
     {% else %}
-    <div class="overflow-x-auto rounded-lg table-responsive">
-      <table class="table table-zebra w-full">
-        <thead class="bg-base-300 text-base-content">
-          <tr>
-            <th class="rounded-tl-lg">勤怠種別名</th>
-            <th class="text-right rounded-tr-lg">操作</th>
-          </tr>
-        </thead>
-        <tbody id="location-table-body">
-          {% for location in locations %} {% include "components/location/_location_row.html" %} {% endfor %}
-        </tbody>
-      </table>
+    
+    <!-- 分類ごとに表示 -->
+    {% for category in category_names %}
+    <div class="mb-6">
+      <h3 class="text-lg font-bold text-base-content mb-3">{{ category }}</h3>
+      <div class="overflow-x-auto rounded-lg table-responsive">
+        <table class="table table-zebra w-full">
+          <thead class="bg-base-300 text-base-content">
+            <tr>
+              <th class="rounded-tl-lg">表示順</th>
+              <th>分類</th>
+              <th>勤怠種別名</th>
+              <th class="text-right rounded-tr-lg">操作</th>
+            </tr>
+          </thead>
+          <tbody id="location-table-body-{{ category|urlencode }}">
+            {% for location in grouped_locations[category] %}
+              {% include "components/location/_location_row.html" %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
+    {% endfor %}
+    
     {% endif %}
   </div>
 </div>

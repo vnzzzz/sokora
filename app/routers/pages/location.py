@@ -7,6 +7,7 @@
 
 from typing import Any, Dict, List, Optional
 import json
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse
@@ -36,8 +37,24 @@ def get_location_manage_page(request: Request, db: Session = Depends(get_db)) ->
         HTMLResponse: レンダリングされたHTMLページ
     """
     locations = location.get_multi(db)
+    
+    # 分類ごとにグルーピング
+    grouped_locations = defaultdict(list)
+    category_names = []
+    
+    for loc in locations:
+        category = loc.category or "未分類"
+        if category not in category_names:
+            category_names.append(category)
+        grouped_locations[category].append(loc)
+    
     return templates.TemplateResponse(
-        "pages/location.html", {"request": request, "locations": locations}
+        "pages/location.html", {
+            "request": request, 
+            "locations": locations,  # すべての勤怠種別（従来の互換性のため）
+            "category_names": category_names,  # 分類名のリスト
+            "grouped_locations": grouped_locations  # 分類ごとの勤怠種別
+        }
     )
 
 

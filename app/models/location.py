@@ -18,6 +18,8 @@ class Location(Base):  # type: ignore
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
+    category = Column(String, nullable=True, index=True)
+    order = Column(Integer, nullable=True)
     
     # 関連する勤怠記録
     attendances = relationship("Attendance", back_populates="location_info")

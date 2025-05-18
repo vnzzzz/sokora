@@ -10,6 +10,8 @@ from fastapi import Form
 class LocationBase(BaseModel):
     """勤怠種別の基本スキーマ"""
     name: Optional[str] = None
+    category: Optional[str] = None
+    order: Optional[int] = None
 
 
 class LocationCreate(LocationBase):
@@ -20,9 +22,11 @@ class LocationCreate(LocationBase):
     async def as_form(
         cls,
         name: str = Form(...),
+        category: Optional[str] = Form(None),
+        order: Optional[int] = Form(None),
     ) -> 'LocationCreate':
         """フォームデータからインスタンスを生成"""
-        return cls(name=name)
+        return cls(name=name, category=category, order=order)
 
 
 class LocationUpdate(LocationBase):
@@ -33,9 +37,11 @@ class LocationUpdate(LocationBase):
     async def as_form(
         cls,
         name: Optional[str] = Form(None),
+        category: Optional[str] = Form(None),
+        order: Optional[int] = Form(None),
     ) -> 'LocationUpdate':
         """フォームデータからインスタンスを生成"""
-        return cls(name=name)
+        return cls(name=name, category=category, order=order)
 
 
 class LocationInDBBase(LocationBase):

@@ -21,4 +21,24 @@
     required
   />
 
+  <label class="label"><span class="label-text">分類</span></label>
+  <input
+    type="text"
+    name="category"
+    id="{{ location.id and ('edit-location-category-' ~ location.id) or 'add-location-category' }}"
+    class="input input-bordered w-full"
+    value="{{ location.category | default('') }}"
+  />
+
+  <label class="label"><span class="label-text">表示順</span></label>
+  <input
+    type="number"
+    name="order"
+    id="{{ location.id and ('edit-location-order-' ~ location.id) or 'add-location-order' }}"
+    class="input input-bordered w-full"
+    value="{{ location.order | default('') }}"
+    min="0"
+    step="1"
+  />
+
 {% endcall %}

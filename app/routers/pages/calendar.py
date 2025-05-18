@@ -188,6 +188,9 @@ def get_day_detail(
     # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
     groups_map = {g.id: g for g in groups}
+    
+    # グループのorder情報を保存する辞書
+    group_orders = {g.id: (g.order if g.order is not None else float('inf')) for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
@@ -247,7 +250,9 @@ def get_day_detail(
     organized_by_group: Dict[str, Dict[str, Any]] = {}
     # グループIDとグループ名のマッピング (ソート用)
     group_id_to_name = {g.id: g.name for g in groups}
-    sorted_groups = sorted(groups, key=lambda g: int(g.id) if g.id is not None else 9999)
+    
+    # グループをorder順でソート
+    sorted_groups = sorted(groups, key=lambda g: (group_orders.get(g.id, float('inf')), g.id or 9999))
     sorted_group_names = [str(g.name) for g in sorted_groups]
 
     # ユーザー種別IDと名前のマッピング (ソート用)
@@ -295,7 +300,8 @@ def get_day_detail(
                 organized_by_group[group_name] = {
                     "user_types": set(), # このグループに含まれる社員種別名のセット
                     "user_types_data": {}, # 社員種別名をキーとするユーザーリストの辞書
-                    "group_id": int(user_obj.group_id) if user_obj.group_id is not None else 9999
+                    "group_id": int(user_obj.group_id) if user_obj.group_id is not None else 9999,
+                    "group_order": group_orders.get(user_obj.group_id, float('inf')) # groupのorder情報を追加
                 }
 
             organized_by_group[group_name]["user_types"].add(user_type_name)
@@ -315,17 +321,18 @@ def get_day_detail(
         organized_by_group[group_name]["user_types"] = sorted_user_types
 
     # ソートキー取得用のヘルパー関数
-    def get_group_id_sort_key(item: tuple[str, Dict[str, Any]]) -> int:
+    def get_group_sort_key(item: tuple[str, Dict[str, Any]]) -> tuple:
         group_data = item[1]
         if isinstance(group_data, dict):
-            return group_data.get("group_id", 9999)
+            # まず order でソート、次に group_id でソート
+            return (group_data.get("group_order", float('inf')), group_data.get("group_id", 9999))
         logger.warning(f"Unexpected type for group data: {type(group_data)} in item: {item}")
-        return 9999 # Default sort value for unexpected types
+        return (float('inf'), 9999) # Default sort value for unexpected types
 
-    # 最終的なグループ主キーの辞書を、グループIDに基づいてソートします。
+    # 最終的なグループ主キーの辞書を、グループのorderに基づいてソートします。
     sorted_organized_by_group = dict(sorted(
         organized_by_group.items(),
-        key=get_group_id_sort_key # ヘルパー関数を使用
+        key=get_group_sort_key # 新しいヘルパー関数を使用
     ))
 
     # この日に勤怠データが存在するかどうかのフラグを設定します。

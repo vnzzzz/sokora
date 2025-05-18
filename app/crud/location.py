@@ -7,6 +7,7 @@
 
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, nullslast
 from fastapi import HTTPException, status
 
 from .base import CRUDBase
@@ -18,6 +19,32 @@ from app.core.config import logger
 
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     """勤怠種別モデルのCRUD操作クラス"""
+
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[Location]:
+        """
+        複数の勤怠種別を取得 (category、orderでソート)
+
+        Args:
+            db: データベースセッション
+            skip: スキップするレコード数
+            limit: 取得するレコード数の上限
+
+        Returns:
+            List[Location]: 勤怠種別のリスト
+        """
+        return (
+            db.query(self.model)
+            .order_by(
+                nullslast(asc(self.model.category)), 
+                nullslast(asc(self.model.order)), 
+                asc(self.model.id)
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def get_by_name(self, db: Session, *, name: str) -> Optional[Location]:
         """
@@ -65,7 +92,11 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             List[str]: 勤怠種別名のリスト
         """
         try:
-            locations = db.query(Location).all()
+            locations = db.query(Location).order_by(
+                nullslast(asc(Location.category)),
+                nullslast(asc(Location.order)), 
+                asc(Location.id)
+            ).all()
             return [str(loc.name) for loc in locations]
         except Exception as e:
             logger.error(f"Error getting location types: {str(e)}")
@@ -82,7 +113,11 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             Dict[int, str]: location_idをキー、名前を値とする辞書
         """
         try:
-            locations = db.query(Location).all()
+            locations = db.query(Location).order_by(
+                nullslast(asc(Location.category)),
+                nullslast(asc(Location.order)), 
+                asc(Location.id)
+            ).all()
             return {int(loc.id): str(loc.name) for loc in locations}
         except Exception as e:
             logger.error(f"Error getting location dict: {str(e)}")
