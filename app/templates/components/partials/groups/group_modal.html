@@ -21,4 +21,15 @@
     required
   />
 
+  <label class="label mt-2"><span class="label-text">表示順</span></label>
+  <input
+    type="number"
+    name="order"
+    id="{{ group.id and ('edit-group-order-' ~ group.id) or 'add-group-order' }}"
+    class="input input-bordered w-full"
+    value="{{ group.order | default('') }}"
+    min="1"
+    step="1"
+  />
+
 {% endcall %}

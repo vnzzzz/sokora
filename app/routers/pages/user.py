@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, nullslast
 
 from app.crud.group import group
 from app.crud.user import user
@@ -57,18 +58,29 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
     # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List[Tuple[str, str, int, User]]] = {}
+    # グループのorder情報を保存する辞書
+    group_orders: Dict[str, float] = {}
+    
     for user_name, user_id, user_type_id, user_obj in users:
         group_obj = groups_map.get(user_obj.group_id)
         group_name = str(group_obj.name) if group_obj else "未分類"
 
         if group_name not in grouped_users:
             grouped_users[group_name] = []
+            # グループのorder情報を保存（未分類は最後に表示）
+            if group_obj:
+                group_orders[group_name] = float(group_obj.order) if group_obj.order is not None else float('inf')
+            else:
+                group_orders[group_name] = float('inf')
 
         grouped_users[group_name].append((user_name, user_id, user_type_id, user_obj))
 
     # 各グループ内のユーザーリストを社員種別IDでソートします。
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])
+
+    # グループ名をorder順にソート（orderがNoneの場合は最後に表示）
+    sorted_group_names = sorted(grouped_users.keys(), key=lambda g: group_orders.get(g, float('inf')))
 
     # テンプレートに渡すコンテキストを作成します。
     return templates.TemplateResponse(
@@ -78,7 +90,7 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
             "groups": groups, # 全グループのリスト
             "user_types": user_types, # 全社員種別のリスト
             "grouped_users": grouped_users, # グループ名で整理されたユーザー辞書
-            "group_names": sorted(list(grouped_users.keys())) # ソートされたグループ名のリスト
+            "group_names": sorted_group_names # order順でソートされたグループ名のリスト
         }
     )
 

@@ -164,12 +164,12 @@ def attendance_page(
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])
 
-    # 利用可能な全勤務場所を取得します。（オブジェクトのリストとして）
+    # 利用可能な全勤怠種別を取得します。（オブジェクトのリストとして）
     location_objects_unsorted: List[Location] = location_crud.get_multi(db)
     # IDでソートした Location オブジェクトのリストをテンプレートに渡す
     location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
 
-    # 勤務場所名に対応するCSSクラス情報 (テキストと背景) を生成します。
+    # 勤怠種別名に対応するCSSクラス情報 (テキストと背景) を生成します。
     location_styles: Dict[str, Dict[str, str]] = {}
     for loc in location_objects:
         location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
@@ -184,7 +184,7 @@ def attendance_page(
         user_entries = attendance.get_user_data(db, user_id=user_id)
 
         user_dates = {} # 特定の日に勤怠データが存在するか (True/False)
-        locations_map = {} # 特定の日の勤務場所名
+        locations_map = {} # 特定の日の勤怠種別名
 
         for entry in user_entries:
             date_str = entry["date"]
@@ -277,8 +277,9 @@ def get_attendance_modal(
     attendance_obj: Optional[AttendanceModel] = attendance.get_by_user_and_date(db, user_id=user_id, date=target_date)
     attendance_id = attendance_obj.id if attendance_obj else None
     current_location_id = attendance_obj.location_id if attendance_obj else None
+    note = attendance_obj.note if attendance_obj else None  # 備考フィールドを取得
 
-    # 全勤務場所を取得
+    # 全勤怠種別を取得
     locations: List[Location] = sorted(location_crud.get_multi(db), key=operator.attrgetter('id'))
 
     # マクロを使用するためのコンテキストを作成
@@ -293,6 +294,7 @@ def get_attendance_modal(
             "current_location_id": current_location_id,
             "locations": locations,
             "mode": mode,  # モード情報を追加
+            "note": note,  # 備考フィールドを追加
         }
     }
     logger.debug(f"モーダルコンテキスト: {context}")

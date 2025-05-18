@@ -21,4 +21,15 @@
     required
   />
 
+  <label class="label mt-2"><span class="label-text">表示順</span></label>
+  <input
+    type="number"
+    name="order"
+    id="{{ user_type.id and ('edit-user-type-order-' ~ user_type.id) or 'add-user-type-order' }}"
+    class="input input-bordered w-full"
+    value="{{ user_type.order | default('') }}"
+    min="1"
+    step="1"
+  />
+
 {% endcall %}

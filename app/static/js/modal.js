@@ -331,6 +331,20 @@
     }
   })
 
+  // refreshRegisterCalendarイベントのリスナーを追加
+  document.addEventListener('refreshRegisterCalendar', function (e) {
+    // カスタムイベントから値を取得
+    const userId = e.detail && e.detail.userId ? e.detail.userId : 
+                  (e.target ? e.target.getAttribute('data-user-id') : null);
+    const month = e.detail && e.detail.month ? e.detail.month : 
+                 (e.target ? e.target.getAttribute('data-month') : null);
+
+    if (userId) {
+      // ユーザーカレンダーをリロード
+      refreshUserCalendar(userId, month)
+    }
+  })
+
   // htmxリクエスト前に月情報を保存
   window.addEventListener('htmx:beforeRequest', function (e) {
     const elt = e.detail.elt

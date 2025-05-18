@@ -1,8 +1,8 @@
 """
-勤務場所APIエンドポイント
+勤怠種別APIエンドポイント
 =====================
 
-勤務場所の取得、作成、更新、削除のためのAPIエンドポイント。
+勤怠種別の取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
 from typing import Any
@@ -22,7 +22,7 @@ router = APIRouter(tags=["Locations"])
 @router.get("", response_model=LocationList)
 def get_locations(db: Session = Depends(get_db)) -> Any:
     """
-    全ての勤務場所を取得します。名前順でソートされます。
+    全ての勤怠種別を取得します。名前順でソートされます。
     """
     locations = db.query(location.model).order_by(location.model.name).all()
     return {"locations": locations}
@@ -33,7 +33,7 @@ def create_location(
     *, db: Session = Depends(get_db), location_in: LocationCreate
 ) -> Any:
     """
-    新しい勤務場所を作成します。
+    新しい勤怠種別を作成します。
     サービス層でバリデーションを実行します。
     """
     # バリデーションと作成をサービス層に委譲
@@ -50,7 +50,7 @@ def update_location(
     location_in: LocationUpdate,
 ) -> Any:
     """
-    勤務場所を更新します。
+    勤怠種別を更新します。
     サービス層でバリデーションを実行します。
     """
     # バリデーションと更新をサービス層に委譲
@@ -62,16 +62,16 @@ def update_location(
 @router.delete("/{location_id}")
 def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
     """
-    勤務場所を削除します。
+    勤怠種別を削除します。
     """
     location_obj = location.get_or_404(db=db, id=location_id)
     
-    # 削除しようとしている勤務場所が現在勤怠データで使用されていないか確認します。
+    # 削除しようとしている勤怠種別が現在勤怠データで使用されていないか確認します。
     # attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
     # if attendance_count > 0:
     #     raise HTTPException(
     #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail=f"この勤務場所は{attendance_count}件の勤怠データで使用されているため削除できません"
+    #         detail=f"この勤怠種別は{attendance_count}件の勤怠データで使用されているため削除できません"
     #     )
     # ↑ このチェックは crud.location.remove 内に移動
 

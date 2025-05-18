@@ -18,7 +18,7 @@ pytestmark = pytest.mark.asyncio
 # 元の Fixture のコメントアウトを解除
 @pytest.fixture(scope="function")
 async def setup_basic_data(async_client: AsyncClient) -> AsyncGenerator[Dict[str, Any], None]:
-    """テストに必要な基本的なデータ（グループ、社員種別、勤務場所）を作成し、削除する Fixture"""
+    """テストに必要な基本的なデータ（グループ、社員種別、勤怠種別）を作成し、削除する Fixture"""
     created_data: Dict[str, Any] = {"group": None, "user_type": None, "location": None}
     group_name = f"FixtureGroup_{datetime.now().strftime('%H%M%S%f')}"
     user_type_name = f"FixtureUserType_{datetime.now().strftime('%H%M%S%f')}"

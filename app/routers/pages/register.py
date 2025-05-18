@@ -145,31 +145,45 @@ def register_page(
     groups = group.get_multi(db)
     groups_map = {g.id: g for g in groups}
 
+    # グループのorder情報を保存する辞書
+    group_orders = {g.id: (g.order if g.order is not None else float('inf')) for g in groups}
+
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
     user_types_map = {ut.id: ut for ut in user_types}
 
     # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List] = {}
+    # グループ名とorder値のマッピング
+    group_name_to_order: Dict[str, float] = {}
+    
     for user_name, user_id, user_type_id, user_obj in users:
         group_obj = groups_map.get(user_obj.group_id)
         group_name = str(group_obj.name) if group_obj else "未分類"
 
         if group_name not in grouped_users:
             grouped_users[group_name] = []
+            # グループ名とorder値をマッピング（未分類は最後に表示）
+            if group_obj:
+                group_name_to_order[group_name] = float(group_obj.order) if group_obj.order is not None else float('inf')
+            else:
+                group_name_to_order[group_name] = float('inf')
 
         grouped_users[group_name].append((user_name, user_id, user_type_id, user_obj))
 
     # 各グループ内のユーザーリストを社員種別IDでソートします。
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])
+        
+    # グループ名をorder順にソート（orderがNoneの場合は最後に表示）
+    sorted_group_names = sorted(grouped_users.keys(), key=lambda g: group_name_to_order.get(g, float('inf')))
 
-    # 利用可能な全勤務場所を取得します。（オブジェクトのリストとして）
+    # 利用可能な全勤怠種別を取得します。（オブジェクトのリストとして）
     location_objects_unsorted: List[Location] = location_crud.get_multi(db)
     # IDでソートした Location オブジェクトのリストをテンプレートに渡す
     location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
 
-    # 勤務場所名に対応するCSSクラス情報 (テキストと背景) を生成します。
+    # 勤怠種別名に対応するCSSクラス情報 (テキストと背景) を生成します。
     location_styles: Dict[str, Dict[str, str]] = {}
     for loc in location_objects:
         location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
@@ -184,7 +198,7 @@ def register_page(
         "groups": groups,
         "user_types": user_types,
         "grouped_users": grouped_users,
-        "group_names": sorted(list(grouped_users.keys())), # グループ名をソートして渡す
+        "group_names": sorted_group_names, # order順でソートされたグループ名のリスト
         "calendar_data": calendar_data["weeks"],
         "month_name": calendar_data["month_name"],
         "prev_month": calendar_data["prev_month"],
@@ -279,7 +293,7 @@ def user_calendar(
             "attendance_id": entry["id"]
         }
 
-    # 勤務場所情報を取得
+    # 勤怠種別情報を取得
     location_objects = location_crud.get_multi(db)
     location_styles = {}
     for loc in location_objects:

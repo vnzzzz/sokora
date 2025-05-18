@@ -53,6 +53,48 @@ table {
   max-width: 100%;
 }
 
+/* カスタムツールチップ（祝日表示用） */
+.holiday-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.holiday-tooltip .tooltip-text {
+  visibility: hidden;
+  width: auto;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 3px 8px;
+  position: absolute;
+  z-index: 100;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.holiday-tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 三角形の矢印 */
+.holiday-tooltip .tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+}
+
 /* 勤怠表示用スタイル */
 .bg-remote {
   background-color: rgba(var(--color-success) / 0.15);
@@ -110,4 +152,27 @@ table {
 /* 最後の行のセルに下線を追加 */
 tr:last-child .selected-column {
   border-bottom: 2px solid #888888 !important;
+}
+
+/* グループごとの勤怠表示エリア */
+.attendance-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.attendance-group {
+  flex: 1 1 300px;
+  min-width: 300px;
+}
+
+@media (max-width: 768px) {
+  .attendance-groups {
+    flex-direction: column;
+  }
+  
+  .attendance-group {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
 }
