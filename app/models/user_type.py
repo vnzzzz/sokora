@@ -18,6 +18,7 @@ class UserType(Base):  # type: ignore
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False, index=True)
+    order = Column(Integer, nullable=True)
     
     # Userモデルとのリレーションシップ定義 (一対多)
     users = relationship("User", back_populates="user_type")

@@ -5,7 +5,7 @@
 グループモデルに対するCRUD操作を提供します。
 """
 
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -30,6 +30,23 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
             Optional[Group]: 見つかったグループまたはNone
         """
         return db.query(Group).filter(Group.name == name).first()
+        
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[Group]:
+        """複数グループの取得 (order順、次にname順でソート)
+
+        Args:
+            db: データベースセッション
+            skip: スキップする件数
+            limit: 取得する最大件数
+
+        Returns:
+            List[Group]: グループのリスト
+        """
+        return db.query(Group)\
+            .order_by(Group.order.nullslast(), Group.name)\
+            .offset(skip).limit(limit).all()
 
     def remove(self, db: Session, *, id: int) -> Group:
         """グループを削除 (関連ユーザーがいない場合のみ)

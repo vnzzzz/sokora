@@ -7,7 +7,7 @@
 
 import html
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import date, timedelta
 import calendar
 
@@ -252,7 +252,9 @@ def get_day_detail(
 
     # ユーザー種別IDと名前のマッピング (ソート用)
     user_type_id_to_name = {ut.id: ut.name for ut in user_types}
+    # ユーザー種別IDとorderのマッピング (ソート用)
     user_type_id_mapping = {}
+    user_type_info_mapping = {}  # 社員種別名 -> (order, id) のマッピング
 
     # 全勤怠データを再度ループし、グループ主キーのデータ構造を構築します。
     for location_name, users_list in attendance_data.items():
@@ -279,11 +281,14 @@ def get_day_detail(
             # 社員種別情報を取得し、ソート用のIDマッピングも更新します。
             user_type_name = "未分類"
             user_type_id = 9999
+            user_type_order = 9999
             if user_obj.user_type_id in user_types_map:
                 user_type_obj = user_types_map[user_obj.user_type_id]
                 user_type_name = str(user_type_obj.name)
                 user_type_id = int(user_type_obj.id)
+                user_type_order = int(user_type_obj.order) if user_type_obj.order is not None else 9999
                 user_type_id_mapping[user_type_name] = user_type_id
+                user_type_info_mapping[user_type_name] = (user_type_order, user_type_id, user_type_name)
 
             # グループキーの辞書が存在しない場合は初期化します。
             if group_name not in organized_by_group:
@@ -301,11 +306,11 @@ def get_day_detail(
 
             organized_by_group[group_name]["user_types_data"][user_type_name].append(user_data)
 
-    # 各グループ内の社員種別リストを、社員種別IDに基づいてソートします。
+    # 各グループ内の社員種別リストを、社員種別のorder、次にIDに基づいてソートします。
     for group_name in organized_by_group:
         sorted_user_types = sorted(
             list(organized_by_group[group_name]["user_types"]),
-            key=lambda ut: user_type_id_mapping.get(ut, 9999)
+            key=lambda ut: user_type_info_mapping.get(ut, (9999, 9999, ut))
         )
         organized_by_group[group_name]["user_types"] = sorted_user_types
 

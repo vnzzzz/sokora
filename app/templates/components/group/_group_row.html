@@ -3,6 +3,9 @@
 
 <tr class="hover:bg-base-200" id="group-row-{{ group.id }}">
   <td class="font-medium">
+    <span id="group-order-{{ group.id }}">{{ group.order if group.order is not none else "未設定" }}</span>
+  </td>
+  <td class="font-medium">
     <span id="group-name-{{ group.id }}">{{ group.name }}</span>
   </td>
   <td class="text-right">

@@ -3,6 +3,9 @@
 
 <tr class="hover:bg-base-200" id="user-type-row-{{ user_type.id }}">
   <td class="font-medium">
+    <span id="user-type-order-{{ user_type.id }}">{{ user_type.order if user_type.order is not none else "未設定" }}</span>
+  </td>
+  <td class="font-medium">
     <span id="user-type-name-{{ user_type.id }}">{{ user_type.name }}</span>
   </td>
   <td class="text-right">
