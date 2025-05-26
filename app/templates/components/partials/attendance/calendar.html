@@ -1,4 +1,16 @@
 {% import "components/macros/ui.html" as ui %}
+<!-- カスタムツールチップスタイル -->
+<style>
+  .tooltip-custom::before {
+    max-width: 200px !important;
+    width: max-content !important;
+    white-space: pre-wrap !important;
+    text-align: left !important;
+    padding: 0.5rem !important;
+    line-height: 1.4 !important;
+  }
+</style>
+
 <!-- Month display and switcher -->
 <div id="calendar">
   <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
@@ -165,8 +177,9 @@
           loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
           day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
           if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
-          %} {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
-          user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
+          %}           {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
+          user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set note =
+          user_attendance_notes[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
           location_styles[location_name]|default({}) if location_name else {} %} {# location_stylesから辞書を取得 #}
 
           <td
@@ -182,11 +195,24 @@
             hx-swap="innerHTML"
           >
             {% if has_data %} {# style_infoからtext_classとbg_classを適用 #}
+            {% if note %}
+            <div class="tooltip tooltip-custom tooltip-right" data-tip="{{ note }}">
+              <div
+                class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full flex items-center justify-center"
+              >
+                {{ location_name }}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 ml-1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l-.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+              </div>
+            </div>
+            {% else %}
             <div
               class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full"
             >
               {{ location_name }}
             </div>
+            {% endif %}
             {% endif %}
           </td>
           {% endif %} {% endfor %} {% endfor %}

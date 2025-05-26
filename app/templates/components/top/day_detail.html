@@ -2,7 +2,7 @@
   <!-- カスタムツールチップスタイル -->
   <style>
     .tooltip-custom::before {
-      max-width: 100px !important;
+      max-width: 200px !important;
       width: max-content !important;
       white-space: pre-wrap !important;
       text-align: left !important;
@@ -47,7 +47,7 @@
                 <span class="font-medium block">{{ user.user_name }}</span>
               </div>
               {% if user.note %}
-              <div class="tooltip tooltip-custom tooltip-left" data-tip="{{ user.note }}">
+              <div class="tooltip tooltip-custom tooltip-right" data-tip="{{ user.note }}">
                 <span
                   class="{{ user.location_text_class }} {{ user.location_bg_class }} px-2 py-1 rounded whitespace-nowrap ml-1 text-xs flex items-center"
                 >

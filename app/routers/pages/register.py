@@ -318,7 +318,8 @@ def user_calendar(
         date_str = entry["date"]
         user_attendances[date_str] = {
             "location_name": entry["location_name"],
-            "attendance_id": entry["id"]
+            "attendance_id": entry["id"],
+            "note": entry["note"]  # 備考データを追加
         }
 
     # 勤怠種別情報を取得

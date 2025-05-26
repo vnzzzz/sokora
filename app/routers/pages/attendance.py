@@ -216,19 +216,23 @@ def attendance_page(
     # 各ユーザーの勤怠データを日付をキーとして取得・整形します。
     user_attendances = {}
     user_attendance_locations = {}
+    user_attendance_notes = {}  # 備考データを追加
     for user_name, user_id, user_type_id, user_obj in users:
         user_entries = attendance.get_user_data(db, user_id=user_id)
 
         user_dates = {} # 特定の日に勤怠データが存在するか (True/False)
         locations_map = {} # 特定の日の勤怠種別名
+        notes_map = {} # 特定の日の備考
 
         for entry in user_entries:
             date_str = entry["date"]
             user_dates[date_str] = True
             locations_map[date_str] = entry["location_name"]
+            notes_map[date_str] = entry["note"]  # 備考データを追加
 
         user_attendances[user_id] = user_dates
         user_attendance_locations[user_id] = locations_map
+        user_attendance_notes[user_id] = notes_map  # 備考データを追加
 
     # カレンダーの表示日数を計算 (テーブルのcolspan用)
     calendar_day_count = 0
@@ -254,6 +258,7 @@ def attendance_page(
         "location_data_for_js": location_data_for_js, # JS 用データ
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
+        "user_attendance_notes": user_attendance_notes,  # 備考データを追加
         "calendar_day_count": calendar_day_count,
         "search_query": search_query,
     }
