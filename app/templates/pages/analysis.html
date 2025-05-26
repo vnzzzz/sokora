@@ -1,0 +1,200 @@
+{% extends "layout/base.html" %}
+{% set title_text = "勤怠分析" %}
+{% import "components/macros/ui.html" as ui %}
+
+{% block content %}
+{{ ui.loading_indicator() }}
+
+<div class="p-4">
+  <div class="flex justify-between items-center mb-3">
+    <div>
+      <h2 class="text-lg font-bold text-base-content">勤怠分析</h2>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <!-- 月表示と切り替えコンポーネント -->
+    <div class="flex items-center justify-start space-x-4 flex-wrap gap-2 mb-4">
+      <span class="text-xl font-bold">{{ analysis_data.month_name }}</span>
+      {{ ui.month_switcher(
+        prev_month=prev_month,
+        next_month=next_month,
+        current_month=current_month,
+        url_base='/analysis',
+        use_htmx=false
+      ) }}
+    </div>
+
+    <!-- 勤怠種別選択 -->
+    <div class="mb-4 p-3 bg-base-200 rounded-lg">
+      <h4 class="text-sm font-medium mb-2">表示する勤怠種別</h4>
+      <div class="flex flex-wrap gap-3">
+        {% for location in analysis_data.locations %}
+        <label class="flex items-center space-x-2 cursor-pointer">
+          <input 
+            type="checkbox" 
+            class="checkbox checkbox-sm location-checkbox" 
+            data-location-id="{{ location.id }}"
+            checked
+          />
+          <span class="text-sm">{{ location.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- 詳細データ -->
+    {% if analysis_data.users %}
+    <div class="mb-6">
+      <div class="overflow-x-auto w-full">
+        <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed">
+          <thead>
+            <tr>
+              <!-- グループ列ヘッダー -->
+              <th class="bg-base-300 text-left sticky left-0 z-20" style="width: 50px; min-width: 50px; max-width: 50px">
+              </th>
+              <!-- 社員名列ヘッダー -->
+              <th class="bg-base-300 text-left sticky left-[50px] z-10 whitespace-nowrap" style="width: 200px; min-width: 200px; max-width: 200px">
+                社員名
+              </th>
+              <!-- 勤怠種別ヘッダー -->
+              {% for location in analysis_data.locations %}
+              <th class="bg-base-300 text-center p-0.5 whitespace-nowrap location-header" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px">
+                {{ location.name }}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for group_name in sorted_group_names %}
+              {% set user_type_list = grouped_users[group_name] %}
+              {% for user_type_name in group_user_types[group_name] %}
+                <!-- 社員種別ヘッダー行 -->
+                <tr class="bg-base-200/80">
+                  <!-- グループ名セル (グループの最初の種別の行に表示) -->
+                  <td class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top" style="width: 50px; min-width: 50px; max-width: 50px">
+                    {% if loop.first %}
+                      {{ group_name }}
+                    {% endif %}
+                  </td>
+                  <!-- 社員種別ヘッダーセル -->
+                  <td class="font-medium text-xs py-1 px-2 text-base-content/70 sticky left-[50px] z-10 bg-base-200/80" style="width: 200px; min-width: 200px; max-width: 200px">
+                    {{ user_type_name }}
+                  </td>
+                  <!-- 残りの勤怠種別セル分を埋める -->
+                  {% for location in analysis_data.locations %}
+                  <td class="bg-base-200/80 location-cell" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px"></td>
+                  {% endfor %}
+                </tr>
+                
+                <!-- この社員種別に属する社員データ行 -->
+                {% set user_types_in_group = {} %}
+                {% for user_id, user_info in grouped_users[group_name] %}
+                  {% set user_type_name_key = user_info.user_type_name or "未分類" %}
+                  {% if user_type_name_key not in user_types_in_group %}
+                    {% set _ = user_types_in_group.update({user_type_name_key: []}) %}
+                  {% endif %}
+                  {% set _ = user_types_in_group[user_type_name_key].append((user_id, user_info)) %}
+                {% endfor %}
+                
+                {% for user_id, user_info in user_types_in_group[user_type_name] %}
+                <tr class="hover:bg-base-300/30">
+                  <!-- グループ名セル (空) -->
+                  <td class="sticky left-0 z-20 bg-base-100" style="width: 50px; min-width: 50px; max-width: 50px"></td>
+                  <!-- 社員名セル -->
+                  <td class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1" style="width: 200px; min-width: 200px; max-width: 200px">
+                    {{ user_info.user_name }}
+                  </td>
+                  <!-- 勤怠種別ごとのセル -->
+                  {% for location in analysis_data.locations %}
+                  <td class="text-center p-0.5 location-cell" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px">
+                    {% set count = user_info.location_counts.get(location.id, 0) %}
+                    {% if count > 0 %}
+                      <span class="text-base font-medium text-base-content">{{ count }}</span>
+                    {% else %}
+                      <span class="text-base-content/30">-</span>
+                    {% endif %}
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info shadow-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>{{ analysis_data.month_name }}の勤怠データがありません。</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // テーブルの横スクロール時のヘッダー固定を改善
+  document.addEventListener('DOMContentLoaded', function() {
+    const tables = document.querySelectorAll('.overflow-x-auto');
+    tables.forEach(table => {
+      table.addEventListener('scroll', function() {
+        const stickyHeaders = table.querySelectorAll('th.sticky, td.sticky');
+        stickyHeaders.forEach(header => {
+          if (table.scrollLeft > 0) {
+            header.style.boxShadow = '2px 0 4px rgba(0,0,0,0.1)';
+          } else {
+            header.style.boxShadow = 'none';
+          }
+        });
+      });
+    });
+
+    // 勤怠種別チェックボックスの制御
+    const checkboxes = document.querySelectorAll('.location-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const locationId = this.dataset.locationId;
+        const isChecked = this.checked;
+        
+        // 対応する列の表示/非表示を切り替え
+        const headers = document.querySelectorAll(`.location-header[data-location-id="${locationId}"]`);
+        const cells = document.querySelectorAll(`.location-cell[data-location-id="${locationId}"]`);
+        
+        headers.forEach(header => {
+          header.style.display = isChecked ? '' : 'none';
+        });
+        
+        cells.forEach(cell => {
+          cell.style.display = isChecked ? '' : 'none';
+        });
+      });
+    });
+  });
+
+  /**
+   * 指定された月の分析ページに遷移する
+   * @param {string} month - YYYY-MM形式の月、空文字の場合は現在の月
+   * @param {string|null} userId - ユーザーID（使用しない）
+   * @param {string} urlBase - 基本URL
+   */
+  function navigateToMonth(month, userId, urlBase = '/analysis') {
+    // URLを構築
+    let url = urlBase;
+    if (month) {
+      url += `?month=${month}`;
+    }
+    
+    // ページ遷移
+    window.location.href = url;
+  }
+
+  // グローバルスコープに関数を追加
+  window.navigateToMonth = navigateToMonth;
+</script>
+{% endblock %} 
