@@ -60,7 +60,6 @@
   }
 
   function setupCalendarSelection() {
-    const savedDate = localStorage.getItem('selectedDate')
     const todayDate = getTodayDate() // ここで serverTodayDate が設定されている必要がある
 
     // 既存の選択状態をクリア
@@ -71,25 +70,15 @@
     let targetDate = null
     let targetCell = null
 
-    // 保存された日付が存在し、カレンダー上に表示されているか確認
-    if (savedDate) {
-      targetCell = document.querySelector(`th.calendar-cell[data-date="${savedDate}"]`)
+    // 初回アクセス時は常に今日の日付を優先表示
+    targetCell = document.querySelector(`th.calendar-cell[data-date="${todayDate}"]`)
+    if (targetCell) {
+      targetDate = todayDate
+    } else {
+      // 今日の日付が表示されていない場合、表示されている最初の日付を選択
+      targetCell = document.querySelector('th.calendar-cell[data-date]')
       if (targetCell) {
-        targetDate = savedDate
-      }
-    }
-
-    // 保存された日付が無効、または存在しない場合、今日の日付を試す
-    if (!targetCell) {
-      targetCell = document.querySelector(`th.calendar-cell[data-date="${todayDate}"]`)
-      if (targetCell) {
-        targetDate = todayDate
-      } else {
-        // 今日の日付も表示されていない場合、表示されている最初の日付を選択
-        targetCell = document.querySelector('th.calendar-cell[data-date]')
-        if (targetCell) {
-          targetDate = targetCell.getAttribute('data-date')
-        }
+        targetDate = targetCell.getAttribute('data-date')
       }
     }
 
