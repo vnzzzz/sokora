@@ -10,7 +10,7 @@
   <!-- ユーザーリスト -->
   <div id="user-list" class="overflow-y-auto max-h-[75vh]">
     {% for group_name in group_names %}
-      {% set users_in_group = grouped_users[group_name] %}
+      {% set user_type_list = grouped_users[group_name] %}
       
       <div class="mb-4">
         <!-- グループ名ヘッダー -->
@@ -18,11 +18,8 @@
           {{ group_name }}
         </div>
         
-        <!-- ユーザータイプでグループ化 -->
-        {% for user_type_tuple in users_in_group | groupby('3.user_type.name') %}
-          {% set user_type_name = user_type_tuple.grouper %}
-          {% set user_list = user_type_tuple.list %}
-          
+        <!-- 社員種別ごとにユーザーを表示（orderでソート済み） -->
+        {% for order, user_type_name, user_list in user_type_list %}
           <!-- ユーザータイプヘッダー -->
           <div class="text-xs font-medium text-base-content/70 px-2 py-1">
             {{ user_type_name if user_type_name else "未分類" }}
