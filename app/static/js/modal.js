@@ -334,10 +334,9 @@
   // refreshRegisterCalendarイベントのリスナーを追加
   document.addEventListener('refreshRegisterCalendar', function (e) {
     // カスタムイベントから値を取得
-    const userId = e.detail && e.detail.userId ? e.detail.userId : 
-                  (e.target ? e.target.getAttribute('data-user-id') : null);
-    const month = e.detail && e.detail.month ? e.detail.month : 
-                 (e.target ? e.target.getAttribute('data-month') : null);
+    const userId =
+      e.detail && e.detail.userId ? e.detail.userId : e.target ? e.target.getAttribute('data-user-id') : null
+    const month = e.detail && e.detail.month ? e.detail.month : e.target ? e.target.getAttribute('data-month') : null
 
     if (userId) {
       // ユーザーカレンダーをリロード
