@@ -150,30 +150,58 @@ def register_page(
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
-    user_types_map = {ut.id: ut for ut in user_types}
+    user_types_map = {int(ut.id): ut for ut in user_types}
 
-    # 表示用にユーザーをグループ名でグルーピングします。
-    grouped_users: Dict[str, List] = {}
+    # 表示用にユーザーをグループ名でグルーピングし、さらに社員種別でサブグルーピングします。
+    grouped_users: Dict[str, Any] = {}
     # グループ名とorder値のマッピング
     group_name_to_order: Dict[str, float] = {}
     
     for user_name, user_id, user_type_id, user_obj in users:
         group_obj = groups_map.get(user_obj.group_id)
         group_name = str(group_obj.name) if group_obj else "未分類"
+        
+        user_type_obj = user_types_map.get(user_type_id)
+        user_type_name = str(user_type_obj.name) if user_type_obj else "未分類"
 
         if group_name not in grouped_users:
-            grouped_users[group_name] = []
+            grouped_users[group_name] = {}
             # グループ名とorder値をマッピング（未分類は最後に表示）
             if group_obj:
                 group_name_to_order[group_name] = float(group_obj.order) if group_obj.order is not None else float('inf')
             else:
                 group_name_to_order[group_name] = float('inf')
 
-        grouped_users[group_name].append((user_name, user_id, user_type_id, user_obj))
+        if user_type_name not in grouped_users[group_name]:
+            grouped_users[group_name][user_type_name] = []
 
-    # 各グループ内のユーザーリストを社員種別IDでソートします。
+        grouped_users[group_name][user_type_name].append((user_name, user_id, user_type_id, user_obj))
+
+    # 各グループ内の社員種別を order でソートし、各社員種別内のユーザーを名前でソートします。
     for g_name in list(grouped_users.keys()):
-        grouped_users[g_name].sort(key=lambda u: u[2])
+        # 社員種別をorderでソートするためのリストを作成
+        user_type_list = []
+        for ut_name, user_list in grouped_users[g_name].items():
+            user_type_obj = None
+            for _, _, ut_id, _ in user_list:
+                user_type_obj = user_types_map.get(ut_id)
+                break
+            
+            if user_type_obj:
+                order = float(user_type_obj.order) if user_type_obj.order is not None else float('inf')
+            else:
+                order = float('inf')
+            
+            # ユーザーリストを名前でソート
+            user_list.sort(key=lambda u: u[0])  # u[0] は user_name
+            
+            user_type_list.append((order, ut_name, user_list))
+        
+        # 社員種別をorderでソート
+        user_type_list.sort(key=lambda x: (x[0], x[1]))
+        
+        # ソート済みのリストを保存（辞書ではなくリスト）
+        grouped_users[g_name] = user_type_list
         
     # グループ名をorder順にソート（orderがNoneの場合は最後に表示）
     sorted_group_names = sorted(grouped_users.keys(), key=lambda g: group_name_to_order.get(g, float('inf')))
@@ -290,7 +318,8 @@ def user_calendar(
         date_str = entry["date"]
         user_attendances[date_str] = {
             "location_name": entry["location_name"],
-            "attendance_id": entry["id"]
+            "attendance_id": entry["id"],
+            "note": entry["note"]  # 備考データを追加
         }
 
     # 勤怠種別情報を取得

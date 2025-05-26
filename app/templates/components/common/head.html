@@ -28,6 +28,14 @@
   <!-- HTMX -->
   <script defer src="/static/js/htmx.min.js"></script>
 
+  <!-- HTMX設定: history cache機能を無効化 -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // HTMXのhistory cache機能を無効化（プロジェクトでは不要なため）
+      htmx.config.historyCacheSize = 0;
+    });
+  </script>
+
   <!-- HTMX Extensions -->
   <script defer src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 

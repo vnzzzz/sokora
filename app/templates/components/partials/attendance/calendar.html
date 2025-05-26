@@ -1,10 +1,22 @@
 {% import "components/macros/ui.html" as ui %}
-<!-- Month display and switcher -->
+<!-- カスタムツールチップスタイル -->
+<style>
+  .tooltip-custom::before {
+    max-width: 200px !important;
+    width: max-content !important;
+    white-space: pre-wrap !important;
+    text-align: left !important;
+    padding: 0.5rem !important;
+    line-height: 1.4 !important;
+  }
+</style>
+
+<!-- Week display and switcher -->
 <div id="calendar">
   <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
-    <span class="text-xl font-bold">{{ month_name }}</span> {# 月名の表示 #}
-    <!-- 月切り替えコンポーネント -->
-    {{ ui.month_switcher( prev_month=prev_month, next_month=next_month, current_month=current_month,
+    <span class="text-xl font-bold">{{ week_name }}</span> {# 週名の表示 #}
+    <!-- 週切り替えコンポーネント -->
+    {{ ui.week_switcher( prev_week=prev_week, next_week=next_week, current_week=current_week,
     url_base='/attendance', use_htmx=true ) }}
   </div>
 
@@ -72,9 +84,9 @@
 
           <!-- 日付ヘッダー -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
-          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          loop.index0 %} {% set is_weekend = weekday_index == 5 or weekday_index == 6 %} {% set is_holiday =
           day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
-          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
           %}
 
           <th
@@ -86,14 +98,14 @@
             style="min-width: 70px; width: 70px"
           >
             <div
-              class="font-bold text-sm {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+              class="font-bold text-sm {% if is_holiday or weekday_index == 6 %}text-red-600 dark:text-red-400{% elif weekday_index == 5 %}text-blue-600 dark:text-blue-400{% endif %}"
             >
               {{ day.day }}
             </div>
             <div
               class="text-xs opacity-70 {% if day.holiday_name|default('') %}custom-tooltip holiday-tooltip{% endif %}"
             >
-              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[weekday_index] }} {% if
+              {% set weekdays = ["月", "火", "水", "木", "金", "土", "日"] %} {{ weekdays[weekday_index] }} {% if
               day.holiday_name|default('') %}
               <span class="tooltip-text">{{ day.holiday_name }}</span>
               {% endif %}
@@ -105,11 +117,8 @@
 
       <tbody>
         {# --- グループごとのループ --- #} {% for group_name in group_names %} {# --- group_name
-        に対応するユーザーリストを取得 --- #} {% set users_in_group = grouped_users[group_name] %} {# ---
-        ユーザーリストを社員種別名でグルーピング (user_obj はタプルの4番目 index=3) --- #} {% for user_type_tuple in
-        users_in_group | groupby('3.user_type.name') %} {% set user_type_name = user_type_tuple.grouper %} {#
-        グループ化キー（社員種別名）を取得 #} {% set user_list = user_type_tuple.list %} {#
-        グループ化されたユーザーリストを取得 #} {# --- 社員種別ヘッダー行 --- #}
+        に対応するユーザータイプリストを取得 --- #} {% set user_type_list = grouped_users[group_name] %} {# ---
+        社員種別ごとのループ（orderでソート済み） --- #} {% for order, user_type_name, user_list in user_type_list %} {# --- 社員種別ヘッダー行 --- #}
         <tr class="bg-base-200/80">
           {# グループ名セル (グループの最初の種別の行に表示、幅縮小) #}
           <td
@@ -136,7 +145,7 @@
             {# 未分類の場合も考慮 #} {{ user_type_name if user_type_name else "未分類" }}
           </td>
           {# 残りの日付セル分を埋めるためのセル #}
-          <td colspan="{{ calendar_day_count|default(31) }}" class="bg-base-200/80"></td>
+          <td colspan="{{ calendar_day_count|default(7) }}" class="bg-base-200/80"></td>
         </tr>
 
         {# --- この社員種別に属する社員データ行 --- #} {% for user_name, user_id, user_type_id, user_obj in user_list %}
@@ -165,11 +174,12 @@
 
           <!-- 日付ごとのセル -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
-          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          loop.index0 %} {% set is_weekend = weekday_index == 5 or weekday_index == 6 %} {% set is_holiday =
           day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
-          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
-          %} {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
-          user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
+          if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
+          %}           {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
+          user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set note =
+          user_attendance_notes[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
           location_styles[location_name]|default({}) if location_name else {} %} {# location_stylesから辞書を取得 #}
 
           <td
@@ -185,11 +195,24 @@
             hx-swap="innerHTML"
           >
             {% if has_data %} {# style_infoからtext_classとbg_classを適用 #}
+            {% if note %}
+            <div class="tooltip tooltip-custom tooltip-right" data-tip="{{ note }}">
+              <div
+                class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full flex items-center justify-center"
+              >
+                {{ location_name }}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 ml-1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l-.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+              </div>
+            </div>
+            {% else %}
             <div
               class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full"
             >
               {{ location_name }}
             </div>
+            {% endif %}
             {% endif %}
           </td>
           {% endif %} {% endfor %} {% endfor %}

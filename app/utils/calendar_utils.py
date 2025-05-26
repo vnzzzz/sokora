@@ -13,7 +13,7 @@ from enum import Enum
 from fastapi import Request
 from typing import Dict, List, Any, Tuple, DefaultDict, Optional
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from app.models.attendance import Attendance # Attendancesの型ヒント用に必要
 from app.utils.ui_utils import generate_location_data
@@ -267,6 +267,178 @@ def get_holiday_name(date_obj: datetime.date) -> str:
     """
     holiday = jpholiday.is_holiday_name(date_obj)
     return holiday if holiday else ""
+
+
+# --- 週単位処理関数 ---
+
+def get_current_week_formatted() -> str:
+    """現在の週をYYYY-MM-DD形式（月曜日の日付）で取得します。
+
+    Returns:
+        str: 現在の週の月曜日の日付（YYYY-MM-DD形式）
+    """
+    today = datetime.date.today()
+    # 今日が何曜日かを取得（0=月曜日）
+    weekday = today.weekday()
+    # 今週の月曜日を計算
+    monday = today - timedelta(days=weekday)
+    return format_date(monday)
+
+def parse_week(week_str: str) -> date:
+    """週文字列（月曜日の日付）を日付オブジェクトに変換します
+
+    Args:
+        week_str: YYYY-MM-DD形式の月曜日の日付
+
+    Returns:
+        date: 月曜日の日付オブジェクト
+
+    Raises:
+        ValueError: 週のフォーマットが無効な場合
+    """
+    try:
+        monday = datetime.datetime.strptime(week_str, "%Y-%m-%d").date()
+        # 月曜日かどうかを確認
+        if monday.weekday() != 0:
+            raise ValueError(f"指定された日付は月曜日ではありません: {week_str}")
+        return monday
+    except ValueError as e:
+        raise ValueError(f"無効な週フォーマット: {week_str}。YYYY-MM-DD形式の月曜日を指定してください。") from e
+
+def get_prev_week_date(monday: date) -> date:
+    """前週の月曜日の日付を取得します
+
+    Args:
+        monday: 基準となる月曜日の日付
+
+    Returns:
+        date: 前週の月曜日の日付オブジェクト
+    """
+    return monday - timedelta(days=7)
+
+def get_next_week_date(monday: date) -> date:
+    """翌週の月曜日の日付を取得します
+
+    Args:
+        monday: 基準となる月曜日の日付
+
+    Returns:
+        date: 翌週の月曜日の日付オブジェクト
+    """
+    return monday + timedelta(days=7)
+
+def format_week_name(monday: date) -> str:
+    """週の表示名を生成します（例：2025年1月第2週）
+
+    Args:
+        monday: 月曜日の日付
+
+    Returns:
+        str: 週の表示名
+    """
+    # その月の第何週かを計算
+    first_day_of_month = monday.replace(day=1)
+    first_monday = first_day_of_month
+    while first_monday.weekday() != 0:
+        first_monday += timedelta(days=1)
+    
+    # 月の最初の月曜日からの週数を計算
+    week_number = ((monday - first_monday).days // 7) + 1
+    
+    return f"{monday.year}年{monday.month}月第{week_number}週"
+
+def build_week_calendar_data(
+    week_str: str,
+    attendances: List[Attendance],
+    attendance_counts: Dict[int, int],
+    location_types: List[str]
+) -> Dict[str, Any]:
+    """
+    特定の週のカレンダーデータを構築する（DBアクセスなし）
+
+    Args:
+        week_str: 週文字列（月曜日の日付、YYYY-MM-DD形式）
+        attendances: 対象週の全勤怠レコードのリスト
+        attendance_counts: 日付の日部分をキー、勤怠データ数を値とする辞書
+        location_types: 利用可能な全勤怠種別名のソート済みリスト
+
+    Returns:
+        Dict[str, Any]: カレンダーデータ
+                       エラー時は空のデータを返す可能性がある
+    """
+    try:
+        # 対象週を解析（月曜日の日付）
+        monday = parse_week(week_str)
+        week_name = format_week_name(monday)
+
+        # 週の7日間を生成（月曜日から日曜日）
+        week_days = []
+        for i in range(7):
+            day_date = monday + timedelta(days=i)
+            week_days.append(day_date)
+
+        # 日付をキー、勤怠種別名をサブキーとするネストしたカウント辞書を初期化
+        location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+        # 取得した勤怠レコードを日ごと・勤怠種別ごとに集計
+        for attendance_record in attendances:
+            day = attendance_record.date.day
+            # locationリレーションから名前を取得
+            location_name = str(attendance_record.location_info)
+            location_counts[day][location_name] += 1
+
+        # カレンダー表示用のデータ構造を構築（1週間分）
+        week_data = []
+        for day_date in week_days:
+            date_str = format_date(day_date)
+            day = day_date.day
+
+            # 事前に一括取得したデータから、この日の総勤怠数を取得
+            attendance_count = attendance_counts.get(day, 0)
+
+            # 祝日判定と祝日名取得
+            is_holiday_flag = is_holiday(day_date)
+            holiday_name = get_holiday_name(day_date)
+
+            day_data = {
+                "day": day,
+                "date": date_str,
+                "has_data": attendance_count > 0,
+                "is_holiday": is_holiday_flag,
+                "holiday_name": holiday_name
+            }
+
+            # 各勤怠種別ごとの勤怠数を追加
+            for loc_type in location_types:
+                day_data[loc_type] = location_counts[day].get(loc_type, 0)
+
+            week_data.append(day_data)
+
+        # 前週と翌週の週文字列（月曜日の日付）を計算
+        prev_week_monday = get_prev_week_date(monday)
+        prev_week = format_date(prev_week_monday)
+
+        next_week_monday = get_next_week_date(monday)
+        next_week = format_date(next_week_monday)
+
+        # UI表示用の勤怠種別データを生成
+        locations_ui_data = generate_location_data(location_types)
+
+        return {
+            "week_name": week_name,
+            "weeks": [week_data],  # 週単位なので1週間分のデータを配列に入れる
+            "locations": locations_ui_data,
+            "prev_week": prev_week,
+            "next_week": next_week,
+        }
+    except ValueError as ve:
+        logger.error(f"週フォーマット解析エラー: {str(ve)}")
+        # エラー発生時は空のデータを返す
+        return {"week_name": "", "weeks": [], "locations": [], "prev_week": "", "next_week": ""}
+    except Exception as e:
+        logger.error(f"週カレンダーデータ構築中に予期せぬエラーが発生しました: {str(e)}", exc_info=True)
+        # エラー発生時は空のデータを返す
+        return {"week_name": "", "weeks": [], "locations": [], "prev_week": "", "next_week": ""}
 
 
 # --- カレンダー関連ユーティリティ ---

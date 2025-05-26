@@ -109,10 +109,15 @@ def get_calendar(
                     color_info = location_color_map.get(int(matched_loc_obj.id), {})
                     loc_data["text_class"] = color_info.get("text_class", "")
                     loc_data["bg_class"] = color_info.get("bg_class", "")
+                    # カテゴリとorder情報を追加
+                    loc_data["category"] = matched_loc_obj.category
+                    loc_data["order"] = matched_loc_obj.order
                 else:
                     # マッチしない場合 (エラーケース) はデフォルトを設定
                     loc_data["text_class"] = "text-gray"
                     loc_data["bg_class"] = "bg-gray/15"
+                    loc_data["category"] = None
+                    loc_data["order"] = None
                 updated_locations.append(loc_data)
             calendar_data["locations"] = updated_locations
 
