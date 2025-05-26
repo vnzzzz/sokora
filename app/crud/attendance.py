@@ -408,7 +408,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         self, db: Session, *, month: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        勤怠分析用のデータを取得します。
+        勤怠集計用のデータを取得します。
         月別・人別・勤怠種別別の日数集計を行います。
 
         Args:
@@ -516,7 +516,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             }
             
         except Exception as e:
-            logger.error(f"勤怠分析データ取得中にエラーが発生しました: {str(e)}", exc_info=True)
+            logger.error(f"勤怠集計データ取得中にエラーが発生しました: {str(e)}", exc_info=True)
             return {
                 "month": month or "",
                 "month_name": "エラー",

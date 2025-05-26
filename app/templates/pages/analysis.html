@@ -1,9 +1,9 @@
-{% extends "layout/base.html" %} {% set title_text = "勤怠分析" %} {% import "components/macros/ui.html" as ui %} {%
+{% extends "layout/base.html" %} {% set title_text = "勤怠集計" %} {% import "components/macros/ui.html" as ui %} {%
 block content %}
 <div class="p-4">
   <div class="flex justify-between items-center mb-4">
     <div>
-      <h2 class="text-lg font-bold text-base-content">勤怠分析</h2>
+      <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
     </div>
   </div>
 
@@ -30,7 +30,6 @@ block content %}
             type="checkbox" 
             class="checkbox checkbox-sm location-checkbox" 
             data-location-id="{{ location.id }}"
-            checked
           />
           <span class="text-sm">{{ location.name }}</span>
         </label>
@@ -54,10 +53,14 @@ block content %}
               </th>
               <!-- 勤怠種別ヘッダー -->
               {% for location in analysis_data.locations %}
-              <th class="bg-base-300 text-center p-0.5 whitespace-nowrap location-header" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px">
+              <th class="bg-base-300 text-center p-0.5 whitespace-nowrap location-header" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px; display: none;">
                 {{ location.name }}
               </th>
               {% endfor %}
+              <!-- 合計列ヘッダー -->
+              <th class="bg-base-300 text-center p-0.5 whitespace-nowrap" style="min-width: 70px; width: 70px;">
+                合計
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -78,8 +81,10 @@ block content %}
                   </td>
                   <!-- 残りの勤怠種別セル分を埋める -->
                   {% for location in analysis_data.locations %}
-                  <td class="bg-base-200/80 location-cell" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px"></td>
+                  <td class="bg-base-200/80 location-cell" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px; display: none;"></td>
                   {% endfor %}
+                  <!-- 合計セル -->
+                  <td class="bg-base-200/80" style="min-width: 70px; width: 70px;"></td>
                 </tr>
                 
                 <!-- この社員種別に属する社員データ行 -->
@@ -102,7 +107,7 @@ block content %}
                   </td>
                   <!-- 勤怠種別ごとのセル -->
                   {% for location in analysis_data.locations %}
-                  <td class="text-center p-0.5 location-cell" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px">
+                  <td class="text-center p-0.5 location-cell" data-location-id="{{ location.id }}" style="min-width: 70px; width: 70px; display: none;">
                     {% set count = user_info.location_counts.get(location.id, 0) %}
                     {% if count > 0 %}
                       <span class="text-base font-medium text-base-content">{{ count }}</span>
@@ -111,6 +116,10 @@ block content %}
                     {% endif %}
                   </td>
                   {% endfor %}
+                  <!-- 合計セル -->
+                  <td class="text-center p-0.5 total-cell" style="min-width: 70px; width: 70px;">
+                    <span class="text-base-content/30">-</span>
+                  </td>
                 </tr>
                 {% endfor %}
               {% endfor %}
@@ -168,8 +177,40 @@ block content %}
         cells.forEach(cell => {
           cell.style.display = isChecked ? '' : 'none';
         });
+        
+        // 合計値を再計算
+        updateTotalColumns();
       });
     });
+    
+    // 合計列の値を更新する関数
+    function updateTotalColumns() {
+      const totalCells = document.querySelectorAll('.total-cell');
+      totalCells.forEach(totalCell => {
+        const row = totalCell.closest('tr');
+        const visibleLocationCells = row.querySelectorAll('.location-cell:not([style*="display: none"])');
+        
+        let total = 0;
+        visibleLocationCells.forEach(cell => {
+          const span = cell.querySelector('span');
+          if (span && span.textContent !== '-') {
+            const value = parseInt(span.textContent) || 0;
+            total += value;
+          }
+        });
+        
+        const totalSpan = totalCell.querySelector('span');
+        if (totalSpan) {
+          if (total > 0) {
+            totalSpan.textContent = total;
+            totalSpan.className = 'text-base font-medium text-base-content';
+          } else {
+            totalSpan.textContent = '-';
+            totalSpan.className = 'text-base-content/30';
+          }
+        }
+      });
+    }
   });
 
   /**

@@ -1,8 +1,8 @@
 """
-勤怠分析ページエンドポイント
+勤怠集計ページエンドポイント
 ================
 
-勤怠分析に関連するルートハンドラー
+勤怠集計に関連するルートハンドラー
 """
 
 from typing import Any, Optional, Dict, List, Tuple
@@ -26,7 +26,7 @@ def get_analysis_page(
     month: Optional[str] = None, 
     db: Session = Depends(get_db)
 ) -> Any:
-    """勤怠分析ページを表示します
+    """勤怠集計ページを表示します
 
     Args:
         request: FastAPIリクエストオブジェクト
@@ -34,10 +34,10 @@ def get_analysis_page(
         db: データベースセッション
 
     Returns:
-        HTMLResponse: レンダリングされた勤怠分析HTML
+        HTMLResponse: レンダリングされた勤怠集計HTML
     """
     try:
-        # 勤怠分析データを取得
+        # 勤怠集計データを取得
         analysis_data = attendance.get_attendance_analysis_data(db, month=month)
         
         # 月切り替え用の前月・次月を計算
@@ -128,7 +128,7 @@ def get_analysis_page(
         return templates.TemplateResponse("pages/analysis.html", context)
         
     except Exception as e:
-        logger.error(f"勤怠分析ページ表示中にエラーが発生しました: {str(e)}", exc_info=True)
+        logger.error(f"勤怠集計ページ表示中にエラーが発生しました: {str(e)}", exc_info=True)
         # エラー時は空のデータで表示
         context = {
             "request": request,
