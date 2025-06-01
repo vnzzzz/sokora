@@ -24,7 +24,7 @@ def test_add_new_user_type(page: Page) -> None:
     add_modal_locator.locator('button[form="add-user-type-form"]').click()
 
     # モーダルが閉じることを確認（少し待機）
-    expect(add_modal_locator).to_be_hidden(timeout=2000)
+    expect(add_modal_locator).to_be_hidden(timeout=500)
 
     # 新しく追加された社員種別が表に表示されているかを確認
     expect(page.locator('#user-type-table-body')).to_contain_text(unique_user_type_name)
@@ -45,7 +45,7 @@ def test_add_new_user_type(page: Page) -> None:
     delete_modal.locator('button:has-text("削除")').click()
     
     # モーダルが閉じることを確認
-    expect(delete_modal).to_be_hidden(timeout=2000)
+    expect(delete_modal).to_be_hidden(timeout=500)
     
     # 削除した社員種別が表から消えていることを確認
     expect(page.locator('#user-type-table-body')).not_to_contain_text(unique_user_type_name)
@@ -85,7 +85,7 @@ def test_edit_user_type(page: Page) -> None:
     edit_modal.locator('.modal-action button.btn-neutral').click()
 
     # モーダルが閉じることを確認
-    expect(edit_modal).to_be_hidden(timeout=2000)
+    expect(edit_modal).to_be_hidden(timeout=500)
 
     # HTMX更新完了まで少し待機
     page.wait_for_timeout(1000)
@@ -114,7 +114,7 @@ def test_edit_user_type(page: Page) -> None:
     delete_modal.locator('button:has-text("削除")').click()
     
     # モーダルが閉じることを確認
-    expect(delete_modal).to_be_hidden(timeout=2000)
+    expect(delete_modal).to_be_hidden(timeout=500)
     
     # 削除した社員種別が表から消えていることを確認
     expect(page.locator('#user-type-table-body')).not_to_contain_text(new_name)
@@ -150,7 +150,7 @@ def test_delete_user_type(page: Page) -> None:
     delete_modal.locator('button:has-text("削除")').click()
 
     # モーダルが閉じることを確認
-    expect(delete_modal).to_be_hidden(timeout=2000)
+    expect(delete_modal).to_be_hidden(timeout=500)
 
     # 削除した社員種別が表から消えていることを確認
     expect(page.locator('#user-type-table-body')).not_to_contain_text(name_to_delete) 
