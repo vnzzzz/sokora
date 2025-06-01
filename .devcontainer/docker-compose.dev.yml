@@ -15,6 +15,7 @@ services:
       - ../app/schemas:/app/app/schemas
       - ../app/services:/app/app/services
       - ../app/static/css/calendar.css:/app/app/static/css/calendar.css
+      - ../app/static/js/analysis.js:/app/app/static/js/analysis.js
       - ../app/static/js/main.js:/app/app/static/js/main.js
       - ../app/static/js/calendar.js:/app/app/static/js/calendar.js
       - ../app/static/js/modal.js:/app/app/static/js/modal.js

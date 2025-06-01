@@ -8,7 +8,6 @@
 import datetime
 import re
 import calendar
-import jpholiday # type: ignore[import-untyped] # 型スタブがないため無視
 from enum import Enum
 from fastapi import Request
 from typing import Dict, List, Any, Tuple, DefaultDict, Optional
@@ -17,6 +16,7 @@ from datetime import date, timedelta
 
 from app.models.attendance import Attendance # Attendancesの型ヒント用に必要
 from app.utils.ui_utils import generate_location_data
+from app.utils.holiday_cache import is_holiday, get_holiday_name
 from app.core.config import logger
 
 # --- 設定 ---
@@ -199,74 +199,57 @@ def parse_month(month: str) -> Tuple[int, int]:
     Raises:
         ValueError: 月のフォーマットが無効な場合
     """
-    try:
-        if "-" in month:
-            year, month_num = map(int, month.split("-"))
-        elif "/" in month:
-            year, month_num = map(int, month.split("/"))
-        else:
-            raise ValueError(
-                f"無効な月フォーマット: {month}。YYYY-MMまたはYYYY/MM形式を使用してください。"
-            )
+    # 月フォーマットの検証
+    if not re.match(r"^\d{4}[-/]\d{1,2}$", month):
+        raise ValueError(f"無効な月フォーマット: {month}。YYYY-MMまたはYYYY/MM形式を使用してください。")
 
+    # 区切り文字を検出
+    separator = "-" if "-" in month else "/"
+    parts = month.split(separator)
+
+    try:
+        year = int(parts[0])
+        month_num = int(parts[1])
+
+        # 年と月の妥当性チェック
+        if year < 1900 or year > 2100:
+            raise ValueError(f"年は1900-2100の範囲で指定してください: {year}")
         if month_num < 1 or month_num > 12:
-            raise ValueError(f"無効な月番号: {month_num}")
+            raise ValueError(f"月は1-12の範囲で指定してください: {month_num}")
+
         return year, month_num
-    except Exception:
-        raise ValueError(
-            f"無効な月フォーマット: {month}。YYYY-MMまたはYYYY/MM形式を使用してください。"
-        )
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"月の解析に失敗しました: {month}") from e
 
 def get_prev_month_date(year: int, month: int) -> datetime.date:
-    """前月の日付を取得します
+    """前月の1日の日付を取得します
 
     Args:
         year: 年
         month: 月
 
     Returns:
-        datetime.date: 前月の日付オブジェクト
+        datetime.date: 前月の1日の日付オブジェクト
     """
     if month == 1:
         return datetime.date(year - 1, 12, 1)
-    return datetime.date(year, month - 1, 1)
+    else:
+        return datetime.date(year, month - 1, 1)
 
 def get_next_month_date(year: int, month: int) -> datetime.date:
-    """翌月の日付を取得します
+    """翌月の1日の日付を取得します
 
     Args:
         year: 年
         month: 月
 
     Returns:
-        datetime.date: 翌月の日付オブジェクト
+        datetime.date: 翌月の1日の日付オブジェクト
     """
     if month == 12:
         return datetime.date(year + 1, 1, 1)
-    return datetime.date(year, month + 1, 1)
-
-def is_holiday(date_obj: datetime.date) -> bool:
-    """与えられた日付が祝日かどうかを判定します (jpholidayを使用)
-
-    Args:
-        date_obj: 判定する日付
-
-    Returns:
-        bool: 祝日の場合はTrue、そうでない場合はFalse
-    """
-    return jpholiday.is_holiday(date_obj)
-
-def get_holiday_name(date_obj: datetime.date) -> str:
-    """与えられた日付の祝日名を取得します (jpholidayを使用)
-
-    Args:
-        date_obj: 判定する日付
-
-    Returns:
-        str: 祝日名（祝日でない場合は空文字列）
-    """
-    holiday = jpholiday.is_holiday_name(date_obj)
-    return holiday if holiday else ""
+    else:
+        return datetime.date(year, month + 1, 1)
 
 
 # --- 週単位処理関数 ---
@@ -453,7 +436,7 @@ def build_calendar_data(
     特定の月のカレンダーデータを構築する（DBアクセスなし）
 
     Args:
-        month: 月文字列 (YYYY-MM または YYYY/MM)
+        month: 月文字列（YYYY-MM形式）
         attendances: 対象月の全勤怠レコードのリスト
         attendance_counts: 日付の日部分をキー、勤怠データ数を値とする辞書
         location_types: 利用可能な全勤怠種別名のソート済みリスト
@@ -462,26 +445,27 @@ def build_calendar_data(
         Dict[str, Any]: カレンダーデータ
                        エラー時は空のデータを返す可能性がある
     """
-
     try:
-        # 対象月を解析 (YYYY-MM形式)
+        # 対象月を解析
         year, month_num = parse_month(month)
+
+        # 月名を生成（YYYY年M月形式）
         month_name = f"{year}年{month_num}月"
 
-        # Python標準のcalendarモジュールでその月のカレンダー構造を取得 (週ごとの日のリスト)
+        # 月のカレンダーを生成
         cal = calendar.monthcalendar(year, month_num)
 
         # 日付をキー、勤怠種別名をサブキーとするネストしたカウント辞書を初期化
         location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        # 取得した勤怠レコードを日ごと・勤怠種別ごとに集計 (引数のattendancesを使用)
-        for attendance_record in attendances: # 変数名を変更
+        # 取得した勤怠レコードを日ごと・勤怠種別ごとに集計
+        for attendance_record in attendances:
             day = attendance_record.date.day
-            # locationリレーションから名前を取得 (リレーションがロードされている前提)
+            # locationリレーションから名前を取得
             location_name = str(attendance_record.location_info)
             location_counts[day][location_name] += 1
 
-        # カレンダー表示用のデータ構造を構築 (週ごとのリスト)
+        # カレンダー表示用のデータ構造を構築
         weeks = []
         for week in cal:
             week_data = []
@@ -524,17 +508,18 @@ def build_calendar_data(
                         day_data[loc_type] = location_counts[day].get(loc_type, 0)
 
                     week_data.append(day_data)
+
             weeks.append(week_data)
 
-        # 前月と翌月の年月文字列 (YYYY-MM) を計算
-        prev_month_date_obj = get_prev_month_date(year, month_num)
-        prev_month = f"{prev_month_date_obj.year}-{prev_month_date_obj.month:02d}"
+        # 前月と翌月の月文字列を計算
+        prev_month_date = get_prev_month_date(year, month_num)
+        prev_month = f"{prev_month_date.year}-{prev_month_date.month:02d}"
 
-        next_month_date_obj = get_next_month_date(year, month_num)
-        next_month = f"{next_month_date_obj.year}-{next_month_date_obj.month:02d}"
+        next_month_date = get_next_month_date(year, month_num)
+        next_month = f"{next_month_date.year}-{next_month_date.month:02d}"
 
-        # UI表示用の勤怠種別データ (色情報などを含む) を生成
-        locations_ui_data = generate_location_data(location_types) # 引数のlocation_typesを使用
+        # UI表示用の勤怠種別データを生成
+        locations_ui_data = generate_location_data(location_types)
 
         return {
             "month_name": month_name,
@@ -546,9 +531,9 @@ def build_calendar_data(
     except ValueError as ve:
         logger.error(f"月フォーマット解析エラー: {str(ve)}")
         # エラー発生時は空のデータを返す
-        return {"month_name": "", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
+        return {"month_name": "エラー", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
     except Exception as e:
         logger.error(f"カレンダーデータ構築中に予期せぬエラーが発生しました: {str(e)}", exc_info=True)
         # エラー発生時は空のデータを返す
-        return {"month_name": "", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
+        return {"month_name": "エラー", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
 
