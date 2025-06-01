@@ -14,9 +14,10 @@ block content %}
         <!-- 期間タイプ選択 -->
         <div class="flex items-center space-x-4">
           <span class="text-sm font-medium">対象期間:</span>
-          <label class="flex items-center space-x-1 cursor-pointer">
+          <label class="flex items-center space-x-1 cursor-pointer" for="period-month">
             <input 
               type="radio" 
+              id="period-month"
               name="period-type" 
               value="month" 
               class="radio radio-sm" 
@@ -24,9 +25,10 @@ block content %}
             />
             <span class="text-sm">月別</span>
           </label>
-          <label class="flex items-center space-x-1 cursor-pointer">
+          <label class="flex items-center space-x-1 cursor-pointer" for="period-year">
             <input 
               type="radio" 
+              id="period-year"
               name="period-type" 
               value="year" 
               class="radio radio-sm"
@@ -88,9 +90,12 @@ block content %}
           <h4 class="text-sm font-medium mb-3">グループ</h4>
           <div class="space-y-2">
             {% for group_name in sorted_group_names %}
-            <label class="flex items-center space-x-2 cursor-pointer">
+            <label class="flex items-center space-x-2 cursor-pointer" for="group-{{ loop.index }}">
               <input 
                 type="checkbox" 
+                id="group-{{ loop.index }}"
+                name="selected_groups"
+                value="{{ group_name }}"
                 class="checkbox checkbox-sm group-checkbox" 
                 data-group-name="{{ group_name }}"
                 checked
@@ -141,9 +146,12 @@ block content %}
               <div class="flex flex-wrap gap-3">
                 {# 表示順（order）でソート #}
                 {% for location in category_locations|sort(attribute='order') %}
-                <label class="flex items-center space-x-2 cursor-pointer">
+                <label class="flex items-center space-x-2 cursor-pointer" for="location-{{ location.id }}">
                   <input 
                     type="checkbox" 
+                    id="location-{{ location.id }}"
+                    name="selected_locations"
+                    value="{{ location.id }}"
                     class="checkbox checkbox-sm location-checkbox" 
                     data-location-id="{{ location.id }}"
                     data-location-name="{{ location.name }}"

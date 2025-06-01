@@ -5,7 +5,7 @@
 勤怠集計に関連するルートハンドラー
 """
 
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Optional, Dict, List, Tuple, Union
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -45,16 +45,19 @@ def get_analysis_page(
         is_year_mode = year is not None
         
         if is_year_mode:
+            # 年別モードでは year は確実に int なので型を保証
+            assert year is not None
+            current_year: int = year
+            
             # 年ベースの集計表示（最初は現在月のデータで代用）
             from datetime import datetime
             current_date = datetime.now()
-            current_month_str = f"{year}-{current_date.month:02d}"
+            current_month_str = f"{current_year}-{current_date.month:02d}"
             
             # 年度用のダミーデータを作成（とりあえず現在月のデータを使用）
             analysis_data = attendance.get_attendance_analysis_data(db, month=current_month_str)
             
             # 年度選択用の情報を準備
-            current_year = year
             year_options = list(range(current_year - 5, current_year + 2))
             
             # グループと社員種別の情報を取得してソート用の情報を準備
@@ -87,8 +90,8 @@ def get_analysis_page(
             for location in sorted_locations:
                 # 年度期間の開始日と終了日を計算
                 from datetime import date
-                fiscal_start = date(year, 4, 1)
-                fiscal_end = date(year + 1, 3, 31)
+                fiscal_start = date(current_year, 4, 1)
+                fiscal_end = date(current_year + 1, 3, 31)
                 
                 # 対象期間・勤怠種別の勤怠データを取得
                 from sqlalchemy import and_
@@ -158,10 +161,10 @@ def get_analysis_page(
             month_options = [f"{m:02d}" for m in range(1, 13)]
             
             # 年度データ用の表示名を更新
-            analysis_data["month"] = f"{year}年度"
-            analysis_data["month_name"] = f"{year}年度"
+            analysis_data["month"] = f"{current_year}年度"
+            analysis_data["month_name"] = f"{current_year}年度"
             
-            context = {
+            year_context: Dict[str, Any] = {
                 "request": request,
                 "analysis_data": analysis_data,
                 "detail_data": None,
@@ -178,6 +181,8 @@ def get_analysis_page(
                 "group_user_types": year_group_user_types,
                 "location_details": location_details
             }
+            
+            return templates.TemplateResponse("pages/analysis.html", year_context)
             
         else:
             # 月ベースの集計表示
@@ -300,7 +305,7 @@ def get_analysis_page(
             year_options = list(range(current_year - 5, current_year + 2))
             month_options = [f"{m:02d}" for m in range(1, 13)]
             
-            context = {
+            month_context: Dict[str, Any] = {
                 "request": request,
                 "analysis_data": analysis_data,
                 "detail_data": None,
@@ -318,12 +323,12 @@ def get_analysis_page(
                 "location_details": location_details
             }
         
-        return templates.TemplateResponse("pages/analysis.html", context)
+            return templates.TemplateResponse("pages/analysis.html", month_context)
         
     except Exception as e:
         logger.error(f"勤怠集計ページ表示中にエラーが発生しました: {str(e)}", exc_info=True)
         # エラー時は空のデータで表示
-        context = {
+        error_context: Dict[str, Any] = {
             "request": request,
             "analysis_data": {
                 "month": month or "",
@@ -346,4 +351,4 @@ def get_analysis_page(
             "group_user_types": {},
             "location_details": {}
         }
-        return templates.TemplateResponse("pages/analysis.html", context) 
+        return templates.TemplateResponse("pages/analysis.html", error_context) 
