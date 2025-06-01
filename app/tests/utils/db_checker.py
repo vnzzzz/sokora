@@ -62,8 +62,25 @@ def check_database() -> int:
         for u in test_users:
             print(f"  - {u.id}: {u.username}")
             
-        # テスト関連データの総数を返す
-        total_test_data = len(test_groups) + len(test_user_types) + len(test_locations) + len(test_users)
+        # テスト関連のattendanceレコード
+        test_user_ids = [user.id for user in test_users]
+        test_location_ids = [location.id for location in test_locations]
+        
+        test_attendances = []
+        if test_user_ids or test_location_ids:
+            test_attendances = db.query(Attendance).filter(
+                (Attendance.user_id.in_(test_user_ids)) |
+                (Attendance.location_id.in_(test_location_ids))
+            ).all()
+        
+        print(f"Test Attendances ({len(test_attendances)}):")
+        for a in test_attendances[:10]:  # 最大10件まで表示
+            print(f"  - {a.id}: user={a.user_id}, location={a.location_id}, date={a.date}")
+        if len(test_attendances) > 10:
+            print(f"  ... and {len(test_attendances) - 10} more records")
+            
+        # テスト関連データの総数を返す（attendanceも含む）
+        total_test_data = len(test_groups) + len(test_user_types) + len(test_locations) + len(test_users) + len(test_attendances)
         return total_test_data
             
     finally:
@@ -98,7 +115,29 @@ def has_test_data() -> bool:
             (User.username.like('%削除%'))
         ).count()
         
-        return (test_groups_count + test_user_types_count + test_locations_count + test_users_count) > 0
+        # テスト関連のattendanceもチェック
+        test_users = db.query(User).filter(
+            (User.username.like('%テスト%')) |
+            (User.username.like('%編集%')) |
+            (User.username.like('%削除%'))
+        ).all()
+        test_user_ids = [user.id for user in test_users]
+        
+        test_locations = db.query(Location).filter(
+            (Location.name.like('%テスト%')) |
+            (Location.name.like('%編集%')) |
+            (Location.name.like('%削除%'))
+        ).all()
+        test_location_ids = [location.id for location in test_locations]
+        
+        test_attendances_count = 0
+        if test_user_ids or test_location_ids:
+            test_attendances_count = db.query(Attendance).filter(
+                (Attendance.user_id.in_(test_user_ids)) |
+                (Attendance.location_id.in_(test_location_ids))
+            ).count()
+        
+        return (test_groups_count + test_user_types_count + test_locations_count + test_users_count + test_attendances_count) > 0
         
     finally:
         db.close()

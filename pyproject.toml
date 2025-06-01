@@ -52,3 +52,7 @@ disallow_incomplete_defs = true
 # 必要に応じて他の pytest オプションを追加
 # asyncio_mode = "strict"
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
+]
