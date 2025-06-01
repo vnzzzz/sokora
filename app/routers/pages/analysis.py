@@ -41,8 +41,22 @@ def get_analysis_page(
         HTMLResponse: レンダリングされた勤怠集計HTML
     """
     try:
+        # 現在日付を取得
+        from datetime import datetime
+        current_date = datetime.now()
+        
         # 年ベースの表示か月ベースの集計表示かを判定
         is_year_mode = year is not None
+        
+        # 年別モードが選択されているが年パラメータが指定されていない場合の判定
+        # クエリパラメータで'year'の存在をチェック
+        query_params = dict(request.query_params)
+        has_year_param = 'year' in query_params
+        
+        # 年別モードのリクエストだが年が指定されていない場合は現在年をデフォルトに
+        if has_year_param and year is None:
+            year = current_date.year
+            is_year_mode = True
         
         if is_year_mode:
             # 年別モードでは year は確実に int なので型を保証
@@ -50,8 +64,6 @@ def get_analysis_page(
             current_year: int = year
             
             # 年ベースの集計表示（最初は現在月のデータで代用）
-            from datetime import datetime
-            current_date = datetime.now()
             current_month_str = f"{current_year}-{current_date.month:02d}"
             
             # 年度用のダミーデータを作成（とりあえず現在月のデータを使用）
@@ -186,21 +198,29 @@ def get_analysis_page(
             
         else:
             # 月ベースの集計表示
+            # monthパラメータが指定されていない場合は現在月をデフォルトに設定
+            if month is None:
+                month = f"{current_date.year}-{current_date.month:02d}"
+            
             analysis_data = attendance.get_attendance_analysis_data(db, month=month)
             
             # 月切り替え用の前月・次月を計算
-            from datetime import datetime
             from dateutil.relativedelta import relativedelta
             
             current_month = analysis_data["month"]
             year_num, month_num = map(int, current_month.split('-'))
-            current_date = datetime(year_num, month_num, 1)
+            current_date_for_nav = datetime(year_num, month_num, 1)
             
-            prev_month_date = current_date - relativedelta(months=1)
-            next_month_date = current_date + relativedelta(months=1)
+            prev_month_date = current_date_for_nav - relativedelta(months=1)
+            next_month_date = current_date_for_nav + relativedelta(months=1)
             
             prev_month = f"{prev_month_date.year}-{prev_month_date.month:02d}"
             next_month = f"{next_month_date.year}-{next_month_date.month:02d}"
+            
+            # 月別モードでも年選択用の情報を準備（年別モードに切り替え可能にするため）
+            current_year = current_date.year
+            year_options = list(range(current_year - 5, current_year + 2))
+            month_options = [f"{m:02d}" for m in range(1, 13)]
             
             # グループと社員種別、勤怠種別の情報を取得してソート用の情報を準備
             from app.crud.group import group as group_crud
@@ -300,7 +320,7 @@ def get_analysis_page(
                 key=lambda x: summary_group_sort_info.get(str(x), (999, 999))
             )
             
-            # 月・年選択用の情報を準備
+            # 月・年選択用の情報を準備（現在の年月をデフォルトに）
             current_year = year_num
             year_options = list(range(current_year - 5, current_year + 2))
             month_options = [f"{m:02d}" for m in range(1, 13)]
