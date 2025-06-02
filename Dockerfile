@@ -33,6 +33,9 @@ RUN poetry config virtualenvs.create false && \
 COPY ./app ./app
 COPY ./scripts ./scripts
 
+# 祝日データをビルド時に取得
+RUN python3 scripts/build_holiday_cache.py
+
 # CSS 成果物をコピー
 RUN mkdir -p /app/app/static/css
 COPY --from=css-builder /build/css/main.css /app/app/static/css/main.css

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from app.utils.holiday_cache import (
-    HolidayCache, is_holiday, get_holiday_name, CACHE_DIR, CACHE_FILE
+    HolidayCache, is_holiday, get_holiday_name, get_cache_info, CACHE_DIR, CACHE_FILE
 )
 
 
@@ -24,15 +24,15 @@ class TestHolidayCache:
         pass
 
     @patch('app.utils.holiday_cache.CACHE_FILE')
-    def test_init_with_existing_cache(self, mock_cache_file: Any) -> None:
-        """HolidayCache.__init__のテスト（既存キャッシュあり）"""
+    def test_init_with_existing_build_time_cache(self, mock_cache_file: Any) -> None:
+        """HolidayCache.__init__のテスト（ビルド時キャッシュあり）"""
         # モックデータ
         cache_data = {
             'holidays': {
                 '2024-01-01': '元日',
                 '2024-05-03': '憲法記念日'
             },
-            'last_updated_year': 2024
+            'build_time': True
         }
         
         mock_cache_file.exists.return_value = True
@@ -41,7 +41,26 @@ class TestHolidayCache:
             holiday_cache = HolidayCache()
             
             assert holiday_cache._cache == cache_data['holidays']
-            assert holiday_cache._last_updated_year == 2024
+            assert holiday_cache._build_time_cache is True
+
+    @patch('app.utils.holiday_cache.CACHE_FILE')
+    def test_init_with_existing_legacy_cache(self, mock_cache_file: Any) -> None:
+        """HolidayCache.__init__のテスト（レガシーキャッシュあり）"""
+        # モックデータ（build_timeフラグなし）
+        cache_data = {
+            'holidays': {
+                '2024-01-01': '元日',
+                '2024-05-03': '憲法記念日'
+            }
+        }
+        
+        mock_cache_file.exists.return_value = True
+        
+        with patch('builtins.open', mock_open(read_data=json.dumps(cache_data))):
+            holiday_cache = HolidayCache()
+            
+            assert holiday_cache._cache == cache_data['holidays']
+            assert holiday_cache._build_time_cache is False
 
     @patch('app.utils.holiday_cache.CACHE_FILE')
     def test_init_with_no_cache(self, mock_cache_file: Any) -> None:
@@ -51,7 +70,7 @@ class TestHolidayCache:
         holiday_cache = HolidayCache()
         
         assert holiday_cache._cache == {}
-        assert holiday_cache._last_updated_year is None
+        assert holiday_cache._build_time_cache is False
 
     @patch('app.utils.holiday_cache.CACHE_FILE')
     def test_init_with_invalid_cache(self, mock_cache_file: Any) -> None:
@@ -62,125 +81,9 @@ class TestHolidayCache:
             holiday_cache = HolidayCache()
             
             assert holiday_cache._cache == {}
-            assert holiday_cache._last_updated_year is None
+            assert holiday_cache._build_time_cache is False
 
-    @patch('app.utils.holiday_cache.CACHE_DIR')
-    @patch('app.utils.holiday_cache.CACHE_FILE')
-    def test_save_cache(self, mock_cache_file: Any, mock_cache_dir: Any) -> None:
-        """_save_cache関数のテスト"""
-        holiday_cache = HolidayCache()
-        holiday_cache._cache = {'2024-01-01': '元日'}
-        holiday_cache._last_updated_year = 2024
-        
-        mock_file_handle = mock_open()
-        
-        with patch('builtins.open', mock_file_handle):
-            holiday_cache._save_cache()
-            
-            # ディレクトリ作成が呼ばれることを確認
-            mock_cache_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
-            
-            # ファイル書き込みが呼ばれることを確認
-            mock_file_handle.assert_called_once()
-
-    @patch('app.utils.holiday_cache.httpx.Client')
-    def test_fetch_holidays_from_api_success(self, mock_client: Any) -> None:
-        """_fetch_holidays_from_api関数のテスト（成功）"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            '2024-01-01': '元日',
-            '2024-05-03': '憲法記念日'
-        }
-        
-        mock_client_instance = MagicMock()
-        mock_client_instance.get.return_value = mock_response
-        mock_client.return_value.__enter__.return_value = mock_client_instance
-        
-        holiday_cache = HolidayCache()
-        result = holiday_cache._fetch_holidays_from_api(2024)
-        
-        assert result == {'2024-01-01': '元日', '2024-05-03': '憲法記念日'}
-        mock_client_instance.get.assert_called_once_with(
-            "https://holidays-jp.github.io/api/v1/2024/date.json"
-        )
-
-    @patch('app.utils.holiday_cache.httpx.Client')
-    def test_fetch_holidays_from_api_error(self, mock_client: Any) -> None:
-        """_fetch_holidays_from_api関数のテスト（エラー）"""
-        mock_client_instance = MagicMock()
-        mock_client_instance.get.side_effect = Exception("API Error")
-        mock_client.return_value.__enter__.return_value = mock_client_instance
-        
-        holiday_cache = HolidayCache()
-        result = holiday_cache._fetch_holidays_from_api(2024)
-        
-        assert result == {}
-
-    def test_should_update_cache_new_year(self) -> None:
-        """_should_update_cache関数のテスト（新しい年）"""
-        holiday_cache = HolidayCache()
-        holiday_cache._last_updated_year = 2023
-        holiday_cache._cache = {'2023-01-01': '元日'}
-        
-        result = holiday_cache._should_update_cache(2024)
-        assert result is True
-
-    def test_should_update_cache_same_year_with_data(self) -> None:
-        """_should_update_cache関数のテスト（同年、データあり）"""
-        holiday_cache = HolidayCache()
-        holiday_cache._last_updated_year = 2024
-        holiday_cache._cache = {'2024-01-01': '元日'}
-        
-        result = holiday_cache._should_update_cache(2024)
-        assert result is False
-
-    def test_should_update_cache_same_year_no_data(self) -> None:
-        """_should_update_cache関数のテスト（同年、データなし）"""
-        holiday_cache = HolidayCache()
-        holiday_cache._last_updated_year = 2024
-        holiday_cache._cache = {'2023-01-01': '元日'}
-        
-        result = holiday_cache._should_update_cache(2024)
-        assert result is True
-
-    def test_should_update_cache_first_time(self) -> None:
-        """_should_update_cache関数のテスト（初回）"""
-        holiday_cache = HolidayCache()
-        holiday_cache._last_updated_year = None
-        
-        result = holiday_cache._should_update_cache(2024)
-        assert result is True
-
-    @patch.object(HolidayCache, '_fetch_holidays_from_api')
-    @patch.object(HolidayCache, '_save_cache')
-    def test_update_cache_for_year(self, mock_save_cache: Any, mock_fetch_holidays: Any) -> None:
-        """_update_cache_for_year関数のテスト"""
-        holiday_cache = HolidayCache()
-        holiday_cache._last_updated_year = None  # 強制的に更新が必要な状態にする
-        
-        # 年ごとの祝日データを模擬
-        mock_fetch_holidays.side_effect = [
-            {'2023-01-01': '元日'},  # 2023年
-            {'2024-01-01': '元日', '2024-05-03': '憲法記念日'},  # 2024年
-            {'2025-01-01': '元日'}   # 2025年
-        ]
-        
-        holiday_cache._update_cache_for_year(2024)
-        
-        # 3年分のAPI呼び出しを確認
-        assert mock_fetch_holidays.call_count == 3
-        mock_fetch_holidays.assert_any_call(2023)
-        mock_fetch_holidays.assert_any_call(2024)
-        mock_fetch_holidays.assert_any_call(2025)
-        
-        # キャッシュの保存が呼ばれることを確認
-        mock_save_cache.assert_called_once()
-        
-        # last_updated_yearが更新されることを確認
-        assert holiday_cache._last_updated_year == 2024
-
-    @patch.object(HolidayCache, '_update_cache_for_year')
-    def test_is_holiday_true(self, mock_update_cache: Any) -> None:
+    def test_is_holiday_true(self) -> None:
         """is_holiday関数のテスト（祝日）"""
         holiday_cache = HolidayCache()
         holiday_cache._cache = {'2024-01-01': '元日'}
@@ -189,10 +92,8 @@ class TestHolidayCache:
         result = holiday_cache.is_holiday(test_date)
         
         assert result is True
-        mock_update_cache.assert_called_once_with(2024)
 
-    @patch.object(HolidayCache, '_update_cache_for_year')
-    def test_is_holiday_false(self, mock_update_cache: Any) -> None:
+    def test_is_holiday_false(self) -> None:
         """is_holiday関数のテスト（平日）"""
         holiday_cache = HolidayCache()
         holiday_cache._cache = {'2024-01-01': '元日'}
@@ -201,10 +102,8 @@ class TestHolidayCache:
         result = holiday_cache.is_holiday(test_date)
         
         assert result is False
-        mock_update_cache.assert_called_once_with(2024)
 
-    @patch.object(HolidayCache, '_update_cache_for_year')
-    def test_get_holiday_name_exists(self, mock_update_cache: Any) -> None:
+    def test_get_holiday_name_exists(self) -> None:
         """get_holiday_name関数のテスト（祝日名あり）"""
         holiday_cache = HolidayCache()
         holiday_cache._cache = {'2024-01-01': '元日'}
@@ -213,10 +112,8 @@ class TestHolidayCache:
         result = holiday_cache.get_holiday_name(test_date)
         
         assert result == '元日'
-        mock_update_cache.assert_called_once_with(2024)
 
-    @patch.object(HolidayCache, '_update_cache_for_year')
-    def test_get_holiday_name_not_exists(self, mock_update_cache: Any) -> None:
+    def test_get_holiday_name_not_exists(self) -> None:
         """get_holiday_name関数のテスト（祝日名なし）"""
         holiday_cache = HolidayCache()
         holiday_cache._cache = {'2024-01-01': '元日'}
@@ -225,7 +122,39 @@ class TestHolidayCache:
         result = holiday_cache.get_holiday_name(test_date)
         
         assert result == ""
-        mock_update_cache.assert_called_once_with(2024)
+
+    @patch('app.utils.holiday_cache.CACHE_FILE')
+    def test_get_cache_info(self, mock_cache_file: Any) -> None:
+        """get_cache_info関数のテスト"""
+        mock_cache_file.exists.return_value = True
+        
+        holiday_cache = HolidayCache()
+        holiday_cache._cache = {
+            '2024-01-01': '元日',
+            '2024-05-03': '憲法記念日',
+            '2025-01-01': '元日'
+        }
+        holiday_cache._build_time_cache = True
+        
+        result = holiday_cache.get_cache_info()
+        
+        assert result['total_holidays'] == 3
+        assert result['build_time_cache'] is True
+        assert result['cache_file_exists'] is True
+        assert '2024' in result['years_covered']
+        assert '2025' in result['years_covered']
+
+    def test_get_cache_info_empty_cache(self) -> None:
+        """get_cache_info関数のテスト（空のキャッシュ）"""
+        holiday_cache = HolidayCache()
+        holiday_cache._cache = {}
+        holiday_cache._build_time_cache = False
+        
+        result = holiday_cache.get_cache_info()
+        
+        assert result['total_holidays'] == 0
+        assert result['build_time_cache'] is False
+        assert result['years_covered'] == []
 
 
 class TestGlobalFunctions:
@@ -251,4 +180,68 @@ class TestGlobalFunctions:
         result = get_holiday_name(test_date)
         
         assert result == '元日'
-        mock_holiday_cache.get_holiday_name.assert_called_once_with(test_date) 
+        mock_holiday_cache.get_holiday_name.assert_called_once_with(test_date)
+
+    @patch('app.utils.holiday_cache._holiday_cache')
+    def test_get_cache_info_function(self, mock_holiday_cache: Any) -> None:
+        """get_cache_info関数のテスト"""
+        expected_info = {
+            'total_holidays': 10,
+            'build_time_cache': True,
+            'cache_file_exists': True,
+            'years_covered': ['2024', '2025']
+        }
+        mock_holiday_cache.get_cache_info.return_value = expected_info
+        
+        result = get_cache_info()
+        
+        assert result == expected_info
+        mock_holiday_cache.get_cache_info.assert_called_once()
+
+
+class TestIntegration:
+    """統合テスト"""
+
+    def test_end_to_end_holiday_check(self) -> None:
+        """エンドツーエンドの祝日チェックテスト"""
+        # 実際の祝日データを模擬
+        cache_data = {
+            'holidays': {
+                '2024-01-01': '元日',
+                '2024-01-08': '成人の日',
+                '2024-02-11': '建国記念の日',
+                '2024-02-12': '建国記念の日 振替休日',
+                '2024-02-23': '天皇誕生日',
+                '2024-03-20': '春分の日',
+                '2024-04-29': '昭和の日',
+                '2024-05-03': '憲法記念日',
+                '2024-05-04': 'みどりの日',
+                '2024-05-05': 'こどもの日',
+                '2024-05-06': 'こどもの日 振替休日'
+            },
+            'build_time': True
+        }
+        
+        # 専用のHolidayCacheインスタンスを作成してテストする
+        with patch('app.utils.holiday_cache.CACHE_FILE') as mock_cache_file:
+            mock_cache_file.exists.return_value = True
+            
+            with patch('builtins.open', mock_open(read_data=json.dumps(cache_data))):
+                # 新しいインスタンスを作成してテスト
+                test_cache = HolidayCache()
+                
+                # 祝日チェック
+                assert test_cache.is_holiday(datetime.date(2024, 1, 1)) is True  # 元日
+                assert test_cache.get_holiday_name(datetime.date(2024, 1, 1)) == '元日'
+                
+                assert test_cache.is_holiday(datetime.date(2024, 5, 3)) is True  # 憲法記念日
+                assert test_cache.get_holiday_name(datetime.date(2024, 5, 3)) == '憲法記念日'
+                
+                # 平日チェック
+                assert test_cache.is_holiday(datetime.date(2024, 1, 2)) is False
+                assert test_cache.get_holiday_name(datetime.date(2024, 1, 2)) == ""
+                
+                # キャッシュ情報チェック
+                info = test_cache.get_cache_info()
+                assert info['total_holidays'] == 11
+                assert info['build_time_cache'] is True 
