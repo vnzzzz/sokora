@@ -14,8 +14,8 @@ from pathlib import Path
 from app.core.config import logger
 
 # キャッシュファイルのパス
-CACHE_DIR = Path(__file__).parent.parent.parent / "data"
-CACHE_FILE = CACHE_DIR / "holidays_cache.json"
+ASSETS_JSON_DIR = Path(__file__).parent.parent.parent / "assets" / "json"
+CACHE_FILE = ASSETS_JSON_DIR / "holidays_cache.json"
 
 
 class HolidayCache:
@@ -91,7 +91,7 @@ def get_holiday_name(date_obj: datetime.date) -> str:
     Returns:
         str: 祝日名（祝日でない場合は空文字列）
     """
-    return _holiday_cache.get_holiday_name(date_obj)
+    return _holiday_cache.get_holiday_name(date_obj) 
 
 
 def get_cache_info() -> Dict[str, Any]:
