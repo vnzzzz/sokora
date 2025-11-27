@@ -15,7 +15,7 @@ ifndef VERSION
 $(error VERSION is not set. Define VERSION in .env)
 endif
 VERSION_TAG := $(IMAGE_NAME):$(VERSION)
-CONTAINER_NAME ?= sokora-app
+CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
@@ -76,11 +76,10 @@ dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
 
 docker-run:
-	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) \
+	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) --rm \
 		-p $(SERVICE_PORT):8000 \
 		-v $(PWD)/data:/app/data \
 		$(VERSION_TAG)
 
 docker-stop:
 	-docker stop $(CONTAINER_NAME)
-	-docker rm $(CONTAINER_NAME)

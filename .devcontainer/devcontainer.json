@@ -1,13 +1,10 @@
 {
-  "name": "sokora",
+  "name": "sokora-dev",
   "build": {
     "dockerfile": "./Dockerfile",
     "context": ".."
   },
-  "runArgs": [
-    "--name",
-    "sokora"
-  ],
+  "runArgs": ["--name", "sokora-dev"],
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
   "workspaceFolder": "/app",
   "mounts": [
@@ -48,7 +45,7 @@
         "bradlc.vscode-tailwindcss",
         "ecmel.vscode-html-css",
         "ms-azuretools.vscode-docker",
-               "github.vscode-github-actions"
+        "github.vscode-github-actions"
       ]
     }
   },
