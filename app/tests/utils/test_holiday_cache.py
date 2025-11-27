@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from app.utils.holiday_cache import (
-    HolidayCache, is_holiday, get_holiday_name, get_cache_info, CACHE_DIR, CACHE_FILE
+    HolidayCache, is_holiday, get_holiday_name, get_cache_info, ASSETS_JSON_DIR, CACHE_FILE
 )
 
 
@@ -180,7 +180,7 @@ class TestGlobalFunctions:
         result = get_holiday_name(test_date)
         
         assert result == '元日'
-        mock_holiday_cache.get_holiday_name.assert_called_once_with(test_date)
+        mock_holiday_cache.get_holiday_name.assert_called_once_with(test_date) 
 
     @patch('app.utils.holiday_cache._holiday_cache')
     def test_get_cache_info_function(self, mock_holiday_cache: Any) -> None:

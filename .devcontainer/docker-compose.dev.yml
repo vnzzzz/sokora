@@ -7,31 +7,23 @@ services:
     ports:
       - '${SERVICE_PORT:-8000}:8000'
     volumes:
-      - ../app/core:/app/app/core
-      - ../app/crud:/app/app/crud
-      - ../app/db:/app/app/db
-      - ../app/models:/app/app/models
-      - ../app/routers:/app/app/routers
-      - ../app/schemas:/app/app/schemas
-      - ../app/services:/app/app/services
-      - ../app/static/css/calendar.css:/app/app/static/css/calendar.css
-      - ../app/static/js/analysis.js:/app/app/static/js/analysis.js
-      - ../app/static/js/main.js:/app/app/static/js/main.js
-      - ../app/static/js/calendar.js:/app/app/static/js/calendar.js
-      - ../app/static/js/modal.js:/app/app/static/js/modal.js
-      - ../app/static/js/circle-favicon.js:/app/app/static/js/circle-favicon.js
-      - ../app/static/favicon.ico:/app/app/static/favicon.ico
-      - ../app/templates:/app/app/templates
-      - ../app/tests:/app/app/tests
-      - ../app/utils:/app/app/utils
-      - ../app/__init__.py:/app/app/__init__.py
-      - ../app/main.py:/app/app/main.py
+      # アプリケーションコード（メイン）
+      - ../app:/app/app
+
+      # 開発用データ
       - ../data:/app/data
+
+      # プロジェクトファイル
       - ../pyproject.toml:/app/pyproject.toml
       - ../poetry.lock:/app/poetry.lock
       - ../README.md:/app/README.md
+
+      # ドキュメント・スクリプト・設定
       - ../docs:/app/docs
       - ../scripts:/app/scripts
+      - ../builder:/app/builder
+
+      # 開発環境設定
       - ../.cursor:/app/.cursor
       - ../.git:/app/.git
       - ../.gitignore:/app/.gitignore
@@ -40,7 +32,6 @@ services:
       - ../Dockerfile:/app/Dockerfile
       - ../docker-compose.yml:/app/docker-compose.yml
       - ../.env.sample:/app/.env.sample
-      - ../builder:/app/builder
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1

@@ -18,8 +18,8 @@ import httpx
 # データディレクトリの設定
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-DATA_DIR = PROJECT_ROOT / "data"
-CACHE_FILE = DATA_DIR / "holidays_cache.json"
+ASSETS_JSON_DIR = PROJECT_ROOT / "assets" / "json"
+CACHE_FILE = ASSETS_JSON_DIR / "holidays_cache.json"
 
 # Holidays JP API のベースURL
 HOLIDAYS_API_BASE = "https://holidays-jp.github.io/api/v1"
@@ -67,7 +67,7 @@ def build_holiday_cache() -> None:
         sys.exit(1)
     
     # ディレクトリが存在しない場合は作成
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    ASSETS_JSON_DIR.mkdir(parents=True, exist_ok=True)
     
     # キャッシュデータの保存
     cache_data = {
