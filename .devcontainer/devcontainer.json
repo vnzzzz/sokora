@@ -1,12 +1,12 @@
 {
-  "name": "sokora-dev",
+  "name": "sokora",
   "build": {
     "dockerfile": "./Dockerfile",
     "context": ".."
   },
   "runArgs": [
     "--name",
-    "sokora-dev"
+    "sokora"
   ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
   "workspaceFolder": "/app",

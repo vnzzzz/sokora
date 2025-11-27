@@ -16,7 +16,7 @@ SEED_USERS ?= 50
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
 
-.PHONY: help install run dev-shell seed test assets holiday-cache build dev-build docker-run docker-stop
+.PHONY: help install run dev-shell seed test assets holiday-cache prepare-dev-assets build dev-build docker-run docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -36,7 +36,7 @@ install:
 	poetry install --no-root
 	cd builder && npm install
 
-run:
+run: prepare-dev-assets
 	poetry run uvicorn app.main:app --host 0.0.0.0 --port $(SERVICE_PORT) --reload
 
 dev-shell:
@@ -53,6 +53,9 @@ assets:
 	mkdir -p assets/css assets/js assets/json
 	cd builder && npm install
 	cd builder && npx tailwindcss -i input.css -o ../assets/css/main.css --minify
+
+prepare-dev-assets:
+	./scripts/prepare_dev_assets.sh
 
 holiday-cache:
 	mkdir -p assets/json
