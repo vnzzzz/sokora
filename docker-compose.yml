@@ -1,8 +1,0 @@
-services:
-  sokora:
-    container_name: sokora
-    image: sokora:latest
-    ports:
-      - ${SERVICE_PORT}:8000
-    volumes:
-      - ./data:/app/data
