@@ -34,17 +34,18 @@
 2. ビルドと起動:
    ```bash
    make build      # プロダクションイメージをビルド
-   make run        # デタッチ起動（ポートは SERVICE_PORT）
+   make run        # SERVICE_PORT で uvicorn を起動（devcontainer でも同様）
    ```
 3. アクセス: `http://localhost:${SERVICE_PORT}`
 4. 停止: `make stop`
 
 ### 開発用コンテナ（devcontainer と共通）
 - イメージビルド: `make dev-build`
-- サーバ起動（ホットリロード）: `make dev-up`
+- サーバ起動（ホットリロード）: `make run`
 - シェルで作業: `make dev-shell`
 
 > 備考: Docker ビルド時に Tailwind ビルドと祝日キャッシュ取得を実行し、`assets/` に成果物を配置します。ビルド生成物を直接編集しないでください。必要な場合は `make assets` で再生成します。
+> devcontainer 起動直後は Web サーバーを立ち上げずポートもフォワードしません。`make run` を実行したときに `.env` の `SERVICE_PORT` でホスト側へバインドされます。
 
 ## ローカル開発（非コンテナ）
 ```bash

@@ -59,5 +59,5 @@ RUN curl -Lo /app/assets/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx.min
 
 EXPOSE 8000
 
-# 開発サーバー起動（ホットリロード有効）
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# devcontainer 起動時はアイドル状態とし、アプリは make run で起動する
+CMD ["sleep", "infinity"]

@@ -17,7 +17,7 @@
   - SQLite + SQLAlchemy + Alembic
   - Poetry（依存管理）
   - pytest / pytest-asyncio / pytest-playwright（E2E） / mypy / ruff
-  - Docker / docker-compose
+  - Docker（devcontainer / 単体コンテナ運用想定）
 
 ---
 
@@ -63,7 +63,7 @@
 以下は、ユーザーから明示的な指示がある場合を除き、変更しないこと。
 
 - **インフラ・環境構成の根幹:**
-  - ルートの `Dockerfile`, `docker-compose.yml`
+  - ルートの `Dockerfile`
   - `.devcontainer/` 配下（devcontainer 内での基本挙動を変える変更）
   - CI / GitHub Actions（存在する場合）
 - **資格情報・秘密情報:**
@@ -157,13 +157,6 @@
   - 本番用のシングルコンテナ定義。
   - Tailwind CSS ビルド（builder ステージ）・祝日キャッシュ生成・htmx / Alpine ダウンロードを含む。
 
-- `docker-compose.yml`
-  - 本番相当のサービス定義。
-  - サービス: `sokora`
-    - イメージ: `sokora:latest`
-    - ポート: `${SERVICE_PORT}:8000`
-    - ボリューム: `./data:/app/data`
-
 - `pyproject.toml`
   - Poetry 設定および依存ライブラリ定義。
   - `tool.poetry.group.dev.dependencies` に開発ツール（black, isort, mypy, pytest, pytest-cov, pytest-asyncio, ruff, pytest-playwright, alembic）が含まれる。
@@ -173,7 +166,8 @@
   - `input.css`, `tailwind.config.js`, `postcss.config.js`, `package.json` を含む。
 
 - `data/`
-  - `sokora.sqlite`: SQLite データベースファイル（本番 / 開発共通でマウントされる想定）。
+  - `sokora.sqlite`: SQLite データベースファイル。`init_db()`（シーダー含む）が存在しない場合に作成する。
+  - `data/.gitkeep` のみがコミットされており、DB は実行時に生成。
 
 - `docs/`
   - ドキュメント類。UI テンプレート仕様などがここに追加される。
@@ -181,50 +175,35 @@
 - `scripts/`
   - `build_holiday_cache.py`: 祝日キャッシュのビルドスクリプト。
   - `migration/`: Alembic 設定とマイグレーションファイル。
-  - `seeding/`: 初期データ投入スクリプト。
+  - `seeding/`: 初期データ投入スクリプト（`run_seeder.sh` で `data_seeder.py` を実行）。
   - `testing/run_test.sh`: テスト一括実行スクリプト。
 
 ---
 
 ## 6. 開発・起動方法
 
-### 6.1 Docker（本番に近い形）
+### 6.1 基本コマンド（Makefile）
 
-1. `.env.sample` をコピーして `.env` を作成する。
-2. イメージをビルド:
+- 依存関係インストール（poetry + builder npm）: `make install`
+- 開発サーバー起動: `make run`（Tailwind など dev 資材を準備して `uvicorn` をリロード付きで起動）
+- シーディング: `make seed`（後述のデフォルトデータを自動投入）
+- 祝日キャッシュ: `make holiday-cache`
+- Tailwind ビルド: `make assets`
+- テスト一括実行: `make test`
 
-   ```bash
-   docker build -t sokora:latest .
-   ```
+### 6.2 Dev Container / Docker 補足
 
-3. コンテナを起動:
+- devcontainer 起動済みなら `make dev-shell` でアタッチできる（名前は `sokora-dev` を想定）。
+- Docker イメージビルド: `make build`（本番用）、`make dev-build`（devcontainer 用）。
+- 本番コンテナ起動補助: `make docker-run` / `make docker-stop`（`.env` を読む）。
+- ローカルで直接動かす場合の最低限コマンド:
 
-   ```bash
-   docker compose up -d
-   ```
+  ```bash
+  poetry install --no-root
+  poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  ```
 
-4. ブラウザでアクセス:
-
-   ```text
-   http://localhost:[SERVICE_PORT]
-   ```
-
-5. 停止:
-
-   ```bash
-   docker compose down
-   ```
-
-### 6.2 Dev Container 内
-
-Dev Container で `/app` がマウントされている前提で：
-
-```bash
-cd /app
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-devcontainer 側で `command` が指定されている場合、attach 時点で uvicorn が起動済みのことがある。
+  Tailwind 生成物が必要なときは `make prepare-dev-assets` か `make assets` を実行する。
 
 ---
 
@@ -254,6 +233,7 @@ cd /app
 3. **E2E テスト**
    - `poetry run pytest -vv app/tests/e2e/`
    - 失敗した場合は即終了。
+   - E2E は `http://localhost:8000` でアプリが起動している前提。必要に応じて `make run` 等でサーバーを立ち上げてから実行する。
 
 4. **事後検証**
    - 再度 `db_checker` でテスト後の DB 状態を確認し、必要に応じて `data_cleanup.py` を実行。
@@ -279,7 +259,7 @@ cd /app
 
 - データベース:
   - SQLite: `data/sokora.sqlite`
-  - docker-compose では `./data:/app/data` としてマウントされる。
+  - `app/db/session.init_db()` が存在しない場合にテーブルを作成する。`make seed` でも自動実行。
 
 - マイグレーション:
   - Alembic 設定とバージョンファイルは `scripts/migration/alembic/` に存在。
@@ -292,7 +272,13 @@ cd /app
 
 - シーディング:
   - スクリプト: `scripts/seeding/data_seeder.py`
-  - シェル: `scripts/seeding/run_seeder.sh`（あれば）
+  - シェル: `scripts/seeding/run_seeder.sh [days_back] [days_forward]`（デフォルト 60/60）。`make seed` は `SEED_DAYS_BACK` / `SEED_DAYS_FORWARD` を渡す。
+  - 2025-11 時点の動作: DB が空なら以下を自動投入後、勤怠をシードする。
+    - グループ3件（開発部/営業部/バックオフィス）
+    - 社員種別3件（正社員/契約社員/インターン）
+    - 勤怠種別4件（東京オフィス/大阪オフィス/テレワーク/夜勤）
+    - ユーザー5件（ID: U001〜U005）
+  - 既存の勤怠 (user_id + 日付) がある日は重複を避け、それ以外の日付範囲に追加する。
 
 **Codex への指示:**
 

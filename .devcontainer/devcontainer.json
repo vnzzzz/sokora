@@ -52,6 +52,5 @@
       ]
     }
   },
-  "forwardPorts": [8000],
   "remoteUser": "root"
 }

@@ -10,12 +10,17 @@ endif
 SERVICE_PORT ?= 8000
 IMAGE_NAME ?= sokora
 DEV_IMAGE_NAME ?= sokora-dev
+VERSION ?=
+ifndef VERSION
+$(error VERSION is not set. Define VERSION in .env)
+endif
+VERSION_TAG := $(IMAGE_NAME):$(VERSION)
 CONTAINER_NAME ?= sokora-app
 DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
 
-.PHONY: help install run dev-shell seed test assets holiday-cache prepare-dev-assets build dev-build docker-run docker-stop
+.PHONY: help install run dev-shell seed test assets holiday-cache prepare-dev-assets build docker-build dev-build docker-run docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -28,7 +33,8 @@ help:
 	@printf "  make holiday-cache   Build holiday cache into assets/json/holidays_cache.json\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
-	@printf "  make docker-run      Run production container with port mapping and data volume mount\n"
+	@printf "  make docker-build    Build production image (%s) using VERSION tag from .env\n" "$(VERSION_TAG)"
+	@printf "  make docker-run      Run production container (tag: %s) with port mapping and data volume mount\n" "$(VERSION_TAG)"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
 install:
@@ -63,6 +69,9 @@ holiday-cache:
 build:
 	docker build -t $(IMAGE_NAME) .
 
+docker-build:
+	docker build -t $(VERSION_TAG) .
+
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
 
@@ -70,7 +79,7 @@ docker-run:
 	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) \
 		-p $(SERVICE_PORT):8000 \
 		-v $(PWD)/data:/app/data \
-		$(IMAGE_NAME)
+		$(VERSION_TAG)
 
 docker-stop:
 	-docker stop $(CONTAINER_NAME)
