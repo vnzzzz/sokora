@@ -12,7 +12,6 @@ IMAGE_NAME ?= sokora
 DEV_IMAGE_NAME ?= sokora-dev
 CONTAINER_NAME ?= sokora-app
 DEV_CONTAINER_NAME ?= sokora-dev
-SEED_USERS ?= 50
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
 
@@ -23,7 +22,7 @@ help:
 	@printf "  make install         Install python deps via poetry and npm packages for builder\n"
 	@printf "  make run             Run FastAPI (devcontainer) with reload on SERVICE_PORT (default: 8000)\n"
 	@printf "  make dev-shell       Attach to the running devcontainer (name: %s)\n" "$(DEV_CONTAINER_NAME)"
-	@printf "  make seed            Seed attendance data (vars: SEED_USERS, SEED_DAYS_BACK, SEED_DAYS_FORWARD)\n"
+	@printf "  make seed            Seed attendance data (vars: SEED_DAYS_BACK, SEED_DAYS_FORWARD)\n"
 	@printf "  make test            Run cleanup + API/unit + e2e tests\n"
 	@printf "  make assets          Build Tailwind CSS into assets/css/main.css\n"
 	@printf "  make holiday-cache   Build holiday cache into assets/json/holidays_cache.json\n"
@@ -44,7 +43,7 @@ dev-shell:
 
 seed:
 	mkdir -p data
-	./scripts/seeding/run_seeder.sh $(SEED_USERS) $(SEED_DAYS_BACK) $(SEED_DAYS_FORWARD)
+	./scripts/seeding/run_seeder.sh $(SEED_DAYS_BACK) $(SEED_DAYS_FORWARD)
 
 test:
 	./scripts/testing/run_test.sh
