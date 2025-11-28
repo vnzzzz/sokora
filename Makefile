@@ -20,8 +20,10 @@ DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
 POETRY_STAMP := .cache/poetry-install.stamp
+DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg proxy=$(proxy) --build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),)
+DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),)
 
-.PHONY: help install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build dev-build docker-run docker-stop
+.PHONY: help install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -36,7 +38,9 @@ help:
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make docker-build    Build production image (%s) using VERSION tag from .env\n" "$(VERSION_TAG)"
+	@printf "  make docker-build-proxy Build production image (%s) via Dockerfile.proxy with proxy args from .env\n" "$(VERSION_TAG)"
 	@printf "  make docker-run      Run production container (tag: %s) with port mapping and data volume mount\n" "$(VERSION_TAG)"
+	@printf "  make docker-run-proxy   Run production container (tag: %s) with proxy env from .env\n" "$(VERSION_TAG)"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
 $(POETRY_STAMP): pyproject.toml poetry.lock
@@ -79,12 +83,22 @@ build:
 docker-build:
 	docker build -t $(VERSION_TAG) .
 
+docker-build-proxy:
+	docker build $(DOCKER_BUILD_PROXY_ARGS) -f Dockerfile.proxy -t $(VERSION_TAG) .
+
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
 
 docker-run: docker-build
 	mkdir -p data
 	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) --rm \
+		-p $(SERVICE_PORT):8000 \
+		-v $(abspath data):/app/data \
+		$(VERSION_TAG)
+
+docker-run-proxy: docker-build-proxy
+	mkdir -p data
+	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) $(DOCKER_PROXY_ENV) --rm \
 		-p $(SERVICE_PORT):8000 \
 		-v $(abspath data):/app/data \
 		$(VERSION_TAG)

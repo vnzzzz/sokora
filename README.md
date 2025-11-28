@@ -45,6 +45,7 @@
    make run        # SERVICE_PORT で uvicorn を起動（devcontainer でも同様）
    ```
    - `data/sokora.db` が存在しない場合は、`make run` / `make docker-run` の起動時にテーブル作成とシーディング（60日/60日分）を自動実行します。Docker ビルド済みイメージにはシード済み DB が `/app/seed/sokora.db` として同梱され、`make docker-run` でホストマウントされた `data/` が空ならエントリポイントがコピーします。
+   - プロキシ経由でビルド/起動する場合は `.env` の `proxy` に URL を設定し、`make docker-build-proxy` / `make docker-run-proxy` を使用してください。
 3. アクセス: `http://localhost:${SERVICE_PORT}`
 4. 停止: `make stop`
 
