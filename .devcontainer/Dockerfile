@@ -1,5 +1,5 @@
 # 1) CSS ビルド用ステージ
-FROM node:18-alpine AS css-builder
+FROM node:18-bookworm-slim AS css-builder
 WORKDIR /src
 COPY builder/package.json builder/tailwind.config.js builder/postcss.config.js ./
 COPY builder/input.css ./src/input.css
@@ -8,7 +8,7 @@ RUN mkdir -p /build/css
 RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
 
 # 2) 開発コンテナ
-FROM python:3.13-slim-bullseye
+FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm
 
 # 開発用のツールインストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
