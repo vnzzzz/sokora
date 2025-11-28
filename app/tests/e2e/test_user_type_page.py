@@ -2,9 +2,13 @@ from playwright.sync_api import Page, expect
 import time
 import re
 
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+USER_TYPES_URL = f"{UI_BASE}/user-types"
+
 def test_user_type_page_display(page: Page) -> None:
     """社員種別ページが正常に表示されることをテスト"""
-    page.goto("http://localhost:8000/user_type")
+    page.goto(USER_TYPES_URL)
     expect(page.locator("body")).to_be_visible()
     expect(page.locator("h2")).to_contain_text("社員種別")
 
@@ -13,7 +17,7 @@ def test_create_user_type(page: Page) -> None:
     timestamp = int(time.time())
     user_type_name = f"テスト社員種別_{timestamp}"
 
-    page.goto("http://localhost:8000/user_type")
+    page.goto(USER_TYPES_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("社員種別追加")').click()
     add_modal = page.locator("#add-user-type")
@@ -37,7 +41,7 @@ def test_edit_user_type(page: Page) -> None:
     initial_name = f"テスト編集前種別_{timestamp}"
     new_name = f"テスト編集済み種別_{timestamp}"
 
-    page.goto("http://localhost:8000/user_type")
+    page.goto(USER_TYPES_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     try:
@@ -117,7 +121,7 @@ def test_delete_user_type(page: Page) -> None:
     timestamp = int(time.time())
     user_type_name = f"テスト削除用種別_{timestamp}"
 
-    page.goto("http://localhost:8000/user_type")
+    page.goto(USER_TYPES_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. テスト用社員種別を作成

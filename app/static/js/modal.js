@@ -189,7 +189,7 @@
     // リクエスト中フラグをセット
     window.calendarRefreshInProgress = true
 
-    const url = month ? `/attendance?month=${encodeURIComponent(month)}` : '/attendance'
+    const url = month ? `/ui/attendance/monthly?month=${encodeURIComponent(month)}` : '/ui/attendance/monthly'
 
     // htmxリクエスト完了イベントのリスナーを定義
     const afterSwapListener = function (event) {
@@ -242,7 +242,7 @@
     // リクエスト中フラグをセット
     window.calendarRefreshInProgress = true
 
-    const url = week ? `/attendance?week=${encodeURIComponent(week)}` : '/attendance'
+    const url = week ? `/ui/attendance/weekly?week=${encodeURIComponent(week)}` : '/ui/attendance/weekly'
 
     // htmxリクエスト完了イベントのリスナーを定義
     const afterSwapListener = function (event) {
@@ -293,7 +293,7 @@
     }
 
     // 現在のURLがregisterページでなければ何もしない
-    const isRegisterPage = window.location.pathname.includes('/register')
+    const isRegisterPage = window.location.pathname.includes('/attendance/monthly')
     if (!isRegisterPage) {
       return
     }
@@ -344,8 +344,8 @@
     }
 
     const url = month
-      ? `/register/${encodeURIComponent(userId)}?month=${encodeURIComponent(month)}`
-      : `/register/${encodeURIComponent(userId)}`
+      ? `/ui/attendance/monthly/users/${encodeURIComponent(userId)}?month=${encodeURIComponent(month)}`
+      : `/ui/attendance/monthly/users/${encodeURIComponent(userId)}`
 
     try {
       // htmxリクエスト送信前にリスナー追加
@@ -434,7 +434,7 @@
     // 一度に1つだけ処理し、少し遅延させて実行する
     if (triggers.refreshUserAttendance) {
       // 勤怠登録ページの場合は、ユーザーカレンダーだけを更新する
-      const isRegisterPage = window.location.pathname.includes('/register')
+      const isRegisterPage = window.location.pathname.includes('/attendance/monthly')
       if (isRegisterPage) {
         setTimeout(() => {
           const userId = triggers.refreshUserAttendance.user_id
@@ -480,7 +480,7 @@
     if (triggers.refreshAttendance) {
       // この処理は上記のrefreshUserAttendanceが実行されなかった場合のみ実行される
       setTimeout(() => {
-        const week = triggers.refreshAttendance.week
+        const week = triggers.refreshAttendance.week || getCurrentWeek()
         const month = triggers.refreshAttendance.month
 
         // localStorageの週・月情報を更新
@@ -492,7 +492,7 @@
         }
 
         // 週情報があれば週カレンダー、なければ月カレンダーを更新
-        if (week) {
+        if (week && window.location.pathname.includes('/attendance/weekly')) {
           refreshWeekCalendar(week)
         } else {
           refreshCalendar(month)
@@ -619,12 +619,15 @@
     const savedWeek = localStorage.getItem('selectedWeek')
     const savedMonth = localStorage.getItem('selectedMonth')
 
-    if (window.location.pathname.includes('/attendance')) {
-      if (savedWeek && !weekInUrl && !monthInUrl) {
-        refreshWeekCalendar(savedWeek)
-      } else if (savedMonth && !monthInUrl && !weekInUrl) {
-        refreshCalendar(savedMonth)
-      }
+    const isWeeklyPage = window.location.pathname.includes('/attendance/weekly')
+    const isMonthlyPage = window.location.pathname.includes('/attendance/monthly')
+
+    if (isWeeklyPage && savedWeek && !weekInUrl) {
+      refreshWeekCalendar(savedWeek)
+    }
+
+    if (isMonthlyPage && savedMonth && !monthInUrl) {
+      refreshCalendar(savedMonth)
     }
   })
 
@@ -640,7 +643,7 @@
  * @param {string|null} userId - ユーザーID（指定された場合）
  * @param {string} urlBase - 基本URL
  */
-function navigateToWeek(week, userId, urlBase = '/attendance') {
+function navigateToWeek(week, userId, urlBase = '/ui/attendance/weekly') {
   // 週情報をlocalStorageに保存
   if (week) {
     localStorage.setItem('selectedWeek', week)

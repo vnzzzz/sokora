@@ -3,7 +3,7 @@
 {% call ui.modal_form(
   id          = modal_id,
   title       = user and "社員編集" or "社員追加",
-  action      = user and ("/users/" ~ user.id) or "/users",
+  action      = user and ("/ui/users/" ~ user.id) or "/ui/users",
   method      = user and "PUT" or "POST",
   submit_text = user and "更新" or "登録",
   size        = "lg"

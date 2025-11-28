@@ -5,17 +5,18 @@ import re
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
 
 def test_csv_page_title(page: Page) -> None:
     """CSVページのタイトルが正しいかテストします。"""
-    page.goto(f"{BASE_URL}/csv")
+    page.goto(f"{UI_BASE}/csv")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     # ページタイトルを確認
     expect(page).to_have_title(re.compile("CSV"))
 
 def test_csv_page_elements_visibility(page: Page) -> None:
     """CSVページの主要な要素が表示されているかテストします。"""
-    page.goto(f"{BASE_URL}/csv") # 各テストでページの状態をリセットするため再度goto
+    page.goto(f"{UI_BASE}/csv") # 各テストでページの状態をリセットするため再度goto
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     # 主要な要素が存在することを確認
     expect(page.locator('h2:has-text("CSVデータダウンロード")')).to_be_visible()

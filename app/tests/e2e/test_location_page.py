@@ -1,9 +1,13 @@
 from playwright.sync_api import Page, expect
 import time # アサーション前の待機用
 
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+LOCATIONS_URL = f"{UI_BASE}/locations"
+
 def test_location_page_display(page: Page) -> None:
     """勤怠種別ページが正常に表示されることをテスト"""
-    page.goto("http://localhost:8000/location")
+    page.goto(LOCATIONS_URL)
     expect(page.locator("body")).to_be_visible()
     expect(page.locator("h2")).to_contain_text("勤怠種別")
 
@@ -12,7 +16,7 @@ def test_create_location(page: Page) -> None:
     timestamp = int(time.time())
     location_name = f"テスト勤務地_{timestamp}"
 
-    page.goto("http://localhost:8000/location")
+    page.goto(LOCATIONS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("勤怠種別追加")').click()
     add_modal = page.locator("#add-location")
@@ -38,7 +42,7 @@ def test_edit_location(page: Page) -> None:
     initial_name = f"テスト編集前勤務地_{timestamp}"
     new_location_name = f"テスト編集済み勤務地_{timestamp}"
 
-    page.goto("http://localhost:8000/location")
+    page.goto(LOCATIONS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     try:
@@ -120,7 +124,7 @@ def test_delete_location(page: Page) -> None:
     timestamp = int(time.time())
     location_name = f"テスト削除用勤務地_{timestamp}"
 
-    page.goto("http://localhost:8000/location")
+    page.goto(LOCATIONS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. テスト用勤怠種別を作成

@@ -1,10 +1,10 @@
 """
 社員種別APIのテスト
 
-POST /api/user_types: 社員種別作成
-GET /api/user_types: 社員種別一覧取得  
-PUT /api/user_types/{user_type_id}: 社員種別更新
-DELETE /api/user_types/{user_type_id}: 社員種別削除
+POST /api/v1/user_types: 社員種別作成
+GET /api/v1/user_types: 社員種別一覧取得  
+PUT /api/v1/user_types/{user_type_id}: 社員種別更新
+DELETE /api/v1/user_types/{user_type_id}: 社員種別削除
 """
 
 import pytest
@@ -27,13 +27,13 @@ from app.crud.group import group as crud_group
 pytestmark = pytest.mark.asyncio
 
 
-# --- GET /api/user_types Tests ---
+# --- GET /api/v1/user_types Tests ---
 
 async def test_get_user_types_empty(async_client: AsyncClient) -> None:
     """
-    GET /api/user_types - 社員種別が1つもない場合に空のリストが返されることをテストします。
+    GET /api/v1/user_types - 社員種別が1つもない場合に空のリストが返されることをテストします。
     """
-    response = await async_client.get("/api/user_types")
+    response = await async_client.get("/api/v1/user_types")
     assert response.status_code == status.HTTP_200_OK
     
     data = response.json()
@@ -43,7 +43,7 @@ async def test_get_user_types_empty(async_client: AsyncClient) -> None:
 
 async def test_get_user_types_with_data(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    GET /api/user_types - 社員種別が存在する場合に正しくソートされたリストが返されることをテストします。
+    GET /api/v1/user_types - 社員種別が存在する場合に正しくソートされたリストが返されることをテストします。
     """
     # テスト用データを作成
     user_type1 = crud_user_type.create(db, obj_in=UserTypeCreate(name=test_data_tracker['create_test_name']("Type_B")))
@@ -55,7 +55,7 @@ async def test_get_user_types_with_data(async_client: AsyncClient, db: Session, 
     
     db.commit()
 
-    response = await async_client.get("/api/user_types")
+    response = await async_client.get("/api/v1/user_types")
     assert response.status_code == status.HTTP_200_OK
     
     data = response.json()
@@ -69,16 +69,16 @@ async def test_get_user_types_with_data(async_client: AsyncClient, db: Session, 
     assert data["user_types"][1]["id"] == user_type1.id
 
 
-# --- POST /api/user_types Tests ---
+# --- POST /api/v1/user_types Tests ---
 
 async def test_create_user_type_success(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    POST /api/user_types - 社員種別が正常に作成されることをテストします。
+    POST /api/v1/user_types - 社員種別が正常に作成されることをテストします。
     """
     user_type_name = test_data_tracker['create_test_name']("New_Type")
     payload = {"name": user_type_name}
     
-    response = await async_client.post("/api/user_types", json=payload)
+    response = await async_client.post("/api/v1/user_types", json=payload)
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -97,23 +97,23 @@ async def test_create_user_type_success(async_client: AsyncClient, db: Session, 
 
 async def test_create_user_type_missing_name(async_client: AsyncClient) -> None:
     """
-    POST /api/user_types - 社員種別名がない場合に 400 エラーが返されることをテストします。
+    POST /api/v1/user_types - 社員種別名がない場合に 400 エラーが返されることをテストします。
     """
     # ケース1: name が空文字列
     payload_empty = {"name": ""}
-    response_empty = await async_client.post("/api/user_types", json=payload_empty)
+    response_empty = await async_client.post("/api/v1/user_types", json=payload_empty)
     assert response_empty.status_code == status.HTTP_400_BAD_REQUEST
     assert response_empty.json()["detail"] == "社員種別名を入力してください"
 
     # ケース2: name フィールド自体がない
     payload_no_name: dict = {}
-    response_no_name = await async_client.post("/api/user_types", json=payload_no_name)
+    response_no_name = await async_client.post("/api/v1/user_types", json=payload_no_name)
     assert response_no_name.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 async def test_create_user_type_duplicate_name(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    POST /api/user_types - 重複する社員種別名で作成しようとした場合に 400 エラーが返されることをテストします。
+    POST /api/v1/user_types - 重複する社員種別名で作成しようとした場合に 400 エラーが返されることをテストします。
     """
     user_type_name = test_data_tracker['create_test_name']("Duplicate_Type")
     # 最初に社員種別を作成しておく
@@ -123,17 +123,17 @@ async def test_create_user_type_duplicate_name(async_client: AsyncClient, db: Se
 
     # 同じ名前で再度作成しようとする
     payload = {"name": user_type_name}
-    response = await async_client.post("/api/user_types", json=payload)
+    response = await async_client.post("/api/v1/user_types", json=payload)
     
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "この社員種別名は既に存在します"
 
 
-# --- PUT /api/user_types/{user_type_id} Tests ---
+# --- PUT /api/v1/user_types/{user_type_id} Tests ---
 
 async def test_update_user_type_success(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    PUT /api/user_types/{user_type_id} - 社員種別が正常に更新されることをテストします。
+    PUT /api/v1/user_types/{user_type_id} - 社員種別が正常に更新されることをテストします。
     """
     # 更新対象の社員種別を作成
     original_name = test_data_tracker['create_test_name']("Original_Type")
@@ -146,7 +146,7 @@ async def test_update_user_type_success(async_client: AsyncClient, db: Session, 
     updated_name = test_data_tracker['create_test_name']("Updated_Type")
     payload = {"name": updated_name}
     
-    response = await async_client.put(f"/api/user_types/{user_type_id}", json=payload)
+    response = await async_client.put(f"/api/v1/user_types/{user_type_id}", json=payload)
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -160,12 +160,12 @@ async def test_update_user_type_success(async_client: AsyncClient, db: Session, 
 
 async def test_update_user_type_not_found(async_client: AsyncClient) -> None:
     """
-    PUT /api/user_types/{user_type_id} - 存在しない社員種別IDを指定した場合に 404 エラーが返されることをテストします。
+    PUT /api/v1/user_types/{user_type_id} - 存在しない社員種別IDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_user_type_id = 9999
     payload = {"name": "Non Existent Update"}
     
-    response = await async_client.put(f"/api/user_types/{non_existent_user_type_id}", json=payload)
+    response = await async_client.put(f"/api/v1/user_types/{non_existent_user_type_id}", json=payload)
     
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"]
@@ -173,7 +173,7 @@ async def test_update_user_type_not_found(async_client: AsyncClient) -> None:
 
 async def test_update_user_type_duplicate_name(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    PUT /api/user_types/{user_type_id} - 他の社員種別が使用中の名前に更新しようとした場合に 400 エラーが返されることをテストします。
+    PUT /api/v1/user_types/{user_type_id} - 他の社員種別が使用中の名前に更新しようとした場合に 400 エラーが返されることをテストします。
     """
     # 2つの社員種別を作成
     user_type1 = crud_user_type.create(db, obj_in=UserTypeCreate(name=test_data_tracker['create_test_name']("Type_To_Update")))
@@ -188,7 +188,7 @@ async def test_update_user_type_duplicate_name(async_client: AsyncClient, db: Se
 
     # user_type1 の名前を user_type2 と同じにしようとする
     payload = {"name": existing_name}
-    response = await async_client.put(f"/api/user_types/{user_type_id_to_update}", json=payload)
+    response = await async_client.put(f"/api/v1/user_types/{user_type_id_to_update}", json=payload)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "既に使用されています" in response.json()["detail"]
@@ -196,7 +196,7 @@ async def test_update_user_type_duplicate_name(async_client: AsyncClient, db: Se
 
 async def test_update_user_type_same_name(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    PUT /api/user_types/{user_type_id} - 同じ名前で更新しても正常に完了することをテストします。
+    PUT /api/v1/user_types/{user_type_id} - 同じ名前で更新しても正常に完了することをテストします。
     """
     # 更新対象の社員種別を作成
     original_name = test_data_tracker['create_test_name']("Same_Name_Type")
@@ -207,7 +207,7 @@ async def test_update_user_type_same_name(async_client: AsyncClient, db: Session
 
     # 同じ名前で更新
     payload = {"name": original_name}
-    response = await async_client.put(f"/api/user_types/{user_type_id}", json=payload)
+    response = await async_client.put(f"/api/v1/user_types/{user_type_id}", json=payload)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -219,11 +219,11 @@ async def test_update_user_type_same_name(async_client: AsyncClient, db: Session
     assert user_type_to_update.name == original_name
 
 
-# --- DELETE /api/user_types/{user_type_id} Tests ---
+# --- DELETE /api/v1/user_types/{user_type_id} Tests ---
 
 async def test_delete_user_type_success(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    DELETE /api/user_types/{user_type_id} - 社員種別が正常に削除されることをテストします。
+    DELETE /api/v1/user_types/{user_type_id} - 社員種別が正常に削除されることをテストします。
     """
     # 削除対象の社員種別を作成
     user_type_to_delete = crud_user_type.create(db, obj_in=UserTypeCreate(name=test_data_tracker['create_test_name']("Type_To_Delete")))
@@ -232,7 +232,7 @@ async def test_delete_user_type_success(async_client: AsyncClient, db: Session, 
     user_type_id = user_type_to_delete.id
 
     # 社員種別を削除
-    response = await async_client.delete(f"/api/user_types/{user_type_id}")
+    response = await async_client.delete(f"/api/v1/user_types/{user_type_id}")
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -246,18 +246,18 @@ async def test_delete_user_type_success(async_client: AsyncClient, db: Session, 
 
 async def test_delete_user_type_not_found(async_client: AsyncClient) -> None:
     """
-    DELETE /api/user_types/{user_type_id} - 存在しない社員種別IDを指定した場合に 404 エラーが返されることをテストします。
+    DELETE /api/v1/user_types/{user_type_id} - 存在しない社員種別IDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_user_type_id = 9999
     
-    response = await async_client.delete(f"/api/user_types/{non_existent_user_type_id}")
+    response = await async_client.delete(f"/api/v1/user_types/{non_existent_user_type_id}")
     
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"]
 
 async def test_delete_user_type_in_use(async_client: AsyncClient, db: Session) -> None:
     """
-    DELETE /api/user_types/{user_type_id} - ユーザーに割り当てられている社員種別を削除しようとした場合にエラーが発生することをテストします。
+    DELETE /api/v1/user_types/{user_type_id} - ユーザーに割り当てられている社員種別を削除しようとした場合にエラーが発生することをテストします。
     """
     # 依存関係の準備: Group
     group = crud_group.create(db, obj_in=GroupCreate(name="Test Group for UserType Delete"))
@@ -274,7 +274,7 @@ async def test_delete_user_type_in_use(async_client: AsyncClient, db: Session) -
     db.commit()
 
     # この社員種別を削除しようとする
-    response = await async_client.delete(f"/api/user_types/{user_type_id}")
+    response = await async_client.delete(f"/api/v1/user_types/{user_type_id}")
 
     # 使用中のため削除できないはず
     assert response.status_code == status.HTTP_400_BAD_REQUEST

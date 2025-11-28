@@ -18,8 +18,8 @@ from app.routers.pages.top import router as top_router
 from app.routers.pages.user import router as user_router
 from app.routers.pages.user_type import router as user_type_router
 
-# メインルーター
-router = APIRouter()
+# メインルーター（各ルーター側で絶対パスを持たせる）
+router = APIRouter(include_in_schema=False)
 
 # 各モジュールのルーターをインクルード
 router.include_router(top_router)

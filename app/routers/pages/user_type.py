@@ -19,11 +19,11 @@ from app import schemas # スキーマをインポート
 from app.services import user_type_service # user_type_service をインポート
 
 # ルーター定義
-router = APIRouter(tags=["Pages"])
+router = APIRouter(prefix="/ui/user-types", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/user_type", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 def get_user_type_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """社員種別管理ページを表示します"""
     user_types = user_type.get_multi(db)
@@ -32,8 +32,8 @@ def get_user_type_manage_page(request: Request, db: Session = Depends(get_db)) -
     )
 
 
-@router.get("/user_types/modal", response_class=HTMLResponse)
-@router.get("/user_types/modal/{user_type_id}", response_class=HTMLResponse)
+@router.get("/modal", response_class=HTMLResponse)
+@router.get("/modal/{user_type_id}", response_class=HTMLResponse)
 async def user_type_modal(request: Request, user_type_id: Optional[int] = None, db: Session = Depends(get_db)) -> Any:
     """社員種別の追加または編集モーダルを表示します。
 
@@ -67,7 +67,7 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
     )
 
 
-@router.get("/user_types/delete-modal/{user_type_id}", response_class=HTMLResponse)
+@router.get("/delete-modal/{user_type_id}", response_class=HTMLResponse)
 async def user_type_delete_modal(request: Request, user_type_id: int, db: Session = Depends(get_db)) -> Any:
     """社員種別の削除確認モーダルを表示します。
 
@@ -98,7 +98,7 @@ async def user_type_delete_modal(request: Request, user_type_id: int, db: Sessio
     )
 
 
-@router.post("/user_types", response_class=HTMLResponse)
+@router.post("", response_class=HTMLResponse)
 async def create_user_type(
     request: Request,
     user_type_in: schemas.user_type.UserTypeCreate = Depends(schemas.user_type.UserTypeCreate.as_form),
@@ -148,7 +148,7 @@ async def create_user_type(
         )
 
 
-@router.put("/user_types/{user_type_id}", response_class=HTMLResponse)
+@router.put("/{user_type_id}", response_class=HTMLResponse)
 async def update_user_type(
     request: Request,
     user_type_id: int,
@@ -202,7 +202,7 @@ async def update_user_type(
         )
 
 
-@router.delete("/user_types/{user_type_id}", response_class=HTMLResponse)
+@router.delete("/{user_type_id}", response_class=HTMLResponse)
 async def delete_user_type(request: Request, user_type_id: int, db: Session = Depends(get_db)) -> Any:
     """社員種別を削除します。
 
@@ -249,7 +249,7 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
         )
 
 
-@router.post("/pages/user_type/row", response_class=HTMLResponse)
+@router.post("/rows", response_class=HTMLResponse)
 def handle_create_user_type_row(
     request: Request,
     db: Session = Depends(get_db),
@@ -282,7 +282,7 @@ def handle_create_user_type_row(
         return response
 
 
-@router.put("/pages/user_type/row/{user_type_id}", response_class=HTMLResponse)
+@router.put("/rows/{user_type_id}", response_class=HTMLResponse)
 def handle_update_user_type_row(
     request: Request,
     user_type_id: int,

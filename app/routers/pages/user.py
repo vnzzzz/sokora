@@ -23,11 +23,11 @@ from app.services import user_service # user_service を直接インポート
 from app.models.user import User # User モデルをインポート
 
 # ルーター定義
-router = APIRouter(tags=["Pages"])
+router = APIRouter(prefix="/ui/users", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/user", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """社員管理ページを表示します
 
@@ -95,8 +95,8 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
     )
 
 
-@router.get("/users/modal", response_class=HTMLResponse)
-@router.get("/users/modal/{user_id}", response_class=HTMLResponse)
+@router.get("/modal", response_class=HTMLResponse)
+@router.get("/modal/{user_id}", response_class=HTMLResponse)
 async def user_modal(
     request: Request,
     user_id: Optional[str] = None,
@@ -140,7 +140,7 @@ async def user_modal(
     )
 
 
-@router.get("/users/delete-modal/{user_id}", response_class=HTMLResponse)
+@router.get("/delete-modal/{user_id}", response_class=HTMLResponse)
 async def user_delete_modal(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
     """社員の削除確認モーダルを表示します。
 
@@ -171,7 +171,7 @@ async def user_delete_modal(request: Request, user_id: str, db: Session = Depend
     )
 
 
-@router.post("/users", response_class=HTMLResponse)
+@router.post("", response_class=HTMLResponse)
 async def create_user(
     request: Request,
     user_in: schemas.UserCreate = Depends(schemas.UserCreate.as_form),
@@ -241,7 +241,7 @@ async def create_user(
         )
 
 
-@router.put("/users/{user_id}", response_class=HTMLResponse)
+@router.put("/{user_id}", response_class=HTMLResponse)
 async def update_user(
     request: Request,
     user_id: str,
@@ -300,7 +300,7 @@ async def update_user(
         )
 
 
-@router.delete("/users/{user_id}", response_class=HTMLResponse)
+@router.delete("/{user_id}", response_class=HTMLResponse)
 async def delete_user(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
     """社員を削除します。
 
@@ -349,7 +349,7 @@ async def delete_user(request: Request, user_id: str, db: Session = Depends(get_
 
 
 
-@router.post("/pages/user/row", response_class=HTMLResponse)
+@router.post("/rows", response_class=HTMLResponse)
 def handle_create_user_row(
     request: Request,
     db: Session = Depends(get_db),
@@ -395,7 +395,7 @@ def handle_create_user_row(
         return response
 
 
-@router.put("/pages/user/row/{user_id}", response_class=HTMLResponse)
+@router.put("/rows/{user_id}", response_class=HTMLResponse)
 def handle_update_user_row(
     request: Request,
     user_id: str,

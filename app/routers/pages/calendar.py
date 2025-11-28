@@ -39,7 +39,7 @@ from app.utils.ui_utils import (
 from app.models.location import Location
 
 # ルーター定義
-router = APIRouter(tags=["Pages"])
+router = APIRouter(prefix="/ui/calendar", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 # カレンダーデータのキャッシュ（パフォーマンス最適化）
@@ -48,7 +48,7 @@ _calendar_cache_ttl = 60  # キャッシュの有効期間（秒）
 _calendar_cache_timestamp: Dict[str, float] = {}
 
 
-@router.get("/calendar", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 def get_calendar(
     request: Request, month: Optional[str] = None, db: Session = Depends(get_db)
 ) -> Any:

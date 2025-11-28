@@ -27,7 +27,7 @@ class TestCsvPage:
         ]
         mock_get_months.return_value = mock_months
         
-        response = self.client.get("/csv")
+        response = self.client.get("/ui/csv")
         
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/html; charset=utf-8"
@@ -50,7 +50,7 @@ class TestCsvPage:
         mock_response = HTMLResponse("<html><body>CSV Page</body></html>")
         mock_templates.TemplateResponse.return_value = mock_response
         
-        response = self.client.get("/csv")
+        response = self.client.get("/ui/csv")
         
         assert response.status_code == 200
         
@@ -68,7 +68,7 @@ class TestCsvPage:
         """月データが空の場合のテスト"""
         mock_get_months.return_value = []
         
-        response = self.client.get("/csv")
+        response = self.client.get("/ui/csv")
         
         assert response.status_code == 200
         mock_get_months.assert_called_once()
@@ -80,4 +80,4 @@ class TestCsvPage:
         
         # 例外が発生してもページは表示される（エラーハンドリングによる）
         with pytest.raises(Exception):
-            self.client.get("/csv") 
+            self.client.get("/ui/csv")
