@@ -19,6 +19,7 @@ CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
+POETRY_STAMP := .cache/poetry-install.stamp
 
 .PHONY: help install run dev-shell seed test assets holiday-cache prepare-dev-assets build docker-build dev-build docker-run docker-stop
 
@@ -29,7 +30,7 @@ help:
 	@printf "  make dev-shell       Attach to the running devcontainer (name: %s)\n" "$(DEV_CONTAINER_NAME)"
 	@printf "  make seed            Seed attendance data (vars: SEED_DAYS_BACK, SEED_DAYS_FORWARD)\n"
 	@printf "  make test            Run cleanup + API/unit + e2e tests\n"
-	@printf "  make assets          Build Tailwind CSS into assets/css/main.css\n"
+	@printf "  make assets          Build CSS/JS into assets/ via builder\n"
 	@printf "  make holiday-cache   Build holiday cache into assets/json/holidays_cache.json\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
@@ -37,9 +38,13 @@ help:
 	@printf "  make docker-run      Run production container (tag: %s) with port mapping and data volume mount\n" "$(VERSION_TAG)"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
-install:
+$(POETRY_STAMP): pyproject.toml poetry.lock
 	poetry install --no-root
-	cd builder && npm install
+	mkdir -p $(dir $(POETRY_STAMP))
+	touch $(POETRY_STAMP)
+
+install: $(POETRY_STAMP)
+	./scripts/build_assets.sh
 
 run: prepare-dev-assets
 	poetry run uvicorn app.main:app --host 0.0.0.0 --port $(SERVICE_PORT) --reload
@@ -51,18 +56,16 @@ seed:
 	mkdir -p data
 	./scripts/seeding/run_seeder.sh $(SEED_DAYS_BACK) $(SEED_DAYS_FORWARD)
 
-test:
+test: $(POETRY_STAMP)
 	./scripts/testing/run_test.sh
 
 assets:
-	mkdir -p assets/css assets/js assets/json
-	cd builder && npm install
-	cd builder && npx tailwindcss -i input.css -o ../assets/css/main.css --minify
+	./scripts/build_assets.sh
 
-prepare-dev-assets:
+prepare-dev-assets: $(POETRY_STAMP)
 	./scripts/prepare_dev_assets.sh
 
-holiday-cache:
+holiday-cache: $(POETRY_STAMP)
 	mkdir -p assets/json
 	poetry run python scripts/build_holiday_cache.py
 

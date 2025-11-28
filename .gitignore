@@ -24,3 +24,5 @@ assets/*
 
 # node
 **/node_modules
+builder/.npm-lock.hash
+.cache/
