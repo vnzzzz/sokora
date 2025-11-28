@@ -6,7 +6,7 @@ sokora の API・DB・UI を横断的に把握するための要件集約ドキ�
 - [API 要件](api/requirements.md)
 - [DB 要件](db/requirements.md)
 - [UI 要件](ui/requirements.md)
-- [テンプレート構成](templates.md)（UI のファイル配置の補足）
+- [テンプレート構成](ui/templates.md)（UI のファイル配置の補足）
 
 ## 共通方針
 - FastAPI（/api プレフィックス）と Jinja2 + HTMX/Alpine.js の SSR UI を整合させる。

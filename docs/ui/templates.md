@@ -1,6 +1,6 @@
-# ディレクトリ構造
+# テンプレート配置ガイド
 
-UI 全体の要件や画面ごとの振る舞いは `docs/ui/requirements.md` を参照し、ここではテンプレート配置のみを簡潔に示します。
+UI 全体の要件や画面ごとの振る舞いは `docs/ui/requirements.md` を参照し、ここではテンプレート・静的ファイルの配置のみを簡潔に示します。
 
 ## 静的ファイル (`app/static`)
 
@@ -22,6 +22,8 @@ app/static/
 │
 └── favicon.ico            # アプリケーションのファビコン
 ```
+
+## テンプレート (`app/templates`)
 
 ```
 app/templates/

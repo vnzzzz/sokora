@@ -23,7 +23,7 @@
 - API 要件: `docs/api/requirements.md`
 - DB 要件: `docs/db/requirements.md`
 - UI 要件: `docs/ui/requirements.md`
-- テンプレート構成: `docs/templates.md`
+- テンプレート構成: `docs/ui/templates.md`
 
 ## ディレクトリ概要
 - `app/main.py`: FastAPI エントリーポイント（静的/ビルド資産のマウント、ルーター登録）

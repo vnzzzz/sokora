@@ -1,6 +1,6 @@
 # UI 要件
 
-Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの配置は [templates.md](../templates.md) を参照し、API/DB の前提はそれぞれの要件ドキュメントに委譲します。
+Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの配置は [templates.md](./templates.md) を参照し、API/DB の前提はそれぞれの要件ドキュメントに委譲します。
 
 ## 基本方針
 - `layout/base.html` を共通レイアウトとして、ページテンプレートは `pages/*.html`、再利用部品は `components/` 配下に置く。
