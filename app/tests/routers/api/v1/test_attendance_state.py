@@ -4,7 +4,7 @@
 
 勤怠APIが状態を正しく維持するかテスト
 """
-
+import json
 from datetime import date, timedelta
 from typing import Dict, Any, List
 
@@ -101,4 +101,39 @@ async def test_refresh_user_attendance_preserves_user_view(async_client: AsyncCl
     assert "HX-Trigger" in response.headers
     
     # ユーザー表示の維持テスト - レスポンスヘッダーに適切なトリガーが含まれることを確認
-    # (実際のフロントエンドの動作はHTMXのイベントリスナーでテストする) 
+    # (実際のフロントエンドの動作はHTMXのイベントリスナーでテストする)
+
+
+async def test_refresh_weekly_attendance_preserves_selected_week(async_client: AsyncClient) -> None:
+    """
+    週次勤怠登録で週を移動した後でも、登録後に同じ週が維持されるよう
+    HX-Trigger に week 情報が含まれることを確認します。
+    """
+    group_id = await create_test_group_via_api(async_client, "AttTestGroupWeek")
+    user_type_id = await create_test_user_type_via_api(async_client, "AttTestUserTypeWeek")
+    user_id = await create_test_user_via_api(async_client, "att_user_week", "Att User Week", group_id, user_type_id)
+    location_id = await create_test_location_via_api(async_client, "AttTestLocation Week")
+
+    base_monday = date.today() - timedelta(days=date.today().weekday())
+    selected_week_monday = base_monday + timedelta(days=7)  # 翌週を選択した想定
+    attendance_date = (selected_week_monday + timedelta(days=2)).isoformat()
+    selected_week = selected_week_monday.isoformat()
+
+    payload = {
+        "user_id": user_id,
+        "date": attendance_date,
+        "location_id": str(location_id)
+    }
+
+    response = await async_client.post(
+        "/api/v1/attendances",
+        data=payload,
+        headers={"Referer": f"http://test/attendance/weekly?week={selected_week}"}
+    )
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert "HX-Trigger" in response.headers
+
+    triggers = json.loads(response.headers["HX-Trigger"])
+    assert triggers["refreshUserAttendance"]["week"] == selected_week
+    assert triggers["refreshAttendance"]["week"] == selected_week

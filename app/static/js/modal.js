@@ -334,6 +334,11 @@
    */
   function executeUserCalendarUpdate(userId, month) {
     userCalendarRefreshInProgress = true
+    const target = document.getElementById('user-calendar')
+    if (!target) {
+      userCalendarRefreshInProgress = false
+      return
+    }
 
     // monthがnullの場合は、localStorageから保存された月を取得
     if (!month) {
@@ -378,8 +383,8 @@
 
       // htmxリクエスト送信
       htmx.ajax('GET', url, {
-        target: '#user-calendar',
-        swap: 'innerHTML'
+        target,
+        swap: 'outerHTML'
       })
     } catch (error) {
       userCalendarRefreshInProgress = false
