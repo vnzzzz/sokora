@@ -19,11 +19,11 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 - `/ui/locations`（`pages/location.html`）：カテゴリー単位のテーブル表示。`/ui/locations/modal` から追加/編集モーダルを取得し、API `/api/v1/locations` と連動。削除もモーダル内の確認経由。
 - `/ui/groups`（`pages/group.html`）：グループ一覧テーブル。`/ui/groups/modal` で追加/編集モーダルを取得し、CRUD は `/api/v1/groups` と整合させる。
 - `/ui/user-types`（`pages/user_type.html`）：社員種別一覧。`/ui/user-types/modal` でモーダルを表示し、CRUD は `/api/v1/user_types` に委譲。
-- これらのモーダルは `hx-target="body"` `hx-swap="beforeend"` で読み込み、共通の `components/macros/ui.html` / `components/common/modal.html` を利用する。
+- これらのモーダルは `hx-target="body"` `hx-swap="beforeend"` で読み込み、共通の `components/macros/ui.html` / `components/common/modal.html` を利用する。テンプレートは `components/partials/modals/` に集約する。
 
 ## CSV と分析
 - `/ui/csv`（`pages/csv.html`）：月選択とエンコーディング選択 UI。ダウンロードボタンが `/api/v1/csv/download` にクエリを付けてリダイレクトする。UI 側では単純なフォームで、バリデーションは API に委譲。
-- `/ui/analysis`（`pages/analysis.html`）：勤怠集計ビュー。月/年モードの切替、グループ・勤怠種別の複数選択に対応し、テーブルは勤怠種別ごとの件数を表示する。表示順はロケーション `order` やグループ/社員種別の並び順を尊重する。詳細モードでは特定勤怠種別のユーザー別内訳を表示する。
+- `/ui/analysis`（`pages/analysis.html`）：勤怠集計ビュー。月/年モードの切替、グループ・勤怠種別の複数選択に対応し、テーブルは勤怠種別ごとの件数を表示する。表示順はロケーション `order` やグループ/社員種別の並び順を尊重する。詳細モードでは特定勤怠種別のユーザー別内訳を表示する。旧パス `/analysis` は `/ui/analysis` にリダイレクトされる。
 
 ## 相互参照
 - API 呼び出しの前提やレスポンス構造は [API 要件](../api/requirements.md) を参照。

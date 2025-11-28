@@ -342,7 +342,7 @@ def get_attendance_modal(
 
     # マクロを直接呼び出して表示
     return templates.TemplateResponse(
-        "components/partials/attendance/attendance_modal.html",
+        "components/partials/modals/attendance_modal.html",
         context,
         headers=headers
     )

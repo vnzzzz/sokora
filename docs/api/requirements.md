@@ -29,5 +29,5 @@
 
 ## UI 連携の留意点
 - 勤怠 CRUD は HTMX モーダルから呼び出され、`HX-Trigger` (`closeModal` / `refreshUserAttendance` / `refreshAttendance`) を返す前提。UI の具体的なトリガー名は [UI 要件](../ui/requirements.md#カレンダーと勤怠登録) を参照。
-- `/api/csv/download` は `pages/csv.html` からクエリストリングを組み立ててダウンロードする。
+- `/api/v1/csv/download` は `pages/csv.html` からクエリストリングを組み立ててダウンロードする。
 - API が前提とするフィールド名や型は [DB 要件](../db/requirements.md) のモデル構成に従う。

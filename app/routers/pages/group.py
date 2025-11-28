@@ -71,7 +71,7 @@ async def group_modal(request: Request, group_id: Optional[int] = None, db: Sess
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/groups/group_modal.html", ctx, headers=headers
+        "components/partials/modals/group_modal.html", ctx, headers=headers
     )
 
 
@@ -104,7 +104,7 @@ async def group_delete_modal(request: Request, group_id: int, db: Session = Depe
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/groups/group_delete_modal.html", ctx, headers=headers
+        "components/partials/modals/group_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -151,7 +151,7 @@ async def delete_group(request: Request, group_id: int, db: Session = Depends(ge
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "components/partials/groups/group_delete_modal.html", ctx
+            "components/partials/modals/group_delete_modal.html", ctx
         )
 
 
@@ -179,7 +179,7 @@ async def create_group(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/groups/group_modal.html",
+            "components/partials/modals/group_modal.html",
             {
                 "request": request,
                 "group": created_group,
@@ -195,7 +195,7 @@ async def create_group(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/groups/group_modal.html",
+            "components/partials/modals/group_modal.html",
             {
                 "request": request, 
                 "group": None,
@@ -233,7 +233,7 @@ async def update_group(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/groups/group_modal.html",
+            "components/partials/modals/group_modal.html",
             {
                 "request": request,
                 "group": updated_group,
@@ -249,7 +249,7 @@ async def update_group(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/groups/group_modal.html",
+            "components/partials/modals/group_modal.html",
             {
                 "request": request, 
                 "group": group.get(db, id=group_id),

@@ -89,7 +89,7 @@ async def location_modal(request: Request, location_id: Optional[int] = None, db
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/locations/location_modal.html", ctx, headers=headers
+        "components/partials/modals/location_modal.html", ctx, headers=headers
     )
 
 
@@ -120,7 +120,7 @@ async def location_delete_modal(request: Request, location_id: int, db: Session 
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/locations/location_delete_modal.html", ctx, headers=headers
+        "components/partials/modals/location_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -148,7 +148,7 @@ async def create_location(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request,
                 "location": created_location,
@@ -164,7 +164,7 @@ async def create_location(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request, 
                 "location": None,
@@ -202,7 +202,7 @@ async def update_location(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request,
                 "location": updated_location,
@@ -218,7 +218,7 @@ async def update_location(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request, 
                 "location": location.get(db, id=location_id),
@@ -271,7 +271,7 @@ async def delete_location(request: Request, location_id: int, db: Session = Depe
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "components/partials/locations/location_delete_modal.html", ctx
+            "components/partials/modals/location_delete_modal.html", ctx
         )
 
 

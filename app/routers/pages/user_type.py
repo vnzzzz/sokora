@@ -63,7 +63,7 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/user_types/user_type_modal.html", ctx, headers=headers
+        "components/partials/modals/user_type_modal.html", ctx, headers=headers
     )
 
 
@@ -94,7 +94,7 @@ async def user_type_delete_modal(request: Request, user_type_id: int, db: Sessio
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/user_types/user_type_delete_modal.html", ctx, headers=headers
+        "components/partials/modals/user_type_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -122,7 +122,7 @@ async def create_user_type(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/user_types/user_type_modal.html",
+            "components/partials/modals/user_type_modal.html",
             {
                 "request": request,
                 "user_type": created_user_type,
@@ -138,7 +138,7 @@ async def create_user_type(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/user_types/user_type_modal.html",
+            "components/partials/modals/user_type_modal.html",
             {
                 "request": request, 
                 "user_type": None,
@@ -176,7 +176,7 @@ async def update_user_type(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/user_types/user_type_modal.html",
+            "components/partials/modals/user_type_modal.html",
             {
                 "request": request,
                 "user_type": updated_user_type,
@@ -192,7 +192,7 @@ async def update_user_type(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/user_types/user_type_modal.html",
+            "components/partials/modals/user_type_modal.html",
             {
                 "request": request, 
                 "user_type": user_type.get(db, id=user_type_id),
@@ -245,7 +245,7 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "components/partials/user_types/user_type_delete_modal.html", ctx
+            "components/partials/modals/user_type_delete_modal.html", ctx
         )
 
 
