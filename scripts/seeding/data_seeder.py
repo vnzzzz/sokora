@@ -255,7 +255,7 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
     return created_records
 
 
-def run_seeder(days_back: int = 60, days_forward: int = 30) -> Dict[str, int]:
+def run_seeder(days_back: int = 60, days_forward: int = 30, skip_init: bool = False) -> Dict[str, int]:
     """
     既存のユーザーと勤怠種別を利用して勤怠記録を生成します。
 
@@ -267,7 +267,8 @@ def run_seeder(days_back: int = 60, days_forward: int = 30) -> Dict[str, int]:
         生成された勤怠記録数を含む辞書
     """
     # テーブルが存在しない場合は作成
-    init_db()
+    if not skip_init:
+        init_db()
 
     db = SessionLocal()
     try:

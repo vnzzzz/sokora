@@ -33,6 +33,9 @@ RUN poetry config virtualenvs.create false && \
 COPY ./app ./app
 COPY ./scripts ./scripts
 
+# データディレクトリを用意
+RUN mkdir -p /app/data
+
 # 静的ファイル用ディレクトリを作成
 RUN mkdir -p /app/assets/css /app/assets/js /app/assets/json
 
@@ -46,5 +49,18 @@ COPY --from=css-builder /build/css/main.css /app/assets/css/main.css
 RUN curl -Lo /app/assets/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx.min.js && \
   curl -Lo /app/assets/js/alpine.min.js https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js
 
+# DB が無ければビルド時に初期化 + シーディング
+RUN python3 - <<'PYCODE'
+from app.db.session import initialize_database
+
+initialize_database()
+PYCODE
+
+RUN if [ -f /app/data/sokora.db ]; then mkdir -p /app/seed && cp /app/data/sokora.db /app/seed/sokora.db; fi
+
+COPY ./docker/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 EXPOSE 8000
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

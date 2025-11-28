@@ -27,15 +27,16 @@
 - `assets/`: ビルド成果物（`assets/css/main.css`, `assets/js/htmx.min.js` 等）
 - `builder/`: Tailwind + daisyUI 設定とビルドソース（`input.css`）
 - `scripts/`: 祝日キャッシュ取得、シーディング、マイグレーション、テストスクリプト
-- `data/`: 本番/開発用 SQLite DB (`sokora.sqlite`)
+- `data/`: 本番/開発用 SQLite DB (`sokora.db`)
 
 ## セットアップ（Docker / Makefile）
 1. `.env.sample` を参考に `.env` を作成し、`SERVICE_PORT` を設定します。
 2. ビルドと起動:
    ```bash
-   make build      # プロダクションイメージをビルド
+   make build      # プロダクションイメージをビルド（DBが無ければビルド時に初期化・シード）
    make run        # SERVICE_PORT で uvicorn を起動（devcontainer でも同様）
    ```
+   - `data/sokora.db` が存在しない場合は、`make run` / `make docker-run` の起動時にテーブル作成とシーディング（60日/60日分）を自動実行します。Docker ビルド済みイメージにはシード済み DB が `/app/seed/sokora.db` として同梱され、`make docker-run` でホストマウントされた `data/` が空ならエントリポイントがコピーします。
 3. アクセス: `http://localhost:${SERVICE_PORT}`
 4. 停止: `make stop`
 
@@ -43,6 +44,7 @@
 - イメージビルド: `make dev-build`
 - サーバ起動（ホットリロード）: `make run`
 - シェルで作業: `make dev-shell`
+- 本番コンテナ実行前に `make docker-build`（DBが無い場合はビルド時に初期化・シード）→ `make docker-run`（ホストの `data/` をバインド）
 
 > 備考: Docker ビルド時に Tailwind ビルドと祝日キャッシュ取得を実行し、`assets/` に成果物を配置します。ビルド生成物を直接編集しないでください。必要な場合は `make assets` で再生成します。
 > devcontainer 起動直後は Web サーバーを立ち上げずポートもフォワードしません。`make run` を実行したときに `.env` の `SERVICE_PORT` でホスト側へバインドされます。

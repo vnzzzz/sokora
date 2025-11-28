@@ -75,10 +75,11 @@ docker-build:
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
 
-docker-run:
+docker-run: docker-build
+	mkdir -p data
 	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) --rm \
 		-p $(SERVICE_PORT):8000 \
-		-v $(PWD)/data:/app/data \
+		-v $(abspath data):/app/data \
 		$(VERSION_TAG)
 
 docker-stop:
