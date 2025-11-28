@@ -1,11 +1,8 @@
 {% extends "layout/base.html" %} {% set title_text = "祝日管理" %} {% import "components/macros/ui.html" as ui %} {% block content %}
-<div class="p-4 space-y-4">
-  <div class="flex justify-between items-center">
+<div class="p-4">
+  <div class="flex justify-between items-center max-w-[700px] mb-4">
     <div>
       <h2 class="text-lg font-bold text-base-content">祝日管理</h2>
-      <p class="text-sm text-base-content/70">
-        ビルド時の祝日: {{ built_in_total }}件 / カスタム祝日: {{ custom_holidays|length }}件
-      </p>
     </div>
     <button
       class="btn btn-sm btn-outline shadow-sm hover:shadow"
@@ -20,34 +17,31 @@
     </button>
   </div>
 
-  <div class="alert shadow-sm">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <div class="flex flex-col">
-      <span>ビルド時の祝日データは `assets/json/holidays_cache.json` を参照しています。</span>
-      <span>ここで追加したカスタム祝日はDBに保存され、再ビルドでも保持されます。</span>
-    </div>
-  </div>
-
-  <div class="overflow-x-auto rounded-lg bg-base-200/50 p-4 shadow-sm" id="custom-holiday-container">
+  <div class="mt-4" id="custom-holiday-container">
     {% if not custom_holidays %}
-      <div class="text-sm text-base-content/70">カスタム祝日はまだありません。上の「祝日追加」から登録してください。</div>
+    <div class="alert alert-info shadow-sm max-w-[700px]">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>カスタム祝日は登録されていません。祝日追加から登録してください。</span>
+    </div>
     {% else %}
-    <table class="table table-zebra w-full">
-      <thead class="bg-base-300 text-base-content">
-        <tr>
-          <th class="rounded-tl-lg w-40">日付</th>
-          <th>名称</th>
-          <th class="rounded-tr-lg w-32 text-right">操作</th>
-        </tr>
-      </thead>
-      <tbody id="custom-holiday-table-body">
-        {% for holiday in custom_holidays %}
-          {% include "components/holiday/custom_holiday_row.html" %}
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="overflow-x-auto rounded-lg table-responsive">
+      <table class="table table-zebra w-full">
+        <thead class="bg-base-300 text-base-content">
+          <tr>
+            <th class="rounded-tl-lg w-40">日付</th>
+            <th>名称</th>
+            <th class="rounded-tr-lg w-32 text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody id="custom-holiday-table-body">
+          {% for holiday in custom_holidays %}
+            {% include "components/holiday/custom_holiday_row.html" %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% endif %}
   </div>
 </div>
