@@ -329,6 +329,7 @@ poetry run ruff check app
 - 仕様変更や画面変更を行うときは、以下を意識する：
 
   1. README / docs/（テンプレート仕様など）が実装とズレていないか確認する。
+     - 要件集約は `docs/requirements.md` に記載（API/DB/UI の詳細リンクあり）。
   2. 仕様変更があれば、コードより先にドキュメントを更新する。
   3. 実装後に再度 README / docs/ と実際の挙動を見比べる。
 

@@ -18,6 +18,13 @@
 - Build: Poetry, Tailwind ビルド用 Node（Docker multi-stage）
 - Infra: Docker / docker-compose（ポートは `SERVICE_PORT` 環境変数で指定）
 
+## ドキュメント
+- 要件集約: `docs/requirements.md`（API/DB/UI へのリンク付き）
+- API 要件: `docs/api/requirements.md`
+- DB 要件: `docs/db/requirements.md`
+- UI 要件: `docs/ui/requirements.md`
+- テンプレート構成: `docs/templates.md`
+
 ## ディレクトリ概要
 - `app/main.py`: FastAPI エントリーポイント（静的/ビルド資産のマウント、ルーター登録）
 - `app/routers/api/v1/`: JSON API（勤怠・ユーザー・グループ・種別・CSV）
@@ -75,4 +82,5 @@ make test
 ## 開発ポリシー（概要）
 - 既存レイヤー（ルーター → サービス → CRUD → モデル）とテンプレート構造を踏襲する。
 - スキーマ/API/UI の変更は対応するテストを更新する。
+- **TDD を徹底**（落ちるテストを先に書き、最小実装で緑にしてからリファクタ）。
 - Dockerfile / docker-compose の大規模変更や外部依存追加は事前合意の上で行う。
