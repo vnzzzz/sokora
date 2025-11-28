@@ -43,6 +43,50 @@ echo "=========================================="
 echo "🎭 E2Eテスト実行"
 echo "=========================================="
 
+# サーバ起動ヘルパー
+SERVER_PID=""
+SERVER_MANAGED=0
+
+function cleanup_server() {
+  if [ "$SERVER_MANAGED" -eq 1 ] && [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+    kill "$SERVER_PID" 2>/dev/null || true
+    wait "$SERVER_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup_server EXIT
+
+function is_server_running() {
+  python3 - <<'PY'
+import sys, urllib.request
+try:
+    with urllib.request.urlopen("http://127.0.0.1:8000", timeout=1) as resp:
+        sys.exit(0 if resp.status < 500 else 1)
+except Exception:
+    sys.exit(1)
+PY
+}
+
+if ! is_server_running; then
+  echo "🚀 E2E用にアプリサーバーを起動します (http://127.0.0.1:8000)..."
+  poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level warning > /tmp/e2e_server.log 2>&1 &
+  SERVER_PID=$!
+  SERVER_MANAGED=1
+  # 起動待ち
+  for i in {1..30}; do
+    if is_server_running; then
+      echo "✅ アプリサーバーが起動しました (PID: $SERVER_PID)"
+      break
+    fi
+    sleep 1
+  done
+  if ! is_server_running; then
+    echo "❌ アプリサーバーの起動に失敗しました。ログ: /tmp/e2e_server.log"
+    exit 1
+  fi
+else
+  echo "ℹ️  既存のアプリサーバーが検出されました。再利用します。"
+fi
+
 # E2Eテストを実行
 poetry run pytest -vv app/tests/e2e/
 

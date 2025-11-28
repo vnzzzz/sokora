@@ -16,11 +16,41 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, init_db
 from app.models.user import User
 from app.models.attendance import Attendance
 from app.models.location import Location
+from app.models.group import Group
+from app.models.user_type import UserType
 from app.core.config import logger
+
+# ベースとなるサンプルデータ
+DEFAULT_GROUPS = [
+    {"name": "開発部", "order": 1},
+    {"name": "営業部", "order": 2},
+    {"name": "バックオフィス", "order": 3},
+]
+
+DEFAULT_USER_TYPES = [
+    {"name": "正社員", "order": 1},
+    {"name": "契約社員", "order": 2},
+    {"name": "インターン", "order": 3},
+]
+
+DEFAULT_LOCATIONS = [
+    {"name": "東京オフィス", "category": "office", "order": 1},
+    {"name": "大阪オフィス", "category": "office", "order": 2},
+    {"name": "テレワーク", "category": "remote", "order": 3},
+    {"name": "夜勤", "category": "shift", "order": 4},
+]
+
+DEFAULT_USERS = [
+    {"id": "U001", "username": "田中太郎"},
+    {"id": "U002", "username": "山田花子"},
+    {"id": "U003", "username": "佐藤健"},
+    {"id": "U004", "username": "鈴木真由美"},
+    {"id": "U005", "username": "高橋翔"},
+]
 
 
 def create_location_preferences(
@@ -50,6 +80,63 @@ def create_location_preferences(
         prefs[int(primary_location.id)] = primary_weight
     
     return prefs
+
+
+def bootstrap_core_data(db: Session) -> Dict[str, int]:
+    """最低限のグループ・社員種別・勤怠種別・ユーザーを投入する."""
+    created_counts = {"groups": 0, "user_types": 0, "locations": 0, "users": 0}
+
+    # グループ
+    groups = list(db.scalars(select(Group)).all())
+    if not groups:
+        groups = [Group(**group) for group in DEFAULT_GROUPS]
+        db.add_all(groups)
+        created_counts["groups"] = len(groups)
+
+    # 社員種別
+    user_types = list(db.scalars(select(UserType)).all())
+    if not user_types:
+        user_types = [UserType(**user_type) for user_type in DEFAULT_USER_TYPES]
+        db.add_all(user_types)
+        created_counts["user_types"] = len(user_types)
+
+    # 勤怠種別
+    locations = list(db.scalars(select(Location)).all())
+    if not locations:
+        locations = [Location(**location) for location in DEFAULT_LOCATIONS]
+        db.add_all(locations)
+        created_counts["locations"] = len(locations)
+
+    if any(count > 0 for count in created_counts.values()):
+        # ID採番のため反映
+        db.commit()
+        # 再取得してIDを確定させる
+        groups = list(db.scalars(select(Group)).all())
+        user_types = list(db.scalars(select(UserType)).all())
+        locations = list(db.scalars(select(Location)).all())
+
+    # ユーザー
+    users = list(db.scalars(select(User)).all())
+    if not users:
+        # グループ・社員種別が存在することを確認
+        if not groups or not user_types:
+            logger.error("グループまたは社員種別の作成に失敗しました。ユーザーを投入できません。")
+        else:
+            for idx, user in enumerate(DEFAULT_USERS):
+                group = groups[idx % len(groups)]
+                user_type = user_types[idx % len(user_types)]
+                db.add(
+                    User(
+                        id=user["id"],
+                        username=user["username"],
+                        group_id=int(group.id),
+                        user_type_id=int(user_type.id),
+                    )
+                )
+            db.commit()
+            created_counts["users"] = len(DEFAULT_USERS)
+
+    return created_counts
 
 
 def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) -> List[Attendance]:
@@ -168,7 +255,7 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
     return created_records
 
 
-def run_seeder(days_back: int = 60, days_forward: int = 30) -> Dict[str, int]:
+def run_seeder(days_back: int = 60, days_forward: int = 30, skip_init: bool = False) -> Dict[str, int]:
     """
     既存のユーザーと勤怠種別を利用して勤怠記録を生成します。
 
@@ -179,22 +266,31 @@ def run_seeder(days_back: int = 60, days_forward: int = 30) -> Dict[str, int]:
     Returns:
         生成された勤怠記録数を含む辞書
     """
+    # テーブルが存在しない場合は作成
+    if not skip_init:
+        init_db()
+
     db = SessionLocal()
     try:
-        # 既存データの確認
+        bootstrap_result = bootstrap_core_data(db)
+        logger.info(
+            "ベースデータの確認/作成: "
+            f"groups={bootstrap_result['groups']}, "
+            f"user_types={bootstrap_result['user_types']}, "
+            f"locations={bootstrap_result['locations']}, "
+            f"users={bootstrap_result['users']}"
+        )
+
+        # 既存データの確認 (ブートストラップ後)
         user_count = len(list(db.scalars(select(User)).all()))
         location_count = len(list(db.scalars(select(Location)).all()))
-        
-        logger.info(f"データベース内の既存データ:")
+
+        logger.info("データベース内の既存データ:")
         logger.info(f"- ユーザー: {user_count} 人")
         logger.info(f"- 勤怠種別: {location_count} 個")
-        
-        if user_count == 0:
-            logger.error("ユーザーが存在しません。先にユーザーを登録してください。")
-            return {"attendances": 0}
-        
-        if location_count == 0:
-            logger.error("勤怠種別が存在しません。先に勤怠種別を登録してください。")
+
+        if user_count == 0 or location_count == 0:
+            logger.error("必須データの作成に失敗しました。勤怠記録を生成できません。")
             return {"attendances": 0}
 
         # 勤怠記録を生成

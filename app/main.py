@@ -7,9 +7,10 @@ FastAPIアプリケーションの設定と初期化を行います。
 
 from typing import Any, Dict, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 
 # ローカルモジュールのインポート
 from app.routers.api.v1 import router as api_v1_router  # API v1用ルーター
@@ -19,10 +20,6 @@ from app.db.session import initialize_database
 
 # APIタグ定義
 API_TAGS: List[Dict[str, str]] = [
-    {
-        "name": "Pages",
-        "description": "アプリケーションUIページとカレンダー表示用エンドポイント",
-    },
     {
         "name": "Attendance",
         "description": "ユーザーの勤怠データを管理するエンドポイント",
@@ -70,8 +67,8 @@ def create_application() -> FastAPI:
     # /assetsからビルド時生成ファイルを提供（本番ファイル用）
     app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
-    # UIページ用ルーターを組み込み
-    app.include_router(pages_router)
+    # UIページ用ルーターを組み込み（OpenAPI には含めない）
+    app.include_router(pages_router, include_in_schema=False)
     
     # API v1用ルーターを組み込み
     app.include_router(api_v1_router)
@@ -112,6 +109,22 @@ app = create_application()
 
 # OpenAPIスキーマの設定
 app.openapi = lambda: create_openapi_schema(app)  # type: ignore
+
+
+# ルートアクセス時は /ui にリダイレクトする
+@app.get("/", include_in_schema=False)
+async def redirect_to_ui() -> RedirectResponse:
+    return RedirectResponse(url="/ui", status_code=307)
+
+
+@app.get("/analysis", include_in_schema=False)
+async def legacy_analysis_redirect(request: Request) -> RedirectResponse:
+    """旧パス `/analysis` を新パス `/ui/analysis` に転送します。"""
+    query = request.url.query
+    target = "/ui/analysis"
+    if query:
+        target = f"{target}?{query}"
+    return RedirectResponse(url=target, status_code=307)
 
 
 # アプリケーション起動時の初期化処理

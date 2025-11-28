@@ -4,9 +4,13 @@ from playwright.sync_api import Page, expect
 import time
 import re
 
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+GROUPS_URL = f"{UI_BASE}/groups"
+
 def test_group_page_display(page: Page) -> None:
     """グループページが正常に表示されることをテスト"""
-    page.goto("http://localhost:8000/group")
+    page.goto(GROUPS_URL)
     expect(page.locator("body")).to_be_visible()
     expect(page.locator("h2")).to_contain_text("グループ")
 
@@ -15,7 +19,7 @@ def test_create_group(page: Page) -> None:
     timestamp = int(time.time())
     group_name = f"テストグループ_{timestamp}"
 
-    page.goto("http://localhost:8000/group")
+    page.goto(GROUPS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("グループ追加")').click()
     add_modal = page.locator("#add-group")
@@ -40,7 +44,7 @@ def test_edit_group(page: Page) -> None:
     new_name = f"テスト編集済みグループ_{timestamp}"
     created_group_id = None
 
-    page.goto("http://localhost:8000/group")
+    page.goto(GROUPS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     try:
@@ -121,7 +125,7 @@ def test_delete_group(page: Page) -> None:
     timestamp = int(time.time())
     group_name = f"テスト削除用グループ_{timestamp}"
 
-    page.goto("http://localhost:8000/group")
+    page.goto(GROUPS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. テスト用グループを作成

@@ -28,7 +28,7 @@
     </h3>
     <!-- 勤怠確認リンク（トップページ） -->
     <a
-      href="/"
+      href="/ui"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠確認"
@@ -57,7 +57,7 @@
     
     <!-- 勤怠登録（個別）リンク -->
     <a
-      href="/register"
+      href="/ui/attendance/monthly"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠登録（個別）"
@@ -86,7 +86,7 @@
 
     <!-- 勤怠登録（一括）リンク -->
     <a
-      href="/attendance"
+      href="/ui/attendance/weekly"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠登録（一括）"
@@ -116,7 +116,7 @@
 
     <!-- 勤怠集計リンク -->
     <a
-      href="/analysis"
+      href="/ui/analysis"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠集計"
@@ -152,7 +152,7 @@
 
     <!-- 社員管理リンク -->
     <a
-      href="/user"
+      href="/ui/users"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="社員管理"
@@ -181,7 +181,7 @@
 
     <!-- グループ管理リンク -->
     <a
-      href="/group"
+      href="/ui/groups"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="グループ管理"
@@ -210,7 +210,7 @@
 
     <!-- 社員種別管理リンク -->
     <a
-      href="/user_type"
+      href="/ui/user-types"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="社員種別管理"
@@ -239,7 +239,7 @@
 
     <!-- 勤怠種別管理リンク -->
     <a
-      href="/location"
+      href="/ui/locations"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠種別管理"
@@ -275,7 +275,7 @@
 
     <!-- CSVダウンロードリンク -->
     <a
-      href="/csv"
+      href="/ui/csv"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="CSV"

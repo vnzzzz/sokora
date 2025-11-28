@@ -84,7 +84,8 @@ def get_last_viewed_date(request: Request) -> str:
     """最後に表示された日付を取得します。
 
     リクエストのRefererヘッダーから最後に表示された日付を抽出します。
-    '/api/day/'パスの後に日付がある場合はその日付を返し、
+    '/ui/calendar/day/' パスの後に日付がある場合はその日付を返し、
+    （互換性のため '/api/day/' も許容する）
     そうでない場合は今日の日付を返します。
 
     Args:
@@ -94,14 +95,17 @@ def get_last_viewed_date(request: Request) -> str:
         str: 最後に表示された日付（YYYY-MM-DD形式）
     """
     referer = request.headers.get("referer", "")
-    if "/api/day/" in referer:
-        try:
-            date_part = referer.split("/api/day/")[-1].split("?")[0].split("/")[0]
-            # 日付形式の検証
-            if parse_date(date_part):
-                return date_part
-        except (IndexError, ValueError):
-            pass
+    day_markers = ["/ui/calendar/day/", "/api/day/"]
+
+    for marker in day_markers:
+        if marker in referer:
+            try:
+                date_part = referer.split(marker)[-1].split("?")[0].split("/")[0]
+                # 日付形式の検証
+                if parse_date(date_part):
+                    return date_part
+            except (IndexError, ValueError):
+                continue
     return get_today_formatted()
 
 def _detect_date_format(date_str: str) -> Optional[DateFormat]:
@@ -536,4 +540,3 @@ def build_calendar_data(
         logger.error(f"カレンダーデータ構築中に予期せぬエラーが発生しました: {str(e)}", exc_info=True)
         # エラー発生時は空のデータを返す
         return {"month_name": "エラー", "weeks": [], "locations": [], "prev_month": "", "next_month": ""}
-

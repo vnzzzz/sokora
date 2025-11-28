@@ -1,5 +1,5 @@
 """
-勤怠APIエンドポイント (/api/attendances) のテスト
+勤怠APIエンドポイント (/api/v1/attendances) のテスト
 """
 import pytest
 from httpx import AsyncClient
@@ -23,7 +23,7 @@ async def create_test_user_via_api(async_client: AsyncClient, user_id: str, user
         "group_id": group_id,
         "user_type_id": user_type_id
     }
-    response = await async_client.post("/api/users", json=user_payload)
+    response = await async_client.post("/api/v1/users", json=user_payload)
     
     # 成功したレスポンスのステータスコードを確認 (200または201または204)
     assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED, status.HTTP_204_NO_CONTENT]
@@ -40,26 +40,26 @@ async def create_test_user_via_api(async_client: AsyncClient, user_id: str, user
 async def create_test_location_via_api(async_client: AsyncClient, name: str) -> int:
     """API経由でテスト勤怠種別を作成するヘルパー"""
     location_payload = {"name": name}
-    response = await async_client.post("/api/locations", json=location_payload)
+    response = await async_client.post("/api/v1/locations", json=location_payload)
     assert response.status_code == status.HTTP_200_OK
     return response.json()["id"]
 
 async def create_test_group_via_api(async_client: AsyncClient, name: str) -> int:
     """API経由でテストグループを作成するヘルパー"""
     group_payload = {"name": name}
-    response = await async_client.post("/api/groups", json=group_payload)
+    response = await async_client.post("/api/v1/groups", json=group_payload)
     assert response.status_code == status.HTTP_200_OK
     return response.json()["id"]
 
 async def create_test_user_type_via_api(async_client: AsyncClient, name: str) -> int:
     """API経由でテストユーザー種別を作成するヘルパー"""
     user_type_payload = {"name": name}
-    response = await async_client.post("/api/user_types", json=user_type_payload)
+    response = await async_client.post("/api/v1/user_types", json=user_type_payload)
     assert response.status_code == status.HTTP_200_OK
     return response.json()["id"]
 
 
-# --- POST /api/attendances Tests ---
+# --- POST /api/v1/attendances Tests ---
 
 async def test_create_attendance_success(async_client: AsyncClient) -> None:
     """
@@ -81,12 +81,12 @@ async def test_create_attendance_success(async_client: AsyncClient) -> None:
         "location_id": str(location_id) # FormDataでは通常文字列
     }
     
-    response = await async_client.post("/api/attendances", data=payload)
+    response = await async_client.post("/api/v1/attendances", data=payload)
     
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # 削除したエンドポイントを使わずに、get_attendancesを使ってデータを確認
-    get_all_response = await async_client.get("/api/attendances")
+    get_all_response = await async_client.get("/api/v1/attendances")
     assert get_all_response.status_code == status.HTTP_200_OK
     
     all_attendances = get_all_response.json()["records"]
@@ -119,11 +119,11 @@ async def test_create_attendance_duplicate(async_client: AsyncClient) -> None:
     }
 
     # 1回目の作成 (成功するはず)
-    response1 = await async_client.post("/api/attendances", data=payload)
+    response1 = await async_client.post("/api/v1/attendances", data=payload)
     assert response1.status_code == status.HTTP_204_NO_CONTENT
 
     # 2回目の作成 (失敗するはず)
-    response2 = await async_client.post("/api/attendances", data=payload)
+    response2 = await async_client.post("/api/v1/attendances", data=payload)
     assert response2.status_code == status.HTTP_400_BAD_REQUEST
     assert "既に勤怠データが存在します" in response2.json()["detail"]
 
@@ -141,7 +141,7 @@ async def test_create_attendance_invalid_user(async_client: AsyncClient) -> None
         "location_id": str(location_id)
     }
 
-    response = await async_client.post("/api/attendances", data=payload)
+    response = await async_client.post("/api/v1/attendances", data=payload)
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "User with id non_existent_user not found" in response.json()["detail"] # エラーメッセージを確認
 
@@ -162,7 +162,7 @@ async def test_create_attendance_invalid_location(async_client: AsyncClient) -> 
         "location_id": str(non_existent_location_id)
     }
 
-    response = await async_client.post("/api/attendances", data=payload)
+    response = await async_client.post("/api/v1/attendances", data=payload)
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"Location with id {non_existent_location_id} not found" in response.json()["detail"] # エラーメッセージを確認
 
@@ -183,11 +183,11 @@ async def test_create_attendance_invalid_date_format(async_client: AsyncClient) 
         "location_id": str(location_id)
     }
 
-    response = await async_client.post("/api/attendances", data=payload)
+    response = await async_client.post("/api/v1/attendances", data=payload)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert "日付の形式が無効です" in response.json()["detail"] # エラーメッセージを確認
 
-# --- GET /api/attendances/day/{day} Tests ---
+# --- GET /api/v1/attendances/day/{day} Tests ---
 
 async def test_get_day_attendance_success(async_client: AsyncClient) -> None:
     """特定の日の全ユーザーの勤怠データを正常に取得できることをテストします。"""
@@ -202,11 +202,11 @@ async def test_get_day_attendance_success(async_client: AsyncClient) -> None:
     other_day = (date.today() - timedelta(days=1)).isoformat()
 
     # データ作成 (test_dayに2件、other_dayに1件)
-    await async_client.post("/api/attendances", data={"user_id": user1_id, "date": test_day, "location_id": str(location1_id)})
-    await async_client.post("/api/attendances", data={"user_id": user2_id, "date": test_day, "location_id": str(location2_id)})
-    await async_client.post("/api/attendances", data={"user_id": user1_id, "date": other_day, "location_id": str(location1_id)})
+    await async_client.post("/api/v1/attendances", data={"user_id": user1_id, "date": test_day, "location_id": str(location1_id)})
+    await async_client.post("/api/v1/attendances", data={"user_id": user2_id, "date": test_day, "location_id": str(location2_id)})
+    await async_client.post("/api/v1/attendances", data={"user_id": user1_id, "date": other_day, "location_id": str(location1_id)})
 
-    response = await async_client.get(f"/api/attendances/day/{test_day}")
+    response = await async_client.get(f"/api/v1/attendances/day/{test_day}")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["success"] is True
@@ -222,14 +222,14 @@ async def test_get_day_attendance_success(async_client: AsyncClient) -> None:
 async def test_get_day_attendance_no_records(async_client: AsyncClient) -> None:
     """記録がない日にGETすると空のデータが返されることをテストします。"""
     test_day = (date.today() + timedelta(days=10)).isoformat() # 未来の日付など、記録がないであろう日付
-    response = await async_client.get(f"/api/attendances/day/{test_day}")
+    response = await async_client.get(f"/api/v1/attendances/day/{test_day}")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["success"] is True
     assert data["data"] == {}
 
 
-# --- PUT /api/attendances/{attendance_id} Tests ---
+# --- PUT /api/v1/attendances/{attendance_id} Tests ---
 
 async def test_update_attendance_success(async_client: AsyncClient) -> None:
     """勤怠データを正常に更新できることをテストします。"""
@@ -243,11 +243,11 @@ async def test_update_attendance_success(async_client: AsyncClient) -> None:
 
     # 初期データ作成
     create_payload = {"user_id": user_id, "date": test_date, "location_id": str(location1_id)}
-    create_response = await async_client.post("/api/attendances", data=create_payload)
+    create_response = await async_client.post("/api/v1/attendances", data=create_payload)
     assert create_response.status_code == status.HTTP_204_NO_CONTENT
 
     # 初期データ作成後にIDを取得する必要がある
-    get_all_response = await async_client.get("/api/attendances")
+    get_all_response = await async_client.get("/api/v1/attendances")
     assert get_all_response.status_code == status.HTTP_200_OK
     all_attendances = get_all_response.json()["records"]
     found_attendance = None
@@ -260,12 +260,12 @@ async def test_update_attendance_success(async_client: AsyncClient) -> None:
 
     # 更新ペイロード (FormData)
     update_payload = {"location_id": str(location2_id)}
-    response = await async_client.put(f"/api/attendances/{attendance_id}", data=update_payload)
+    response = await async_client.put(f"/api/v1/attendances/{attendance_id}", data=update_payload)
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # 更新後のデータを確認
-    get_updated_response = await async_client.get("/api/attendances")
+    get_updated_response = await async_client.get("/api/v1/attendances")
     updated_attendances = get_updated_response.json()["records"]
     updated_attendance = None
     for att in updated_attendances:
@@ -280,7 +280,7 @@ async def test_update_attendance_not_found(async_client: AsyncClient) -> None:
     non_existent_attendance_id = 99999
     location_id = await create_test_location_via_api(async_client, "AttTestLocation PutNF")
     update_payload = {"location_id": str(location_id)}
-    response = await async_client.put(f"/api/attendances/{non_existent_attendance_id}", data=update_payload)
+    response = await async_client.put(f"/api/v1/attendances/{non_existent_attendance_id}", data=update_payload)
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"Attendance with id {non_existent_attendance_id} not found" in response.json()["detail"]
 
@@ -296,11 +296,11 @@ async def test_update_attendance_invalid_location(async_client: AsyncClient) -> 
 
     # 初期データ作成
     create_payload = {"user_id": user_id, "date": test_date, "location_id": str(location1_id)}
-    create_response = await async_client.post("/api/attendances", data=create_payload)
+    create_response = await async_client.post("/api/v1/attendances", data=create_payload)
     assert create_response.status_code == status.HTTP_204_NO_CONTENT
 
     # ID取得
-    get_all_response = await async_client.get("/api/attendances")
+    get_all_response = await async_client.get("/api/v1/attendances")
     all_attendances = get_all_response.json()["records"]
     found_attendance = None
     for att in all_attendances:
@@ -312,13 +312,13 @@ async def test_update_attendance_invalid_location(async_client: AsyncClient) -> 
 
     # 更新ペイロード (FormData)
     update_payload = {"location_id": str(non_existent_location_id)}
-    response = await async_client.put(f"/api/attendances/{attendance_id}", data=update_payload)
+    response = await async_client.put(f"/api/v1/attendances/{attendance_id}", data=update_payload)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"Location with id {non_existent_location_id} not found" in response.json()["detail"]
 
 
-# --- DELETE /api/attendances/{attendance_id} Tests ---
+# --- DELETE /api/v1/attendances/{attendance_id} Tests ---
 
 async def test_delete_attendance_success(async_client: AsyncClient) -> None:
     """勤怠データをID指定で正常に削除できることをテストします。"""
@@ -331,11 +331,11 @@ async def test_delete_attendance_success(async_client: AsyncClient) -> None:
 
     # データ作成
     create_payload = {"user_id": user_id, "date": test_date, "location_id": str(location_id)}
-    create_response = await async_client.post("/api/attendances", data=create_payload)
+    create_response = await async_client.post("/api/v1/attendances", data=create_payload)
     assert create_response.status_code == status.HTTP_204_NO_CONTENT
 
     # ID取得
-    get_all_response = await async_client.get("/api/attendances")
+    get_all_response = await async_client.get("/api/v1/attendances")
     all_attendances = get_all_response.json()["records"]
     found_attendance = None
     for att in all_attendances:
@@ -346,12 +346,12 @@ async def test_delete_attendance_success(async_client: AsyncClient) -> None:
     attendance_id = found_attendance["id"]
 
     # 削除リクエスト
-    response = await async_client.delete(f"/api/attendances/{attendance_id}")
+    response = await async_client.delete(f"/api/v1/attendances/{attendance_id}")
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # GET エンドポイントでデータが削除されたことを確認
-    get_all_response = await async_client.get("/api/attendances")
+    get_all_response = await async_client.get("/api/v1/attendances")
     updated_attendances = get_all_response.json()["records"]
     updated_attendance = None
     for att in updated_attendances:
@@ -363,12 +363,12 @@ async def test_delete_attendance_success(async_client: AsyncClient) -> None:
 async def test_delete_attendance_not_found(async_client: AsyncClient) -> None:
     """存在しない勤怠IDでDELETEすると404エラーが発生することをテストします。"""
     non_existent_attendance_id = 99997
-    response = await async_client.delete(f"/api/attendances/{non_existent_attendance_id}")
+    response = await async_client.delete(f"/api/v1/attendances/{non_existent_attendance_id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND # ルーター側のget_or_404が先に機能する
     assert f"Attendance with id {non_existent_attendance_id} not found" in response.json()["detail"]
 
 
-# --- DELETE /api/attendances?user_id={user_id}&date={date} Tests ---
+# --- DELETE /api/v1/attendances?user_id={user_id}&date={date} Tests ---
 
 async def test_delete_attendance_by_user_date_success(async_client: AsyncClient) -> None:
     """ユーザーIDと日付指定で勤怠データを正常に削除できることをテストします。"""
@@ -381,16 +381,16 @@ async def test_delete_attendance_by_user_date_success(async_client: AsyncClient)
 
     # データ作成
     create_payload = {"user_id": user_id, "date": test_date, "location_id": str(location_id)}
-    create_response = await async_client.post("/api/attendances", data=create_payload)
+    create_response = await async_client.post("/api/v1/attendances", data=create_payload)
     assert create_response.status_code == status.HTTP_204_NO_CONTENT
 
     # 削除リクエスト
-    response = await async_client.delete(f"/api/attendances?user_id={user_id}&date={test_date}")
+    response = await async_client.delete(f"/api/v1/attendances?user_id={user_id}&date={test_date}")
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # 削除したエンドポイントを使わずに、get_attendancesを使ってデータを確認
-    get_all_response = await async_client.get("/api/attendances")
+    get_all_response = await async_client.get("/api/v1/attendances")
     assert get_all_response.status_code == status.HTTP_200_OK
     
     all_attendances = get_all_response.json()["records"]
@@ -406,7 +406,7 @@ async def test_delete_attendance_by_user_date_user_not_found(async_client: Async
     """存在しないユーザーIDでDELETEすると404エラーが発生することをテストします。"""
     non_existent_user_id = "no_such_del_user"
     test_date = date.today().isoformat()
-    response = await async_client.delete(f"/api/attendances?user_id={non_existent_user_id}&date={test_date}")
+    response = await async_client.delete(f"/api/v1/attendances?user_id={non_existent_user_id}&date={test_date}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"ユーザー '{non_existent_user_id}' の日付" in response.json()["detail"]
     assert "勤怠データが見つかりません" in response.json()["detail"]
@@ -418,7 +418,7 @@ async def test_delete_attendance_by_user_date_record_not_found(async_client: Asy
     user_id = await create_test_user_via_api(async_client, "att_user_del_ud_nf", "Att User Del UD NF", group_id, user_type_id)
     test_date = (date.today() - timedelta(days=5)).isoformat() # 記録がない日付
 
-    response = await async_client.delete(f"/api/attendances?user_id={user_id}&date={test_date}")
+    response = await async_client.delete(f"/api/v1/attendances?user_id={user_id}&date={test_date}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"ユーザー '{user_id}' の日付" in response.json()["detail"]
     assert "勤怠データが見つかりません" in response.json()["detail"]
@@ -430,12 +430,12 @@ async def test_delete_attendance_by_user_date_invalid_date(async_client: AsyncCl
     user_id = await create_test_user_via_api(async_client, "att_user_del_ud_id", "Att User Del UD ID", group_id, user_type_id)
     invalid_date = "invalid-date-format"
 
-    response = await async_client.delete(f"/api/attendances?user_id={user_id}&date={invalid_date}")
+    response = await async_client.delete(f"/api/v1/attendances?user_id={user_id}&date={invalid_date}")
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     # ステータスコードの確認のみで十分
 
 
-# --- GET /api/csv/download Tests ---
+# --- GET /api/v1/csv/download Tests ---
 
 # async def test_download_csv_success_all(async_client: AsyncClient) -> None:
 #    ... (削除) ...

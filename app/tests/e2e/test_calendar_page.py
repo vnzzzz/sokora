@@ -6,10 +6,14 @@ import pytest
 from playwright.sync_api import Page, expect
 from datetime import datetime, timedelta
 
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+CALENDAR_URL = f"{UI_BASE}/calendar"
+
 
 def test_calendar_page_title(page: Page) -> None:
     """カレンダーページが正しく表示されることを確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     # カレンダーページはHTMX部分レスポンスのため、基本的な表示確認のみ
     expect(page.locator("body")).to_be_visible()
@@ -17,7 +21,7 @@ def test_calendar_page_title(page: Page) -> None:
 
 def test_calendar_page_elements_visibility(page: Page) -> None:
     """カレンダーページの必須要素が表示されることを確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # ページが表示されていることを確認
@@ -26,7 +30,7 @@ def test_calendar_page_elements_visibility(page: Page) -> None:
 
 def test_calendar_month_display(page: Page) -> None:
     """月表示の基本構造確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -35,7 +39,7 @@ def test_calendar_month_display(page: Page) -> None:
 
 def test_calendar_current_month_display(page: Page) -> None:
     """現在月のカレンダー表示確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -45,7 +49,7 @@ def test_calendar_current_month_display(page: Page) -> None:
 def test_calendar_specific_month_access(page: Page) -> None:
     """特定月への直接アクセス確認"""
     # 2024年1月のカレンダーにアクセス
-    page.goto("http://localhost:8000/calendar?month=2024-01")
+    page.goto(f"{CALENDAR_URL}?month=2024-01")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -58,7 +62,7 @@ def test_calendar_day_detail_access(page: Page) -> None:
     today = datetime.now()
     date_str = today.strftime("%Y-%m-%d")
     
-    page.goto(f"http://localhost:8000/day/{date_str}")
+    page.goto(f"{CALENDAR_URL}/day/{date_str}")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -67,7 +71,7 @@ def test_calendar_day_detail_access(page: Page) -> None:
 
 def test_calendar_attendance_data_display(page: Page) -> None:
     """勤怠データ表示の確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 勤怠種別関連のデータが表示されているかを確認
@@ -88,7 +92,7 @@ def test_calendar_attendance_data_display(page: Page) -> None:
 
 def test_calendar_weekend_highlight(page: Page) -> None:
     """週末の強調表示確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 土曜日・日曜日が何らかの形で識別できることを確認
@@ -99,7 +103,7 @@ def test_calendar_weekend_highlight(page: Page) -> None:
 
 def test_calendar_location_legend(page: Page) -> None:
     """勤怠種別の凡例表示確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 凡例またはラベル要素の確認
@@ -113,7 +117,7 @@ def test_calendar_location_legend(page: Page) -> None:
 def test_calendar_error_handling(page: Page) -> None:
     """エラーハンドリングの確認"""
     # 無効な月パラメータでアクセス
-    page.goto("http://localhost:8000/calendar?month=invalid")
+    page.goto(f"{CALENDAR_URL}?month=invalid")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # エラーが適切に処理されていることを確認
@@ -126,7 +130,7 @@ def test_calendar_error_handling(page: Page) -> None:
 
 def test_calendar_responsive_design(page: Page) -> None:
     """レスポンシブデザインの確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # デスクトップサイズでの表示確認
@@ -144,7 +148,7 @@ def test_calendar_responsive_design(page: Page) -> None:
 
 def test_calendar_htmx_functionality(page: Page) -> None:
     """HTMX機能の基本動作確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # HTMXが動作するであろう要素を探す
@@ -162,7 +166,7 @@ def test_calendar_htmx_functionality(page: Page) -> None:
 
 def test_calendar_navigation_between_months(page: Page) -> None:
     """複数月間のナビゲーション確認"""
-    page.goto("http://localhost:8000/calendar")
+    page.goto(CALENDAR_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 現在の表示内容を記録

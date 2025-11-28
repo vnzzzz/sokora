@@ -104,7 +104,7 @@
 </div>
 {%- endmacro %}
 
-{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+{% macro month_switcher(prev_month, next_month, current_month, url_base='/ui/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 <!-- 月切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
   <button
@@ -160,7 +160,7 @@
 </div>
 {%- endmacro %}
 
-{% macro week_switcher(prev_week, next_week, current_week, url_base='/attendance', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+{% macro week_switcher(prev_week, next_week, current_week, url_base='/ui/attendance/weekly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 <!-- 週切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
   <button
@@ -308,7 +308,7 @@
   {% endif %}
   
   {% set del_btn = "<button type='button' class='btn btn-error' " 
-    ~ "hx-delete=\"/api/attendances/" ~ attendance_id ~ "\" " 
+    ~ "hx-delete=\"/api/v1/attendances/" ~ attendance_id ~ "\" " 
     ~ "hx-target='closest dialog' hx-swap='outerHTML' "
     ~ trigger_attrs
     ~ (is_register_mode and " hx-trigger-after-settle=\"modalSuccess\"" or "") 
@@ -325,7 +325,7 @@
 {% call modal_form(
   id = "attendance-modal-" ~ user_id ~ "-" ~ date,
   title = "勤怠編集: " ~ user_name ~ " (" ~ formatted_date ~ ")",
-  action = attendance_id and ("/api/attendances/" ~ attendance_id) or "/api/attendances",
+  action = attendance_id and ("/api/v1/attendances/" ~ attendance_id) or "/api/v1/attendances",
   method = attendance_id and "PUT" or "POST",
   submit_text = attendance_id and "更新" or "登録",
   size = "lg",
