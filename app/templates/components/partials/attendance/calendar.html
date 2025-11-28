@@ -17,12 +17,12 @@
     <span class="text-xl font-bold">{{ week_name }}</span> {# 週名の表示 #}
     <!-- 週切り替えコンポーネント -->
     {{ ui.week_switcher( prev_week=prev_week, next_week=next_week, current_week=current_week,
-    url_base='/ui/attendance/weekly', use_htmx=true ) }}
+    url_base='/attendance/weekly', use_htmx=true ) }}
   </div>
 
   <!-- Search form -->
   <div class="mt-2 mb-4 flex justify-end">
-    <form hx-get="/ui/attendance/weekly" hx-target="#calendar" hx-swap="innerHTML">
+    <form hx-get="/attendance/weekly" hx-target="#calendar" hx-swap="innerHTML">
       <div class="form-control" style="width: 300px">
         <div class="input-group">
           <input
@@ -190,7 +190,7 @@
             data-has-data="{{ has_data|lower }}"
             data-location="{{ location_name }}"
             style="min-width: 70px; width: 70px"
-            hx-get="/ui/attendance/modals/{{ user_id }}/{{ day.date }}"
+            hx-get="/attendance/modals/{{ user_id }}/{{ day.date }}"
             hx-target="#modal-container"
             hx-swap="innerHTML"
           >

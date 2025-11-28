@@ -13,7 +13,7 @@
       {# 編集ボタン #}
       <button
         class="btn btn-sm btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/groups/modal/{{ group.id }}"
+        hx-get="/groups/modal/{{ group.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >
@@ -36,7 +36,7 @@
       {# 削除ボタン #}
       <button
         class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/groups/delete-modal/{{ group.id }}"
+        hx-get="/groups/delete-modal/{{ group.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >

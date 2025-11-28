@@ -23,7 +23,7 @@
       {# 編集ボタン #}
       <button
         class="btn btn-sm btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/users/modal/{{ user.id }}"
+        hx-get="/users/modal/{{ user.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >
@@ -47,7 +47,7 @@
       {# 削除ボタン #}
       <button
         class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/users/delete-modal/{{ user.id }}"
+        hx-get="/users/delete-modal/{{ user.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >

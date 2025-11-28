@@ -7,10 +7,10 @@ import time
 from app.utils.calendar_utils import format_date_jp
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 ATTENDANCE_WEEKLY_URL = f"{UI_BASE}/attendance/weekly"
 
-# このテストは /ui/attendance/weekly ページの勤怠マトリックスからの登録・更新・削除を対象とする
+# このテストは /attendance/weekly ページの勤怠マトリックスからの登録・更新・削除を対象とする
 
 def test_edit_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を登録/更新するテスト"""

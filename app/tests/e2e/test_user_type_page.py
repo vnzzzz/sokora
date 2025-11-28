@@ -3,7 +3,7 @@ import time
 import re
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 USER_TYPES_URL = f"{UI_BASE}/user-types"
 
 def test_user_type_page_display(page: Page) -> None:

@@ -30,14 +30,14 @@ from app.utils.calendar_utils import build_week_calendar_data, parse_week, get_c
 from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
-router = APIRouter(prefix="/ui/attendance/weekly", tags=["Pages"])
+router = APIRouter(prefix="/attendance", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 # ロガー定義
 logger = logging.getLogger(__name__)
 
 
-@router.get("", response_class=HTMLResponse)
+@router.get("/weekly", response_class=HTMLResponse)
 def attendance_page(
     request: Request, 
     search_query: Optional[str] = None,
@@ -68,7 +68,7 @@ def attendance_page(
         except ValueError as e:
             logger.warning(f"無効な週パラメータ: {week}, エラー: {str(e)}")
             current_week = get_current_week_formatted()
-            return RedirectResponse(url=f"/ui/attendance/weekly?week={current_week}")
+            return RedirectResponse(url=f"/attendance/weekly?week={current_week}")
 
     # DBからカレンダー構築に必要なデータを取得
     try:

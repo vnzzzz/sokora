@@ -5,7 +5,7 @@
     <div class="flex justify-end gap-2">
       <button
         class="btn btn-sm btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/holidays/modal/{{ holiday.id }}"
+        hx-get="/holidays/modal/{{ holiday.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >
@@ -13,7 +13,7 @@
       </button>
       <button
         class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/holidays/delete-modal/{{ holiday.id }}"
+        hx-get="/holidays/delete-modal/{{ holiday.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >

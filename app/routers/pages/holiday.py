@@ -16,7 +16,7 @@ from app.db.session import get_db
 from app.services import custom_holiday_service
 from app.utils.holiday_cache import get_cache_info
 
-router = APIRouter(prefix="/ui/holidays", tags=["Pages"])
+router = APIRouter(prefix="/holidays", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 

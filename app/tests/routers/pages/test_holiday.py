@@ -8,7 +8,7 @@ async def test_get_holidays_page(async_client, db) -> None:
     db.add(CustomHoliday(date=datetime.date(2024, 12, 31), name="テスト休"))
     db.commit()
 
-    response = await async_client.get("/ui/holidays")
+    response = await async_client.get("/holidays")
 
     assert response.status_code == 200
     assert "祝日管理" in response.text
@@ -21,7 +21,7 @@ async def test_get_holidays_page(async_client, db) -> None:
 async def test_create_holiday_from_ui(async_client, db) -> None:
     """フォーム経由で祝日を追加できる"""
     response = await async_client.post(
-        "/ui/holidays",
+        "/holidays",
         data={"date": "2024-12-30", "name": "UI追加"},
         headers={"HX-Request": "true"},
     )
@@ -32,7 +32,7 @@ async def test_create_holiday_from_ui(async_client, db) -> None:
 
 async def test_holidays_page_shows_empty_state(async_client, db) -> None:
     """祝日が無い場合は共通デザインの空表示を出す"""
-    response = await async_client.get("/ui/holidays")
+    response = await async_client.get("/holidays")
 
     assert response.status_code == 200
     assert "alert alert-info" in response.text

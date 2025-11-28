@@ -6,7 +6,7 @@
   <div class="flex items-center justify-start space-x-4 mb-2">
     <span class="text-xl font-bold">{{ current_month }}</span>
     {{ ui.month_switcher( prev_month=calendar.prev_month, next_month=calendar.next_month, current_month=current_month,
-    use_htmx=true, target_id="calendar-area", url_base="/ui/calendar" ) }}
+    use_htmx=true, target_id="calendar-area", url_base="/calendar" ) }}
   </div>
 
   {# 勤怠種別をカテゴリごとにグルーピング #}
@@ -63,7 +63,7 @@
 
             <th
               class="text-center p-1 w-10 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
-              hx-get="/ui/calendar/day/{{ day.date }}"
+              hx-get="/calendar/day/{{ day.date }}"
               hx-target="#detail-area"
               data-date="{{ day.date }}"
               data-day="{{ day.day }}"
@@ -126,7 +126,7 @@
 
               <td
                 class="text-center hover:bg-base-300 cursor-pointer p-1 {{ location.bg_class }} {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
-                hx-get="/ui/calendar/day/{{ day.date }}"
+                hx-get="/calendar/day/{{ day.date }}"
                 hx-target="#detail-area"
                 data-date="{{ day.date }}"
                 data-day="{{ day.day }}"

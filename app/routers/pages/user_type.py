@@ -19,7 +19,7 @@ from app import schemas # スキーマをインポート
 from app.services import user_type_service # user_type_service をインポート
 
 # ルーター定義
-router = APIRouter(prefix="/ui/user-types", tags=["Pages"])
+router = APIRouter(prefix="/user-types", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 

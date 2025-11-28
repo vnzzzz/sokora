@@ -23,7 +23,7 @@ from app.services import user_service # user_service を直接インポート
 from app.models.user import User # User モデルをインポート
 
 # ルーター定義
-router = APIRouter(prefix="/ui/users", tags=["Pages"])
+router = APIRouter(prefix="/users", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
