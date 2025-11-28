@@ -4,19 +4,22 @@
 
 import pytest
 from playwright.sync_api import Page, expect
-from datetime import datetime
+
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+MONTHLY_URL = f"{UI_BASE}/attendance/monthly"
 
 
 def test_register_page_title(page: Page) -> None:
     """登録ページのタイトルが正しく表示されることを確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     expect(page).to_have_title("Sokora - 勤怠登録（個別）")
 
 
 def test_register_page_elements_visibility(page: Page) -> None:
     """登録ページの必須要素が表示されることを確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # ページが表示されていることを確認
@@ -28,7 +31,7 @@ def test_register_page_elements_visibility(page: Page) -> None:
 
 def test_register_current_month_display(page: Page) -> None:
     """現在月の登録データ表示確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -37,7 +40,7 @@ def test_register_current_month_display(page: Page) -> None:
 
 def test_register_search_functionality(page: Page) -> None:
     """検索機能の動作確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 検索フォームを探す
@@ -65,7 +68,7 @@ def test_register_search_functionality(page: Page) -> None:
 
 def test_register_month_navigation(page: Page) -> None:
     """月ナビゲーションの動作確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 現在のURL/月を記録
@@ -92,7 +95,7 @@ def test_register_month_navigation(page: Page) -> None:
 def test_register_specific_month_access(page: Page) -> None:
     """特定月への直接アクセス確認"""
     # 2024年1月の登録ページにアクセス
-    page.goto("http://localhost:8000/register?month=2024-01")
+    page.goto(f"{MONTHLY_URL}?month=2024-01")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -101,7 +104,7 @@ def test_register_specific_month_access(page: Page) -> None:
 
 def test_register_user_list_display(page: Page) -> None:
     """ユーザーリスト表示の確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # ユーザー関連のデータが表示されているかを確認
@@ -121,7 +124,7 @@ def test_register_user_list_display(page: Page) -> None:
 
 def test_register_grouped_user_display(page: Page) -> None:
     """グループ別ユーザー表示の確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # グループ化された表示要素を探す
@@ -140,7 +143,7 @@ def test_register_grouped_user_display(page: Page) -> None:
 def test_register_individual_user_access(page: Page) -> None:
     """個別ユーザーの登録ページアクセス確認"""
     # 特定ユーザーの登録ページにアクセス（存在しないユーザーでもエラーにならないことを確認）
-    page.goto("http://localhost:8000/register/test_user_id")
+    page.goto(f"{MONTHLY_URL}/users/test_user_id")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # エラーページではなく、適切にハンドリングされていることを確認
@@ -153,7 +156,7 @@ def test_register_individual_user_access(page: Page) -> None:
 
 def test_register_calendar_integration(page: Page) -> None:
     """カレンダー機能との連携確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # カレンダー関連の要素を探す
@@ -172,7 +175,7 @@ def test_register_calendar_integration(page: Page) -> None:
 
 def test_register_location_data_display(page: Page) -> None:
     """勤怠種別データ表示の確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 勤怠種別関連のデータが表示されているかを確認
@@ -193,7 +196,7 @@ def test_register_location_data_display(page: Page) -> None:
 def test_register_search_with_query(page: Page) -> None:
     """検索クエリパラメータでのアクセス確認"""
     # 検索クエリ付きでアクセス
-    page.goto("http://localhost:8000/register?search_query=test")
+    page.goto(f"{MONTHLY_URL}?search_query=test")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 検索状態が反映されていることを確認
@@ -211,7 +214,7 @@ def test_register_search_with_query(page: Page) -> None:
 def test_register_error_handling(page: Page) -> None:
     """エラーハンドリングの確認"""
     # 無効な月パラメータでアクセス
-    page.goto("http://localhost:8000/register?month=invalid")
+    page.goto(f"{MONTHLY_URL}?month=invalid")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # エラーが適切に処理されていることを確認
@@ -224,7 +227,7 @@ def test_register_error_handling(page: Page) -> None:
 
 def test_register_responsive_design(page: Page) -> None:
     """レスポンシブデザインの確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # デスクトップサイズでの表示確認
@@ -242,7 +245,7 @@ def test_register_responsive_design(page: Page) -> None:
 
 def test_register_form_elements(page: Page) -> None:
     """登録フォーム要素の確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -257,7 +260,7 @@ def test_register_form_elements(page: Page) -> None:
 
 def test_register_navigation_integration(page: Page) -> None:
     """ナビゲーション統合の確認"""
-    page.goto("http://localhost:8000/register")
+    page.goto(MONTHLY_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # ナビゲーションメニューの確認

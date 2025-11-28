@@ -21,11 +21,11 @@ from app.services import location_service # location_service をインポート
 from app.utils.ui_utils import TAILWIND_COLORS
 
 # ルーター定義
-router = APIRouter(tags=["Pages"])
+router = APIRouter(prefix="/ui/locations", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/location", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 def get_location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """勤怠種別管理ページを表示します
 
@@ -58,8 +58,8 @@ def get_location_manage_page(request: Request, db: Session = Depends(get_db)) ->
     )
 
 
-@router.get("/locations/modal", response_class=HTMLResponse)
-@router.get("/locations/modal/{location_id}", response_class=HTMLResponse)
+@router.get("/modal", response_class=HTMLResponse)
+@router.get("/modal/{location_id}", response_class=HTMLResponse)
 async def location_modal(request: Request, location_id: Optional[int] = None, db: Session = Depends(get_db)) -> Any:
     """勤怠種別の追加または編集モーダルを表示します。
 
@@ -89,11 +89,11 @@ async def location_modal(request: Request, location_id: Optional[int] = None, db
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/locations/location_modal.html", ctx, headers=headers
+        "components/partials/modals/location_modal.html", ctx, headers=headers
     )
 
 
-@router.get("/locations/delete-modal/{location_id}", response_class=HTMLResponse)
+@router.get("/delete-modal/{location_id}", response_class=HTMLResponse)
 async def location_delete_modal(request: Request, location_id: int, db: Session = Depends(get_db)) -> Any:
     """勤怠種別の削除確認モーダルを表示します。
 
@@ -120,11 +120,11 @@ async def location_delete_modal(request: Request, location_id: int, db: Session 
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "components/partials/locations/location_delete_modal.html", ctx, headers=headers
+        "components/partials/modals/location_delete_modal.html", ctx, headers=headers
     )
 
 
-@router.post("/locations", response_class=HTMLResponse)
+@router.post("", response_class=HTMLResponse)
 async def create_location(
     request: Request,
     location_in: schemas.location.LocationCreate = Depends(schemas.location.LocationCreate.as_form),
@@ -148,7 +148,7 @@ async def create_location(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request,
                 "location": created_location,
@@ -164,7 +164,7 @@ async def create_location(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request, 
                 "location": None,
@@ -174,7 +174,7 @@ async def create_location(
         )
 
 
-@router.put("/locations/{location_id}", response_class=HTMLResponse)
+@router.put("/{location_id}", response_class=HTMLResponse)
 async def update_location(
     request: Request,
     location_id: int,
@@ -202,7 +202,7 @@ async def update_location(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request,
                 "location": updated_location,
@@ -218,7 +218,7 @@ async def update_location(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "components/partials/locations/location_modal.html",
+            "components/partials/modals/location_modal.html",
             {
                 "request": request, 
                 "location": location.get(db, id=location_id),
@@ -228,7 +228,7 @@ async def update_location(
         )
 
 
-@router.delete("/locations/{location_id}", response_class=HTMLResponse)
+@router.delete("/{location_id}", response_class=HTMLResponse)
 async def delete_location(request: Request, location_id: int, db: Session = Depends(get_db)) -> Any:
     """勤怠種別を削除します。
 
@@ -271,11 +271,11 @@ async def delete_location(request: Request, location_id: int, db: Session = Depe
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "components/partials/locations/location_delete_modal.html", ctx
+            "components/partials/modals/location_delete_modal.html", ctx
         )
 
 
-@router.post("/pages/location/row", response_class=HTMLResponse)
+@router.post("/rows", response_class=HTMLResponse)
 def handle_create_location_row(
     request: Request,
     db: Session = Depends(get_db),
@@ -308,7 +308,7 @@ def handle_create_location_row(
         return response
 
 
-@router.put("/pages/location/row/{location_id}", response_class=HTMLResponse)
+@router.put("/rows/{location_id}", response_class=HTMLResponse)
 def handle_update_location_row(
     request: Request,
     location_id: int,

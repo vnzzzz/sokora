@@ -2,9 +2,9 @@
 
 {% call ui.delete_modal_form(
   id = modal_id,
-  title = "グループの削除",
-  action = "/groups/" ~ group.id,
-  item_name = group.name,
+  title = "社員の削除",
+  action = "/ui/users/" ~ user.id,
+  item_name = user.username ~ " (" ~ user.id ~ ")",
   submit_text = "削除"
 ) %}
   {% if warning_message %}

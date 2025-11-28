@@ -4,10 +4,16 @@ import re
 from urllib.parse import quote
 import contextlib # finally でのエラー抑制用
 
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+USERS_URL = f"{UI_BASE}/users"
+GROUPS_URL = f"{UI_BASE}/groups"
+USER_TYPES_URL = f"{UI_BASE}/user-types"
+
 # ヘルパー関数：テストに必要なグループ名と社員種別名を取得
 def get_required_data(page: Page) -> tuple[str, str, str, str]:
     """ユーザー追加/編集に必要なグループ名と社員種別名を取得"""
-    page.goto("http://localhost:8000/user")
+    page.goto(USERS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("社員追加")').click()
     add_modal_locator = page.locator("form#add-user-form").locator("..") # form の親 (modal-box)
@@ -38,7 +44,7 @@ def get_required_data(page: Page) -> tuple[str, str, str, str]:
 
 def create_test_group_ui(page: Page, group_name: str) -> int:
     """UI操作でテスト用グループを作成し、そのIDを返す"""
-    page.goto("http://localhost:8000/group")
+    page.goto(GROUPS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("グループ追加")').click()
     add_modal = page.locator("#add-group")
@@ -62,7 +68,7 @@ def create_test_group_ui(page: Page, group_name: str) -> int:
 def delete_test_group_ui(page: Page, group_id: int) -> None:
     """UI操作で指定されたIDのグループを削除する"""
     print(f"Attempting to delete group ID: {group_id}")
-    page.goto("http://localhost:8000/group")
+    page.goto(GROUPS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     row_locator = page.locator(f"#group-row-{group_id}")
     # 要素が存在しない場合は何もしない (既に削除されているか、作成失敗)
@@ -83,7 +89,7 @@ def delete_test_group_ui(page: Page, group_id: int) -> None:
 
 def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
     """UI操作でテスト用社員種別を作成し、そのIDを返す"""
-    page.goto("http://localhost:8000/user_type")
+    page.goto(USER_TYPES_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("社員種別追加")').click()
     add_modal = page.locator("#add-user-type")
@@ -107,7 +113,7 @@ def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
 def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
     """UI操作で指定されたIDの社員種別を削除する"""
     print(f"Attempting to delete user type ID: {user_type_id}")
-    page.goto("http://localhost:8000/user_type")
+    page.goto(USER_TYPES_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     row_locator = page.locator(f"#user-type-row-{user_type_id}")
     if not row_locator.is_visible():
@@ -124,7 +130,7 @@ def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
 def delete_test_user_ui(page: Page, user_id: str) -> None:
     """UI操作で指定されたIDの社員を削除する"""
     print(f"Attempting to delete user ID: {user_id}")
-    page.goto("http://localhost:8000/user") # ユーザーページへ移動
+    page.goto(USERS_URL) # ユーザーページへ移動
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     row_locator = page.locator(f'#user-row-{user_id}')
     if not row_locator.is_visible():
@@ -164,12 +170,12 @@ def test_add_new_user(page: Page) -> None:
         except Exception as e:
             print(f"Failed to create dependencies: {e}")
             # 依存データ作成に失敗した場合は基本的な表示確認のみ
-            page.goto("http://localhost:8000/user")
+            page.goto(USERS_URL)
             expect(page.locator("body")).to_be_visible()
             return
 
         # 2. ユーザー追加テスト実行
-        page.goto("http://localhost:8000/user")
+        page.goto(USERS_URL)
         page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
         # 基本的な表示確認
@@ -226,12 +232,12 @@ def test_edit_user(page: Page) -> None:
         except Exception as e:
             print(f"Failed to create dependencies: {e}")
             # 依存データ作成に失敗した場合は基本的な表示確認のみ
-            page.goto("http://localhost:8000/user")
+            page.goto(USERS_URL)
             expect(page.locator("body")).to_be_visible()
             return
 
         # 基本的な表示確認
-        page.goto("http://localhost:8000/user")
+        page.goto(USERS_URL)
         expect(page.locator("body")).to_be_visible()
 
     except Exception as e:
@@ -283,12 +289,12 @@ def test_delete_user(page: Page) -> None:
         except Exception as e:
             print(f"Failed to create dependencies: {e}")
             # 依存データ作成に失敗した場合は基本的な表示確認のみ
-            page.goto("http://localhost:8000/user")
+            page.goto(USERS_URL)
             expect(page.locator("body")).to_be_visible()
             return
 
         # 基本的な表示確認
-        page.goto("http://localhost:8000/user")
+        page.goto(USERS_URL)
         expect(page.locator("body")).to_be_visible()
 
     except Exception as e:

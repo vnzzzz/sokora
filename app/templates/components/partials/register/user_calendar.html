@@ -24,7 +24,7 @@
       prev_month=prev_month, 
       next_month=next_month, 
       current_month=current_month,
-      url_base='/register',
+      url_base='/ui/attendance/monthly/users',
       target_id='user-calendar',
       user_id=user.id
     ) }}
@@ -62,7 +62,7 @@
                 
                 <td 
                   class="text-center cursor-pointer attendance-cell p-2 h-20 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
-                  hx-get="/pages/attendances/modal/{{ user.id }}/{{ day.date }}?mode=register"
+                  hx-get="/ui/attendance/modals/{{ user.id }}/{{ day.date }}?mode=register"
                   hx-target="#modal-container"
                   hx-swap="innerHTML"
                   data-date="{{ day.date }}"

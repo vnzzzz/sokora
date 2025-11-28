@@ -17,9 +17,10 @@ from app.routers.pages.register import router as register_router
 from app.routers.pages.top import router as top_router
 from app.routers.pages.user import router as user_router
 from app.routers.pages.user_type import router as user_type_router
+from app.routers.pages.holiday import router as holiday_router
 
-# メインルーター
-router = APIRouter()
+# メインルーター（各ルーター側で絶対パスを持たせる）
+router = APIRouter(include_in_schema=False)
 
 # 各モジュールのルーターをインクルード
 router.include_router(top_router)
@@ -32,3 +33,4 @@ router.include_router(user_type_router)
 router.include_router(csv_router) 
 router.include_router(register_router)
 router.include_router(analysis_router)
+router.include_router(holiday_router)

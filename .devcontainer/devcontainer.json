@@ -1,8 +1,23 @@
 {
-  "name": "Sokora Development",
-  "dockerComposeFile": "docker-compose.dev.yml",
-  "service": "sokora",
+  "name": "sokora-dev",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": ".."
+  },
+  "runArgs": ["--name", "sokora-dev"],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
   "workspaceFolder": "/app",
+  "mounts": [
+    "source=sokora-data,target=/app/data,type=volume",
+    "source=sokora-poetry-cache,target=/root/.cache/pypoetry,type=volume"
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "npm i -g @openai/codex && mkdir -p ~/.codex && cp -r ./.codex/* ~/.codex/ || true",
   "customizations": {
     "vscode": {
       "settings": {
@@ -18,10 +33,7 @@
         "python.linting.enabled": true,
         "python.linting.mypyEnabled": true,
         "python.linting.flake8Enabled": true,
-        "python.sortImports.args": [
-          "--profile",
-          "black"
-        ]
+        "python.sortImports.args": ["--profile", "black"]
       },
       "extensions": [
         "ms-python.python",
@@ -31,13 +43,11 @@
         "tamasfe.even-better-toml",
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
-        "ecmel.vscode-html-css"
+        "ecmel.vscode-html-css",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions"
       ]
     }
   },
-  "forwardPorts": [
-    8000
-  ],
-  "postCreateCommand": "poetry install --no-root",
   "remoteUser": "root"
 }

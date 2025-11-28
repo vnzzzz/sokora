@@ -28,7 +28,7 @@
     </h3>
     <!-- 勤怠確認リンク（トップページ） -->
     <a
-      href="/"
+      href="/ui"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠確認"
@@ -57,7 +57,7 @@
     
     <!-- 勤怠登録（個別）リンク -->
     <a
-      href="/register"
+      href="/ui/attendance/monthly"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠登録（個別）"
@@ -86,7 +86,7 @@
 
     <!-- 勤怠登録（一括）リンク -->
     <a
-      href="/attendance"
+      href="/ui/attendance/weekly"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠登録（一括）"
@@ -116,7 +116,7 @@
 
     <!-- 勤怠集計リンク -->
     <a
-      href="/analysis"
+      href="/ui/analysis"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠集計"
@@ -152,7 +152,7 @@
 
     <!-- 社員管理リンク -->
     <a
-      href="/user"
+      href="/ui/users"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="社員管理"
@@ -181,7 +181,7 @@
 
     <!-- グループ管理リンク -->
     <a
-      href="/group"
+      href="/ui/groups"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="グループ管理"
@@ -210,7 +210,7 @@
 
     <!-- 社員種別管理リンク -->
     <a
-      href="/user_type"
+      href="/ui/user-types"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="社員種別管理"
@@ -239,7 +239,7 @@
 
     <!-- 勤怠種別管理リンク -->
     <a
-      href="/location"
+      href="/ui/locations"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="勤怠種別管理"
@@ -265,6 +265,35 @@
         >勤怠種別管理</span
       >
     </a>
+    
+    <!-- 祝日管理リンク -->
+    <a
+      href="/ui/holidays"
+      class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs"
+      x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+      title="祝日管理"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="w-4 h-4 flex-shrink-0"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6.75 4.5v.75m10.5-.75v.75m-11.25 3h12.75M4.5 9.75h15a.75.75 0 01.75.75v7.5a1.5 1.5 0 01-1.5 1.5h-13.5a1.5 1.5 0 01-1.5-1.5v-7.5a.75.75 0 01.75-.75zM7.5 3.75h9a.75.75 0 01.75.75V6a.75.75 0 01-.75.75h-9A.75.75 0 016.75 6V4.5a.75.75 0 01.75-.75z"
+        />
+      </svg>
+      <span
+        x-show="isSidebarOpen"
+        class="transition-opacity duration-200 text-xs"
+        x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
+        >祝日管理</span
+      >
+    </a>
   </div>
 
   <!-- その他セクション -->
@@ -275,7 +304,7 @@
 
     <!-- CSVダウンロードリンク -->
     <a
-      href="/csv"
+      href="/ui/csv"
       class="btn btn-ghost hover:bg-base-300 hover:text-base-content whitespace-nowrap w-full transition-all flex items-center text-xs"
       x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
       title="CSV"

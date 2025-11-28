@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from app.utils.csv_utils import get_available_months
 
 # ルーター定義
-router = APIRouter(prefix="/csv", tags=["Pages"])
+router = APIRouter(prefix="/ui/csv", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 @router.get("", response_class=HTMLResponse)

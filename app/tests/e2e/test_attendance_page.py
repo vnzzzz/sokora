@@ -6,11 +6,15 @@ import time
 # テスト対象の関数をインポート
 from app.utils.calendar_utils import format_date_jp
 
-# このテストは /attendance ページの勤怠マトリックスからの登録・更新・削除を対象とする
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}/ui"
+ATTENDANCE_WEEKLY_URL = f"{UI_BASE}/attendance/weekly"
+
+# このテストは /ui/attendance/weekly ページの勤怠マトリックスからの登録・更新・削除を対象とする
 
 def test_edit_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を登録/更新するテスト"""
-    page.goto("http://localhost:8000/attendance") # 勤怠登録ページ
+    page.goto(ATTENDANCE_WEEKLY_URL) # 勤怠登録ページ
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. 勤怠マトリックスが表示されるのを待つ
@@ -133,7 +137,7 @@ def test_edit_attendance_via_modal(page: Page) -> None:
 
 def test_delete_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を削除するテスト"""
-    page.goto("http://localhost:8000/attendance") # 勤怠登録ページ
+    page.goto(ATTENDANCE_WEEKLY_URL) # 勤怠登録ページ
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. 勤怠マトリックスが表示されるのを待つ

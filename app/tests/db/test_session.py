@@ -20,15 +20,15 @@ class TestDatabaseConfiguration:
 
     def test_db_path_configuration(self) -> None:
         """DB_PATHが正しく設定されていることを確認"""
-        assert DB_PATH == Path("data/sokora.sqlite")
-        assert str(DB_PATH) == "data/sokora.sqlite"
+        assert DB_PATH == Path("data/sokora.db")
+        assert str(DB_PATH) == "data/sokora.db"
 
     def test_db_url_configuration(self) -> None:
         """DB_URLが正しく設定されていることを確認"""
         expected_url = f"sqlite:///{DB_PATH.absolute()}"
         assert DB_URL == expected_url
         assert "sqlite:///" in DB_URL
-        assert "sokora.sqlite" in DB_URL
+        assert "sokora.db" in DB_URL
 
     def test_engine_configuration(self) -> None:
         """SQLAlchemyエンジンが正しく設定されていることを確認"""
@@ -197,9 +197,85 @@ class TestDatabaseIntegration:
     @patch('app.db.session.DB_PATH')
     def test_database_path_handling(self, mock_db_path: MagicMock) -> None:
         """データベースパス処理のテスト"""
-        mock_db_path.absolute.return_value = Path("/test/path/sokora.sqlite")
+        mock_db_path.absolute.return_value = Path("/test/path/sokora.db")
         
         # DB_URLが正しく構築されることを確認
         from app.db.session import DB_URL
         # パッチ後はDB_URLが変更されないため、ロジックのテストのみ
-        assert "sqlite:///" in DB_URL 
+        assert "sqlite:///" in DB_URL
+
+
+class TestInitializeDatabaseSeeding:
+    """DBファイルが存在しない場合のシーディングテスト"""
+
+    @patch('app.db.session.seed_database')
+    @patch('app.db.session.init_db')
+    @patch('app.db.session.logger')
+    @patch('app.db.session.LEGACY_DB_PATH')
+    @patch('app.db.session.DB_PATH')
+    def test_initialize_database_migrates_legacy_file(
+        self,
+        mock_db_path: MagicMock,
+        mock_legacy_db_path: MagicMock,
+        mock_logger: MagicMock,
+        mock_init_db: MagicMock,
+        mock_seed_database: MagicMock,
+    ) -> None:
+        """旧ファイル名が存在する場合にリネームすることを確認"""
+        mock_db_path.exists.return_value = False
+        mock_legacy_db_path.exists.return_value = True
+
+        result = initialize_database()
+
+        assert result is True
+        mock_legacy_db_path.rename.assert_called_once_with(mock_db_path)
+        mock_seed_database.assert_not_called()
+        mock_logger.info.assert_any_call("既存のデータベースファイルを新しいパスへ移行します。")
+
+    @patch('app.db.session.seed_database')
+    @patch('app.db.session.init_db')
+    @patch('app.db.session.logger')
+    @patch('app.db.session.LEGACY_DB_PATH')
+    @patch('app.db.session.DB_PATH')
+    def test_initialize_database_seeds_when_missing(
+        self,
+        mock_db_path: MagicMock,
+        mock_legacy_db_path: MagicMock,
+        mock_logger: MagicMock,
+        mock_init_db: MagicMock,
+        mock_seed_database: MagicMock,
+    ) -> None:
+        """DBファイルが無い場合にシーダーが実行されることを確認"""
+        mock_db_path.exists.return_value = False
+        mock_legacy_db_path.exists.return_value = False
+
+        result = initialize_database()
+
+        assert result is True
+        mock_init_db.assert_called_once()
+        mock_seed_database.assert_called_once_with(days_back=60, days_forward=60)
+        mock_logger.info.assert_any_call("データベースファイルが存在しないため、シーディングを実行します。")
+
+    @patch('app.db.session.seed_database')
+    @patch('app.db.session.init_db')
+    @patch('app.db.session.logger')
+    @patch('app.db.session.LEGACY_DB_PATH')
+    @patch('app.db.session.DB_PATH')
+    def test_initialize_database_skips_seeding_when_exists(
+        self,
+        mock_db_path: MagicMock,
+        mock_legacy_db_path: MagicMock,
+        mock_logger: MagicMock,
+        mock_init_db: MagicMock,
+        mock_seed_database: MagicMock,
+    ) -> None:
+        """既存DBがある場合にシーディングをスキップすることを確認"""
+        mock_db_path.exists.return_value = True
+        mock_legacy_db_path.exists.return_value = False
+
+        result = initialize_database()
+
+        assert result is True
+        mock_init_db.assert_called_once()
+        mock_seed_database.assert_not_called()
+        mock_logger.info.assert_any_call("データベースの初期化が正常に完了しました。")

@@ -47,7 +47,7 @@ function initializeAnalysisPage(isDetailMode, locationDetails) {
     if (applyButton) {
       applyButton.addEventListener('click', function () {
         const selectedPeriodType = document.querySelector('input[name="period-type"]:checked').value
-        let url = '/analysis'
+        let url = '/ui/analysis'
 
         if (selectedPeriodType === 'month') {
           const selectedMonth = document.getElementById('month-select').value
@@ -255,7 +255,7 @@ function updateDetailColumns(locationDetails) {
  * 指定された月の分析ページに遷移する
  */
 function navigateToMonth(month, userId, urlBase) {
-  urlBase = urlBase || '/analysis'
+  urlBase = urlBase || '/ui/analysis'
   let url = urlBase
   if (month) {
     url += '?month=' + month

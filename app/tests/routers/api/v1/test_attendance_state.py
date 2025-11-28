@@ -56,7 +56,7 @@ async def test_refresh_attendance_preserves_month(async_client: AsyncClient) -> 
     
     # トリガーヘッダーを含むレスポンスに対するmonthパラメータの保持をテスト
     response = await async_client.post(
-        "/api/attendances", 
+        "/api/v1/attendances", 
         data=payload,
         headers={"X-Test-Month": prev_month}  # テスト用ヘッダー
     )
@@ -93,7 +93,7 @@ async def test_refresh_user_attendance_preserves_user_view(async_client: AsyncCl
     
     # refreshUserAttendanceイベントが個別表示を維持することを確認
     response = await async_client.post(
-        "/api/attendances", 
+        "/api/v1/attendances", 
         data=payload
     )
     

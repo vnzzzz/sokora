@@ -7,13 +7,19 @@ block content %}
     </div>
   </div>
   <!-- カレンダーエリア -->
-  <div id="calendar-area" hx-get="/calendar" hx-trigger="load" hx-target="#calendar-area">
-    <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->
+  <div id="calendar-area" hx-get="/ui/calendar" hx-trigger="load" hx-target="#calendar-area">
+    <!-- 初期ロード時に /ui/calendar を呼び出し、結果をここに挿入 -->
   </div>
 
   <!-- 詳細表示エリア -->
-  <div id="detail-area">
-    <!-- 詳細データは/dayエンドポイントから非同期に読み込まれます -->
+  <div
+    id="detail-area"
+    hx-get="/ui/calendar/day/{{ today_date }}"
+    hx-trigger="load"
+    hx-target="#detail-area"
+    hx-swap="innerHTML"
+  >
+    <!-- 詳細データは /ui/calendar/day エンドポイントから非同期に読み込まれます -->
   </div>
 </div>
 {% endblock %}

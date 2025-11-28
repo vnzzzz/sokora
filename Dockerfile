@@ -1,14 +1,14 @@
-# 1) CSS ビルド用ステージ
-FROM node:18-alpine AS css-builder
-WORKDIR /src
-COPY builder/package.json builder/tailwind.config.js builder/postcss.config.js ./
-COPY builder/input.css ./src/input.css
-RUN npm install
-RUN mkdir -p /build/css
-RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
+# 1) アセットビルド用ステージ
+FROM node:18-bookworm-slim AS assets-builder
+WORKDIR /app
+COPY builder/package.json builder/package-lock.json builder/tailwind.config.js builder/postcss.config.js builder/input.css ./builder/
+COPY scripts/build_assets.sh ./scripts/build_assets.sh
+COPY app ./app
+RUN chmod +x ./scripts/build_assets.sh
+RUN ./scripts/build_assets.sh
 
 # 2) 本番コンテナ
-FROM python:3.13-slim-bullseye
+FROM python:3.13-slim-bookworm
 
 # システム依存関係インストール
 RUN apt-get update && apt-get install -y curl && \
@@ -33,18 +33,30 @@ RUN poetry config virtualenvs.create false && \
 COPY ./app ./app
 COPY ./scripts ./scripts
 
+# データディレクトリを用意
+RUN mkdir -p /app/data
+
 # 静的ファイル用ディレクトリを作成
 RUN mkdir -p /app/assets/css /app/assets/js /app/assets/json
+
+# CSS/JS 成果物をコピー
+COPY --from=assets-builder /app/assets /app/assets
 
 # 祝日データをビルド時に取得
 RUN python3 scripts/build_holiday_cache.py
 
-# CSS 成果物をコピー
-COPY --from=css-builder /build/css/main.css /app/assets/css/main.css
+# DB が無ければビルド時に初期化 + シーディング
+RUN python3 - <<'PYCODE'
+from app.db.session import initialize_database
 
-# 既存の JS ライブラリ取得（htmx, Alpine）
-RUN curl -Lo /app/assets/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx.min.js && \
-  curl -Lo /app/assets/js/alpine.min.js https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js
+initialize_database()
+PYCODE
+
+RUN if [ -f /app/data/sokora.db ]; then mkdir -p /app/seed && cp /app/data/sokora.db /app/seed/sokora.db; fi
+
+COPY ./docker/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 8000
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

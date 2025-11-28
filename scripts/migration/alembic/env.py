@@ -16,7 +16,7 @@ if config.config_file_name is not None:
 
 # アプリケーションのモデルを取得
 from app.db.session import Base
-from app.models import group, user_type, location, attendance, user
+from app.models import group, user_type, location, attendance, user, custom_holiday
 
 # add your model's MetaData object here
 # for 'autogenerate' support
