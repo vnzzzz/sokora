@@ -21,7 +21,7 @@ SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
 POETRY_STAMP := .cache/poetry-install.stamp
 
-.PHONY: help install run dev-shell seed test assets holiday-cache prepare-dev-assets build docker-build dev-build docker-run docker-stop
+.PHONY: help install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build dev-build docker-run docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -32,6 +32,7 @@ help:
 	@printf "  make test            Run cleanup + API/unit + e2e tests\n"
 	@printf "  make assets          Build CSS/JS into assets/ via builder\n"
 	@printf "  make holiday-cache   Build holiday cache into assets/json/holidays_cache.json\n"
+	@printf "  make migrate         Run Alembic migrations (upgrade head)\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make docker-build    Build production image (%s) using VERSION tag from .env\n" "$(VERSION_TAG)"
@@ -68,6 +69,9 @@ prepare-dev-assets: $(POETRY_STAMP)
 holiday-cache: $(POETRY_STAMP)
 	mkdir -p assets/json
 	poetry run python scripts/build_holiday_cache.py
+
+migrate: $(POETRY_STAMP)
+	PYTHONPATH=/app poetry run alembic -c scripts/migration/alembic.ini upgrade head
 
 build:
 	docker build -t $(IMAGE_NAME) .

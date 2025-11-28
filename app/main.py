@@ -16,7 +16,8 @@ from fastapi.responses import RedirectResponse
 from app.routers.api.v1 import router as api_v1_router  # API v1用ルーター
 from app.routers.pages import router as pages_router       # UIページ用ルーター
 from app.core.config import APP_VERSION, logger
-from app.db.session import initialize_database
+from app.db.session import initialize_database, SessionLocal
+from app.utils.holiday_cache import refresh_holiday_cache
 
 # APIタグ定義
 API_TAGS: List[Dict[str, str]] = [
@@ -136,3 +137,8 @@ async def startup_event() -> None:
     """
     logger.info("Initializing database")
     initialize_database()
+    db = SessionLocal()
+    try:
+        refresh_holiday_cache(db)
+    finally:
+        db.close()

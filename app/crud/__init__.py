@@ -11,3 +11,4 @@ from .location import location
 from .calendar import calendar
 from .group import group
 from .user_type import user_type
+from .custom_holiday import custom_holiday

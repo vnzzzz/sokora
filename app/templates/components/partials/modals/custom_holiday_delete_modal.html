@@ -1,0 +1,11 @@
+{% import "components/macros/ui.html" as ui %}
+
+{% call ui.delete_modal_form(
+  id = modal_id,
+  title = "祝日の削除",
+  action = "/ui/holidays/" ~ holiday.id,
+  item_name = holiday.name,
+  submit_text = "削除"
+) %}
+  <div class="text-sm text-base-content/70">この祝日はカレンダー表示から除外されます。</div>
+{% endcall %}

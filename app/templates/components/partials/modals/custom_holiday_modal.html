@@ -1,0 +1,35 @@
+{% import "components/macros/ui.html" as ui %}
+
+{% set is_edit = holiday and holiday.id %}
+
+{% call ui.modal_form(
+  id          = modal_id,
+  title       = is_edit and "祝日を編集" or "祝日を追加",
+  action      = is_edit and ("/ui/holidays/" ~ holiday.id) or "/ui/holidays",
+  method      = is_edit and "PUT" or "POST",
+  submit_text = is_edit and "更新" or "登録",
+  size="sm"
+) %}
+
+  {{ ui.form_errors(errors) if errors else "" }}
+
+  <label class="label"><span class="label-text">日付</span></label>
+  <input
+    type="date"
+    name="date"
+    class="input input-bordered w-full"
+    value="{{ holiday.date.strftime('%Y-%m-%d') if holiday else '' }}"
+    required
+  />
+
+  <label class="label"><span class="label-text">祝日名</span></label>
+  <input
+    type="text"
+    name="name"
+    class="input input-bordered w-full"
+    value="{{ holiday.name | default('') }}"
+    maxlength="100"
+    required
+  />
+
+{% endcall %}

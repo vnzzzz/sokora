@@ -31,7 +31,7 @@ def db() -> Generator[Session, None, None]:
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     # モデルをインポート (インデントを修正)
-    from app.models import User, Attendance, Location, Group, UserType
+    from app.models import User, Attendance, Location, Group, UserType, CustomHoliday
     Base.metadata.create_all(bind=engine) # テーブル作成
 
     db_session = TestingSessionLocal()

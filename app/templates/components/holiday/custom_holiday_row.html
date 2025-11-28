@@ -1,0 +1,24 @@
+<tr>
+  <td class="font-mono text-sm">{{ holiday.date.strftime("%Y-%m-%d") }}</td>
+  <td>{{ holiday.name }}</td>
+  <td class="text-right">
+    <div class="flex justify-end gap-2">
+      <button
+        class="btn btn-xs btn-ghost"
+        hx-get="/ui/holidays/modal/{{ holiday.id }}"
+        hx-target="body"
+        hx-swap="beforeend"
+      >
+        編集
+      </button>
+      <button
+        class="btn btn-xs btn-ghost text-error"
+        hx-get="/ui/holidays/delete-modal/{{ holiday.id }}"
+        hx-target="body"
+        hx-swap="beforeend"
+      >
+        削除
+      </button>
+    </div>
+  </td>
+</tr>

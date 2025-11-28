@@ -58,7 +58,7 @@ def init_db() -> None:
     """
     # モデル定義をインポートします。
     # (関数内でインポートすることで、モジュール読み込み時の循環参照を回避)
-    from app.models import User, Attendance, Location, Group, UserType
+    from app.models import User, Attendance, Location, Group, UserType, CustomHoliday
 
     # データベースファイルが格納される`data/`ディレクトリを作成します (存在しない場合)。
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)

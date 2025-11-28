@@ -25,7 +25,7 @@
   function loadDayDetail(date) {
     // HTMXがロードされているか確認 (エラー防止)
     if (typeof htmx !== 'undefined') {
-      htmx.ajax('GET', `/day/${date}`, { target: '#detail-area' })
+      htmx.ajax('GET', `/ui/calendar/day/${date}`, { target: '#detail-area' })
     } else {
       console.error('htmx is not defined. Cannot load day detail.')
     }
