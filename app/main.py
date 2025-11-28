@@ -7,7 +7,7 @@ FastAPIアプリケーションの設定と初期化を行います。
 
 from typing import Any, Dict, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -115,6 +115,16 @@ app.openapi = lambda: create_openapi_schema(app)  # type: ignore
 @app.get("/", include_in_schema=False)
 async def redirect_to_ui() -> RedirectResponse:
     return RedirectResponse(url="/ui", status_code=307)
+
+
+@app.get("/analysis", include_in_schema=False)
+async def legacy_analysis_redirect(request: Request) -> RedirectResponse:
+    """旧パス `/analysis` を新パス `/ui/analysis` に転送します。"""
+    query = request.url.query
+    target = "/ui/analysis"
+    if query:
+        target = f"{target}?{query}"
+    return RedirectResponse(url=target, status_code=307)
 
 
 # アプリケーション起動時の初期化処理
