@@ -30,7 +30,7 @@ from app.utils.calendar_utils import build_calendar_data, parse_month, get_curre
 from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
-router = APIRouter(prefix="/ui/attendance/monthly", tags=["Pages"])
+router = APIRouter(prefix="/attendance/monthly", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 # ロガー定義
@@ -68,7 +68,7 @@ def register_page(
         except ValueError as e:
             logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
             current_month = get_current_month_formatted()
-            return RedirectResponse(url=f"/ui/attendance/monthly?month={current_month}")
+            return RedirectResponse(url=f"/attendance/monthly?month={current_month}")
 
     # DBからカレンダー構築に必要なデータを取得
     try:

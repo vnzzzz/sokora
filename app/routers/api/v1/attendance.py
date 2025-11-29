@@ -5,8 +5,8 @@
 勤怠入力と編集に関連するAPIエンドポイント
 """
 
-from datetime import date, datetime
-from typing import Any, Optional, Dict
+from datetime import date, datetime, timedelta
+from typing import Any, Optional
 import json # json をインポート
 import re # 正規表現を追加
 
@@ -76,6 +76,33 @@ def extract_month_from_request(request: Request) -> Optional[str]:
     return None
 
 
+def extract_week_from_request(request: Request, attendance_date: Optional[date] = None) -> Optional[str]:
+    """
+    リクエストから現在表示中の週情報を抽出します。
+
+    Args:
+        request: FastAPIリクエストオブジェクト
+        attendance_date: 勤怠日付（リファラが無い場合のフォールバック用）
+
+    Returns:
+        Optional[str]: 抽出された週情報 (YYYY-MM-DD形式の月曜日)、見つからない場合はNone
+    """
+    referer = request.headers.get("referer", "")
+    week_match = re.search(r"week=([0-9]{4}-[0-9]{2}-[0-9]{2})", referer)
+
+    if week_match:
+        return week_match.group(1)
+
+    if "x-test-week" in request.headers:
+        return request.headers.get("x-test-week")
+
+    if attendance_date:
+        monday = attendance_date - timedelta(days=attendance_date.weekday())
+        return monday.isoformat()
+
+    return None
+
+
 @router.post("", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 async def create_attendance(
     request: Request,
@@ -119,14 +146,15 @@ async def create_attendance(
         # 勤怠データ作成
         created_attendance = attendance.create(db=db, obj_in=attendance_in) # 作成されたオブジェクトを取得
         
-        # 現在表示中の月情報を取得
+        # 現在表示中の月/週情報を取得
         current_month = extract_month_from_request(request)
+        current_week = extract_week_from_request(request, attendance_date)
         
         # トリガーデータを作成
         trigger_data = {
             "closeModal": f"attendance-modal-{user_id}-{date_str}",
-            "refreshUserAttendance": {"user_id": user_id, "month": current_month},
-            "refreshAttendance": {"month": current_month} # 月情報を含める
+            "refreshUserAttendance": {"user_id": user_id, "month": current_month, "week": current_week},
+            "refreshAttendance": {"month": current_month, "week": current_week} # 月/週情報を含める
         }
         
         return Response(
@@ -170,14 +198,15 @@ async def update_attendance(
         updated_obj = attendance.update(db=db, db_obj=attendance_obj, obj_in=attendance_in) # 更新後のオブジェクト取得
         logger.debug(f"勤怠ID {attendance_id} の更新に成功しました")
         
-        # 現在表示中の月情報を取得
+        # 現在表示中の月/週情報を取得
         current_month = extract_month_from_request(request)
+        current_week = extract_week_from_request(request, updated_obj.date)
         
         # トリガーデータを作成
         trigger_data = {
             "closeModal": f"attendance-modal-{updated_obj.user_id}-{updated_obj.date.isoformat()}",
-            "refreshUserAttendance": {"user_id": updated_obj.user_id, "month": current_month},
-            "refreshAttendance": {"month": current_month} # 月情報を含める
+            "refreshUserAttendance": {"user_id": updated_obj.user_id, "month": current_month, "week": current_week},
+            "refreshAttendance": {"month": current_month, "week": current_week} # 月/週情報を含める
         }
         
         logger.info(f"Sending HX-Trigger for modal close: {json.dumps(trigger_data)}")
@@ -213,6 +242,7 @@ async def delete_attendance(
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         user_id = attendance_obj.user_id  # 削除前にユーザーIDを取得
         date_str = attendance_obj.date.isoformat()  # 削除前に日付を取得
+        current_week = extract_week_from_request(request, attendance_obj.date)
         
         attendance.remove(db=db, id=attendance_id)
         logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
@@ -223,8 +253,8 @@ async def delete_attendance(
         # 勤怠UI更新用のトリガーデータ
         trigger_data = {
             "closeModal": f"attendance-modal-{user_id}-{date_str}",
-            "refreshUserAttendance": {"user_id": user_id, "month": current_month},
-            "refreshAttendance": {"month": current_month} # 月情報を含める
+            "refreshUserAttendance": {"user_id": user_id, "month": current_month, "week": current_week},
+            "refreshAttendance": {"month": current_month, "week": current_week} # 月/週情報を含める
         }
         
         return Response(
@@ -258,6 +288,7 @@ def delete_attendance_by_user_date(
     """
     try:
         date_str = date.isoformat()
+        current_week = extract_week_from_request(request, date)
         
         # 勤怠データを検索
         attendance_obj = attendance.get_by_user_and_date(db=db, user_id=user_id, date=date)
@@ -277,8 +308,8 @@ def delete_attendance_by_user_date(
         # モーダルを閉じて勤怠表示を更新するトリガー
         trigger_data = {
             "closeModal": f"attendance-modal-{user_id}-{date_str}",
-            "refreshUserAttendance": {"user_id": user_id, "month": current_month},
-            "refreshAttendance": {"month": current_month} # 月情報を含める
+            "refreshUserAttendance": {"user_id": user_id, "month": current_month, "week": current_week},
+            "refreshAttendance": {"month": current_month, "week": current_week} # 月/週情報を含める
         }
         
         return Response(

@@ -16,7 +16,7 @@
       {# 編集ボタン #}
       <button
         class="btn btn-sm btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/locations/modal/{{ location.id }}"
+        hx-get="/locations/modal/{{ location.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >
@@ -40,7 +40,7 @@
       {# 削除ボタン #}
       <button
         class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow whitespace-nowrap"
-        hx-get="/ui/locations/delete-modal/{{ location.id }}"
+        hx-get="/locations/delete-modal/{{ location.id }}"
         hx-target="body"
         hx-swap="beforeend"
       >

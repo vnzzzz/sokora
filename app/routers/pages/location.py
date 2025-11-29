@@ -21,7 +21,7 @@ from app.services import location_service # location_service をインポート
 from app.utils.ui_utils import TAILWIND_COLORS
 
 # ルーター定義
-router = APIRouter(prefix="/ui/locations", tags=["Pages"])
+router = APIRouter(prefix="/locations", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 

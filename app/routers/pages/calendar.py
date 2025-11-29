@@ -39,7 +39,7 @@ from app.utils.ui_utils import (
 from app.models.location import Location
 
 # ルーター定義
-router = APIRouter(prefix="/ui/calendar", tags=["Pages"])
+router = APIRouter(prefix="/calendar", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 # カレンダーデータのキャッシュ（パフォーマンス最適化）

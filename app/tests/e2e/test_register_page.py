@@ -6,7 +6,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 MONTHLY_URL = f"{UI_BASE}/attendance/monthly"
 
 

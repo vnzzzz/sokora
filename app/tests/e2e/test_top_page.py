@@ -3,7 +3,7 @@ import datetime
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = f"{BASE_URL}"
 
 
 def test_top_page_title(page: Page) -> None:
@@ -26,7 +26,7 @@ def test_top_page_elements(page: Page) -> None:
     # カレンダーエリアの存在確認
     calendar_area = page.locator("#calendar-area")
     expect(calendar_area).to_be_visible()
-    expect(calendar_area).to_have_attribute("hx-get", "/ui/calendar")
+    expect(calendar_area).to_have_attribute("hx-get", "/calendar")
 
     # 詳細エリアの存在確認
     detail_area = page.locator("#detail-area")

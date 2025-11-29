@@ -84,8 +84,8 @@ def get_last_viewed_date(request: Request) -> str:
     """最後に表示された日付を取得します。
 
     リクエストのRefererヘッダーから最後に表示された日付を抽出します。
-    '/ui/calendar/day/' パスの後に日付がある場合はその日付を返し、
-    （互換性のため '/api/day/' も許容する）
+    '/calendar/day/' パスの後に日付がある場合はその日付を返し、
+    （互換性のため旧パス '/ui/calendar/day/' や '/api/day/' も許容する）
     そうでない場合は今日の日付を返します。
 
     Args:
@@ -95,7 +95,7 @@ def get_last_viewed_date(request: Request) -> str:
         str: 最後に表示された日付（YYYY-MM-DD形式）
     """
     referer = request.headers.get("referer", "")
-    day_markers = ["/ui/calendar/day/", "/api/day/"]
+    day_markers = ["/calendar/day/", "/ui/calendar/day/", "/api/day/"]
 
     for marker in day_markers:
         if marker in referer:

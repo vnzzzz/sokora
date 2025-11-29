@@ -5,7 +5,7 @@
 {% call ui.modal_form(
   id          = modal_id,
   title       = is_edit and "祝日を編集" or "祝日を追加",
-  action      = is_edit and ("/ui/holidays/" ~ holiday.id) or "/ui/holidays",
+  action      = is_edit and ("/holidays/" ~ holiday.id) or "/holidays",
   method      = is_edit and "PUT" or "POST",
   submit_text = is_edit and "更新" or "登録",
   size="sm"

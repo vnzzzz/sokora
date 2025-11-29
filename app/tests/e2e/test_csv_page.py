@@ -5,7 +5,7 @@ import re
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 
 def test_csv_page_title(page: Page) -> None:
     """CSVページのタイトルが正しいかテストします。"""

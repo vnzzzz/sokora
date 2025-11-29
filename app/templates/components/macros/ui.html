@@ -104,7 +104,7 @@
 </div>
 {%- endmacro %}
 
-{% macro month_switcher(prev_month, next_month, current_month, url_base='/ui/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 <!-- 月切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
   <button
@@ -160,7 +160,7 @@
 </div>
 {%- endmacro %}
 
-{% macro week_switcher(prev_week, next_week, current_week, url_base='/ui/attendance/weekly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+{% macro week_switcher(prev_week, next_week, current_week, url_base='/attendance/weekly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
 <!-- 週切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
   <button

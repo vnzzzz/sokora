@@ -189,7 +189,7 @@
     // リクエスト中フラグをセット
     window.calendarRefreshInProgress = true
 
-    const url = month ? `/ui/attendance/monthly?month=${encodeURIComponent(month)}` : '/ui/attendance/monthly'
+    const url = month ? `/attendance/monthly?month=${encodeURIComponent(month)}` : '/attendance/monthly'
 
     // htmxリクエスト完了イベントのリスナーを定義
     const afterSwapListener = function (event) {
@@ -242,7 +242,7 @@
     // リクエスト中フラグをセット
     window.calendarRefreshInProgress = true
 
-    const url = week ? `/ui/attendance/weekly?week=${encodeURIComponent(week)}` : '/ui/attendance/weekly'
+    const url = week ? `/attendance/weekly?week=${encodeURIComponent(week)}` : '/attendance/weekly'
 
     // htmxリクエスト完了イベントのリスナーを定義
     const afterSwapListener = function (event) {
@@ -334,6 +334,11 @@
    */
   function executeUserCalendarUpdate(userId, month) {
     userCalendarRefreshInProgress = true
+    const target = document.getElementById('user-calendar')
+    if (!target) {
+      userCalendarRefreshInProgress = false
+      return
+    }
 
     // monthがnullの場合は、localStorageから保存された月を取得
     if (!month) {
@@ -344,8 +349,8 @@
     }
 
     const url = month
-      ? `/ui/attendance/monthly/users/${encodeURIComponent(userId)}?month=${encodeURIComponent(month)}`
-      : `/ui/attendance/monthly/users/${encodeURIComponent(userId)}`
+      ? `/attendance/monthly/users/${encodeURIComponent(userId)}?month=${encodeURIComponent(month)}`
+      : `/attendance/monthly/users/${encodeURIComponent(userId)}`
 
     try {
       // htmxリクエスト送信前にリスナー追加
@@ -378,8 +383,8 @@
 
       // htmxリクエスト送信
       htmx.ajax('GET', url, {
-        target: '#user-calendar',
-        swap: 'innerHTML'
+        target,
+        swap: 'outerHTML'
       })
     } catch (error) {
       userCalendarRefreshInProgress = false
@@ -643,7 +648,7 @@
  * @param {string|null} userId - ユーザーID（指定された場合）
  * @param {string} urlBase - 基本URL
  */
-function navigateToWeek(week, userId, urlBase = '/ui/attendance/weekly') {
+function navigateToWeek(week, userId, urlBase = '/attendance/weekly') {
   // 週情報をlocalStorageに保存
   if (week) {
     localStorage.setItem('selectedWeek', week)

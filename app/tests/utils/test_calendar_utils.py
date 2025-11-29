@@ -172,8 +172,16 @@ class TestDateParsing:
 class TestLastViewedDate:
     """最後の表示日付関連のテスト"""
 
-    def test_get_last_viewed_date_with_api_day(self) -> None:
-        """get_last_viewed_date関数のテスト（API日付あり）"""
+    def test_get_last_viewed_date_with_calendar_day(self) -> None:
+        """get_last_viewed_date関数のテスト（カレンダー日付あり）"""
+        mock_request = MagicMock()
+        mock_request.headers.get.return_value = "http://localhost:8000/calendar/day/2024-01-15?param=value"
+        
+        result = get_last_viewed_date(mock_request)
+        assert result == "2024-01-15"
+
+    def test_get_last_viewed_date_with_legacy_ui_day(self) -> None:
+        """get_last_viewed_date関数のテスト（旧UIパス）"""
         mock_request = MagicMock()
         mock_request.headers.get.return_value = "http://localhost:8000/ui/calendar/day/2024-01-15?param=value"
         
@@ -183,7 +191,7 @@ class TestLastViewedDate:
     def test_get_last_viewed_date_with_invalid_date(self) -> None:
         """get_last_viewed_date関数のテスト（無効な日付）"""
         mock_request = MagicMock()
-        mock_request.headers.get.return_value = "http://localhost:8000/ui/calendar/day/invalid-date"
+        mock_request.headers.get.return_value = "http://localhost:8000/calendar/day/invalid-date"
         
         with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
             mock_today.return_value = "2024-01-15"

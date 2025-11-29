@@ -2,7 +2,7 @@ from playwright.sync_api import Page, expect
 import time # アサーション前の待機用
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 LOCATIONS_URL = f"{UI_BASE}/locations"
 
 def test_location_page_display(page: Page) -> None:

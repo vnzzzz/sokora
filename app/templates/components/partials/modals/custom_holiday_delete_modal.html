@@ -3,7 +3,7 @@
 {% call ui.delete_modal_form(
   id = modal_id,
   title = "祝日の削除",
-  action = "/ui/holidays/" ~ holiday.id,
+  action = "/holidays/" ~ holiday.id,
   item_name = holiday.name,
   submit_text = "削除"
 ) %}

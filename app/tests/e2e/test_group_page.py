@@ -5,7 +5,7 @@ import time
 import re
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 GROUPS_URL = f"{UI_BASE}/groups"
 
 def test_group_page_display(page: Page) -> None:

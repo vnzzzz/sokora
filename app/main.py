@@ -64,13 +64,13 @@ def create_application() -> FastAPI:
 
     # /staticから静的ファイルを提供（開発時ファイル用）
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
-    
+
     # /assetsからビルド時生成ファイルを提供（本番ファイル用）
     app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
     # UIページ用ルーターを組み込み（OpenAPI には含めない）
     app.include_router(pages_router, include_in_schema=False)
-    
+
     # API v1用ルーターを組み込み
     app.include_router(api_v1_router)
 
@@ -79,10 +79,10 @@ def create_application() -> FastAPI:
 
 def create_openapi_schema(app: FastAPI) -> Dict[str, Any]:
     """カスタムOpenAPIスキーマを生成します。
-    
+
     Args:
         app: FastAPIアプリケーションインスタンス
-        
+
     Returns:
         Dict[str, Any]: 生成されたOpenAPIスキーマ
     """
@@ -112,17 +112,17 @@ app = create_application()
 app.openapi = lambda: create_openapi_schema(app)  # type: ignore
 
 
-# ルートアクセス時は /ui にリダイレクトする
-@app.get("/", include_in_schema=False)
-async def redirect_to_ui() -> RedirectResponse:
-    return RedirectResponse(url="/ui", status_code=307)
+# 旧 /ui 配下へのアクセスはプレフィックスなしの新パスへリダイレクトする
+@app.get("/ui", include_in_schema=False)
+async def legacy_ui_root_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/", status_code=307)
 
 
-@app.get("/analysis", include_in_schema=False)
-async def legacy_analysis_redirect(request: Request) -> RedirectResponse:
-    """旧パス `/analysis` を新パス `/ui/analysis` に転送します。"""
+@app.get("/ui/{full_path:path}", include_in_schema=False)
+async def legacy_ui_redirect(full_path: str, request: Request) -> RedirectResponse:
+    """旧パス `/ui/...` を新パスに転送します。クエリは維持します。"""
     query = request.url.query
-    target = "/ui/analysis"
+    target = f"/{full_path}"
     if query:
         target = f"{target}?{query}"
     return RedirectResponse(url=target, status_code=307)
@@ -132,7 +132,7 @@ async def legacy_analysis_redirect(request: Request) -> RedirectResponse:
 @app.on_event("startup")
 async def startup_event() -> None:
     """アプリケーション起動時の初期化処理を実行します。
-    
+
     データベースの初期化などの処理を行います。
     """
     logger.info("Initializing database")

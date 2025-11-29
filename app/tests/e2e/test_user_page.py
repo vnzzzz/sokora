@@ -5,7 +5,7 @@ from urllib.parse import quote
 import contextlib # finally でのエラー抑制用
 
 BASE_URL = "http://localhost:8000"
-UI_BASE = f"{BASE_URL}/ui"
+UI_BASE = BASE_URL
 USERS_URL = f"{UI_BASE}/users"
 GROUPS_URL = f"{UI_BASE}/groups"
 USER_TYPES_URL = f"{UI_BASE}/user-types"

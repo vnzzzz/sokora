@@ -16,7 +16,7 @@ from app.crud.attendance import attendance
 from app.db.session import get_db
 
 # ルーター定義
-router = APIRouter(prefix="/ui/analysis", tags=["Pages"])
+router = APIRouter(prefix="/analysis", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
