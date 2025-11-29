@@ -1,5 +1,5 @@
 # 1) アセットビルド用ステージ
-FROM node:18-bookworm-slim AS assets-builder
+FROM node:22-bookworm-slim AS assets-builder
 WORKDIR /app
 COPY builder/package.json builder/package-lock.json builder/tailwind.config.js builder/postcss.config.js builder/input.css ./builder/
 COPY scripts/build_assets.sh ./scripts/build_assets.sh

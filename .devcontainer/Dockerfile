@@ -1,5 +1,5 @@
 # 1) CSS ビルド用ステージ
-FROM node:18-bookworm-slim AS css-builder
+FROM node:22-bookworm-slim AS css-builder
 WORKDIR /src
 COPY builder/package.json builder/tailwind.config.js builder/postcss.config.js ./
 COPY builder/input.css ./src/input.css
