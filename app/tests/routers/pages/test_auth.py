@@ -149,7 +149,7 @@ async def test_keycloak_failure_allows_local_admin_fallback(async_client, monkey
         assert callback_resp.headers["location"].startswith("/auth/login")
 
         login_page = await async_client.get(callback_resp.headers["location"])
-        assert "Keycloak" in login_page.text
+        assert "SSOでログイン" in login_page.text
 
         local_resp = await async_client.post(
             "/auth/local",
@@ -335,3 +335,52 @@ async def test_oidc_logout_uses_absolute_redirect(async_client, monkeypatch, tmp
     finally:
         app.dependency_overrides.pop(get_oidc_client, None)
         app.dependency_overrides.pop(get_optional_oidc_client, None)
+
+
+@pytest.mark.asyncio
+async def test_login_page_shows_sso_and_admin_buttons(async_client, monkeypatch, tmp_path) -> None:
+    """ログインランディングは SSO 優先、管理者ログインは導線だけを見せる"""
+    monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
+    monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
+    monkeypatch.setenv("OIDC_ISSUER", "http://keycloak.example.com/realms/test")
+    monkeypatch.setenv("OIDC_CLIENT_ID", "client-id")
+    monkeypatch.setenv("OIDC_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    resp = await async_client.get("/auth/login")
+    assert resp.status_code == 200
+    text = resp.text
+    assert "/auth/redirect" in text
+    assert "SSOでログイン" in text
+    assert "/auth/login/admin" in text
+    assert 'name="username"' not in text
+
+
+@pytest.mark.asyncio
+async def test_admin_login_page_shows_form(async_client, monkeypatch, tmp_path) -> None:
+    """管理者ログインページでのみユーザー名/パスワードのフォームを表示する"""
+    monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
+    monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    resp = await async_client.get("/auth/login/admin?next=/users")
+    assert resp.status_code == 200
+    text = resp.text
+    assert 'action="/auth/local"' in text
+    assert 'name="username"' in text
+    assert 'name="password"' in text
+    assert 'name="next"' in text
+
+
+@pytest.mark.asyncio
+async def test_sidebar_hidden_on_login_page(async_client, monkeypatch, tmp_path) -> None:
+    """未ログイン時はサイドバーを表示しない"""
+    monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
+    monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
+
+    resp = await async_client.get("/auth/login")
+    assert resp.status_code == 200
+    assert "<aside" not in resp.text

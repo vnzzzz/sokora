@@ -77,6 +77,29 @@ async def login_page(
     return templates.TemplateResponse("pages/auth/login.html", context)
 
 
+@router.get("/login/admin", response_class=HTMLResponse)
+async def admin_login_page(
+    request: Request,
+    error: str | None = None,
+    next: str = "/",
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> Response:
+    message: str | None = None
+    session_error = request.session.pop("auth_error", None)
+    if session_error:
+        message = session_error
+    elif error == "local":
+        message = "管理者ログインに失敗しました。"
+
+    context = {
+        "request": request,
+        "next_path": _safe_next_path(next),
+        "local_enabled": settings.local_admin_enabled,
+        "error_message": message,
+    }
+    return templates.TemplateResponse("pages/auth/admin_login.html", context)
+
+
 @router.get("/redirect")
 async def oidc_redirect(
     request: Request,
@@ -174,7 +197,7 @@ async def local_login(
 
     request.session["auth_error"] = "管理者認証に失敗しました。"
     return RedirectResponse(
-        url=f"/auth/login?error=local&next={urllib.parse.quote(_safe_next_path(next))}",
+        url=f"/auth/login/admin?error=local&next={urllib.parse.quote(_safe_next_path(next))}",
         status_code=303,
     )
 
