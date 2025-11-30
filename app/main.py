@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
 
 # ローカルモジュールのインポート
 from app.routers.api.v1 import router as api_v1_router  # API v1用ルーター
@@ -18,6 +19,8 @@ from app.routers.pages import router as pages_router       # UIページ用ル�
 from app.core.config import APP_VERSION, logger
 from app.db.session import initialize_database, SessionLocal
 from app.utils.holiday_cache import refresh_holiday_cache
+from app.middleware.auth import AuthRequiredMiddleware
+from app.services.auth.settings import AuthSettings
 
 # APIタグ定義
 API_TAGS: List[Dict[str, str]] = [
@@ -73,6 +76,15 @@ def create_application() -> FastAPI:
 
     # API v1用ルーターを組み込み
     app.include_router(api_v1_router)
+
+    # セッション + 認証ガード
+    auth_settings = AuthSettings.from_env()
+    app.add_middleware(AuthRequiredMiddleware, settings_provider=AuthSettings.from_env)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=auth_settings.session_secret,
+        max_age=auth_settings.session_ttl_seconds,
+    )
 
     return app
 

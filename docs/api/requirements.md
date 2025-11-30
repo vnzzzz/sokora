@@ -6,6 +6,21 @@
 - 応答は原則 JSON。勤怠作成/更新/削除はフォーム送信を受け、204 + `HX-Trigger` で UI 更新を指示。
 - 外部連携や認可は未実装。バリデーションはサービス/CRUD層で外部キー整合性や重複を確認。
 - OpenAPI は `/docs` `/redoc` で公開される。
+- 認証は Keycloak OIDC を一次経路とし、管理者のみが使えるローカルログインを併置する。自動フェイルオーバーは行わず、ログイン画面で利用者が選択する。
+
+## 認証/セキュリティ
+- ガード: `SOKORA_AUTH_REQUIRED=true` 時に UI/`/api` 双方へセッションガードを適用し、未認証アクセスは UI → `/auth/login` へリダイレクト、API → 401 JSON（`{"detail": "Unauthorized"}`）を返す。`/auth/*` と静的ファイル、`/docs`/`/redoc` は例外。
+- セッション: Starlette セッションで管理。`SOKORA_AUTH_SESSION_SECRET` で署名鍵、`SOKORA_AUTH_SESSION_TTL_SECONDS`（デフォルト 3600 秒）で有効期限を指定。
+- Keycloak OIDC:
+  - `.env` 設定: `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, `OIDC_SCOPES`（デフォルト `openid profile email`）, 任意で `OIDC_AUTHORIZATION_ENDPOINT`, `OIDC_TOKEN_ENDPOINT`, `OIDC_USERINFO_ENDPOINT`, `OIDC_LOGOUT_ENDPOINT`, `OIDC_HTTP_TIMEOUT`（デフォルト 3s）。
+- フロー: `/auth/redirect` で state/nonce を発行し Keycloak 認可エンドポイントへリダイレクト、`/auth/callback` でコードをトークンエンドポイントへ POST。`id_token` の `sub` を内部識別子、`preferred_username` を表示名としてセッションに格納する。DB の `users` テーブルとは紐付けない。
+  - ログアウト: `/auth/logout` でアプリセッションを破棄し、`SOKORA_OIDC_LOGOUT_ENDPOINT` がある場合は `id_token_hint`/`post_logout_redirect_uri` を付けて Keycloak ログアウトに誘導する。
+- OIDC 有効/無効トグル:
+  - ローカル管理者専用ページで切替可能。状態は `data/auth_state.json`（`SOKORA_AUTH_STATE_PATH` で上書き可）に保持し、`oidc_enabled=false` の場合は OIDC フローを開始せず 400 を返す。
+- ローカル管理者ログイン:
+  - 環境変数 `SOKORA_LOCAL_ADMIN_USERNAME`, `SOKORA_LOCAL_ADMIN_PASSWORD` が揃っている場合のみ有効。入力値は `secrets.compare_digest` で照合し、成功時は `role=admin` を持つセッションを発行する。
+  - Keycloak 障害時でもログイン画面のローカル経路は常に提示する。一般ユーザー向けのローカルログインは提供しない。
+  - 設定欠落時は 400 を返し、ログイン画面にエラーを表示する。
 
 ## エンドポイント一覧（v1）
 - `GET /api/v1/attendances`：全勤怠リスト（`{"records": [...]}`）。  

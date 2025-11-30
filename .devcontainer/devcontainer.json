@@ -4,7 +4,12 @@
     "dockerfile": "./Dockerfile",
     "context": ".."
   },
-  "runArgs": ["--name", "sokora-dev"],
+  "runArgs": [
+    "--name",
+    "sokora-dev",
+    "--add-host",
+    "keycloak.localhost:host-gateway"
+  ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
   "workspaceFolder": "/app",
   "mounts": [
@@ -33,7 +38,10 @@
         "python.linting.enabled": true,
         "python.linting.mypyEnabled": true,
         "python.linting.flake8Enabled": true,
-        "python.sortImports.args": ["--profile", "black"]
+        "python.sortImports.args": [
+          "--profile",
+          "black"
+        ]
       },
       "extensions": [
         "ms-python.python",

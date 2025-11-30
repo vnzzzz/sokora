@@ -7,6 +7,14 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 - HTMX を用いて部分更新（カレンダー/モーダル/テーブル差し替え）を行い、`HX-Trigger` によるイベントでリロードを指示する。
 - Alpine.js は軽量な UI 反応を補完する。スタイルは DaisyUI/Tailwind 生成物を前提とし、生成 CSS 直接編集は避ける。
 
+## 認証/ログインフロー
+- ログインページ（`/auth/login`）で「Keycloak でログイン」と「管理者ローカルログイン」の2経路を並列表示する。自動フェイルオーバーは行わず、ユーザーが明示的に選択する。
+- Keycloak ボタンは `/auth/redirect` に遷移し、エラーがあれば画面上部にメッセージを表示する。Keycloak 障害（HTTP 5xx/タイムアウト）時はメッセージのみ表示し、ローカル管理者経路を案内する。
+- 管理者ローカルログインフォームは `SOKORA_LOCAL_ADMIN_USERNAME/PASSWORD` が設定されている場合のみ有効。認証失敗や設定不足は同ページにエラーを表示する。
+- 認証状態が無い場合のページアクセスは `/auth/login?next=元URL` へリダイレクトし、「再ログインが必要です」旨を表示する。
+- ログアウトは `/auth/logout` でセッションを破棄し、Keycloak 経路でログインしていた場合は Keycloak のログアウトエンドポイントにリダイレクトした上で `/auth/login` に戻す。
+- ローカル管理者専用の認証設定ページを用意し、OIDC 有効/無効トグルを提供する。トグル状態はログイン画面に反映され、無効時は Keycloak ボタンを押してもエラー表示となる。
+
 ## カレンダーと勤怠登録
 - `/`（`pages/top.html`）：初期表示は空のコンテナ。`hx-get="/calendar"` で月次サマリーカレンダーを読み込み、クリックで `/calendar/day/{YYYY-MM-DD}` の勤怠詳細を表示する。
 - `/calendar`（`routers/pages/calendar.py` → `components/top/summary_calendar.html`）：月指定 `?month=YYYY-MM` に対応。ロケーションごとの色クラスを付与し、前月/次月の HTMX ナビゲーションを提供。詳細パネルは `/calendar/day/{day}` を HTMX で差し替え。
