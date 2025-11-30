@@ -7,9 +7,13 @@ let selectedLocationId = null
 let selectedLocationName = ''
 
 // 統合ページ用のJavaScript関数
-function initializeAnalysisPage(isDetailMode, locationDetails) {
-  // テーブルの横スクロール時のヘッダー固定を改善
-  document.addEventListener('DOMContentLoaded', function () {
+function initializeAnalysisPage(config) {
+  const isDetailMode = Boolean(config?.isDetailMode)
+  const locationDetails = config?.locationDetails || {}
+  const period = config?.period || {}
+
+  const setup = () => {
+    // テーブルの横スクロール時のヘッダー固定を改善
     const tables = document.querySelectorAll('.overflow-x-auto')
     tables.forEach((table) => {
       table.addEventListener('scroll', function () {
@@ -28,7 +32,9 @@ function initializeAnalysisPage(isDetailMode, locationDetails) {
     const periodTypeRadios = document.querySelectorAll('input[name="period-type"]')
     const monthSelection = document.getElementById('month-selection')
     const yearSelection = document.getElementById('year-selection')
-    const applyButton = document.getElementById('apply-period')
+    const monthInput = document.getElementById('month-input')
+    const yearSelect = document.getElementById('year-select')
+    const isYearMode = period?.mode === 'fiscal_year'
 
     // 期間タイプ変更時の処理
     periodTypeRadios.forEach((radio) => {
@@ -43,59 +49,112 @@ function initializeAnalysisPage(isDetailMode, locationDetails) {
       })
     })
 
-    // 適用ボタンの処理
-    if (applyButton) {
-      applyButton.addEventListener('click', function () {
-        const selectedPeriodType = document.querySelector('input[name="period-type"]:checked').value
-        let url = '/analysis'
+    if (isYearMode) {
+      monthSelection?.classList.add('hidden')
+      yearSelection?.classList.remove('hidden')
+    }
 
-        if (selectedPeriodType === 'month') {
-          const selectedMonth = document.getElementById('month-select').value
-          url += `?month=${selectedMonth}`
-        } else {
-          const selectedYear = document.getElementById('year-select').value
-          url += `?year=${selectedYear}`
-        }
-
+    const swapAnalysisContent = (url) => {
+      const root = document.getElementById('analysis-root')
+      if (!root) {
         window.location.href = url
+        return
+      }
+
+      fetch(url, { headers: { 'X-Requested-With': 'fetch' } })
+        .then((res) => res.text())
+        .then((html) => {
+          const parser = new DOMParser()
+          const doc = parser.parseFromString(html, 'text/html')
+          const newRoot = doc.getElementById('analysis-root')
+          const newConfigScript = doc.getElementById('analysis-config')
+          const newLabel = doc.querySelector('.analysis-period-label')
+          if (!newRoot || !newConfigScript) {
+            window.location.href = url
+            return
+          }
+          root.replaceWith(newRoot)
+          if (newLabel) {
+            const currentLabel = document.querySelector('.analysis-period-label')
+            if (currentLabel) {
+              currentLabel.textContent = newLabel.textContent
+            }
+          }
+          history.pushState({}, '', url)
+
+          const newConfig = JSON.parse(newConfigScript.textContent)
+          initializeAnalysisPage(newConfig)
+        })
+        .catch(() => {
+          window.location.href = url
+        })
+    }
+
+    const navigateToPeriod = (target) => {
+      let url = '/analysis'
+      if (target === 'month') {
+        const selectedMonth = monthInput ? monthInput.value : ''
+        if (selectedMonth) {
+          url += `?month=${selectedMonth}`
+        }
+      } else {
+        const selectedYear = yearSelect ? yearSelect.value : ''
+        if (selectedYear) {
+          url += `?mode=year&year=${selectedYear}`
+        }
+      }
+      swapAnalysisContent(url)
+    }
+
+    if (monthInput) {
+      monthInput.addEventListener('change', () => {
+        const monthRadio = document.getElementById('period-month')
+        if (monthRadio) monthRadio.checked = true
+        navigateToPeriod('month')
       })
     }
+
+    if (yearSelect) {
+      yearSelect.addEventListener('change', () => {
+        const yearRadio = document.getElementById('period-year')
+        if (yearRadio) yearRadio.checked = true
+        navigateToPeriod('year')
+      })
+    }
+
+    periodTypeRadios.forEach((radio) => {
+      radio.addEventListener('change', function () {
+        if (this.value === 'month') {
+          navigateToPeriod('month')
+        } else {
+          navigateToPeriod('year')
+        }
+      })
+    })
 
     if (!isDetailMode) {
       // 勤怠種別チェックボックスの制御（月集計モード）
       const checkboxes = document.querySelectorAll('.location-checkbox')
+      const toggleLocationColumn = (locationId, isChecked) => {
+        const headers = document.querySelectorAll('.location-header[data-location-id="' + locationId + '"]')
+        const cells = document.querySelectorAll('.location-cell[data-location-id="' + locationId + '"]')
+
+        headers.forEach((header) => {
+          header.style.display = isChecked ? '' : 'none'
+        })
+
+        cells.forEach((cell) => {
+          cell.style.display = isChecked ? '' : 'none'
+        })
+      }
 
       checkboxes.forEach((checkbox) => {
+        toggleLocationColumn(checkbox.dataset.locationId, checkbox.checked)
         checkbox.addEventListener('change', function () {
           const locationId = this.dataset.locationId
-          const locationName = this.dataset.locationName
           const isChecked = this.checked
 
-          if (isChecked) {
-            // 対応する列の表示
-            const headers = document.querySelectorAll('.location-header[data-location-id="' + locationId + '"]')
-            const cells = document.querySelectorAll('.location-cell[data-location-id="' + locationId + '"]')
-
-            headers.forEach((header) => {
-              header.style.display = ''
-            })
-
-            cells.forEach((cell) => {
-              cell.style.display = ''
-            })
-          } else {
-            // 対応する列の非表示
-            const headers = document.querySelectorAll('.location-header[data-location-id="' + locationId + '"]')
-            const cells = document.querySelectorAll('.location-cell[data-location-id="' + locationId + '"]')
-
-            headers.forEach((header) => {
-              header.style.display = 'none'
-            })
-
-            cells.forEach((cell) => {
-              cell.style.display = 'none'
-            })
-          }
+          toggleLocationColumn(locationId, isChecked)
 
           // 詳細データを更新
           updateDetailColumns(locationDetails)
@@ -103,32 +162,15 @@ function initializeAnalysisPage(isDetailMode, locationDetails) {
       })
 
       // 初期表示時に詳細データを更新（DOMContentLoaded後に実行）
-      setTimeout(function () {
-        updateDetailColumns(locationDetails)
-      }, 100)
+      updateDetailColumns(locationDetails)
     }
+  }
 
-    // グループチェックボックスの制御
-    const groupCheckboxes = document.querySelectorAll('.group-checkbox')
-    groupCheckboxes.forEach((checkbox) => {
-      checkbox.addEventListener('change', function () {
-        const groupName = this.dataset.groupName
-        const isChecked = this.checked
-
-        // 対応するグループの行の表示/非表示を切り替え
-        const groupRows = document.querySelectorAll('.group-row[data-group-name="' + groupName + '"]')
-
-        groupRows.forEach((row) => {
-          row.style.display = isChecked ? '' : 'none'
-        })
-
-        if (!isDetailMode) {
-          // 詳細データを更新
-          updateDetailColumns(locationDetails)
-        }
-      })
-    })
-  })
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup, { once: true })
+  } else {
+    setup()
+  }
 }
 
 // 詳細列のデータを更新する関数

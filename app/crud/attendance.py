@@ -7,6 +7,7 @@
 
 from typing import Any, Dict, List, Optional
 from datetime import datetime, date
+from types import SimpleNamespace
 from sqlalchemy.orm import Session
 import time
 
@@ -405,128 +406,190 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             return {}
 
     def get_attendance_analysis_data(
-        self, db: Session, *, month: Optional[str] = None
+        self, db: Session, *, month: Optional[str] = None, fiscal_year: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         勤怠集計用のデータを取得します。
-        月別・人別・勤怠種別別の日数集計を行います。
+        月別・年度別にユーザーごとの勤怠種別日数と日付一覧を返します。
 
         Args:
             db: データベースセッション
             month: 対象月（YYYY-MM形式、指定がない場合は現在の月）
+            fiscal_year: 対象年度（4月開始）。指定された場合は年度優先。
 
         Returns:
             Dict[str, Any]: 分析データ
-                - month_name: 月名（例: "2024年1月"）
-                - users: ユーザー別の勤怠データ
+                - period: 集計期間情報（mode/label/start/endなど）
+                - users: ユーザー別の勤怠データ（種別別日数・日付一覧）
                 - locations: 勤怠種別一覧
-                - summary: 集計サマリー
+                - group_summary: グループ別集計
+                - summary: 全体サマリー
         """
         from datetime import datetime, date
         import calendar
         from app.crud.user import user as user_crud
         from app.crud.location import location as location_crud
-        from app.crud.group import group as group_crud
-        from app.crud.user_type import user_type as user_type_crud
-        from sqlalchemy import func, and_
+        from sqlalchemy import and_
 
         try:
-            # 対象月の決定
-            if month is None:
+            if fiscal_year is not None:
+                # 4月開始の年度
+                period_mode = "fiscal_year"
+                start_date = date(fiscal_year, 4, 1)
+                end_date = date(fiscal_year + 1, 3, 31)
+                period_label = f"{fiscal_year}年度"
+                month_value: Optional[str] = None
+            else:
                 current_date = datetime.now()
-                month = f"{current_date.year}-{current_date.month:02d}"
-            
-            # 月の解析
-            year, month_num = map(int, month.split('-'))
-            month_name = f"{year}年{month_num}月"
-            
-            # 月の開始日と終了日を計算
-            first_day = date(year, month_num, 1)
-            last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
-            
+                if month is None:
+                    month = f"{current_date.year}-{current_date.month:02d}"
+                year, month_num = map(int, month.split("-"))
+                period_mode = "month"
+                start_date = date(year, month_num, 1)
+                end_date = date(year, month_num, calendar.monthrange(year, month_num)[1])
+                period_label = f"{year}年{month_num}月"
+                month_value = month
+
             # ユーザー情報を取得（グループ、ユーザー種別含む）
             users_data = user_crud.get_all_users_with_details(db)
-            
+
             # 勤怠種別情報を取得
             locations = location_crud.get_multi(db)
-            locations_sorted = sorted(locations, key=lambda x: (x.order or 999, x.id))
-            
+            locations_sorted = sorted(
+                locations, key=lambda x: (str(x.category or ""), x.order or 999, x.id)
+            )
+
             # 対象期間の勤怠データを取得
             attendances = (
                 db.query(Attendance)
                 .filter(
                     and_(
-                        Attendance.date >= first_day,
-                        Attendance.date <= last_day
+                        Attendance.date >= start_date,
+                        Attendance.date <= end_date,
                     )
                 )
+                .order_by(Attendance.date)
                 .all()
             )
-            
+
             # ユーザー別・勤怠種別別の日数を集計
-            user_analysis = {}
+            user_analysis: Dict[str, Dict[str, Any]] = {}
             location_totals = {loc.id: 0 for loc in locations_sorted}
-            
-            for user_data in users_data:
-                user_name, user_id, group_name, user_type_name = user_data
-                
-                # このユーザーの勤怠データを集計
+            location_details: Dict[int, Dict[str, List[Dict[str, Any]]]] = {
+                loc.id: {} for loc in locations_sorted
+            }
+
+            for user_name, user_id, group_name, user_type_name in users_data:
                 user_attendances = [att for att in attendances if att.user_id == user_id]
                 location_counts = {loc.id: 0 for loc in locations_sorted}
-                
+                location_dates: Dict[int, List[Dict[str, Any]]] = {
+                    loc.id: [] for loc in locations_sorted
+                }
+
                 for att in user_attendances:
                     location_counts[att.location_id] += 1
                     location_totals[att.location_id] += 1
-                
-                # 総勤務日数を計算
+                    date_info = {
+                        "date_str": att.date.strftime("%Y-%m-%d"),
+                        "date_jp": f"{att.date.month}月{att.date.day}日",
+                        "date_mmdd": att.date.strftime("%m/%d"),
+                        "date_simple": f"{att.date.month}/{att.date.day}",
+                        "note": att.note or "",
+                    }
+                    location_dates[att.location_id].append(date_info)
+
+                # 日付を昇順に整列し、location_detailsにも格納
+                for loc_id, dates in location_dates.items():
+                    if dates:
+                        sorted_dates = sorted(dates, key=lambda d: d["date_str"])
+                        location_dates[loc_id] = sorted_dates
+                        location_details[loc_id][str(user_id)] = sorted_dates
+
                 total_days = sum(location_counts.values())
-                
+
                 user_analysis[user_id] = {
                     "user_name": user_name,
                     "group_name": group_name,
                     "user_type_name": user_type_name,
                     "location_counts": location_counts,
-                    "total_days": total_days
+                    "location_dates": location_dates,
+                    "total_days": total_days,
                 }
-            
+
             # 勤怠種別情報を整理
-            locations_info = []
+            locations_info: List[SimpleNamespace] = []
             for loc in locations_sorted:
-                locations_info.append({
-                    "id": loc.id,
-                    "name": loc.name,
-                    "category": loc.category,
-                    "total_days": location_totals[loc.id]
-                })
-            
-            # サマリー情報を計算
+                locations_info.append(
+                    SimpleNamespace(
+                        id=loc.id,
+                        name=loc.name,
+                        category=loc.category,
+                        order=loc.order,
+                        total_days=location_totals[loc.id],
+                    )
+                )
+
+            # グループ別サマリー
+            group_summary: Dict[str, Dict[str, Any]] = {}
+            for _, user_id, group_name, _ in users_data:
+                group_key = group_name or "未分類"
+                if group_key not in group_summary:
+                    group_summary[group_key] = {
+                        "location_counts": {loc.id: 0 for loc in locations_sorted},
+                        "total_days": 0,
+                    }
+                user_counts = user_analysis.get(user_id, {}).get("location_counts", {})
+                for loc_id, cnt in user_counts.items():
+                    group_summary[group_key]["location_counts"][loc_id] += cnt
+                    group_summary[group_key]["total_days"] += cnt
+
             total_users = len(user_analysis)
             total_attendance_days = sum(location_totals.values())
-            
+
             return {
-                "month": month,
-                "month_name": month_name,
+                "month": month_value or "",
+                "month_name": period_label,
+                "period": {
+                    "mode": period_mode,
+                    "label": period_label,
+                    "start": start_date,
+                    "end": end_date,
+                    "fiscal_year": fiscal_year,
+                    "month": month_value,
+                },
                 "users": user_analysis,
                 "locations": locations_info,
+                "group_summary": group_summary,
+                "location_details": location_details,
                 "summary": {
                     "total_users": total_users,
                     "total_attendance_days": total_attendance_days,
-                    "location_totals": location_totals
-                }
+                    "location_totals": location_totals,
+                },
             }
-            
+
         except Exception as e:
             logger.error(f"勤怠集計データ取得中にエラーが発生しました: {str(e)}", exc_info=True)
             return {
                 "month": month or "",
                 "month_name": "エラー",
+                "period": {
+                    "mode": "error",
+                    "label": "エラー",
+                    "start": None,
+                    "end": None,
+                    "fiscal_year": fiscal_year,
+                    "month": month,
+                },
                 "users": {},
                 "locations": [],
+                "group_summary": {},
+                "location_details": {},
                 "summary": {
                     "total_users": 0,
                     "total_attendance_days": 0,
-                    "location_totals": {}
-                }
+                    "location_totals": {},
+                },
             }
 
     def get_attendance_by_type_for_fiscal_year(
