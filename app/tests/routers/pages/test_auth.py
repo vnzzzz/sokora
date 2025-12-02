@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import urllib.parse
 
 import pytest
@@ -469,6 +470,42 @@ async def test_header_shows_username_and_logout_button(async_client, monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_user_menu_is_overlay_and_does_not_shift_content(
+    async_client, monkeypatch, tmp_path
+) -> None:
+    """ユーザーメニューをレイアウト外に重ねてコンテンツ高さを変えない"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
+    monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
+    monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    login_resp = await async_client.post(
+        "/auth/local",
+        data={"username": "admin", "password": "secret", "next": "/"},
+        follow_redirects=False,
+    )
+    assert login_resp.status_code == 303
+
+    page = await async_client.get("/", follow_redirects=True)
+    assert page.status_code == 200
+
+    match = re.search(
+        r'<header[^>]*class="([^"]+)"[^>]*data-testid="user-menu-wrapper"',
+        page.text,
+    )
+    assert match, "user menu wrapper should be present"
+    classes = match.group(1)
+    assert "fixed" in classes
+    assert "right-0" in classes
+    assert "justify-end" in classes
+
+    main_classes = re.findall(r'class="([^"]+)"', page.text)
+    assert any("pt-14" in cls for cls in main_classes), "main should reserve top padding"
+
+
+@pytest.mark.asyncio
 async def test_login_page_does_not_show_logout_notice(async_client, monkeypatch, tmp_path) -> None:
     """ログアウト後にログイン画面へ戻っても通知メッセージは表示しない"""
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -477,6 +514,19 @@ async def test_login_page_does_not_show_logout_notice(async_client, monkeypatch,
     resp = await async_client.get("/auth/login?reason=logout")
     assert resp.status_code == 200
     assert "ログアウトしました。" not in resp.text
+
+
+@pytest.mark.asyncio
+async def test_login_page_does_not_show_session_expired_notice(
+    async_client, monkeypatch, tmp_path
+) -> None:
+    """セッション切れ理由でリダイレクトされても通知メッセージは表示しない"""
+    monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
+    monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
+
+    resp = await async_client.get("/auth/login?reason=reauth")
+    assert resp.status_code == 200
+    assert "セッションが切れました。再度ログインしてください。" not in resp.text
 
 
 @pytest.mark.asyncio

@@ -36,27 +36,30 @@
 
         <!-- メインコンテンツ -->
         <main
-          class="flex-1 py-2 px-3 space-y-4 transition-all duration-300 ease-in-out"
+          class="relative flex-1 py-2 px-3 pt-14 transition-all duration-300 ease-in-out"
           :class="{
             'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen, {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
             'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen       {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
           }"
         >
           {% if show_user_menu %}
-            <header class="flex items-center justify-end gap-3 pt-1 pb-2">
-              <div class="flex items-center gap-3" data-testid="user-menu">
-                <div class="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-full shadow-sm">
-                  <div class="w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+            <header
+              class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
+              data-testid="user-menu-wrapper"
+            >
+              <div class="pointer-events-auto flex items-center gap-2" data-testid="user-menu">
+                <div class="flex items-center gap-2 px-2.5 py-1.5 bg-base-200 rounded-full shadow-sm">
+                  <div class="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs">
                     {{ (auth_username | first | upper) if auth_username else "U" }}
                   </div>
-                  <span class="text-sm font-semibold text-base-content">
+                  <span class="text-xs font-semibold text-base-content">
                     {{ auth_username or "ログインユーザー" }}
                   </span>
                 </div>
                 <form action="/auth/logout" method="post">
                   <button
                     type="submit"
-                    class="btn btn-ghost btn-circle btn-sm"
+                    class="btn btn-ghost btn-circle btn-xs"
                     title="ログアウト"
                     aria-label="ログアウト"
                     data-testid="logout-button"
@@ -81,7 +84,9 @@
               </div>
             </header>
           {% endif %}
-          {{ body_content | safe }}
+          <div class="space-y-4">
+            {{ body_content | safe }}
+          </div>
         </main>
       </div>
     {% else %}
