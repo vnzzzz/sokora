@@ -5,6 +5,8 @@
 
 # PYTHONPATH に /app を追加 (一度だけ実行)
 export PYTHONPATH="/app:${PYTHONPATH}"
+# 認証ガードを明示的に無効化して、UI/API テストを環境差分なく実行する
+export SOKORA_AUTH_ENABLED="false"
 
 echo "=========================================="
 echo "🧹 テスト実行前のクリーンアップ・検証"

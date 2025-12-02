@@ -63,8 +63,6 @@ async def login_page(
         message = "ローカル管理者ログインに失敗しました。"
     elif reason == "reauth":
         message = "セッションが切れました。再度ログインしてください。"
-    elif reason == "logout":
-        message = "ログアウトしました。"
 
     context = {
         "request": request,

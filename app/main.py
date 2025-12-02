@@ -79,6 +79,7 @@ def create_application() -> FastAPI:
 
     # セッション + 認証ガード
     auth_settings = AuthSettings.from_env()
+    app.state.auth_enabled = auth_settings.auth_enabled
     app.add_middleware(AuthRequiredMiddleware, settings_provider=AuthSettings.from_env)
     app.add_middleware(
         SessionMiddleware,

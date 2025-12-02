@@ -41,7 +41,7 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[..., Response]) -> Response:
         settings = self.settings_provider()
-        if not settings.auth_required:
+        if not settings.auth_enabled:
             return await call_next(request)
 
         path = request.url.path

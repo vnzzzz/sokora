@@ -34,6 +34,6 @@ def require_session_user(
 ) -> dict:
     """API 用の認可依存関係。未認証なら 401 を返す。"""
     user = request.session.get("auth")
-    if settings.auth_required and not user:
+    if settings.auth_enabled and not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return user

@@ -14,7 +14,13 @@
     {% include "components/common/theme_switcher.html" %}
 
     <!-- レイアウト -->
-    {% set show_sidebar = request.session.get("auth") %}
+    {% set current_path = request.url.path if request else "" %}
+    {% set auth_enabled = request.app.state.auth_enabled if request and request.app else True %}
+    {% set auth_session = request.session.get("auth") if request and request.session else None %}
+    {% set is_admin = auth_session and auth_session.get("role") == "admin" %}
+    {% set auth_username = auth_session.get("username") if auth_session else None %}
+    {% set show_user_menu = auth_session %}
+    {% set show_sidebar = (not current_path.startswith("/auth")) and (not auth_enabled or auth_session) %}
     {% set body_content %}{% block content %}{% endblock %}{% endset %}
     {% if show_sidebar %}
       <div
@@ -36,6 +42,23 @@
             'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen       {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
           }"
         >
+          {% if show_user_menu %}
+            <header class="flex items-center justify-end gap-3 pt-1 pb-2">
+              <div class="flex items-center gap-3" data-testid="user-menu">
+                <div class="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-full shadow-sm">
+                  <div class="w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
+                    {{ (auth_username | first | upper) if auth_username else "U" }}
+                  </div>
+                  <span class="text-sm font-semibold text-base-content">
+                    {{ auth_username or "ログインユーザー" }}
+                  </span>
+                </div>
+                <form action="/auth/logout" method="post">
+                  <button type="submit" class="btn btn-outline btn-sm">ログアウト</button>
+                </form>
+              </div>
+            </header>
+          {% endif %}
           {{ body_content | safe }}
         </main>
       </div>
@@ -83,6 +106,11 @@
                     setTimeout(() => {
                       window.location.reload()
                     }, 100)
+                  }
+                } else if (triggers && triggers.removeRow) {
+                  const row = document.getElementById(triggers.removeRow)
+                  if (row) {
+                    row.remove()
                   }
                 } else {
                   console.warn('[htmx:beforeSwap] Modal element not found for ID:', modalId)
