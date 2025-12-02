@@ -2,8 +2,9 @@ SHELL := /bin/bash
 
 # Load .env when available so SERVICE_PORT and other env vars are reused.
 ENV_FILE ?= .env
-ifneq (,$(wildcard $(ENV_FILE)))
-include $(ENV_FILE)
+ENV_FILE_PATH := $(CURDIR)/$(ENV_FILE)
+ifneq (,$(wildcard $(ENV_FILE_PATH)))
+include $(ENV_FILE_PATH)
 export
 endif
 
@@ -91,15 +92,27 @@ dev-build:
 
 docker-run: docker-build
 	mkdir -p data
-	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) --rm \
-		-p $(SERVICE_PORT):8000 \
+	@ENV_FILE_ARG=""; \
+	if [ -f "$(ENV_FILE_PATH)" ]; then \
+		echo "loading env from $(ENV_FILE_PATH)"; \
+		set -a; . "$(ENV_FILE_PATH)"; set +a; \
+		ENV_FILE_ARG="--env-file $(ENV_FILE_PATH)"; \
+	fi; \
+	docker run -d --name $(CONTAINER_NAME) $$ENV_FILE_ARG --rm \
+		-p $${SERVICE_PORT:-$(SERVICE_PORT)}:8000 \
 		-v $(abspath data):/app/data \
 		$(VERSION_TAG)
 
 docker-run-proxy: docker-build-proxy
 	mkdir -p data
-	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) $(DOCKER_PROXY_ENV) --rm \
-		-p $(SERVICE_PORT):8000 \
+	@ENV_FILE_ARG=""; \
+	if [ -f "$(ENV_FILE_PATH)" ]; then \
+		echo "loading env from $(ENV_FILE_PATH)"; \
+		set -a; . "$(ENV_FILE_PATH)"; set +a; \
+		ENV_FILE_ARG="--env-file $(ENV_FILE_PATH)"; \
+	fi; \
+	docker run -d --name $(CONTAINER_NAME) $$ENV_FILE_ARG $(DOCKER_PROXY_ENV) --rm \
+		-p $${SERVICE_PORT:-$(SERVICE_PORT)}:8000 \
 		-v $(abspath data):/app/data \
 		$(VERSION_TAG)
 
