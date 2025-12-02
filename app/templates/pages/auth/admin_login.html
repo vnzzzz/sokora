@@ -1,0 +1,41 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="text-center space-y-2">
+    <p class="text-xs uppercase tracking-wide text-primary font-semibold">Admin Only</p>
+    <h1 class="text-2xl font-bold">管理者ログイン</h1>
+    <p class="text-sm text-base-content/70">管理者のみ利用できます。一般の方は SSO をご利用ください。</p>
+  </div>
+
+  {% if error_message %}
+  <div class="alert alert-error text-sm">
+    <span>{{ error_message }}</span>
+  </div>
+  {% endif %}
+
+  <div class="card bg-base-200 shadow">
+    <div class="card-body space-y-4">
+      {% if local_enabled %}
+      <form action="/auth/local" method="post" class="space-y-4">
+        <input type="hidden" name="next" value="{{ next_path }}" />
+        <div class="form-control">
+          <label class="label text-sm font-semibold">管理者ID</label>
+          <input name="username" class="input input-bordered" autocomplete="username" required />
+        </div>
+        <div class="form-control">
+          <label class="label text-sm font-semibold">パスワード</label>
+          <input type="password" name="password" class="input input-bordered" autocomplete="current-password" required />
+        </div>
+        <div class="flex items-center justify-between text-sm text-base-content/70">
+          <a href="/auth/login?next={{ next_path | urlencode }}" class="link link-hover">SSO に戻る</a>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">管理者としてログイン</button>
+      </form>
+      {% else %}
+      <p class="text-sm text-base-content/70">管理者ログインは現在無効化されています。</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

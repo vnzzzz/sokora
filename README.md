@@ -51,6 +51,36 @@
 
 初回セットアップは `make install` で Python / npm 依存とアセットをまとめて準備できます。`make run`・`make test` などのターゲット実行時も、依存が未インストールなら自動で `poetry install` を走らせます。
 
+## 環境変数
+| 変数名 | デフォルト | 説明 |
+| --- | --- | --- |
+| SERVICE_PORT | 8000 | アプリケーションの公開ポート（`make run` / `make docker-run` が参照） |
+| VERSION | なし（必須） | Docker イメージタグに使用（`make docker-build` / `make docker-run`） |
+| proxy | なし | プロキシ経由で Docker ビルド/実行する際の proxy URL（`make docker-build-proxy` / `make docker-run-proxy`） |
+| SOKORA_LOG_LEVEL | INFO | ログレベル（DEBUG/INFO/WARN/ERROR） |
+| SOKORA_AUTH_ENABLED | false | 認証ガードの有効/無効 |
+| SOKORA_AUTH_SESSION_SECRET | dev-session-secret | セッションクッキー署名用シークレット（本番は必ず上書き） |
+| SOKORA_AUTH_SESSION_TTL_SECONDS | 3600 | セッション有効期限（秒） |
+| SOKORA_LOCAL_AUTH_ENABLED | true | ローカル管理者認証の有効/無効 |
+| SOKORA_LOCAL_ADMIN_USERNAME | なし | ローカル管理者ユーザー名（設定時のみローカル認証が有効） |
+| SOKORA_LOCAL_ADMIN_PASSWORD | なし | ローカル管理者パスワード |
+| SOKORA_AUTH_STATE_PATH | data/auth_state.json | OIDC 有効/無効状態を保持するストレージパス |
+| OIDC_ISSUER | なし | OIDC IdP の issuer URL（設定時に OIDC を利用） |
+| OIDC_CLIENT_ID | なし | OIDC クライアント ID |
+| OIDC_CLIENT_SECRET | なし | OIDC クライアントシークレット |
+| OIDC_REDIRECT_URL | なし | OIDC リダイレクト先 URL（例: `http://localhost:${SERVICE_PORT}/auth/callback`） |
+| OIDC_SCOPES | openid profile email | 要求する OIDC スコープ |
+| OIDC_HTTP_TIMEOUT | 3.0 | OIDC リクエストのタイムアウト秒 |
+| OIDC_AUTHORIZATION_ENDPOINT | なし | Authorization Endpoint の上書き（省略時は discovery 依存） |
+| OIDC_TOKEN_ENDPOINT | なし | Token Endpoint の上書き |
+| OIDC_USERINFO_ENDPOINT | なし | UserInfo Endpoint の上書き |
+| OIDC_LOGOUT_ENDPOINT | なし | ログアウト用 Endpoint の上書き |
+| SEED_DAYS_BACK | 60 | `make seed` の過去分シード日数 |
+| SEED_DAYS_FORWARD | 60 | `make seed` の未来分シード日数 |
+
+- `SOKORA_AUTH_SESSION_TTL_SECONDS` と `SOKORA_AUTH_STATE_PATH` はアプリにデフォルトがあるため `.env.sample` には含めていません。カスタムしたい場合のみ `.env` に追記してください。
+- `SOKORA_AUTH_SESSION_SECRET` は本番環境で必ず安全な値に置き換えてください。
+
 ### 開発用コンテナ（devcontainer と共通）
 - イメージビルド: `make dev-build`
 - サーバ起動（ホットリロード）: `make run`
