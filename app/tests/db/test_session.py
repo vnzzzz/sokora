@@ -3,15 +3,21 @@ db/session.py のテストケース
 """
 
 import pytest
-import os
-import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+import app.db.session as session_module
 from app.db.session import (
-    get_db, init_db, initialize_database, SessionLocal, Base, engine, DB_PATH, DB_URL
+    get_db,
+    init_db,
+    initialize_database,
+    SessionLocal,
+    Base,
+    engine,
+    DB_PATH,
+    DB_URL,
 )
 
 
@@ -44,6 +50,10 @@ class TestDatabaseConfiguration:
         """Baseクラスが正しく設定されていることを確認"""
         assert Base is not None
         assert hasattr(Base, 'metadata')
+
+    def test_legacy_db_path_removed(self) -> None:
+        """旧DBパス互換の定数が存在しないことを確認"""
+        assert not hasattr(session_module, "LEGACY_DB_PATH")
 
 
 class TestGetDb:
@@ -211,43 +221,16 @@ class TestInitializeDatabaseSeeding:
     @patch('app.db.session.seed_database')
     @patch('app.db.session.init_db')
     @patch('app.db.session.logger')
-    @patch('app.db.session.LEGACY_DB_PATH')
-    @patch('app.db.session.DB_PATH')
-    def test_initialize_database_migrates_legacy_file(
-        self,
-        mock_db_path: MagicMock,
-        mock_legacy_db_path: MagicMock,
-        mock_logger: MagicMock,
-        mock_init_db: MagicMock,
-        mock_seed_database: MagicMock,
-    ) -> None:
-        """旧ファイル名が存在する場合にリネームすることを確認"""
-        mock_db_path.exists.return_value = False
-        mock_legacy_db_path.exists.return_value = True
-
-        result = initialize_database()
-
-        assert result is True
-        mock_legacy_db_path.rename.assert_called_once_with(mock_db_path)
-        mock_seed_database.assert_not_called()
-        mock_logger.info.assert_any_call("既存のデータベースファイルを新しいパスへ移行します。")
-
-    @patch('app.db.session.seed_database')
-    @patch('app.db.session.init_db')
-    @patch('app.db.session.logger')
-    @patch('app.db.session.LEGACY_DB_PATH')
     @patch('app.db.session.DB_PATH')
     def test_initialize_database_seeds_when_missing(
         self,
         mock_db_path: MagicMock,
-        mock_legacy_db_path: MagicMock,
         mock_logger: MagicMock,
         mock_init_db: MagicMock,
         mock_seed_database: MagicMock,
     ) -> None:
         """DBファイルが無い場合にシーダーが実行されることを確認"""
         mock_db_path.exists.return_value = False
-        mock_legacy_db_path.exists.return_value = False
 
         result = initialize_database()
 
@@ -259,19 +242,16 @@ class TestInitializeDatabaseSeeding:
     @patch('app.db.session.seed_database')
     @patch('app.db.session.init_db')
     @patch('app.db.session.logger')
-    @patch('app.db.session.LEGACY_DB_PATH')
     @patch('app.db.session.DB_PATH')
     def test_initialize_database_skips_seeding_when_exists(
         self,
         mock_db_path: MagicMock,
-        mock_legacy_db_path: MagicMock,
         mock_logger: MagicMock,
         mock_init_db: MagicMock,
         mock_seed_database: MagicMock,
     ) -> None:
         """既存DBがある場合にシーディングをスキップすることを確認"""
         mock_db_path.exists.return_value = True
-        mock_legacy_db_path.exists.return_value = False
 
         result = initialize_database()
 

@@ -152,4 +152,12 @@ class TestAppIntegration:
         
         # ReDocのテスト
         response = client.get("/redoc")
-        assert response.status_code == 200 
+        assert response.status_code == 200
+
+    def test_legacy_ui_route_not_available(self) -> None:
+        """旧 /ui プレフィックスが無効化されていることを確認"""
+        client = TestClient(app)
+
+        response = client.get("/ui")
+
+        assert response.status_code == 404
