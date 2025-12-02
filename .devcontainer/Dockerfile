@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   vim \
   nano \
+  bash-completion \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # タイムゾーンをAsia/Tokyoに設定
