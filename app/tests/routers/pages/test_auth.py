@@ -460,8 +460,12 @@ async def test_header_shows_username_and_logout_button(async_client, monkeypatch
     page = await async_client.get("/", follow_redirects=True)
     assert page.status_code == 200
     assert "admin" in page.text
-    assert page.text.count('action="/auth/logout"') == 1
     assert 'data-testid="user-menu"' in page.text
+    assert 'data-testid="logout-button"' in page.text
+    assert 'data-testid="logout-icon"' in page.text
+    assert page.text.count('action="/auth/logout"') == 1
+    assert 'aria-label="ログアウト"' in page.text
+    assert ">ログアウト<" not in page.text
 
 
 @pytest.mark.asyncio
