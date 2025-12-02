@@ -231,7 +231,8 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
             headers={
                 "HX-Trigger": json.dumps({
                     "closeModal": modal_id,
-                    "refreshPage": True
+                    "refreshPage": True,
+                    "removeRow": f"user-type-row-{user_type_id}"
                 })
             }
         )

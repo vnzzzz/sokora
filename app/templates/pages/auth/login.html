@@ -1,0 +1,39 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="text-center space-y-2">
+    <h1 class="text-3xl font-bold">Sokora login</h1>
+  </div>
+
+  {% if error_message %}
+  <div class="alert alert-error text-sm">
+    <span>{{ error_message }}</span>
+  </div>
+  {% endif %}
+
+  <div class="space-y-3">
+    <form action="/auth/redirect" method="get" class="space-y-3">
+      <input type="hidden" name="next" value="{{ next_path }}" />
+      <button type="submit" class="btn btn-primary btn-lg w-full" {% if not oidc_enabled %}disabled{% endif %}>
+        SSOでログイン
+      </button>
+    </form>
+    {% if not oidc_enabled %}
+    <p class="text-sm text-base-content/70 text-center">SSOが現在利用できません。管理者に確認してください。</p>
+    {% endif %}
+  </div>
+
+  <div class="divider text-xs text-base-content/70">or</div>
+
+  <div class="space-y-2 text-center">
+    {% if local_enabled %}
+    <a href="/auth/login/admin?next={{ next_path | urlencode }}" class="btn btn-ghost w-full">
+      管理者ログインへ進む
+    </a>
+    {% else %}
+    <p class="text-sm text-base-content/60">管理者ログインは現在無効化されています。</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

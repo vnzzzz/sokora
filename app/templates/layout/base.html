@@ -14,28 +14,86 @@
     {% include "components/common/theme_switcher.html" %}
 
     <!-- レイアウト -->
-    <div
-      class="flex"
-      x-data="{
-        isSidebarOpen: localStorage.getItem('sidebarOpen') === null ? true : localStorage.getItem('sidebarOpen') === 'true'
-      }"
-      x-init="$watch('isSidebarOpen', value => localStorage.setItem('sidebarOpen', value))"
-      x-cloak
-    >
-      <!-- サイドバー -->
-      {% include "components/common/sidebar.html" with context %}
-
-      <!-- メインコンテンツ -->
-      <main
-        class="flex-1 py-2 px-3 space-y-4 transition-all duration-300 ease-in-out"
-        :class="{
-          'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen, {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
-          'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen       {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
+    {% set current_path = request.url.path if request else "" %}
+    {% set auth_enabled = request.app.state.auth_enabled if request and request.app else True %}
+    {% set auth_session = request.session.get("auth") if request and request.session else None %}
+    {% set is_admin = auth_session and auth_session.get("role") == "admin" %}
+    {% set auth_username = auth_session.get("username") if auth_session else None %}
+    {% set show_user_menu = auth_session %}
+    {% set show_sidebar = (not current_path.startswith("/auth")) and (not auth_enabled or auth_session) %}
+    {% set body_content %}{% block content %}{% endblock %}{% endset %}
+    {% if show_sidebar %}
+      <div
+        class="flex"
+        x-data="{
+          isSidebarOpen: localStorage.getItem('sidebarOpen') === null ? true : localStorage.getItem('sidebarOpen') === 'true'
         }"
+        x-init="$watch('isSidebarOpen', value => localStorage.setItem('sidebarOpen', value))"
+        x-cloak
       >
-        {% block content %}{% endblock %}
+        <!-- サイドバー -->
+        {% include "components/common/sidebar.html" with context %}
+
+        <!-- メインコンテンツ -->
+        <main
+          class="relative flex-1 py-2 px-3 pt-14 transition-all duration-300 ease-in-out"
+          :class="{
+            'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen, {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
+            'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen       {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
+          }"
+        >
+          {% if show_user_menu %}
+            <header
+              class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
+              data-testid="user-menu-wrapper"
+            >
+              <div class="pointer-events-auto flex items-center gap-2" data-testid="user-menu">
+                <div class="flex items-center gap-2 px-2.5 py-1.5 bg-base-200 rounded-full shadow-sm">
+                  <div class="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs">
+                    {{ (auth_username | first | upper) if auth_username else "U" }}
+                  </div>
+                  <span class="text-xs font-semibold text-base-content">
+                    {{ auth_username or "ログインユーザー" }}
+                  </span>
+                </div>
+                <form action="/auth/logout" method="post">
+                  <button
+                    type="submit"
+                    class="btn btn-ghost btn-circle btn-xs"
+                    title="ログアウト"
+                    aria-label="ログアウト"
+                    data-testid="logout-button"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="w-4 h-4"
+                      data-testid="logout-icon"
+                    >
+                      <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15" />
+                      <path d="M9.75 12h9" />
+                      <path d="m18 15 2.75-3L18 9" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </header>
+          {% endif %}
+          <div class="space-y-4">
+            {{ body_content | safe }}
+          </div>
+        </main>
+      </div>
+    {% else %}
+      <main class="py-8 px-4 max-w-3xl mx-auto">
+        {{ body_content | safe }}
       </main>
-    </div>
+    {% endif %}
 
     <!-- Modal container -->
     <div id="modal-container"></div>
@@ -75,6 +133,11 @@
                     setTimeout(() => {
                       window.location.reload()
                     }, 100)
+                  }
+                } else if (triggers && triggers.removeRow) {
+                  const row = document.getElementById(triggers.removeRow)
+                  if (row) {
+                    row.remove()
                   }
                 } else {
                   console.warn('[htmx:beforeSwap] Modal element not found for ID:', modalId)
