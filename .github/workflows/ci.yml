@@ -24,12 +24,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --user "poetry==1.8.4"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/bin:$PATH"
           poetry --version
 
       - name: Install dependencies
         env:
           PYTHONKEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           poetry config virtualenvs.create false
           poetry install --no-interaction --no-root
 
