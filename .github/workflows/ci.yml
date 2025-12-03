@@ -20,7 +20,10 @@ jobs:
           cache: "poetry"
 
       - name: Install Poetry
-        run: pip install poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: "1.8.4"
+          virtualenvs-create: false
 
       - name: Install dependencies
         env:
