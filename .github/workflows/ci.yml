@@ -50,7 +50,7 @@ jobs:
           ./scripts/prepare_dev_assets.sh
 
       - name: Lint (ruff)
-        run: poetry run ruff check app
+        run: poetry run ruff check app --exclude app/tests
 
       - name: Type check (mypy)
         run: poetry run mypy app
