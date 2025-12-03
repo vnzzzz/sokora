@@ -17,22 +17,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: "poetry"
+          cache: "pip"
 
       - name: Install Poetry
         run: |
           python -m pip install --upgrade pip
-          curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python -
-          ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry
-          echo "/opt/poetry/bin" >> $GITHUB_PATH
-          export PATH="/opt/poetry/bin:$PATH"
+          PYUSERBASE="$(python -m site --user-base)"
+          python -m pip install --user "poetry==1.8.4"
+          echo "${PYUSERBASE}/bin" >> "$GITHUB_PATH"
+          export PATH="${PYUSERBASE}/bin:$PATH"
           poetry --version
 
       - name: Install dependencies
         env:
           PYTHONKEYRING_BACKEND: keyring.backends.null.Keyring
         run: |
-          export PATH="/opt/poetry/bin:$PATH"
+          export PATH="$(python -m site --user-base)/bin:$PATH"
           poetry config virtualenvs.create false
           poetry install --no-interaction --no-root
 
