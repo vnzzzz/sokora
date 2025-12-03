@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "poetry"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        env:
+          PYTHONKEYRING_BACKEND: keyring.backends.null.Keyring
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --no-interaction --no-root
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright browsers
+        run: poetry run python -m playwright install --with-deps chromium
+
+      - name: Prepare runtime dirs and assets
+        run: |
+          mkdir -p data assets/json
+          ./scripts/prepare_dev_assets.sh
+
+      - name: Lint (ruff)
+        run: poetry run ruff check app
+
+      - name: Type check (mypy)
+        run: poetry run mypy app
+
+      - name: Run tests (API/unit)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          SOKORA_AUTH_ENABLED: "false"
+        run: |
+          poetry run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/
+
+      - name: Run tests (E2E)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          SOKORA_AUTH_ENABLED: "false"
+        run: |
+          poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level warning > /tmp/e2e_server.log 2>&1 &
+          SERVER_PID=$!
+          READY=0
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/ >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Server failed to start. Logs:"
+            cat /tmp/e2e_server.log || true
+            exit 1
+          fi
+          poetry run pytest -vv app/tests/e2e/
+          kill $SERVER_PID || true
