@@ -4,7 +4,7 @@ import time
 
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 # ASGITransport をインポート
 from httpx import AsyncClient, ASGITransport
 # 同期エンジン作成用の create_engine と StaticPool をインポート
@@ -31,7 +31,7 @@ def db() -> Generator[Session, None, None]:
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     # モデルをインポート (インデントを修正)
-    from app.models import User, Attendance, Location, Group, UserType, CustomHoliday
+    from app.models import User, Attendance, Location, Group, UserType, CustomHoliday  # noqa: F401
     Base.metadata.create_all(bind=engine) # テーブル作成
 
     db_session = TestingSessionLocal()
@@ -120,15 +120,12 @@ def test_data_tracker(db: Session) -> Generator[dict, None, None]:
 @pytest.fixture(scope="function")
 def db_with_data(db: Session, test_data_tracker: dict) -> Session:
     """基本テストデータが投入されたDBセッション"""
-    from app.models import Group, UserType, Location, User
     from app.schemas.group import GroupCreate
     from app.schemas.user_type import UserTypeCreate
     from app.schemas.location import LocationCreate
-    from app.schemas.user import UserCreate
     from app.crud.group import group as crud_group
     from app.crud.user_type import user_type as crud_user_type
     from app.crud.location import location as crud_location
-    from app.crud.user import user as crud_user
     
     # テスト用グループを作成
     group_data = GroupCreate(name=test_data_tracker['create_test_name']("Group"))
