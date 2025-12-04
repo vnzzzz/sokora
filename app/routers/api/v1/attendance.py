@@ -6,7 +6,7 @@
 """
 
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, cast
 import json # json をインポート
 import re # 正規表現を追加
 
@@ -197,7 +197,7 @@ async def update_attendance(
         
         # 現在表示中の月/週情報を取得
         current_month = extract_month_from_request(request)
-        current_week = extract_week_from_request(request, updated_obj.date)
+        current_week = extract_week_from_request(request, cast(date, updated_obj.date))
         
         # トリガーデータを作成
         trigger_data = {
@@ -239,7 +239,7 @@ async def delete_attendance(
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         user_id = attendance_obj.user_id  # 削除前にユーザーIDを取得
         date_str = attendance_obj.date.isoformat()  # 削除前に日付を取得
-        current_week = extract_week_from_request(request, attendance_obj.date)
+        current_week = extract_week_from_request(request, cast(date, attendance_obj.date))
         
         attendance.remove(db=db, id=attendance_id)
         logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")

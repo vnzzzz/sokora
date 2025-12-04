@@ -3,7 +3,7 @@
 """
 
 import datetime
-from typing import Optional
+from typing import Optional, cast
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -46,8 +46,12 @@ def update_custom_holiday_with_validation(
     db: Session, *, custom_holiday_id: int, custom_holiday_in: schemas.custom_holiday.CustomHolidayUpdate
 ) -> models.CustomHoliday:
     db_obj = crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
-    new_name = custom_holiday_in.name if custom_holiday_in.name is not None else db_obj.name
-    new_date = custom_holiday_in.date if custom_holiday_in.date is not None else db_obj.date
+    new_name_raw = custom_holiday_in.name if custom_holiday_in.name is not None else db_obj.name
+    new_name: Optional[str] = new_name_raw if new_name_raw is None else str(new_name_raw)
+    new_date_raw = custom_holiday_in.date if custom_holiday_in.date is not None else db_obj.date
+    new_date: Optional[datetime.date] = (
+        None if new_date_raw is None else cast(datetime.date, new_date_raw)
+    )
 
     _validate_name(new_name)
     _validate_date_unique(db, date=new_date, exclude_id=custom_holiday_id)

@@ -2,9 +2,10 @@ import logging
 import urllib.parse
 from typing import Callable, Iterable
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.types import ASGIApp
 
 from app.services.auth.settings import AuthSettings
 
@@ -20,7 +21,7 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         settings_provider: Callable[[], AuthSettings],
         exempt_prefixes: Iterable[str] | None = None,
     ) -> None:
@@ -39,7 +40,9 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
             )
         )
 
-    async def dispatch(self, request: Request, call_next: Callable[..., Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         settings = self.settings_provider()
         if not settings.auth_enabled:
             return await call_next(request)

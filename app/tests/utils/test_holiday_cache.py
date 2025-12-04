@@ -7,6 +7,8 @@ import json
 from unittest.mock import patch, mock_open
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.utils.holiday_cache import (
     HolidayCache,
     is_holiday,
@@ -249,7 +251,7 @@ class TestIntegration:
                 assert info['total_holidays'] == 11
                 assert info['build_time_cache'] is True
 
-    def test_refresh_with_custom_holiday_overrides_file(self, db) -> None:
+    def test_refresh_with_custom_holiday_overrides_file(self, db: Session) -> None:
         """DBのカスタム祝日がファイルの祝日を上書きする"""
         base_cache = {
             'holidays': {
@@ -272,7 +274,7 @@ class TestIntegration:
         assert cache.get_holiday_name(datetime.date(2024, 1, 1)) == "元日"
 
 
-def test_refresh_holiday_cache_function(db) -> None:
+def test_refresh_holiday_cache_function(db: Session) -> None:
     """グローバルキャッシュをDBで再読込できる"""
     db.add(CustomHoliday(date=datetime.date(2025, 1, 2), name="臨時休日"))
     db.commit()

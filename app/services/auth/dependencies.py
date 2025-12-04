@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from fastapi import Depends, HTTPException, Request, status
 
 from app.services.auth.oidc import OIDCClient, OIDCError
@@ -31,9 +33,9 @@ def get_optional_oidc_client(settings: AuthSettings = Depends(get_auth_settings)
 def require_session_user(
     request: Request,
     settings: AuthSettings = Depends(get_auth_settings),
-) -> dict:
+) -> Dict[str, Any] | None:
     """API 用の認可依存関係。未認証なら 401 を返す。"""
     user = request.session.get("auth")
     if settings.auth_enabled and not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    return user
+    return user if isinstance(user, dict) else None

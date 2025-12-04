@@ -19,8 +19,8 @@ async def test_register_user_calendar_partial(async_client, db) -> None:
         obj_in=UserCreate(
             id="U001",
             username="テスト太郎",
-            group_id=group.id,
-            user_type_id=user_type.id,
+            group_id=int(group.id),
+            user_type_id=int(user_type.id),
         ),
     )
     db.commit()
