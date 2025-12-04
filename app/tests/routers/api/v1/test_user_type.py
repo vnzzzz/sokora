@@ -17,10 +17,8 @@ from app.models.user_type import UserType
 from app.schemas.user_type import UserTypeCreate
 from app.crud.user_type import user_type as crud_user_type
 # User 関連のインポートを追加
-from app.models.user import User
 from app.schemas.user import UserCreate
 from app.crud.user import user as crud_user
-from app.models.group import Group # User は Group に依存
 from app.schemas.group import GroupCreate
 from app.crud.group import group as crud_group
 

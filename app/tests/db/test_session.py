@@ -2,10 +2,8 @@
 db/session.py のテストケース
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 import app.db.session as session_module

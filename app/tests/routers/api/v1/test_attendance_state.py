@@ -6,9 +6,7 @@
 """
 import json
 from datetime import date, timedelta
-from typing import Dict, Any, List
 
-import pytest
 from fastapi import status
 from httpx import AsyncClient
 
@@ -43,16 +41,8 @@ async def test_refresh_attendance_preserves_month(async_client: AsyncClient) -> 
         "location_id": str(location_id)
     }
     
-    # HTMXの動作をシミュレートするためのヘッダー
-    htmx_headers = {"HX-Request": "true"}
-    
     # 過去の月を選択したと想定
     prev_month = (date.today().replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
-    
-    # refreshAttendanceイベントでmonthパラメータが保持されることを確認
-    trigger_data = {
-        "refreshAttendance": None
-    }
     
     # トリガーヘッダーを含むレスポンスに対するmonthパラメータの保持をテスト
     response = await async_client.post(
@@ -87,9 +77,6 @@ async def test_refresh_user_attendance_preserves_user_view(async_client: AsyncCl
         "date": test_date,
         "location_id": str(location_id)
     }
-    
-    # HTMXの動作をシミュレートするためのヘッダー
-    htmx_headers = {"HX-Request": "true"}
     
     # refreshUserAttendanceイベントが個別表示を維持することを確認
     response = await async_client.post(

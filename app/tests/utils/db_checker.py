@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import sys
-import os
 sys.path.insert(0, '/app')
 
 from app.db.session import SessionLocal, Base, engine
@@ -49,8 +48,8 @@ def check_database() -> int:
             (Location.name.like('%削除%'))
         ).all()
         print(f"Test Locations ({len(test_locations)}):")
-        for l in test_locations:
-            print(f"  - {l.id}: {l.name}")
+        for loc in test_locations:
+            print(f"  - {loc.id}: {loc.name}")
         
         # テスト関連のユーザー
         test_users = db.query(User).filter(

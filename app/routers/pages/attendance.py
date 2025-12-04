@@ -7,8 +7,7 @@
 
 import logging
 from typing import Any, Dict, List, Optional
-from datetime import date, timedelta
-import calendar
+from datetime import date
 import operator
 import json
 
@@ -73,7 +72,6 @@ def attendance_page(
     # DBからカレンダー構築に必要なデータを取得
     try:
         monday = parse_week(week)
-        sunday = monday + timedelta(days=6)
 
         attendances_for_cal = calendar_crud.get_week_attendances(db, monday=monday)
         attendance_counts_for_cal = calendar_crud.get_week_attendance_counts(db, monday=monday)
@@ -112,7 +110,7 @@ def attendance_page(
                 attendance_counts=attendance_counts_for_cal,
                 location_types=location_types_for_cal
             )
-        except:
+        except Exception:
             logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {week}")
             # さらにエラーなら空データを設定
             calendar_data = {"weeks": [], "week_name": "エラー", "prev_week": week, "next_week": week}

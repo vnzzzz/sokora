@@ -11,3 +11,5 @@ from .location import Location
 from .group import Group
 from .user_type import UserType
 from .custom_holiday import CustomHoliday
+
+__all__ = ["User", "Attendance", "Location", "Group", "UserType", "CustomHoliday"]

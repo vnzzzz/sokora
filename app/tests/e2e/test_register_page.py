@@ -2,7 +2,6 @@
 勤怠登録ページのE2Eテスト
 """
 
-import pytest
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
@@ -110,15 +109,6 @@ def test_register_user_list_display(page: Page) -> None:
     # ユーザー関連のデータが表示されているかを確認
     page_content = page.locator("body").text_content()
     if page_content:
-        # ユーザー関連の表示要素を確認
-        user_indicators = ["ユーザー", "社員", "職員", "メンバー", "名前", "ID"]
-        has_user_info = any(indicator in page_content for indicator in user_indicators)
-        
-        # グループ関連の表示要素を確認
-        group_indicators = ["グループ", "部門", "部署", "組織", "チーム"]
-        has_group_info = any(indicator in page_content for indicator in group_indicators)
-        
-        # 基本的な登録機能が動作していることを確認
         assert len(page_content) > 100
 
 

@@ -1,4 +1,3 @@
-import asyncio
 from typing import AsyncGenerator, Generator, List, Any
 import time
 
@@ -127,18 +126,16 @@ def db_with_data(db: Session, test_data_tracker: dict) -> Session:
     from app.crud.user_type import user_type as crud_user_type
     from app.crud.location import location as crud_location
     
-    # テスト用グループを作成
-    group_data = GroupCreate(name=test_data_tracker['create_test_name']("Group"))
+    # 固定名でベースデータを作成（テストが名称を前提に参照するため）
+    group_data = GroupCreate(name="Test Group")
     test_group = crud_group.create(db, obj_in=group_data)
     test_data_tracker['register_created_object']('groups', test_group)
     
-    # テスト用ユーザータイプを作成
-    user_type_data = UserTypeCreate(name=test_data_tracker['create_test_name']("Type"))
+    user_type_data = UserTypeCreate(name="Test Type")
     test_user_type = crud_user_type.create(db, obj_in=user_type_data)
     test_data_tracker['register_created_object']('user_types', test_user_type)
     
-    # テスト用ロケーションを作成
-    location_data = LocationCreate(name=test_data_tracker['create_test_name']("Location"))
+    location_data = LocationCreate(name="Test Location")
     test_location = crud_location.create(db, obj_in=location_data)
     test_data_tracker['register_created_object']('locations', test_location)
     

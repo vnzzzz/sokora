@@ -1,12 +1,12 @@
 import pytest
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
-from typing import Dict
+from typing import Any, Dict
 from unittest.mock import patch, MagicMock
 
 from app import crud
 from app.schemas.attendance import AttendanceCreate, AttendanceUpdate
-from app.models import User as UserModel, Location as LocationModel, Group as GroupModel, UserType as UserTypeModel
+from app.models import User as UserModel, Location as LocationModel
 from app.schemas.user import UserCreate
 from app.schemas.group import GroupCreate
 from app.schemas.user_type import UserTypeCreate

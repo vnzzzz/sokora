@@ -83,7 +83,7 @@ async def delete_user(
     ユーザーを削除します。
     """
     try:
-        user_obj = user.get_or_404(db, id=user_id)
+        user.get_or_404(db, id=user_id)
             
         # 先に関連する勤怠データを削除
         attendance.delete_attendances_by_user_id(db=db, user_id=user_id)

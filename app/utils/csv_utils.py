@@ -5,9 +5,7 @@ CSV変換ユーティリティ
 勤怠データをCSV形式に変換するためのユーティリティ関数を提供します。
 """
 
-import csv
-from typing import Dict, List, Optional, Tuple, Iterator, Generator
-import io
+from typing import Dict, List, Optional, Tuple, Generator
 from datetime import datetime, date
 import calendar
 from dateutil.relativedelta import relativedelta  # type: ignore

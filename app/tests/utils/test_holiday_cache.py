@@ -4,18 +4,14 @@ holiday_cache のテストケース
 
 import datetime
 import json
-import os
-from unittest.mock import MagicMock, patch, mock_open
-from pathlib import Path
-from typing import Dict, Any
+from unittest.mock import patch, mock_open
+from typing import Any
 
 from app.utils.holiday_cache import (
     HolidayCache,
     is_holiday,
     get_holiday_name,
     get_cache_info,
-    ASSETS_JSON_DIR,
-    CACHE_FILE,
     refresh_holiday_cache,
 )
 from app.models.custom_holiday import CustomHoliday

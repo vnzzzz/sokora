@@ -2,7 +2,6 @@
 勤怠分析ページのE2Eテスト
 """
 
-import pytest
 from playwright.sync_api import Page, expect
 from datetime import datetime
 
@@ -108,8 +107,7 @@ def test_analysis_month_navigation(page: Page) -> None:
     
     # 前月/次月ナビゲーションボタンを探す
     prev_buttons = page.locator("a[href*='month='], button[data-month], .btn-prev, .month-prev")
-    next_buttons = page.locator("a[href*='month='], button[data-month], .btn-next, .month-next")
-    
+
     if prev_buttons.count() > 0:
         # 最初の有効な前月ボタンをクリック
         for i in range(prev_buttons.count()):

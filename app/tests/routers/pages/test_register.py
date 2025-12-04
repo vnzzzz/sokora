@@ -1,4 +1,3 @@
-import datetime
 
 from app.crud import group as crud_group
 from app.crud import user_type as crud_user_type
