@@ -6,7 +6,7 @@ CSVデータのダウンロードに関連するAPIエンドポイントを提�
 """
 import csv
 import io
-from typing import Any, Optional, Generator, List
+from typing import Optional, Generator, List
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status

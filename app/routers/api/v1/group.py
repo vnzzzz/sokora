@@ -5,13 +5,12 @@
 グループの取得、作成、更新、削除のためのAPIエンドポイント。
 """
 
-from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from typing import Any
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.crud.group import group
 from app.db.session import get_db
-from app.models.user import User
 from app.schemas.group import Group, GroupCreate, GroupList, GroupUpdate
 
 # サービス層をインポート
@@ -63,7 +62,7 @@ def delete_group(*, db: Session = Depends(get_db), group_id: int) -> Any:
     """
     グループを削除します。
     """
-    group_obj = group.get_or_404(db=db, id=group_id)
+    group.get_or_404(db=db, id=group_id)
     
     group.remove(db=db, id=group_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT) 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

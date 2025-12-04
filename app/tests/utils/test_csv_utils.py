@@ -2,11 +2,10 @@
 csv_utils のテストケース
 """
 
-import pytest
 import datetime
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import Any
 
 from app.utils.csv_utils import (
     get_available_months, get_date_range_for_month, _generate_date_headers,

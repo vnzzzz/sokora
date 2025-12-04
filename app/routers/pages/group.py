@@ -5,7 +5,7 @@
 グループの設定管理に関連するルートハンドラー
 """
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 import json
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status

@@ -7,7 +7,6 @@ PUT /api/v1/groups/{group_id}: グループ更新
 DELETE /api/v1/groups/{group_id}: グループ削除
 """
 
-import pytest
 from fastapi import status, FastAPI
 from httpx import AsyncClient
 from sqlalchemy.orm import Session

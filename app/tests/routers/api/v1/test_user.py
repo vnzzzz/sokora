@@ -72,7 +72,7 @@ async def test_get_user_success(async_client: AsyncClient, db: Session) -> None:
     test_group, test_user_type = create_test_dependencies(db)
     user_id_to_get = "test_get_user"
     user_name = "Test Get User"
-    user = crud_user.create(db, obj_in=UserCreate(id=user_id_to_get, username=user_name, group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
+    crud_user.create(db, obj_in=UserCreate(id=user_id_to_get, username=user_name, group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
     db.commit()
 
     response = await async_client.get(f"/api/v1/users/{user_id_to_get}")
@@ -206,7 +206,7 @@ async def test_update_user_success(async_client: AsyncClient, db: Session) -> No
     group2 = crud_group.create(db, obj_in=GroupCreate(name="Update Group"))
     ut2 = crud_user_type.create(db, obj_in=UserTypeCreate(name="Update UserType"))
     user_id_to_update = "user_to_update"
-    user = crud_user.create(db, obj_in=UserCreate(id=user_id_to_update, username="Original Name", group_id=group1.id, user_type_id=ut1.id)) # type: ignore
+    crud_user.create(db, obj_in=UserCreate(id=user_id_to_update, username="Original Name", group_id=group1.id, user_type_id=ut1.id)) # type: ignore
     db.commit()
 
     # 更新内容
@@ -229,6 +229,8 @@ async def test_update_user_success(async_client: AsyncClient, db: Session) -> No
         assert data["user_type_id"] == ut2.id
 
     # DBでも確認
+    user = crud_user.get(db, id=user_id_to_update)
+    assert user is not None
     db.refresh(user)
     assert user.username == updated_username
     assert user.group_id == group2.id
@@ -256,7 +258,7 @@ async def test_update_user_invalid_dependency_id(async_client: AsyncClient, db: 
     # 依存関係と初期ユーザーを作成
     group1, ut1 = create_test_dependencies(db)
     user_id_to_update = "user_to_update_invalid_dep"
-    user = crud_user.create(db, obj_in=UserCreate(id=user_id_to_update, username="Original Name", group_id=group1.id, user_type_id=ut1.id)) # type: ignore
+    crud_user.create(db, obj_in=UserCreate(id=user_id_to_update, username="Original Name", group_id=group1.id, user_type_id=ut1.id)) # type: ignore
     db.commit()
     non_existent_id = 9999
 
@@ -294,7 +296,7 @@ async def test_delete_user_success(async_client: AsyncClient, db: Session) -> No
     # 依存関係とユーザーを作成
     test_group, test_user_type = create_test_dependencies(db)
     user_id_to_delete = "user_to_delete"
-    user = crud_user.create(db, obj_in=UserCreate(id=user_id_to_delete, username="User To Delete", group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
+    crud_user.create(db, obj_in=UserCreate(id=user_id_to_delete, username="User To Delete", group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
     db.commit()
 
     response = await async_client.delete(f"/api/v1/users/{user_id_to_delete}")

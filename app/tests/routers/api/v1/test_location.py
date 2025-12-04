@@ -9,16 +9,11 @@ from app.schemas.location import LocationCreate
 from app.crud.location import location as crud_location
 # Attendance 関連のインポートを追加
 from app.models.attendance import Attendance
-from app.schemas.attendance import AttendanceCreate # 必要に応じて
-from app.crud.attendance import attendance as crud_attendance
-from app.models.user import User # Attendance は User に依存
 from app.schemas.user import UserCreate # User 作成用
 from app.crud.user import user as crud_user
 # User は Group, UserType に依存
-from app.models.group import Group
 from app.schemas.group import GroupCreate
 from app.crud.group import group as crud_group
-from app.models.user_type import UserType
 from app.schemas.user_type import UserTypeCreate
 from app.crud.user_type import user_type as crud_user_type
 from datetime import date
@@ -218,7 +213,7 @@ async def test_delete_location_in_use(async_client: AsyncClient, db: Session) ->
     user_type = crud_user_type.create(db, obj_in=UserTypeCreate(name="Test UserType for Loc Delete"))
     db.commit()
     user_id_for_test = "testuser_locdel"
-    user = crud_user.create(db, obj_in=UserCreate(id=user_id_for_test, username="Test User LocDel", group_id=group.id, user_type_id=user_type.id)) # type: ignore
+    crud_user.create(db, obj_in=UserCreate(id=user_id_for_test, username="Test User LocDel", group_id=group.id, user_type_id=user_type.id)) # type: ignore
     db.commit()
 
     # 削除対象の勤怠種別を作成

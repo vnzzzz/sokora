@@ -2,13 +2,12 @@
 ui_utils のテストケース
 """
 
-import pytest
 from typing import List, Dict, Any
 
 from app.utils.ui_utils import (
     _get_color_for_index, get_location_color_classes, _map_locations,
     generate_location_styles, generate_location_badges, generate_location_data,
-    has_data_for_day, TAILWIND_COLORS, LocationBase, LocationData
+    has_data_for_day, TAILWIND_COLORS
 )
 
 

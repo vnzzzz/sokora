@@ -63,7 +63,7 @@ class HolidayCache:
         try:
             custom_holidays = crud.custom_holiday.get_all(db)
             self._custom_cache = {
-                holiday.date.strftime("%Y-%m-%d"): holiday.name for holiday in custom_holidays
+                holiday.date.strftime("%Y-%m-%d"): str(holiday.name) for holiday in custom_holidays
             }
             logger.info(f"カスタム祝日を読み込みました: {len(self._custom_cache)}件")
         except Exception as e:

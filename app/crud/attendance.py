@@ -474,21 +474,21 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
 
             # ユーザー別・勤怠種別別の日数を集計
             user_analysis: Dict[str, Dict[str, Any]] = {}
-            location_totals = {loc.id: 0 for loc in locations_sorted}
+            location_totals = {int(loc.id): 0 for loc in locations_sorted if loc.id is not None}
             location_details: Dict[int, Dict[str, List[Dict[str, Any]]]] = {
-                loc.id: {} for loc in locations_sorted
+                int(loc.id): {} for loc in locations_sorted if loc.id is not None
             }
 
             for user_name, user_id, group_name, user_type_name in users_data:
                 user_attendances = [att for att in attendances if att.user_id == user_id]
-                location_counts = {loc.id: 0 for loc in locations_sorted}
+                location_counts = {int(loc.id): 0 for loc in locations_sorted if loc.id is not None}
                 location_dates: Dict[int, List[Dict[str, Any]]] = {
-                    loc.id: [] for loc in locations_sorted
+                    int(loc.id): [] for loc in locations_sorted if loc.id is not None
                 }
 
                 for att in user_attendances:
-                    location_counts[att.location_id] += 1
-                    location_totals[att.location_id] += 1
+                    location_counts[int(att.location_id)] += 1
+                    location_totals[int(att.location_id)] += 1
                     date_info = {
                         "date_str": att.date.strftime("%Y-%m-%d"),
                         "date_jp": f"{att.date.month}月{att.date.day}日",
@@ -496,14 +496,14 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                         "date_simple": f"{att.date.month}/{att.date.day}",
                         "note": att.note or "",
                     }
-                    location_dates[att.location_id].append(date_info)
+                    location_dates[int(att.location_id)].append(date_info)
 
                 # 日付を昇順に整列し、location_detailsにも格納
                 for loc_id, dates in location_dates.items():
                     if dates:
                         sorted_dates = sorted(dates, key=lambda d: d["date_str"])
-                        location_dates[loc_id] = sorted_dates
-                        location_details[loc_id][str(user_id)] = sorted_dates
+                        location_dates[int(loc_id)] = sorted_dates
+                        location_details[int(loc_id)][str(user_id)] = sorted_dates
 
                 total_days = sum(location_counts.values())
 
@@ -519,13 +519,15 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             # 勤怠種別情報を整理
             locations_info: List[SimpleNamespace] = []
             for loc in locations_sorted:
+                if loc.id is None:
+                    continue
                 locations_info.append(
                     SimpleNamespace(
                         id=loc.id,
                         name=loc.name,
                         category=loc.category,
                         order=loc.order,
-                        total_days=location_totals[loc.id],
+                        total_days=location_totals[int(loc.id)],
                     )
                 )
 
@@ -535,7 +537,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 group_key = group_name or "未分類"
                 if group_key not in group_summary:
                     group_summary[group_key] = {
-                        "location_counts": {loc.id: 0 for loc in locations_sorted},
+                        "location_counts": {int(loc.id): 0 for loc in locations_sorted if loc.id is not None},
                         "total_days": 0,
                     }
                 user_counts = user_analysis.get(user_id, {}).get("location_counts", {})

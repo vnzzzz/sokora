@@ -49,6 +49,14 @@ python_version = "3.13"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
+[[tool.mypy.overrides]]
+module = "app.tests.*"
+ignore_errors = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
 [tool.pytest.ini_options]
 # 必要に応じて他の pytest オプションを追加
 # asyncio_mode = "strict"

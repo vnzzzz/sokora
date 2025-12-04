@@ -2,11 +2,9 @@
 main.py のテストケース
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from typing import Any
 
 from app.main import create_application, create_openapi_schema, app, API_TAGS
 
@@ -81,8 +79,7 @@ class TestCreateOpenApiSchema:
         }
         mock_get_openapi.return_value = mock_schema
         
-        schema = create_openapi_schema(app_instance)
-        
+        create_openapi_schema(app_instance)
         mock_get_openapi.assert_called_once()
         call_args = mock_get_openapi.call_args
         assert call_args[1]["title"] == "Sokora API"

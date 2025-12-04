@@ -5,8 +5,7 @@ calendar_utils のテストケース
 import pytest
 import datetime
 from unittest.mock import MagicMock, patch
-from fastapi import Request
-from typing import List, Any
+from typing import Any
 
 from app.utils.calendar_utils import (
     format_date, format_date_jp, get_today_formatted, get_current_month_formatted,
@@ -16,9 +15,6 @@ from app.utils.calendar_utils import (
     build_week_calendar_data, build_calendar_data, DateFormat, _detect_date_format,
     _split_date_string
 )
-from app.models.attendance import Attendance
-from app.models.location import Location
-from app.models.user import User
 
 
 class TestDateFormats:

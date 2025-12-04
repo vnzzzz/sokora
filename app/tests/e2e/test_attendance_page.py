@@ -1,7 +1,6 @@
 from playwright.sync_api import Page, expect
 import datetime
 import re
-import time
 
 # テスト対象の関数をインポート
 from app.utils.calendar_utils import format_date_jp
@@ -63,8 +62,6 @@ def test_edit_attendance_via_modal(page: Page) -> None:
         return
 
     # --- 登録前のセルの状態を記録 ---
-    initial_cell_content = target_cell_locator.inner_text() or ""
-    initial_location_name = target_cell_locator.get_attribute("data-location") or ""
     target_cell_locator.click()
 
     # 3. 勤怠登録/編集モーダルが表示されるのを待つ (HTMX対応)
