@@ -1,50 +1,46 @@
 """
-ユーザースキーマ
-============
+ユーザースキーマ定義
+================
 
-ユーザーデータのバリデーションとシリアライゼーションのためのPydanticスキーマ。
+ユーザーのPydanticスキーマ。
 """
 
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from .group import Group
+from .user_type import UserType
 
 
 class UserBase(BaseModel):
-    """ユーザーデータの基本スキーマ"""
-
-    username: Optional[str]
-    user_id: Optional[str]
+    """ユーザーの基本スキーマ"""
+    username: str
+    group_id: int
+    user_type_id: int
 
 
 class UserCreate(UserBase):
-    """新規ユーザー作成用スキーマ"""
-
-    pass
-
-
-class UserUpdate(UserBase):
-    """ユーザーデータ更新用スキーマ"""
-
-    username: Optional[str] = None
-    user_id: Optional[str] = None
+    """ユーザー作成用スキーマ"""
+    user_id: str
 
 
-class UserInDBBase(UserBase):
-    """データベースIDを持つユーザーの基本スキーマ"""
+class UserUpdate(BaseModel):
+    """ユーザー更新用スキーマ"""
+    username: str
+    group_id: int
+    user_type_id: int
 
-    id: int
+
+class User(UserBase):
+    """ユーザー取得用スキーマ"""
+    user_id: str
+    group: Optional[Group] = None
+    user_type: Optional[UserType] = None
 
     class Config:
-        orm_mode = True
-
-
-class User(UserInDBBase):
-    """ユーザーデータレスポンス用スキーマ"""
-
-    pass
+        """設定クラス"""
+        from_attributes = True
 
 
 class UserList(BaseModel):
-    """ユーザーリスト用スキーマ"""
-
+    """複数ユーザー取得用スキーマ"""
     users: List[User]

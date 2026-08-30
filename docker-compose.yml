@@ -1,9 +1,7 @@
 services:
   sokora:
     container_name: sokora
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: sokora:latest
     ports:
       - ${SERVICE_PORT}:8000
     volumes:

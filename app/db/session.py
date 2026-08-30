@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-from ..core.config import logger
+from app.core.config import logger
 
 # SQLiteデータベースファイルのパスとURL設定
 DB_PATH = Path("data/sokora.sqlite")
@@ -51,7 +51,7 @@ def init_db() -> None:
     必要なディレクトリ構造を確保します。
     """
     # モデルのインポートを遅延させて循環参照を防ぐ
-    from ..models import User, Attendance, Location
+    from app.models import User, Attendance, Location
 
     # データ用ディレクトリの存在確認と作成
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)

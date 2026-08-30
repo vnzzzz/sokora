@@ -1,10 +1,12 @@
 """
-CRUD操作モジュール
-===============
+CRUDモジュール
+===========
 
-データベースモデルに対する作成・読取・更新・削除操作を提供します。
+データベース操作のためのCRUD関数を提供します。
 """
 
-from . import user
-from . import attendance
-from . import location
+from .user import user
+from .attendance import attendance
+from .location import location
+from .calendar import calendar
+from .group import group

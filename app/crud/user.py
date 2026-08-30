@@ -10,10 +10,10 @@ from typing import Any, Dict, Optional, Union, List, Tuple
 from sqlalchemy.orm import Session
 
 from .base import CRUDBase
-from ..models.user import User
-from ..models.attendance import Attendance
-from ..schemas.user import UserCreate, UserUpdate
-from ..core.config import logger
+from app.models.user import User
+from app.models.attendance import Attendance
+from app.schemas.user import UserCreate, UserUpdate
+from app.core.config import logger
 
 
 class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
@@ -70,7 +70,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         db.refresh(db_obj)
         return db_obj
 
-    def create_user(self, db: Session, *, username: str, user_id: str) -> bool:
+    def create_user(self, db: Session, *, username: str, user_id: str, group_id: int, user_type_id: int) -> bool:
         """
         新しいユーザーを作成（簡易インターフェース）
 
@@ -78,6 +78,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             db: データベースセッション
             username: ユーザー名
             user_id: ユーザーID
+            group_id: グループID
+            user_type_id: 社員種別ID
 
         Returns:
             bool: 成功したかどうか
@@ -89,12 +91,52 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
                 return False
 
             # 新しいユーザーを作成
-            user_in = UserCreate(username=username, user_id=user_id)
+            user_in = UserCreate(username=username, user_id=user_id, group_id=group_id, user_type_id=user_type_id)
             self.create(db, obj_in=user_in)
             return True
         except Exception as e:
             db.rollback()
             logger.error(f"Error adding user: {str(e)}")
+            return False
+
+    def update_user(
+        self, 
+        db: Session, 
+        *, 
+        user_id: str, 
+        username: str, 
+        group_id: int,
+        user_type_id: int
+    ) -> bool:
+        """
+        ユーザー情報を更新
+
+        Args:
+            db: データベースセッション
+            user_id: 更新するユーザーID
+            username: 新しいユーザー名
+            group_id: 新しいグループID
+            user_type_id: 新しい社員種別ID
+
+        Returns:
+            bool: 成功したかどうか
+        """
+        try:
+            db_obj = self.get_by_user_id(db, user_id=user_id)
+            if not db_obj:
+                return False
+                
+            setattr(db_obj, "username", username)
+            setattr(db_obj, "group_id", group_id)
+            setattr(db_obj, "user_type_id", user_type_id)
+                
+            db.add(db_obj)
+            db.commit()
+            db.refresh(db_obj)
+            return True
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error updating user: {str(e)}")
             return False
 
     def delete_user(self, db: Session, *, user_id: str) -> bool:
@@ -114,7 +156,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
                 return False
 
             # 関連する勤怠レコードも削除
-            db.query(Attendance).filter(Attendance.user_id == user.id).delete()
+            db.query(Attendance).filter(Attendance.user_id == user.user_id).delete()
 
             # ユーザーを削除
             db.delete(user)
@@ -125,7 +167,7 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             logger.error(f"Error deleting user: {str(e)}")
             return False
 
-    def get_all_users(self, db: Session) -> List[Tuple[str, str]]:
+    def get_all_users(self, db: Session) -> List[Tuple[str, str, int]]:
         """
         すべてのユーザーを取得
 
@@ -133,10 +175,10 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
             db: データベースセッション
 
         Returns:
-            List[Tuple[str, str]]: (username, user_id) のタプルリスト
+            List[Tuple[str, str, int]]: (username, user_id, user_type_id) のタプルリスト
         """
         users = db.query(User).all()
-        return [(str(user.username), str(user.user_id)) for user in users]
+        return [(str(user.username), str(user.user_id), int(user.user_type_id)) for user in users]
 
 
 user = CRUDUser(User)

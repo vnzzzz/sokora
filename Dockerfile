@@ -4,6 +4,10 @@ FROM python:3.13-slim-bullseye
 RUN apt-get update && apt-get install -y curl && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# タイムゾーンをAsia/Tokyoに設定
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Poetryのインストール
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
   python3 -m pip install --no-cache-dir --upgrade pip

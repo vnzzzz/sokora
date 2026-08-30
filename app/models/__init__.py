@@ -8,3 +8,5 @@ sokoraデータベースモデル
 from .user import User
 from .attendance import Attendance
 from .location import Location
+from .group import Group
+from .user_type import UserType
