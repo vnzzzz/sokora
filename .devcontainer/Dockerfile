@@ -24,6 +24,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Poetryは#48でuvへ移行予定。vscodeユーザーからも利用できる共有パスへ配置する。
 ENV POETRY_HOME=/opt/poetry
+ENV POETRY_VIRTUALENVS_CREATE=false
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
   python3 -m pip install --no-cache-dir --upgrade pip
 ENV PATH="${POETRY_HOME}/bin:${PATH}"
@@ -38,8 +39,7 @@ COPY ./scripts ./scripts
 COPY pyproject.toml poetry.lock* README.md ./
 
 # image build時の依存関係はsystem環境へインストールする。
-RUN poetry config virtualenvs.create false && \
-  poetry install --no-root --no-interaction --no-ansi --with dev
+RUN poetry install --no-root --no-interaction --no-ansi --with dev
 
 # Playwright browserをremoteUserに依存しない共有パスへ配置する。
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
