@@ -1,0 +1,44 @@
+name: Temporary characterization formatter
+
+on:
+  push:
+    branches:
+      - test/50-characterization
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/50-characterization
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.7"
+      - run: uv sync --locked
+      - name: Format characterization tests
+        run: |
+          uv run ruff format \
+            app/tests/db/test_database_characterization.py \
+            app/tests/routers/api/v1/test_attendance_characterization.py
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet -- \
+            app/tests/db/test_database_characterization.py \
+            app/tests/routers/api/v1/test_attendance_characterization.py; then
+            echo "No formatter changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/tests/db/test_database_characterization.py \
+            app/tests/routers/api/v1/test_attendance_characterization.py
+          git commit -m "style: apply Ruff formatting to characterization tests"
+          git push origin HEAD:test/50-characterization
