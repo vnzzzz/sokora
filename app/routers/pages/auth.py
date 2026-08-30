@@ -38,8 +38,9 @@ def _require_local_admin(request: Request) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
-def _get_state_store() -> AuthStateStore:
-    return AuthStateStore()
+def _get_state_store(request: Request) -> AuthStateStore:
+    settings = request.app.state.settings_provider()
+    return AuthStateStore(settings.auth_state_path)
 
 
 @router.get("/login", response_class=HTMLResponse)
