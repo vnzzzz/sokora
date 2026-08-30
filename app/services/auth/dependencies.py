@@ -7,8 +7,9 @@ from app.services.auth.settings import AuthSettings
 
 
 def get_auth_settings(request: Request) -> AuthSettings:
-    """Build request auth settings from the app-scoped static settings."""
-    return AuthSettings.from_app_settings(request.app.state.settings)
+    """Build request auth settings from the application's settings provider."""
+    settings = request.app.state.settings_provider()
+    return AuthSettings.from_app_settings(settings)
 
 
 def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient:
