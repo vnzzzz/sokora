@@ -25,24 +25,21 @@
       "settings": {
         "python.defaultInterpreterPath": "/opt/sokora-venv/bin/python",
         "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+          }
+        },
         "[html]": {
           "editor.formatOnSave": false
-        },
-        "editor.codeActionsOnSave": {
-          "source.organizeImports": "explicit"
-        },
-        "python.formatting.provider": "black",
-        "python.linting.enabled": true,
-        "python.linting.mypyEnabled": true,
-        "python.linting.flake8Enabled": true,
-        "python.sortImports.args": [
-          "--profile",
-          "black"
-        ]
+        }
       },
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
         "matangover.mypy",
         "njpwerner.autodocstring",
         "tamasfe.even-better-toml",
