@@ -12,8 +12,10 @@ from app.db.session import Base
 config = context.config
 
 # DATABASE_URL is the database connection source of truth for both the app and
-# migration commands. The ini value remains only as an Alembic fallback/template.
-config.set_main_option("sqlalchemy.url", AppSettings.from_env().database_url)
+# migration commands. ConfigParser uses percent interpolation, so literal
+# percent signs in SQLAlchemy URLs must be escaped when stored in Alembic config.
+database_url = AppSettings.from_env().database_url.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
