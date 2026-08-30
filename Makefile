@@ -23,7 +23,7 @@ SEED_DAYS_FORWARD ?= 60
 DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg proxy=$(proxy) --build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),)
 DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),)
 
-.PHONY: help sync install run dev-shell seed test assets holiday-cache migrate lint format format-check typecheck quality build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
+.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
