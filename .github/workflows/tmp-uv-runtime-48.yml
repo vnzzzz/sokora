@@ -62,24 +62,68 @@ jobs:
       - name: Build and start Dev Container
         run: devcontainer up --workspace-folder .
 
-      - name: Verify uv development environment
+      - name: Check remote user
         run: |
           devcontainer exec --workspace-folder . bash -lc '
-            set -euo pipefail
+            echo "user=$(id -un)"
             test "$(id -un)" = vscode
+          '
+
+      - name: Check uv and environment
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -e
             uv --version
-            if command -v poetry >/dev/null 2>&1; then
-              echo "poetry unexpectedly exists"
-              exit 1
-            fi
+            echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT"
+            echo "UV_CACHE_DIR=$UV_CACHE_DIR"
             test "$UV_PROJECT_ENVIRONMENT" = /opt/sokora-venv
             test "$UV_CACHE_DIR" = /home/vscode/.cache/uv
+          '
+
+      - name: Check Poetry is absent
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            if command -v poetry >/dev/null 2>&1; then
+              echo "poetry unexpectedly exists at $(command -v poetry)"
+              poetry --version || true
+              exit 1
+            fi
+            echo "poetry=absent"
+          '
+
+      - name: Check locked dependency sync
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -e
             uv lock --check
             uv sync --locked
-            test "$(uv run python -c "import sys; print(sys.executable)")" = /opt/sokora-venv/bin/python
+          '
+
+      - name: Check project Python
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -e
+            python_path=$(uv run python -c "import sys; print(sys.executable)")
+            echo "python=$python_path"
+            case "$python_path" in
+              /opt/sokora-venv/bin/python|/opt/sokora-venv/bin/python3) ;;
+              *) exit 1 ;;
+            esac
+          '
+
+      - name: Check writable volumes
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -e
             touch /app/data/.uv-write-check
             rm /app/data/.uv-write-check
             touch /home/vscode/.cache/uv/.uv-write-check
             rm /home/vscode/.cache/uv/.uv-write-check
-            echo "devcontainer=OK"
+            echo "volumes=writable"
+          '
+
+      - name: Check development imports
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            uv run python -c "import fastapi, pytest, playwright; print(\"dev-imports=OK\")"
           '
