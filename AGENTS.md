@@ -15,7 +15,7 @@
   - Python 3.13 / FastAPI / Jinja2
   - HTMX / Alpine.js（SSR + インタラクティブ UI）
   - SQLite + SQLAlchemy + Alembic
-  - Poetry（依存管理）
+  - uv（依存管理）
   - pytest / pytest-asyncio / pytest-playwright（E2E） / mypy / ruff
   - Docker（devcontainer / 単体コンテナ運用想定）
 
@@ -158,8 +158,8 @@
   - Tailwind CSS ビルド（builder ステージ）・祝日キャッシュ生成・htmx / Alpine ダウンロードを含む。
 
 - `pyproject.toml`
-  - Poetry 設定および依存ライブラリ定義。
-  - `tool.poetry.group.dev.dependencies` に開発ツール（black, isort, mypy, pytest, pytest-cov, pytest-asyncio, ruff, pytest-playwright, alembic）が含まれる。
+  - PEP 621 のプロジェクトメタデータと依存ライブラリ定義。
+  - `[dependency-groups]` の `dev` に開発ツール（black, isort, mypy, pytest, pytest-cov, pytest-asyncio, ruff, pytest-playwright, alembic）が含まれ、`uv.lock` を依存解決の SSoT とする。
 
 - `builder/`
   - Tailwind CSS ビルド用。
@@ -186,7 +186,7 @@
 
 ### 6.1 基本コマンド（Makefile）
 
-- 依存関係インストール（poetry + builder npm）: `make install`
+- 依存関係インストール（uv + builder npm）: `make install`
 - 開発サーバー起動: `make run`（Tailwind など dev 資材を準備して `uvicorn` をリロード付きで起動）
 - シーディング: `make seed`（後述のデフォルトデータを自動投入）
 - 祝日キャッシュ: `make holiday-cache`
@@ -201,8 +201,8 @@
 - ローカルで直接動かす場合の最低限コマンド:
 
   ```bash
-  poetry install --no-root
-  poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  uv sync --locked
+  uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
   ```
 
   Tailwind 生成物が必要なときは `make prepare-dev-assets` か `make assets` を実行する。
@@ -229,11 +229,11 @@ cd /app
    - 再度 `db_checker.py` で確認。
 
 2. **API・ユニットテスト**
-   - `poetry run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/`
+   - `uv run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/`
    - 失敗した場合は即終了。
 
 3. **E2E テスト**
-   - `poetry run pytest -vv app/tests/e2e/`
+   - `uv run pytest -vv app/tests/e2e/`
    - 失敗した場合は即終了。
    - E2E は `http://localhost:8000` でアプリが起動している前提。必要に応じて `make run` 等でサーバーを立ち上げてから実行する。
 
@@ -311,12 +311,12 @@ cd /app
 
 ```bash
 # フォーマット
-poetry run black app
-poetry run isort app
+uv run black app
+uv run isort app
 
 # 静的解析
-poetry run mypy app
-poetry run ruff check app
+uv run mypy app
+uv run ruff check app
 
 # テスト
 ./scripts/testing/run_test.sh
