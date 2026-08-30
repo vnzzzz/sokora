@@ -6,6 +6,28 @@ on:
       - chore/46-agentic-development-toolkit
 
 jobs:
+  resolve-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Dev Containers CLI
+        run: npm install --global @devcontainers/cli
+
+      - name: Resolve Feature lockfile
+        run: |
+          devcontainer upgrade \
+            --workspace-folder . \
+            --feature ghcr.io/vnzzzz/agentic-development-toolkit/agent-dev \
+            --target-version 1
+          cat .devcontainer/devcontainer-lock.json
+
   validate-devcontainer:
     runs-on: ubuntu-latest
     steps:
