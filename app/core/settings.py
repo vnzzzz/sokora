@@ -90,9 +90,7 @@ class AppSettings:
             oidc_redirect_uri=source.get("OIDC_REDIRECT_URL"),
             oidc_scope=source.get("OIDC_SCOPES", "openid profile email"),
             oidc_http_timeout=_get_float(source, "OIDC_HTTP_TIMEOUT", 3.0),
-            authorization_endpoint_override=source.get(
-                "OIDC_AUTHORIZATION_ENDPOINT"
-            ),
+            authorization_endpoint_override=source.get("OIDC_AUTHORIZATION_ENDPOINT"),
             token_endpoint_override=source.get("OIDC_TOKEN_ENDPOINT"),
             userinfo_endpoint_override=source.get("OIDC_USERINFO_ENDPOINT"),
             logout_endpoint_override=source.get("OIDC_LOGOUT_ENDPOINT"),
