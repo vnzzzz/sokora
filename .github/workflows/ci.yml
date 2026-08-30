@@ -45,11 +45,11 @@ jobs:
       - name: Python quality checks
         run: make quality
 
-      - name: Run tests (API/unit)
+      - name: Run tests (non-E2E)
         env:
           PYTHONPATH: ${{ github.workspace }}
           SOKORA_AUTH_ENABLED: "false"
-        run: uv run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/
+        run: uv run pytest -vv app/tests --ignore=app/tests/e2e
 
       - name: Run tests (E2E)
         env:
