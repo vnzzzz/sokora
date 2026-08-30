@@ -1,0 +1,10 @@
+services:
+  sokora:
+    container_name: sokora
+    build:
+      context: app
+      dockerfile: Dockerfile
+    ports:
+      - 8000:${PORT}
+    volumes:
+      - ./data/work_entries.csv:/app/work_entries.csv
