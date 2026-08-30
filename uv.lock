@@ -623,6 +623,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "alembic" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "itsdangerous" },
@@ -638,7 +639,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "alembic" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -650,6 +650,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0,<0.21" },
+    { name = "alembic", specifier = ">=1.15.2,<2" },
     { name = "fastapi", specifier = ">=0.103.1,<0.104" },
     { name = "httpx", specifier = ">=0.27.0,<0.28" },
     { name = "itsdangerous", specifier = ">=2.2.0,<3" },
@@ -665,7 +666,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "alembic", specifier = ">=1.15.2,<2" },
     { name = "mypy", specifier = ">=1.10.0,<2" },
     { name = "pytest", specifier = ">=8.2.2,<9" },
     { name = "pytest-asyncio", specifier = ">=0.23.7,<0.24" },

@@ -29,10 +29,12 @@ make run       # http://localhost:${SERVICE_PORT}
 ```
    - Makefile は `VERSION` 未設定だとエラー。`.env` に必ず設定する。
    - DB接続先は `DATABASE_URL` で指定する。既定値は `sqlite:///data/sokora.db`。
-   - 既定SQLite DBが無ければ起動時に自動でテーブル作成とシーディング（60日/60日分）を実施。
+   - 起動時に Alembic migration を head まで適用する。既定SQLite DBが新規作成された場合だけシーディング（60日/60日分）も実施する。
 4) 停止: `make docker-stop`（コンテナ実行時）またはサーバープロセスを終了
 
 Python依存関係は `pyproject.toml` と `uv.lock` で管理する。既存lockを変更せず再現する場合は `uv sync --locked` を使用する。
+
+DB migrationだけを明示実行する場合は `make migrate`（`alembic upgrade head`）を使用する。schema lifecycleの詳細は [docs/db/requirements.md](docs/db/requirements.md) を参照。
 
 静的スタイルを触る場合は `builder/input.css` を編集し、`make assets` で `assets/` を再生成（ビルド成果物は直接編集しない）。
 
@@ -53,7 +55,7 @@ PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行�
 ## Docker
 - プロダクションビルド: `make docker-build`（タグは `.env` の `VERSION`）  
 - 実行: `make docker-run`（`data/` をボリュームマウント、既定SQLite DBが無ければ初回にコピー）  
-- DB接続先はapplicationとentrypointの双方で `DATABASE_URL` を参照する。
+- DB接続先はapplicationとentrypointの双方で `DATABASE_URL` を参照する。schema migrationはapplication startupでAlembic headまで適用する。
 - プロキシ経由は `proxy` を `.env` に設定し、`make docker-build-proxy` / `make docker-run-proxy`
 
 ## Authentication

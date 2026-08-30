@@ -17,6 +17,10 @@ from app.core.settings import AppSettings
 
 Base = declarative_base()
 
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+_ALEMBIC_CONFIG_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic.ini"
+_ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
+
 
 @dataclass
 class DatabaseRuntime:
@@ -138,6 +142,34 @@ def sqlite_database_path(database_url: str) -> Path | None:
     return path if path.is_absolute() else Path.cwd() / path
 
 
+def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
+    """Upgrade the supplied database runtime to the Alembic head revision."""
+    from alembic import command
+    from alembic.config import Config
+
+    runtime = runtime or get_default_database_runtime()
+    database_path = sqlite_database_path(runtime.database_url)
+    if database_path is not None:
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Migrating database schema: %s", runtime.database_url)
+    config = Config(str(_ALEMBIC_CONFIG_PATH))
+    # Programmatic callers may run outside the repository working directory.
+    config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
+    config.attributes["database_url"] = runtime.database_url
+
+    # Passing the application runtime connection is required for in-memory
+    # SQLite, where a separately-created Alembic engine would see another DB.
+    with runtime.engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+
+
+def init_db(runtime: DatabaseRuntime | None = None) -> None:
+    """Compatibility alias that now delegates schema setup to Alembic."""
+    migrate_database(runtime)
+
+
 def seed_database(
     runtime: DatabaseRuntime,
     days_back: int = 60,
@@ -162,29 +194,14 @@ def seed_database(
         db.close()
 
 
-def init_db(runtime: DatabaseRuntime | None = None) -> None:
-    """Create the current schema using the supplied database runtime.
-
-    This remains the pre-Alembic compatibility path until issue #54 replaces
-    ``create_all`` with migrations for both fresh and existing databases.
-    """
-    runtime = runtime or get_default_database_runtime()
-    database_path = sqlite_database_path(runtime.database_url)
-    if database_path is not None:
-        database_path.parent.mkdir(parents=True, exist_ok=True)
-
-    logger.info("Initializing database schema: %s", runtime.database_url)
-    Base.metadata.create_all(bind=runtime.engine)
-
-
 def initialize_database(runtime: DatabaseRuntime | None = None) -> bool:
-    """Initialize schema and seed a fresh file-backed SQLite database."""
+    """Migrate the schema and seed a newly-created file-backed SQLite DB."""
     runtime = runtime or get_default_database_runtime()
     database_path = sqlite_database_path(runtime.database_url)
     db_missing = database_path is not None and not database_path.exists()
 
     try:
-        init_db(runtime)
+        migrate_database(runtime)
         if db_missing:
             logger.info("Database file is missing; seeding initial data")
             seed_result = seed_database(runtime, days_back=60, days_forward=60)
