@@ -8,6 +8,7 @@ import contextlib # finally でのエラー抑制用
 def get_required_data(page: Page) -> tuple[str, str, str, str]:
     """ユーザー追加/編集に必要なグループ名と社員種別名を取得"""
     page.goto("http://localhost:8000/user")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("社員追加")').click()
     add_modal_locator = page.locator("form#add-user-form").locator("..") # form の親 (modal-box)
     expect(add_modal_locator).to_be_visible()
@@ -37,7 +38,8 @@ def get_required_data(page: Page) -> tuple[str, str, str, str]:
 
 def create_test_group_ui(page: Page, group_name: str) -> int:
     """UI操作でテスト用グループを作成し、そのIDを返す"""
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("グループ追加")').click()
     add_form = page.locator("#add-group-form")
     expect(add_form).to_be_visible()
@@ -45,7 +47,7 @@ def create_test_group_ui(page: Page, group_name: str) -> int:
     add_form.locator('button[type="submit"]').click()
     # テーブルに追加された行を見つける (リロード待機)
     row_locator = page.locator(f'#group-table-body tr:has-text("{group_name}")')
-    expect(row_locator).to_be_visible(timeout=10000)
+    expect(row_locator).to_be_visible(timeout=1000)
     row_id = row_locator.get_attribute('id')
     assert row_id and row_id.startswith("group-row-"), f"Could not find row or ID for group: {group_name}"
     group_id = int(row_id.split('-')[-1])
@@ -55,7 +57,8 @@ def create_test_group_ui(page: Page, group_name: str) -> int:
 def delete_test_group_ui(page: Page, group_id: int) -> None:
     """UI操作で指定されたIDのグループを削除する"""
     print(f"Attempting to delete group ID: {group_id}")
-    page.goto("http://localhost:8000/groups")
+    page.goto("http://localhost:8000/group")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     row_locator = page.locator(f"#group-row-{group_id}")
     # 要素が存在しない場合は何もしない (既に削除されているか、作成失敗)
     if not row_locator.is_visible():
@@ -68,12 +71,13 @@ def delete_test_group_ui(page: Page, group_id: int) -> None:
     expect(delete_form_locator).to_be_visible()
     delete_form_locator.locator('button[hx-delete]').click()
     # 行が消えるのを待つ
-    expect(row_locator).not_to_be_visible(timeout=10000)
+    expect(row_locator).not_to_be_visible(timeout=1000)
     print(f"Deleted test group ID: {group_id}")
 
 def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
     """UI操作でテスト用社員種別を作成し、そのIDを返す"""
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     page.locator('button:has-text("社員種別追加")').click()
     add_modal = page.locator("#add-user-type-modal")
     expect(add_modal).to_be_visible()
@@ -81,7 +85,7 @@ def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
     add_modal.locator('button[type="submit"]').click()
     # テーブルに追加された行を見つける (リロード待機)
     row_locator = page.locator(f'#user-type-table-body tr:has-text("{user_type_name}")')
-    expect(row_locator).to_be_visible(timeout=10000)
+    expect(row_locator).to_be_visible(timeout=1000)
     row_id = row_locator.get_attribute('id')
     assert row_id and row_id.startswith("user-type-row-"), f"Could not find row or ID for user type: {user_type_name}"
     user_type_id = int(row_id.split('-')[-1])
@@ -91,7 +95,8 @@ def create_test_user_type_ui(page: Page, user_type_name: str) -> int:
 def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
     """UI操作で指定されたIDの社員種別を削除する"""
     print(f"Attempting to delete user type ID: {user_type_id}")
-    page.goto("http://localhost:8000/user_types")
+    page.goto("http://localhost:8000/user_type")
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     row_locator = page.locator(f"#user-type-row-{user_type_id}")
     if not row_locator.is_visible():
         print(f"User type row {user_type_id} not visible, skipping deletion.")
@@ -100,13 +105,14 @@ def delete_test_user_type_ui(page: Page, user_type_id: int) -> None:
     delete_form_locator = page.locator(f"#delete-form-{user_type_id}")
     expect(delete_form_locator).to_be_visible()
     delete_form_locator.locator('button[hx-delete]').click()
-    expect(row_locator).not_to_be_visible(timeout=10000)
+    expect(row_locator).not_to_be_visible(timeout=1000)
     print(f"Deleted test user type ID: {user_type_id}")
 
 def delete_test_user_ui(page: Page, user_id: str) -> None:
     """UI操作で指定されたIDの社員を削除する"""
     print(f"Attempting to delete user ID: {user_id}")
     page.goto("http://localhost:8000/user") # ユーザーページへ移動
+    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     row_locator = page.locator(f'#user-row-{user_id}')
     if not row_locator.is_visible():
         print(f"User row {user_id} not visible, skipping deletion.")
@@ -115,7 +121,7 @@ def delete_test_user_ui(page: Page, user_id: str) -> None:
     delete_form_locator = page.locator(f"#delete-form-{user_id}")
     expect(delete_form_locator).to_be_visible()
     delete_form_locator.locator('button[hx-delete]').click()
-    expect(row_locator).not_to_be_visible(timeout=10000)
+    expect(row_locator).not_to_be_visible(timeout=1000)
     print(f"Deleted test user ID: {user_id}")
 
 def test_add_new_user(page: Page) -> None:
@@ -136,6 +142,7 @@ def test_add_new_user(page: Page) -> None:
 
         # 2. 社員追加テスト本体
         page.goto("http://localhost:8000/user")
+        page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
         page.locator('button:has-text("社員追加")').click()
         add_modal_locator = page.locator("form#add-user-form").locator("..")
         expect(add_modal_locator).to_be_visible()
@@ -150,7 +157,7 @@ def test_add_new_user(page: Page) -> None:
         encoded_group_name = quote(group_name)
         group_table_body_selector = f'tbody[id="user-table-body-{encoded_group_name}"]'
         expected_text = f"{unique_username} ({unique_user_id})"
-        expect(page.locator(group_table_body_selector)).to_contain_text(expected_text, timeout=10000)
+        expect(page.locator(group_table_body_selector)).to_contain_text(expected_text, timeout=1000)
 
     finally:
         # 3. クリーンアップ (エラーが発生しても実行)
@@ -191,6 +198,7 @@ def test_edit_user(page: Page) -> None:
 
         # 2. テスト用社員作成 (編集対象)
         page.goto("http://localhost:8000/user")
+        page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
         page.locator('button:has-text("社員追加")').click()
         add_modal = page.locator("form#add-user-form").locator("..")
         expect(add_modal).to_be_visible()
@@ -204,7 +212,7 @@ def test_edit_user(page: Page) -> None:
         # 追加確認 (リロード待機)
         encoded_initial_group_name = quote(initial_group_name)
         initial_group_table_selector = f'tbody[id="user-table-body-{encoded_initial_group_name}"]'
-        expect(page.locator(initial_group_table_selector)).to_contain_text(f"{initial_username} ({initial_user_id})", timeout=10000)
+        expect(page.locator(initial_group_table_selector)).to_contain_text(f"{initial_username} ({initial_user_id})", timeout=1000)
 
         # 3. 編集操作
         row_locator = page.locator(f'#user-row-{initial_user_id}')
@@ -219,14 +227,14 @@ def test_edit_user(page: Page) -> None:
         # 値の変更 (名前とグループ)
         edit_form_locator.locator('input[name="username"]').fill(new_username)
         edit_form_locator.locator('select[name="group_id"]').select_option(value=str(new_group_id))
-        edit_form_locator.locator('button[type=\"submit\"]:has-text(\"保存\")').click()
+        edit_form_locator.locator('button[type="submit"]:has-text("保存")').click()
 
         # 4. 更新確認
         # 更新後のグループテーブルに移動していることを確認
         encoded_new_group_name = quote(new_group_name)
         new_group_table_selector = f'tbody[id="user-table-body-{encoded_new_group_name}"]'
         updated_row_locator_in_new_table = page.locator(new_group_table_selector).locator(f'#user-row-{initial_user_id}')
-        expect(updated_row_locator_in_new_table).to_be_visible(timeout=10000)
+        expect(updated_row_locator_in_new_table).to_be_visible(timeout=1000)
         # 更新された名前が表示されていることを確認
         expect(updated_row_locator_in_new_table.locator('td').first).to_contain_text(f"{new_username} ({initial_user_id})")
         # 古いグループテーブルに行が存在しないことを確認
@@ -267,6 +275,7 @@ def test_delete_user(page: Page) -> None:
 
         # 2. テスト用社員作成 (削除対象)
         page.goto("http://localhost:8000/user")
+        page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
         page.locator('button:has-text("社員追加")').click()
         add_modal = page.locator("form#add-user-form").locator("..")
         expect(add_modal).to_be_visible()
@@ -280,7 +289,7 @@ def test_delete_user(page: Page) -> None:
         # 追加確認
         encoded_group_name = quote(group_name)
         group_table_body_selector = f'tbody[id="user-table-body-{encoded_group_name}"]'
-        expect(page.locator(group_table_body_selector)).to_contain_text(f"{username_to_delete} ({user_id_to_delete})", timeout=10000)
+        expect(page.locator(group_table_body_selector)).to_contain_text(f"{username_to_delete} ({user_id_to_delete})", timeout=1000)
 
         # 3. 削除操作
         row_locator = page.locator(f'#user-row-{user_id_to_delete}')
@@ -291,7 +300,7 @@ def test_delete_user(page: Page) -> None:
         delete_form_locator.locator('button[hx-delete]').click()
 
         # 4. 削除確認
-        expect(row_locator).not_to_be_visible(timeout=10000)
+        expect(row_locator).not_to_be_visible(timeout=1000)
         created_user_id = None # 削除されたので追跡不要
 
     finally:

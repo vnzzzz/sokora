@@ -1,6 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // console.log('sokora main.js loaded')
-
   // テーマ切り替え機能
   const themeToggle = document.getElementById('theme-toggle')
   if (themeToggle) {

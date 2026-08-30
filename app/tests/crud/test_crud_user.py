@@ -40,7 +40,7 @@ def test_create_user(db_with_data: Session) -> None:
     assert group and user_type # 前提条件の確認
 
     user_in = UserCreate(
-        user_id=user_id,
+        id=user_id,
         username=username,
         group_id=int(group.id),
         user_type_id=int(user_type.id)
@@ -68,7 +68,10 @@ def test_get_user(db_with_data: Session) -> None:
     assert group and user_type
 
     user_in = UserCreate(
-        user_id=user_id, username=username, group_id=int(group.id), user_type_id=int(user_type.id)
+        id=user_id,
+        username=username,
+        group_id=int(group.id),
+        user_type_id=int(user_type.id)
     )
     user = crud.user.create(db=db, obj_in=user_in)
     # get のテスト
@@ -91,7 +94,10 @@ def test_update_user(db_with_data: Session) -> None:
     assert group and user_type
 
     user_in = UserCreate(
-        user_id=user_id, username=username, group_id=int(group.id), user_type_id=int(user_type.id)
+        id=user_id,
+        username=username,
+        group_id=int(group.id),
+        user_type_id=int(user_type.id)
     )
     user = crud.user.create(db=db, obj_in=user_in)
 

@@ -37,9 +37,71 @@
       </main>
     </div>
 
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+
     <!-- JavaScript -->
+    <!-- 共通スクリプト -->
+    <script src="{{ url_for('static', path='js/modal.js') }}"></script>
+
     {% block extra_scripts %}
     <!-- ページ固有のスクリプトはここに挿入されます -->
     {% endblock %}
+
+    <script>
+      // HTMXイベントリスナー (モーダルクローズ用)
+      document.body.addEventListener('htmx:beforeSwap', function (event) {
+        // ステータスコードで成功判定 (2xx)
+        if (event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) {
+          const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
+          if (triggerHeader) {
+            // まずJSONとして解析を試みる
+            try {
+              const triggers = JSON.parse(triggerHeader)
+
+              // closeModal イベントを探す
+              if (triggers && triggers.closeModal) {
+                const modalId = triggers.closeModal
+                const modalElement = document.getElementById(modalId)
+
+                if (modalElement) {
+                  // HTMXにDOMの変更をさせないように指示
+                  event.detail.shouldSwap = false
+                  // モーダル要素を削除
+                  modalElement.remove()
+
+                  // ページリフレッシュイベントがあれば実行
+                  if (triggers.refreshPage) {
+                    setTimeout(() => {
+                      window.location.reload()
+                    }, 100)
+                  }
+                } else {
+                  console.warn('[htmx:beforeSwap] Modal element not found for ID:', modalId)
+                }
+              }
+            } catch (e) {
+              // openModal: 処理
+              if (triggerHeader.startsWith('openModal:')) {
+                const modalId = triggerHeader.split(':')[1]
+                // モーダルを開くのはmodal.jsで処理するので何もしない
+              }
+              // closeModal: 処理
+              else if (triggerHeader.startsWith('closeModal:')) {
+                const modalId = triggerHeader.split(':')[1]
+                const modalElement = document.getElementById(modalId)
+
+                if (modalElement) {
+                  // HTMXにDOMの変更をさせないように指示
+                  event.detail.shouldSwap = false
+                  // モーダル要素を削除
+                  modalElement.remove()
+                } 
+              }
+            }
+          }
+        }
+      })
+    </script>
   </body>
 </html>

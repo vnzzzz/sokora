@@ -1,8 +1,9 @@
-{# グループ編集フォームの部分テンプレート #} {# Context: group (models.Group), error_message (Optional[str]) #} {% set
-form_id = "edit-form-group-" ~ group.id %}
+{# グループ編集フォームの部分テンプレート #} {# Context: group (models.Group), error_message (Optional[str]) #} {%
+import "components/macros/ui.html" as ui %} {% set form_id = "edit-form-group-" ~ group.id %}
+
 <form id="{{ form_id }}" class="space-y-4" hx-put="/pages/group/row/{{ group.id }}" hx-indicator="#loading-indicator">
-  {# エラーメッセージ表示領域（共通テンプレートを include） #}
-  <div id="edit-form-error-{{ group.id }}">{% include 'components/common/_form_error.html' %}</div>
+  {# エラーメッセージ表示領域 #}
+  <div id="edit-form-error-{{ group.id }}">{{ ui.simple_error(error_message) }}</div>
 
   <div class="form-control">
     <label class="label" for="edit-group-name-{{ group.id }}">

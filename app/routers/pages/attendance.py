@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from datetime import date, timedelta
 import calendar
 import operator
+import json
 
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -24,8 +25,9 @@ from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.models.location import Location
-from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted
-from app.utils.ui_utils import generate_location_styles
+from app.models.attendance import Attendance as AttendanceModel
+from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted, format_date_jp
+from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
 router = APIRouter(tags=["Pages"])
@@ -167,9 +169,10 @@ def attendance_page(
     # IDでソートした Location オブジェクトのリストをテンプレートに渡す
     location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
 
-    # 勤務場所名に対応するCSSクラスを生成します。(名前のリストが必要)
-    location_names = [str(loc.name) for loc in location_objects]
-    location_styles = generate_location_styles(location_names)
+    # 勤務場所名に対応するCSSクラス情報 (テキストと背景) を生成します。
+    location_styles: Dict[str, Dict[str, str]] = {}
+    for loc in location_objects:
+        location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))
 
     # JavaScript用に Location ID と Name のマッピングを作成
     location_data_for_js = {loc.id: str(loc.name) for loc in location_objects}
@@ -211,7 +214,7 @@ def attendance_page(
         "prev_month": calendar_data["prev_month"],
         "next_month": calendar_data["next_month"],
         "location_objects": location_objects, # オブジェクトリストを渡す
-        "location_styles": location_styles,
+        "location_styles": location_styles, # 更新されたスタイル辞書
         "location_data_for_js": location_data_for_js, # JS 用データ
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
@@ -226,34 +229,77 @@ def attendance_page(
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
-            "pages/attendance/attendance_calendar.html", context,
-            headers={"HX-Reswap": "innerHTML"} # HTMXに入れ替え方法を指定
+            "partials/attendance/calendar.html", context,
+            headers={"HX-Reswap": "outerHTML"} # HTMXに入れ替え方法を指定
         )
 
     # 通常のGETリクエストの場合、完全なHTMLページをレンダリングして返します。
     logger.debug("通常リクエスト。完全なページを返します。")
     return templates.TemplateResponse(
-        "pages/attendance/index.html", context
+        "pages/attendance.html", context
     )
 
 
-@router.get("/attendance/edit/{user_id}", response_class=HTMLResponse)
-def edit_user_attendance(
+@router.get("/pages/attendances/modal/{user_id}/{date_str}", response_class=HTMLResponse)
+def get_attendance_modal(
     request: Request,
     user_id: str,
-    month: Optional[str] = None,
+    date_str: str, # パスパラメータは YYYY-MM-DD 形式を期待
     db: Session = Depends(get_db),
 ) -> Any:
-    """ユーザーの勤怠編集ページを表示します（レガシーサポート用）
+    """指定されたユーザーと日付の勤怠編集モーダルを返します。
 
     Args:
         request: FastAPIリクエストオブジェクト
         user_id: 編集対象のユーザーID
-        month: 月（YYYY-MM形式、指定がない場合は現在の月）
+        date_str: 編集対象の日付（YYYY-MM-DD形式）
         db: データベースセッション
 
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    # 新しい勤怠登録画面にリダイレクト
-    return RedirectResponse(url="/attendance") 
+    logger.info(f"勤怠モーダルリクエスト受信: User={user_id}, Date={date_str}")
+    try:
+        target_date = date.fromisoformat(date_str)
+    except ValueError:
+        logger.warning(f"無効な日付形式: {date_str}")
+        # エラーを示す空のコンテナを返すか、エラーメッセージを含むHTMLを返す
+        return HTMLResponse(content="", status_code=status.HTTP_400_BAD_REQUEST)
+
+    user_obj = user.get(db, id=user_id)
+    if not user_obj:
+        logger.warning(f"ユーザーが見つかりません: {user_id}")
+        return HTMLResponse(content="", status_code=status.HTTP_404_NOT_FOUND)
+
+    # 既存の勤怠データを取得 (CRUD関数名を修正)
+    attendance_obj: Optional[AttendanceModel] = attendance.get_by_user_and_date(db, user_id=user_id, date=target_date)
+    attendance_id = attendance_obj.id if attendance_obj else None
+    current_location_id = attendance_obj.location_id if attendance_obj else None
+
+    # 全勤務場所を取得
+    locations: List[Location] = sorted(location_crud.get_multi(db), key=operator.attrgetter('id'))
+
+    # マクロを使用するためのコンテキストを作成
+    context = {
+        "request": request,
+        "attendance_modal_params": {
+            "user_id": user_id,
+            "date": date_str,
+            "user_name": str(user_obj.username),
+            "formatted_date": format_date_jp(target_date),
+            "attendance_id": attendance_id,
+            "current_location_id": current_location_id,
+            "locations": locations,
+        }
+    }
+    logger.debug(f"モーダルコンテキスト: {context}")
+
+    modal_id = f"attendance-modal-{user_id}-{date_str}"
+    headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
+
+    # マクロを直接呼び出して表示
+    return templates.TemplateResponse(
+        "partials/attendance/attendance_modal.html",
+        context,
+        headers=headers
+    )

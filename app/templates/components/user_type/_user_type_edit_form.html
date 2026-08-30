@@ -1,5 +1,5 @@
 {# 社員種別編集フォームの部分テンプレート #} {# Context: user_type (models.UserType), error_message (Optional[str]) #}
-{% set form_id = "edit-form-user-type-" ~ user_type.id %}
+{% import "components/macros/ui.html" as ui %} {% set form_id = "edit-form-user-type-" ~ user_type.id %}
 
 <form
   id="{{ form_id }}"
@@ -7,8 +7,8 @@
   hx-put="/pages/user_type/row/{{ user_type.id }}"
   hx-indicator="#loading-indicator"
 >
-  {# エラーメッセージ表示領域（共通テンプレートを include） #}
-  <div id="edit-form-error-{{ user_type.id }}">{% include 'components/common/_form_error.html' %}</div>
+  {# エラーメッセージ表示領域 #}
+  <div id="edit-form-error-{{ user_type.id }}">{{ ui.simple_error(error_message) }}</div>
 
   <div class="form-control">
     <label class="label" for="edit-user-type-name-{{ user_type.id }}">
