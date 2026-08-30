@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.core.settings import AppSettings
 from app.main import API_TAGS, app, create_application, create_openapi_schema
 
 
@@ -23,26 +24,43 @@ class TestCreateApplication:
         assert app_instance.docs_url == "/docs"
         assert app_instance.redoc_url == "/redoc"
 
+    def test_create_application_accepts_explicit_settings(self) -> None:
+        settings = AppSettings(
+            database_url="sqlite:///:memory:",
+            log_level="DEBUG",
+        )
+
+        app_instance = create_application(settings)
+
+        assert app_instance.state.settings_provider() is settings
+        assert app_instance.version == settings.app_version
+
     def test_create_application_includes_routers(self) -> None:
         """create_application関数がルーターを含むことを確認"""
         app_instance = create_application()
 
-        # ルートが存在することを確認
         assert len(app_instance.routes) > 0
 
-        # 実際にAPIエンドポイントが動作することを確認
         client = TestClient(app_instance)
 
-        # トップページが動作することを確認
         response = client.get("/")
         assert response.status_code == 200
 
-        # 静的ファイルマウントが動作することを確認（404でも良い）
         response = client.get("/static/test.css")
-        assert response.status_code in [
-            200,
-            404,
-        ]  # ファイルが存在しなくても静的ファイルハンドラーは動作
+        assert response.status_code in [200, 404]
+
+
+class TestApplicationLifespan:
+    def test_lifespan_initializes_and_releases_database_runtime(self) -> None:
+        settings = AppSettings(database_url="sqlite:///:memory:")
+        app_instance = create_application(settings)
+
+        with TestClient(app_instance) as client:
+            assert client.get("/").status_code == 200
+            runtime = app_instance.state.database_runtime
+            assert runtime.database_url == settings.database_url
+
+        assert app_instance.state.database_runtime is None
 
 
 class TestCreateOpenApiSchema:
@@ -51,7 +69,7 @@ class TestCreateOpenApiSchema:
     def test_create_openapi_schema_new_schema(self) -> None:
         """新しいOpenAPIスキーマの生成テスト"""
         app_instance = create_application()
-        app_instance.openapi_schema = None  # 既存スキーマをクリア
+        app_instance.openapi_schema = None
 
         schema = create_openapi_schema(app_instance)
 
@@ -151,15 +169,12 @@ class TestAppIntegration:
         """基本的なルートが動作することを確認"""
         client = TestClient(app)
 
-        # トップページのテスト
         response = client.get("/")
         assert response.status_code == 200
 
-        # OpenAPIドキュメントのテスト
         response = client.get("/docs")
         assert response.status_code == 200
 
-        # ReDocのテスト
         response = client.get("/redoc")
         assert response.status_code == 200
 
