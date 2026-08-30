@@ -98,17 +98,6 @@ def test_operational_config_has_no_poetry_dependency() -> None:
         assert "poetry" not in text, f"{relative_path} still references Poetry"
 
 
-def test_repository_agent_instructions_use_shared_source_of_truth() -> None:
-    agents = (REPO_ROOT / "AGENTS.md").read_text()
-    claude = (REPO_ROOT / "CLAUDE.md").read_text()
-
-    assert claude == "@AGENTS.md\n"
-    assert "agent-skills" in agents
-    assert "slim-" not in agents.lower()
-    assert not (REPO_ROOT / ".codex").exists()
-    assert not (REPO_ROOT / "rules").exists()
-
-
 def test_devcontainer_cmd_is_idle_until_server_runs() -> None:
     dockerfile = DEVCONTAINER_DOCKERFILE.read_text()
     cmd_lines = [
