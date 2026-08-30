@@ -56,6 +56,10 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
           SOKORA_AUTH_ENABLED: "false"
         run: |
+          # non-E2E tests include real DB integration tests. Start E2E from a
+          # fresh database so app startup owns schema/seed initialization and
+          # the two test phases do not share repository DB state.
+          rm -f data/sokora.db data/sokora.db-shm data/sokora.db-wal
           uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level warning > /tmp/e2e_server.log 2>&1 &
           SERVER_PID=$!
           READY=0
