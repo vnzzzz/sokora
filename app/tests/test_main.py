@@ -129,11 +129,10 @@ class TestApiTags:
             assert isinstance(tag["description"], str)
 
     def test_api_tags_contains_expected_tags(self) -> None:
-        """API_TAGSが期待されるタグを含むことを確認"""
+        """公開APIのOpenAPIタグが期待どおりであることを確認"""
         tag_names = [tag["name"] for tag in API_TAGS]
 
         expected_tags = [
-            "Pages",
             "Attendance",
             "Locations",
             "Users",
@@ -142,8 +141,7 @@ class TestApiTags:
             "Data",
         ]
 
-        for expected_tag in expected_tags:
-            assert expected_tag in tag_names
+        assert tag_names == expected_tags
 
 
 class TestAppIntegration:
