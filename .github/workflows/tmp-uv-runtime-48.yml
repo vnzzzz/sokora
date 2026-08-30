@@ -1,0 +1,85 @@
+name: Temporary uv Runtime Validation
+
+on:
+  push:
+    branches:
+      - chore/48-migrate-to-uv
+
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production image
+        run: docker build -t sokora-uv-test .
+
+      - name: Verify production dependency set
+        run: |
+          docker run --rm --entrypoint /opt/sokora-venv/bin/python sokora-uv-test \
+            -c 'import fastapi, sqlalchemy; print("runtime-deps=OK")'
+          if docker run --rm --entrypoint /opt/sokora-venv/bin/python sokora-uv-test \
+            -c 'import pytest' >/dev/null 2>&1; then
+            echo 'pytest unexpectedly exists in the production environment'
+            exit 1
+          fi
+          echo 'dev-deps=absent'
+
+      - name: Smoke test production container
+        run: |
+          docker run -d --name sokora-uv-prod -p 18001:8000 sokora-uv-test
+          trap 'docker rm -f sokora-uv-prod >/dev/null 2>&1 || true' EXIT
+
+          HTTP_CODE=000
+          for _ in $(seq 1 30); do
+            HTTP_CODE=$(curl -sS -o /tmp/sokora-body.html -w '%{http_code}' http://127.0.0.1:18001/ 2>/dev/null || true)
+            [ "$HTTP_CODE" != 000 ] && break
+            sleep 1
+          done
+
+          echo "HTTP status=$HTTP_CODE"
+          if [ "$HTTP_CODE" != 200 ]; then
+            docker logs sokora-uv-prod || true
+            exit 1
+          fi
+          grep -q 'Sokora' /tmp/sokora-body.html
+
+  devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Dev Containers CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Build and start Dev Container
+        run: devcontainer up --workspace-folder .
+
+      - name: Verify uv development environment
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -euo pipefail
+            test "$(id -un)" = vscode
+            uv --version
+            if command -v poetry >/dev/null 2>&1; then
+              echo "poetry unexpectedly exists"
+              exit 1
+            fi
+            test "$UV_PROJECT_ENVIRONMENT" = /opt/sokora-venv
+            test "$UV_CACHE_DIR" = /home/vscode/.cache/uv
+            uv lock --check
+            uv sync --locked
+            test "$(uv run python -c "import sys; print(sys.executable)")" = /opt/sokora-venv/bin/python
+            touch /app/data/.uv-write-check
+            rm /app/data/.uv-write-check
+            touch /home/vscode/.cache/uv/.uv-write-check
+            rm /home/vscode/.cache/uv/.uv-write-check
+            echo "devcontainer=OK"
+          '
