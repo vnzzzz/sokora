@@ -6,8 +6,8 @@
 """
 
 from typing import List, Optional
-
 from pydantic import BaseModel, Field, ConfigDict
+from fastapi import Form
 
 
 class UserTypeBase(BaseModel):
@@ -19,10 +19,26 @@ class UserTypeCreate(UserTypeBase):
     """社員種別作成用スキーマ"""
     pass
 
+    @classmethod
+    async def as_form(
+        cls,
+        name: str = Form(...),
+    ) -> 'UserTypeCreate':
+        """フォームデータからインスタンスを生成"""
+        return cls(name=name)
+
 
 class UserTypeUpdate(BaseModel):
     """社員種別更新用スキーマ"""
     name: Optional[str] = None
+
+    @classmethod
+    async def as_form(
+        cls,
+        name: Optional[str] = Form(None),
+    ) -> 'UserTypeUpdate':
+        """フォームデータからインスタンスを生成"""
+        return cls(name=name)
 
 
 class UserType(UserTypeBase):

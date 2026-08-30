@@ -90,29 +90,26 @@
                 <span class="label-text">勤務場所</span>
               </div>
               <div class="space-y-2">
-                {% for location_type in location_types %} {% set location_id = loop.index %} {% set input_id =
-                "location_" ~ location_id %} {% set style_class = location_styles[location_type]|default('') %}
-                <label
-                  for="{{ input_id }}"
-                  class="flex items-center p-2 cursor-pointer {{ style_class }}"
-                  :class="{ 'ring-2 ring-primary': selectedLocationId === {{ location_id }} }"
-                >
+                {% for location in location_objects %} {% set location_id = location.id %} {% set location_name =
+                location.name %} {% set input_id = "location_" ~ location_id %} {% set style_class =
+                location_styles[location_name]|default('') %}
+                <label for="{{ input_id }}" class="flex items-center p-2 cursor-pointer {{ style_class }}">
                   <input
                     type="radio"
                     name="location_id"
                     value="{{ location_id }}"
                     id="{{ input_id }}"
                     class="radio radio-sm mr-2"
-                    x-model="selectedLocationId"
+                    x-model.number="selectedLocationId"
                     x-on:change="selectedLocationId = {{ location_id }}"
                   />
-                  <span>{{ location_type }}</span>
+                  <span>{{ location_name }}</span>
                 </label>
                 {% endfor %}
               </div>
             </div>
 
-            <div class="flex justify-end space-x-3 mt-6">
+            <div class="flex justify-end flex-wrap gap-2 mt-6">
               <button type="button" class="btn btn-outline" @click="showAttendanceModal = false">キャンセル</button>
               <button
                 type="button"

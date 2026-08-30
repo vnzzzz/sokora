@@ -14,6 +14,9 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.group import Group, GroupCreate, GroupList, GroupUpdate
 
+# サービス層をインポート
+from app.services import group_service
+
 router = APIRouter(tags=["Groups"])
 
 
@@ -32,21 +35,10 @@ def create_group(
 ) -> Any:
     """
     新しいグループを作成します。
+    サービス層でバリデーションを実行します。
     """
-    if not group_in.name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="グループ名を入力してください",
-        )
-    
-    existing_group = group.get_by_name(db, name=group_in.name)
-    if existing_group:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="このグループは既に存在します",
-        )
-    
-    return group.create(db=db, obj_in=group_in)
+    # バリデーションと作成をサービス層に委譲
+    return group_service.create_group_with_validation(db=db, group_in=group_in)
 
 
 @router.put("/{group_id}", response_model=Group)
@@ -58,19 +50,12 @@ def update_group(
 ) -> Any:
     """
     グループを更新します。
+    サービス層でバリデーションを実行します。
     """
-    group_obj = group.get_or_404(db=db, id=group_id)
-    
-    # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
-    if group_in.name and group_in.name != group_obj.name:
-        existing = group.get_by_name(db, name=group_in.name)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="このグループ名は既に使用されています",
-            )
-    
-    return group.update(db=db, db_obj=group_obj, obj_in=group_in)
+    # バリデーションと更新をサービス層に委譲
+    return group_service.update_group_with_validation(
+        db=db, group_id=group_id, group_in=group_in
+    )
 
 
 @router.delete("/{group_id}")

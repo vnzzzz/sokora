@@ -1,0 +1,70 @@
+{# ユーザー編集フォームの部分テンプレート #}
+{# Context: user (models.User), groups (List[models.Group]), user_types (List[models.UserType]), error_message (Optional[str]) #}
+
+{% set form_id = "edit-form-" + user.id %}
+<form id="{{ form_id }}" 
+    class="space-y-4"
+      hx-put="/pages/user/row/{{ user.id }}"
+      {# hx-target と hx-swap は成功時リフレッシュのため不要 #}
+      hx-indicator="#loading-indicator"
+>
+    {# エラーメッセージ表示領域（共通テンプレートを include） #}
+    <div id="edit-form-error-{{ user.id }}">
+      {% include 'components/common/_form_error.html' %}
+    </div>
+
+    <div>
+        <label for="edit_user_id_{{ user.id }}" class="block text-sm font-medium text-gray-700">ユーザーID</label>
+        <input type="text" id="edit_user_id_{{ user.id }}" name="user_id_display" value="{{ user.id }}" disabled 
+               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        {# 送信時には user_id は不要だが、識別のため #}
+    </div>
+
+    <div class="form-control">
+        <label class="label" for="edit-username-{{ user.id }}">
+            <span class="label-text">社員名</span>
+        </label>
+        <input
+            type="text"
+            id="edit-username-{{ user.id }}"
+            name="username"
+            value="{{ user.username }}"
+            class="input input-bordered focus:border-neutral"
+            required
+            autocomplete="name"
+        />
+    </div>
+
+    <div class="form-control">
+        <label class="label" for="edit-group-id-{{ user.id }}">
+            <span class="label-text">グループ</span>
+            <span class="label-text-alt text-error">*</span>
+        </label>
+        <select id="edit-group-id-{{ user.id }}" name="group_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+            <option value="">選択なし</option>
+            {% for group in groups %}
+            <option value="{{ group.id }}" {% if user and user.group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-control">
+        <label class="label" for="edit-user-type-id-{{ user.id }}">
+            <span class="label-text">社員種別</span>
+            <span class="label-text-alt text-error">*</span>
+        </label>
+        <select id="edit-user-type-id-{{ user.id }}" name="user_type_id" class="select select-bordered focus:border-neutral" required autocomplete="off">
+            <option value="">選択なし</option>
+            {% for user_type in user_types %}
+            <option value="{{ user_type.id }}" {% if user and user.user_type_id == user_type.id %}selected{% endif %}>{{ user_type.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# 追加: フォームボタン #}
+    <div class="flex justify-end space-x-3 mt-6">
+        {# モーダルを閉じるには Alpine.js か htmx イベントを使う。ここでは Alpine を仮定 #}
+        <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button> 
+        <button type="submit" class="btn btn-neutral shadow-sm">保存</button>
+    </div>
+</form> 

@@ -1,0 +1,27 @@
+{# グループ編集フォームの部分テンプレート #} {# Context: group (models.Group), error_message (Optional[str]) #} {% set
+form_id = "edit-form-group-" ~ group.id %}
+<form id="{{ form_id }}" class="space-y-4" hx-put="/pages/group/row/{{ group.id }}" hx-indicator="#loading-indicator">
+  {# エラーメッセージ表示領域（共通テンプレートを include） #}
+  <div id="edit-form-error-{{ group.id }}">{% include 'components/common/_form_error.html' %}</div>
+
+  <div class="form-control">
+    <label class="label" for="edit-group-name-{{ group.id }}">
+      <span class="label-text">グループ名</span>
+    </label>
+    <input
+      type="text"
+      id="edit-group-name-{{ group.id }}"
+      name="name"
+      value="{{ group.name }}"
+      class="input input-bordered focus:border-neutral"
+      required
+      autocomplete="off"
+    />
+  </div>
+
+  {# フォームボタン #}
+  <div class="flex justify-end space-x-3 mt-6">
+    <button type="button" class="btn btn-outline" @click="showEditModal = false">キャンセル</button>
+    <button type="submit" class="btn btn-neutral shadow-sm">保存</button>
+  </div>
+</form>

@@ -14,6 +14,9 @@ from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.schemas.user_type import UserType, UserTypeCreate, UserTypeList, UserTypeUpdate
 
+# サービス層をインポート
+from app.services import user_type_service
+
 router = APIRouter(tags=["UserTypes"])
 
 
@@ -32,21 +35,12 @@ def create_user_type(
 ) -> Any:
     """
     新しい社員種別を作成します。
+    サービス層でバリデーションを実行します。
     """
-    if not user_type_in.name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="社員種別名を入力してください",
-        )
-    
-    existing_user_type = user_type.get_by_name(db, name=user_type_in.name)
-    if existing_user_type:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="この社員種別は既に存在します",
-        )
-    
-    return user_type.create(db=db, obj_in=user_type_in)
+    # バリデーションと作成をサービス層に委譲
+    return user_type_service.create_user_type_with_validation(
+        db=db, user_type_in=user_type_in
+    )
 
 
 @router.put("/{user_type_id}", response_model=UserType)
@@ -58,19 +52,12 @@ def update_user_type(
 ) -> Any:
     """
     社員種別を更新します。
+    サービス層でバリデーションを実行します。
     """
-    user_type_obj = user_type.get_or_404(db=db, id=user_type_id)
-    
-    # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
-    if user_type_in.name and user_type_in.name != user_type_obj.name:
-        existing = user_type.get_by_name(db, name=user_type_in.name)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="この社員種別名は既に使用されています",
-            )
-    
-    return user_type.update(db=db, db_obj=user_type_obj, obj_in=user_type_in)
+    # バリデーションと更新をサービス層に委譲
+    return user_type_service.update_user_type_with_validation(
+        db=db, user_type_id=user_type_id, user_type_in=user_type_in
+    )
 
 
 @router.delete("/{user_type_id}")

@@ -13,6 +13,9 @@ from app.crud.location import location
 from app.db.session import get_db
 from app.schemas.location import Location, LocationCreate, LocationList, LocationUpdate
 
+# サービス層をインポート
+from app.services import location_service
+
 router = APIRouter(tags=["Locations"])
 
 
@@ -31,21 +34,12 @@ def create_location(
 ) -> Any:
     """
     新しい勤務場所を作成します。
+    サービス層でバリデーションを実行します。
     """
-    if not location_in.name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="勤務場所名を入力してください",
-        )
-    
-    existing_location = location.get_by_name(db, name=location_in.name)
-    if existing_location:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="この勤務場所は既に存在します",
-        )
-    
-    return location.create(db=db, obj_in=location_in)
+    # バリデーションと作成をサービス層に委譲
+    return location_service.create_location_with_validation(
+        db=db, location_in=location_in
+    )
 
 
 @router.put("/{location_id}", response_model=Location)
@@ -57,19 +51,12 @@ def update_location(
 ) -> Any:
     """
     勤務場所を更新します。
+    サービス層でバリデーションを実行します。
     """
-    location_obj = location.get_or_404(db=db, id=location_id)
-    
-    # 新しい名前が指定され、かつ現在の名前と異なる場合に重複チェックを行います。
-    if location_in.name and location_in.name != location_obj.name:
-        existing = location.get_by_name(db, name=location_in.name)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="この勤務場所名は既に使用されています",
-            )
-    
-    return location.update(db=db, db_obj=location_obj, obj_in=location_in)
+    # バリデーションと更新をサービス層に委譲
+    return location_service.update_location_with_validation(
+        db=db, location_id=location_id, location_in=location_in
+    )
 
 
 @router.delete("/{location_id}")

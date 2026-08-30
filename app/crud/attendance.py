@@ -374,7 +374,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
                 Location.name.label("location_name")
             ).join(
                 Location, 
-                Attendance.location_id == Location.location_id
+                Attendance.location_id == Location.id
             )
             
             # 日付範囲が指定されている場合はフィルタを適用

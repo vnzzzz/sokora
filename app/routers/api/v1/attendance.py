@@ -5,7 +5,7 @@
 勤怠入力と編集に関連するAPIエンドポイント
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
@@ -109,7 +109,7 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
 @router.post("", response_model=Attendance, status_code=status.HTTP_201_CREATED)
 async def create_attendance(
     user_id: str = Form(...),
-    date: date = Form(...),
+    date_str: str = Form(..., alias="date"),
     location_id: int = Form(...),
     db: Session = Depends(get_db),
 ) -> Attendance:
@@ -117,22 +117,31 @@ async def create_attendance(
     勤怠データを作成します。
     """
     try:
+        # 文字列から date オブジェクトへの変換
+        try:
+            attendance_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="日付の形式が無効です。YYYY-MM-DD形式で入力してください。"
+            )
+
         # ユーザーと勤務場所の存在確認
         user.get_or_404(db, id=user_id)
         location.get_or_404(db, id=location_id)
 
         # 既存レコードのチェック
         existing_attendance = attendance.get_by_user_and_date(
-            db, user_id=user_id, date=date
+            db, user_id=user_id, date=attendance_date
         )
         if existing_attendance:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User '{user_id}' already has attendance for date '{date}'"
+                detail=f"ユーザー '{user_id}' の日付 '{date_str}' には既に勤怠データが存在します。"
             )
 
         # AttendanceCreateオブジェクトを手動で作成
-        attendance_in = AttendanceCreate(user_id=user_id, date=date, location_id=location_id)
+        attendance_in = AttendanceCreate(user_id=user_id, date=attendance_date, location_id=location_id)
 
         # 勤怠データ作成
         created_attendance = attendance.create(db=db, obj_in=attendance_in)
@@ -192,25 +201,42 @@ async def delete_attendance(
     勤怠データを削除します。
     """
     try:
+        # get_or_404 は HTTPException を送出する可能性がある
         attendance_obj = attendance.get_or_404(db=db, id=attendance_id)
         
-        try:
-            attendance.remove(db=db, id=attendance_id)
-            db.commit()
-            logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
+        # ここに到達すればオブジェクトは存在する
+        # try:
+        #     attendance.remove(db=db, id=attendance_id)
+        #     db.commit()
+        #     logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
             
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={"success": True, "message": "勤怠データを正常に削除しました"}
-            )
-        except Exception as e:
-            db.rollback()
-            logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
-            )
+        #     return JSONResponse(
+        #         status_code=status.HTTP_200_OK,
+        #         content={"success": True, "message": "勤怠データを正常に削除しました"}
+        #     )
+        # except Exception as e:
+        #     db.rollback()
+        #     logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
+        #     return JSONResponse(
+        #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        #         content={"success": False, "message": f"勤怠データの削除中にエラーが発生しました: {str(e)}"}
+        #     )
+        
+        # remove処理自体はシンプルなので、内側のtry-exceptは不要かもしれない
+        attendance.remove(db=db, id=attendance_id) # removeは内部でcommitしない想定 (base.py次第)
+        # db.commit() # removeがcommitしない場合、ここでcommitが必要。base.pyを確認。
+        logger.debug(f"勤怠ID {attendance_id} の削除に成功しました")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"success": True, "message": "勤怠データを正常に削除しました"}
+        )
+
+    except HTTPException as http_exc:
+        # get_or_404 が発生させた 404 エラーをそのまま返す
+        raise http_exc
     except Exception as e:
+        # その他の予期せぬエラー
+        db.rollback() # 念のためロールバック
         logger.error(f"勤怠削除エラー: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -4,6 +4,7 @@
 
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
+from fastapi import Form
 
 
 class LocationBase(BaseModel):
@@ -15,10 +16,26 @@ class LocationCreate(LocationBase):
     """勤務場所の作成スキーマ"""
     name: str
 
+    @classmethod
+    async def as_form(
+        cls,
+        name: str = Form(...),
+    ) -> 'LocationCreate':
+        """フォームデータからインスタンスを生成"""
+        return cls(name=name)
+
 
 class LocationUpdate(LocationBase):
     """勤務場所の更新スキーマ"""
     pass
+
+    @classmethod
+    async def as_form(
+        cls,
+        name: Optional[str] = Form(None),
+    ) -> 'LocationUpdate':
+        """フォームデータからインスタンスを生成"""
+        return cls(name=name)
 
 
 class LocationInDBBase(LocationBase):

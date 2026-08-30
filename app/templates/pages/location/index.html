@@ -1,5 +1,5 @@
 {% extends "layout/base.html" %} {% set title_text = "勤務場所管理" %} {% from "components/common/modal.html" import
-add_modal, edit_modal, delete_confirm_modal %} {% block content %}
+add_modal %} {# 編集・削除モーダルは_location_row.html 内で定義 #} {% block content %}
 <div class="p-4">
   <div class="flex justify-between items-center max-w-[700px] mb-4">
     <div>
@@ -27,21 +27,32 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
       </button>
 
       <!-- 勤務場所追加モーダル -->
-      {% set add_content %}
-      <div class="form-control">
-        <label class="label" for="add-location-name">
-          <span class="label-text">勤務場所名</span>
-        </label>
-        <input
-          type="text"
-          id="add-location-name"
-          name="name"
-          class="input input-bordered w-full focus:border-neutral"
-          required
-          autocomplete="off"
-        />
-      </div>
-      {% endset %} {{ add_modal("勤務場所追加", "new-location-form", add_content) }}
+      {% set add_content %} {# HTMX 用に form タグを追加し、hx-post と hx-indicator を設定 #} {#
+      <form id="new-location-form" class="space-y-4" hx-post="/pages/location/row" hx-indicator="#loading-indicator">
+        #} {# エラーメッセージ表示領域 #} {#
+        <div id="add-form-error">{% include 'components/common/_form_error.html' %}</div>
+        #}
+        <div class="form-control">
+          <label class="label" for="add-location-name">
+            <span class="label-text">勤務場所名</span>
+          </label>
+          <input
+            type="text"
+            id="add-location-name"
+            name="name"
+            class="input input-bordered w-full focus:border-neutral"
+            required
+            autocomplete="off"
+          />
+        </div>
+        {# フォームボタン #} {#
+        <div class="flex justify-end space-x-3 mt-6">
+          <button type="button" class="btn btn-outline" @click="showAddModal = false">キャンセル</button>
+          <button type="submit" class="btn btn-neutral shadow-sm">追加</button>
+        </div>
+        #} {#
+      </form>
+      #} {% endset %} {{ add_modal("勤務場所追加", "add-location-modal", add_content, "/pages/location/row") }}
     </div>
   </div>
 
@@ -68,111 +79,82 @@ add_modal, edit_modal, delete_confirm_modal %} {% block content %}
             <th class="text-right rounded-tr-lg">操作</th>
           </tr>
         </thead>
-        <tbody>
-          {% for location in locations %}
-          <tr class="hover:bg-base-200" id="location-row-{{ location.id }}">
-            <td class="font-medium">
-              <span class="{{ location.color_class }}">{{ location.name }}</span>
-            </td>
-            <td class="text-right">
-              <div class="flex justify-end gap-2">
-                <div x-data="{ showEditModal: false }">
-                  <button @click="showEditModal = true" class="btn btn-sm btn-outline shadow-sm hover:shadow">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-4 h-4 mr-1"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                      />
-                    </svg>
-                    編集
-                  </button>
-
-                  <!-- 勤務場所編集モーダル -->
-                  {% set edit_content %}
-                  <div class="form-control">
-                    <label class="label" for="edit-location-name-{{ location.id }}">
-                      <span class="label-text">勤務場所名</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="edit-location-name-{{ location.id }}"
-                      name="name"
-                      value="{{ location.name }}"
-                      class="input input-bordered focus:border-neutral"
-                      required
-                      autocomplete="off"
-                    />
-                  </div>
-                  {% endset %} {{ edit_modal("勤務場所編集", "edit-form", edit_content, location.id) }}
-                </div>
-                <div x-data="{ showDeleteConfirm: false }" id="delete-modal-{{ location.id }}">
-                  <button
-                    @click="showDeleteConfirm = true"
-                    class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      class="w-4 h-4 mr-1"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                      />
-                    </svg>
-                    削除
-                  </button>
-
-                  <!-- 削除確認モーダル -->
-                  {% set delete_warning %}※勤怠データが紐づいている場合は削除できません。{% endset %} {{
-                  delete_confirm_modal("削除の確認", delete_warning, location.id, location.name, "削除") }}
-                </div>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
+        <tbody id="location-table-body">
+          {# 行の描画を部分テンプレートに委譲 #} {% for location in locations %} {% include
+          "components/location/_location_row.html" %} {% endfor %}
         </tbody>
       </table>
     </div>
     {% endif %}
   </div>
 </div>
-{% endblock %} {% block extra_scripts %}
+{% endblock %} {# HTMX 化により JavaScript は不要 #} {# {% block extra_scripts %}
 <script src="/static/js/modal-handlers.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    // 勤務場所追加の処理
-    setupAddFormHandler('new-location-form', '/api/locations/')
-
-    // 勤務場所編集の処理
-    setupEditFormHandlers('.btn[data-item-id][class*="btn-neutral"]', 'edit-form', '/api/locations/{id}')
-
-    // 勤務場所削除の処理
-    setupDeleteHandlers('.btn[data-item-id][class*="btn-error"]', '/api/locations/{id}', function (data, itemId) {
-      // 成功したら該当行を削除
-      const row = document.getElementById('location-row-' + itemId)
-      if (row) {
-        const tbody = row.closest('tbody')
-        row.remove()
-
-        // 行がなくなったら「データなし」表示を出す
-        if (tbody && tbody.children.length === 0) {
-          window.location.reload()
-        }
-      }
-    })
+    // ... (既存のJSコードは削除)
   })
+</script>
+{% endblock %} #} {% block extra_scripts %}
+<script>
+  document.body.addEventListener('htmx:afterRequest', function (event) {
+    // 成功時のレスポンスヘッダーを確認
+    const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
+    let triggers = {}
+    if (triggerHeader) {
+      try {
+        triggers = JSON.parse(triggerHeader)
+      } catch (e) {
+        console.error('Failed to parse HX-Trigger header:', e)
+      }
+    }
+
+    let showMessage = triggers.showMessage
+    let refreshPage = triggers.refreshPage
+    let isError = triggers.isError || !event.detail.successful
+
+    // DELETE 成功時もリフレッシュフラグを立てる
+    if (event.detail.requestConfig.verb === 'delete' && event.detail.successful) {
+      refreshPage = true
+      // DELETE API はメッセージを返さないので、ここで設定
+      showMessage = '削除しました。'
+      isError = false
+    }
+
+    // メッセージ表示
+    if (showMessage) {
+      showToast(showMessage, isError ? 'error' : 'success')
+    }
+
+    // ページリフレッシュ
+    if (refreshPage) {
+      window.location.reload()
+    }
+  })
+
+  // 仮のトースト表示関数 (daisyUI toast などに置き換え推奨)
+  function showToast(message, type = 'success') {
+    const toastId = 'toast-' + Date.now()
+    const toastClass = type === 'error' ? 'alert-error' : 'alert-success'
+    const toastHtml = `
+      <div id=\"${toastId}\" class=\"alert ${toastClass} shadow-lg w-auto\">
+        <div>
+          <span>${message}</span>
+        </div>
+      </div>
+    `
+    const toastContainer = document.getElementById('toast-container')
+    if (!toastContainer) {
+      console.warn(
+        'Toast container not found. Add <div id="toast-container" class="toast toast-top toast-center"></div> to your layout.'
+      )
+      return
+    }
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml)
+    setTimeout(() => {
+      const toastElement = document.getElementById(toastId)
+      if (toastElement) toastElement.remove()
+    }, 3000)
+  }
 </script>
 {% endblock %}
