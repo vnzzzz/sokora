@@ -258,9 +258,9 @@ async def test_update_attendance_success(async_client: AsyncClient) -> None:
     assert found_attendance is not None, "作成した勤怠データが見つかりません"
     attendance_id = found_attendance["id"]
 
-    # 更新ペイロード (JSON)
-    update_payload = {"location_id": location2_id}
-    response = await async_client.put(f"/api/attendances/{attendance_id}", json=update_payload)
+    # 更新ペイロード (FormData)
+    update_payload = {"location_id": str(location2_id)}
+    response = await async_client.put(f"/api/attendances/{attendance_id}", data=update_payload)
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -279,8 +279,8 @@ async def test_update_attendance_not_found(async_client: AsyncClient) -> None:
     """存在しない勤怠IDでPUTすると404エラーが発生することをテストします。"""
     non_existent_attendance_id = 99999
     location_id = await create_test_location_via_api(async_client, "AttTestLocation PutNF")
-    update_payload = {"location_id": location_id}
-    response = await async_client.put(f"/api/attendances/{non_existent_attendance_id}", json=update_payload)
+    update_payload = {"location_id": str(location_id)}
+    response = await async_client.put(f"/api/attendances/{non_existent_attendance_id}", data=update_payload)
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"Attendance with id {non_existent_attendance_id} not found" in response.json()["detail"]
 
@@ -310,9 +310,9 @@ async def test_update_attendance_invalid_location(async_client: AsyncClient) -> 
     assert found_attendance is not None, "作成した勤怠データが見つかりません"
     attendance_id = found_attendance["id"]
 
-    # 更新ペイロード (JSON)
-    update_payload = {"location_id": non_existent_location_id}
-    response = await async_client.put(f"/api/attendances/{attendance_id}", json=update_payload)
+    # 更新ペイロード (FormData)
+    update_payload = {"location_id": str(non_existent_location_id)}
+    response = await async_client.put(f"/api/attendances/{attendance_id}", data=update_payload)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert f"Location with id {non_existent_location_id} not found" in response.json()["detail"]

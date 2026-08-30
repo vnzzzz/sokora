@@ -404,5 +404,253 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             logger.error(f"Error getting attendance data for CSV: {str(e)}")
             return {}
 
+    def get_attendance_analysis_data(
+        self, db: Session, *, month: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        勤怠集計用のデータを取得します。
+        月別・人別・勤怠種別別の日数集計を行います。
+
+        Args:
+            db: データベースセッション
+            month: 対象月（YYYY-MM形式、指定がない場合は現在の月）
+
+        Returns:
+            Dict[str, Any]: 分析データ
+                - month_name: 月名（例: "2024年1月"）
+                - users: ユーザー別の勤怠データ
+                - locations: 勤怠種別一覧
+                - summary: 集計サマリー
+        """
+        from datetime import datetime, date
+        import calendar
+        from app.crud.user import user as user_crud
+        from app.crud.location import location as location_crud
+        from app.crud.group import group as group_crud
+        from app.crud.user_type import user_type as user_type_crud
+        from sqlalchemy import func, and_
+
+        try:
+            # 対象月の決定
+            if month is None:
+                current_date = datetime.now()
+                month = f"{current_date.year}-{current_date.month:02d}"
+            
+            # 月の解析
+            year, month_num = map(int, month.split('-'))
+            month_name = f"{year}年{month_num}月"
+            
+            # 月の開始日と終了日を計算
+            first_day = date(year, month_num, 1)
+            last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+            
+            # ユーザー情報を取得（グループ、ユーザー種別含む）
+            users_data = user_crud.get_all_users_with_details(db)
+            
+            # 勤怠種別情報を取得
+            locations = location_crud.get_multi(db)
+            locations_sorted = sorted(locations, key=lambda x: (x.order or 999, x.id))
+            
+            # 対象期間の勤怠データを取得
+            attendances = (
+                db.query(Attendance)
+                .filter(
+                    and_(
+                        Attendance.date >= first_day,
+                        Attendance.date <= last_day
+                    )
+                )
+                .all()
+            )
+            
+            # ユーザー別・勤怠種別別の日数を集計
+            user_analysis = {}
+            location_totals = {loc.id: 0 for loc in locations_sorted}
+            
+            for user_data in users_data:
+                user_name, user_id, group_name, user_type_name = user_data
+                
+                # このユーザーの勤怠データを集計
+                user_attendances = [att for att in attendances if att.user_id == user_id]
+                location_counts = {loc.id: 0 for loc in locations_sorted}
+                
+                for att in user_attendances:
+                    location_counts[att.location_id] += 1
+                    location_totals[att.location_id] += 1
+                
+                # 総勤務日数を計算
+                total_days = sum(location_counts.values())
+                
+                user_analysis[user_id] = {
+                    "user_name": user_name,
+                    "group_name": group_name,
+                    "user_type_name": user_type_name,
+                    "location_counts": location_counts,
+                    "total_days": total_days
+                }
+            
+            # 勤怠種別情報を整理
+            locations_info = []
+            for loc in locations_sorted:
+                locations_info.append({
+                    "id": loc.id,
+                    "name": loc.name,
+                    "category": loc.category,
+                    "total_days": location_totals[loc.id]
+                })
+            
+            # サマリー情報を計算
+            total_users = len(user_analysis)
+            total_attendance_days = sum(location_totals.values())
+            
+            return {
+                "month": month,
+                "month_name": month_name,
+                "users": user_analysis,
+                "locations": locations_info,
+                "summary": {
+                    "total_users": total_users,
+                    "total_attendance_days": total_attendance_days,
+                    "location_totals": location_totals
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"勤怠集計データ取得中にエラーが発生しました: {str(e)}", exc_info=True)
+            return {
+                "month": month or "",
+                "month_name": "エラー",
+                "users": {},
+                "locations": [],
+                "summary": {
+                    "total_users": 0,
+                    "total_attendance_days": 0,
+                    "location_totals": {}
+                }
+            }
+
+    def get_attendance_by_type_for_fiscal_year(
+        self, db: Session, *, location_id: Optional[int] = None, year: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        年度ベースで指定された勤怠種別の詳細データを取得します。
+        ユーザーごとに、指定された勤怠種別が登録されている日付一覧を返します。
+
+        Args:
+            db: データベースセッション
+            location_id: 勤怠種別ID（指定がない場合は最初の勤怠種別）
+            year: 対象年度（指定がない場合は現在の年）
+
+        Returns:
+            Dict[str, Any]: 勤怠種別別詳細データ
+                - year: 対象年
+                - location_name: 勤怠種別名
+                - users_data: ユーザー別の勤怠日付一覧
+                - locations: 全勤怠種別一覧（ラジオボタン用）
+        """
+        from datetime import datetime, date
+        from app.crud.user import user as user_crud
+        from app.crud.location import location as location_crud
+        from sqlalchemy import and_
+
+        try:
+            # 対象年の決定
+            if year is None:
+                year = datetime.now().year
+            
+            # 年度の開始日と終了日を計算（1月1日〜12月31日）
+            first_day = date(year, 1, 1)
+            last_day = date(year, 12, 31)
+            
+            # 勤怠種別情報を取得
+            locations = location_crud.get_multi(db)
+            locations_sorted = sorted(locations, key=lambda x: (x.category or "", x.order or 999, x.id))
+            
+            # デフォルトの勤怠種別IDを設定
+            if location_id is None and locations_sorted:
+                location_id = int(locations_sorted[0].id)
+            
+            # 選択された勤怠種別の名前を取得
+            selected_location = next((loc for loc in locations_sorted if loc.id == location_id), None)
+            location_name = selected_location.name if selected_location else "不明"
+            
+            # ユーザー情報を取得（グループ、ユーザー種別含む）
+            users_data = user_crud.get_all_users_with_details(db)
+            
+            # 対象期間・勤怠種別の勤怠データを取得
+            attendances = (
+                db.query(Attendance)
+                .filter(
+                    and_(
+                        Attendance.date >= first_day,
+                        Attendance.date <= last_day,
+                        Attendance.location_id == location_id
+                    )
+                )
+                .order_by(Attendance.date)
+                .all()
+            )
+            
+            # ユーザー別に勤怠日付をグループ化
+            users_attendance_data = {}
+            
+            for user_data in users_data:
+                user_name, user_id, group_name, user_type_name = user_data
+                
+                # このユーザーの勤怠データを抽出
+                user_attendances = [att for att in attendances if att.user_id == user_id]
+                
+                # 日付一覧を作成
+                attendance_dates = []
+                for att in user_attendances:
+                    attendance_dates.append({
+                        "date": att.date,
+                        "date_str": att.date.strftime("%Y-%m-%d"),
+                        "date_jp": f"{att.date.month}月{att.date.day}日",
+                        "date_mmdd": att.date.strftime("%m/%d"),
+                        "date_simple": f"{att.date.month}/{att.date.day}",
+                        "note": att.note or ""
+                    })
+                
+                if attendance_dates:  # 勤怠データがある場合のみ追加
+                    users_attendance_data[user_id] = {
+                        "user_name": user_name,
+                        "group_name": group_name,
+                        "user_type_name": user_type_name,
+                        "attendance_dates": attendance_dates,
+                        "total_days": len(attendance_dates)
+                    }
+            
+            # 勤怠種別情報を整理（ラジオボタン用）
+            locations_info = []
+            for loc in locations_sorted:
+                locations_info.append({
+                    "id": loc.id,
+                    "name": loc.name,
+                    "category": loc.category
+                })
+            
+            return {
+                "year": year,
+                "location_id": location_id,
+                "location_name": location_name,
+                "users_data": users_attendance_data,
+                "locations": locations_info,
+                "total_users": len(users_attendance_data),
+                "total_records": len(attendances)
+            }
+            
+        except Exception as e:
+            logger.error(f"勤怠種別別データ取得中にエラーが発生しました: {str(e)}", exc_info=True)
+            return {
+                "year": year or datetime.now().year,
+                "location_id": location_id,
+                "location_name": "エラー",
+                "users_data": {},
+                "locations": [],
+                "total_users": 0,
+                "total_records": 0
+            }
+
 
 attendance = CRUDAttendance(Attendance)

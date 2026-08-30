@@ -1,7 +1,11 @@
 {% extends "layout/base.html" %} {% import "components/macros/ui.html" as ui %} {% set title_text = "勤怠確認" %} {%
 block content %}
 <div class="p-4">
-  <h2 class="text-lg font-bold mb-3">勤怠確認</h2>
+  <div class="flex justify-between items-center mb-4">
+    <div>
+      <h2 class="text-lg font-bold text-base-content">勤怠確認</h2>
+    </div>
+  </div>
   <!-- カレンダーエリア -->
   <div id="calendar-area" hx-get="/calendar" hx-trigger="load" hx-target="#calendar-area">
     <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->

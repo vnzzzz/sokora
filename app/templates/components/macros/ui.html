@@ -160,6 +160,62 @@
 </div>
 {%- endmacro %}
 
+{% macro week_switcher(prev_week, next_week, current_week, url_base='/attendance', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+<!-- 週切り替えボタングループ -->
+<div class="btn-group shadow-sm {{ class }}">
+  <button
+    class="btn btn-sm btn-outline"
+    {% if use_htmx %}
+      {% if user_id %}
+        hx-get="{{ url_base }}/{{ user_id }}?week={{ prev_week }}"
+      {% else %}
+        hx-get="{{ url_base }}?week={{ prev_week }}"
+      {% endif %}
+      hx-target="#{{ target_id }}"
+      hx-swap="outerHTML"
+    {% else %}
+      onclick="navigateToWeek('{{ prev_week }}', '{{ user_id }}', '{{ url_base }}')"
+    {% endif %}
+  >
+    ◀︎
+  </button>
+
+  <button
+    class="btn btn-sm btn-neutral"
+    {% if use_htmx %}
+      {% if user_id %}
+        hx-get="{{ url_base }}/{{ user_id }}"
+      {% else %}
+        hx-get="{{ url_base }}"
+      {% endif %}
+      hx-target="#{{ target_id }}"
+      hx-swap="outerHTML"
+    {% else %}
+      onclick="navigateToWeek('', '{{ user_id }}', '{{ url_base }}')"
+    {% endif %}
+  >
+    今週
+  </button>
+
+  <button
+    class="btn btn-sm btn-outline"
+    {% if use_htmx %}
+      {% if user_id %}
+        hx-get="{{ url_base }}/{{ user_id }}?week={{ next_week }}"
+      {% else %}
+        hx-get="{{ url_base }}?week={{ next_week }}"
+      {% endif %}
+      hx-target="#{{ target_id }}"
+      hx-swap="outerHTML"
+    {% else %}
+      onclick="navigateToWeek('{{ next_week }}', '{{ user_id }}', '{{ url_base }}')"
+    {% endif %}
+  >
+    ▶︎
+  </button>
+</div>
+{%- endmacro %}
+
 {% macro loading_indicator(id='loading-indicator') -%}
 <style>
   .htmx-indicator {
@@ -357,6 +413,23 @@ function selectLocation(userId, date, locationId) {
   // hidden inputの値を更新
   document.getElementById(`selected-location-id-${userId}-${date}`).value = locationId;
 }
+
+// モーダルが開かれた時にlocalStorageを更新
+(function() {
+  const modalDate = '{{ date }}';
+  if (modalDate && window.saveWeekFromDate) {
+    // 日付から週情報を計算してlocalStorageに保存
+    window.saveWeekFromDate(modalDate);
+  }
+  
+  // 月情報も保存
+  if (modalDate && modalDate.length >= 7) {
+    const monthStr = modalDate.substring(0, 7); // YYYY-MM
+    if (window.localStorage) {
+      localStorage.setItem('selectedMonth', monthStr);
+    }
+  }
+})();
 </script>
 
 {% endcall %}

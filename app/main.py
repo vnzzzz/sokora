@@ -64,8 +64,11 @@ def create_application() -> FastAPI:
         redoc_url="/redoc",  # デフォルトの/redocを有効化
     )
 
-    # /staticから静的ファイルを提供
+    # /staticから静的ファイルを提供（開発時ファイル用）
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
+    
+    # /assetsからビルド時生成ファイルを提供（本番ファイル用）
+    app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
     # UIページ用ルーターを組み込み
     app.include_router(pages_router)

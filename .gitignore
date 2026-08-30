@@ -18,3 +18,9 @@ __pycache__/
 
 # .cursor
 .cursor
+
+# assets
+assets/*
+
+# node
+**/node_modules

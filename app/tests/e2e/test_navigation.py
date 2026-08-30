@@ -13,9 +13,9 @@ def test_navigate_to_attendance(page: Page) -> None:
     """トップページから勤怠登録ページへ遷移するテスト"""
     page.goto("http://localhost:8000/")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-    page.locator('a[title="勤怠登録"]').click()
+    page.locator('a[title="勤怠登録（一括）"]').click()
     expect(page).to_have_url("http://localhost:8000/attendance")
-    expect(page.locator("h2")).to_have_text("勤怠登録")
+    expect(page.locator("h2")).to_have_text("勤怠登録（一括）")
 
 
 def test_navigate_to_users(page: Page) -> None:

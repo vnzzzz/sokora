@@ -26,7 +26,7 @@ from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.models.location import Location
 from app.models.attendance import Attendance as AttendanceModel
-from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted, format_date_jp
+from app.utils.calendar_utils import build_week_calendar_data, parse_week, get_current_week_formatted, format_date_jp
 from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 def attendance_page(
     request: Request, 
     search_query: Optional[str] = None,
-    month: Optional[str] = None,
+    week: Optional[str] = None,
     db: Session = Depends(get_db)
 ) -> Any:
     """勤怠登録ページを表示します
@@ -49,76 +49,73 @@ def attendance_page(
     Args:
         request: FastAPIリクエストオブジェクト
         search_query: 検索クエリ（社員名またはID）
-        month: 月（YYYY-MM形式、指定がない場合は現在の月）
+        week: 週（YYYY-MM-DD形式の月曜日、指定がない場合は現在の週）
         db: データベースセッション
 
     Returns:
         HTMLResponse: レンダリングされたHTMLページ
     """
-    # 月パラメータの処理と検証 (指定がない場合は現在の月を使用)
-    if month is None:
-        month = get_current_month_formatted()
-        logger.debug(f"月パラメータなし。デフォルト設定: {month}")
+    # 週パラメータの処理と検証 (指定がない場合は現在の週を使用)
+    if week is None:
+        week = get_current_week_formatted()
+        logger.debug(f"週パラメータなし。デフォルト設定: {week}")
     else:
-        # YYYY-MM 形式に正規化し、無効な場合は現在の月にリダイレクト
+        # YYYY-MM-DD 形式に正規化し、無効な場合は現在の週にリダイレクト
         try:
-            year, month_num = parse_month(month)
-            month = f"{year}-{month_num:02d}"
-            logger.debug(f"月パラメータ検証成功: {month}")
+            monday = parse_week(week)
+            week = f"{monday.year}-{monday.month:02d}-{monday.day:02d}"
+            logger.debug(f"週パラメータ検証成功: {week}")
         except ValueError as e:
-            logger.warning(f"無効な月パラメータ: {month}, エラー: {str(e)}")
-            current_month = get_current_month_formatted()
-            return RedirectResponse(url=f"/attendance?month={current_month}")
+            logger.warning(f"無効な週パラメータ: {week}, エラー: {str(e)}")
+            current_week = get_current_week_formatted()
+            return RedirectResponse(url=f"/attendance?week={current_week}")
 
     # DBからカレンダー構築に必要なデータを取得
     try:
-        year, month_num = parse_month(month)
-        first_day = date(year, month_num, 1)
-        last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
+        monday = parse_week(week)
+        sunday = monday + timedelta(days=6)
 
-        attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
-        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+        attendances_for_cal = calendar_crud.get_week_attendances(db, monday=monday)
+        attendance_counts_for_cal = calendar_crud.get_week_attendance_counts(db, monday=monday)
         location_types_unsorted_for_cal = location_crud.get_all_locations(db)
         location_types_for_cal = sorted(location_types_unsorted_for_cal)
 
-        # 指定された月のカレンダーデータを構築します。
-        logger.debug(f"カレンダーデータ構築: {month}")
-        calendar_data = build_calendar_data(
-            month=month,
+        # 指定された週のカレンダーデータを構築します。
+        logger.debug(f"カレンダーデータ構築: {week}")
+        calendar_data = build_week_calendar_data(
+            week_str=week,
             attendances=attendances_for_cal,
             attendance_counts=attendance_counts_for_cal,
             location_types=location_types_for_cal
         )
     except ValueError as e:
-        logger.error(f"月解析エラー ({month}): {e}")
+        logger.error(f"週解析エラー ({week}): {e}")
         calendar_data = None # エラー発生
     except Exception as e:
-        logger.error(f"カレンダーデータ構築中にエラー ({month}): {e}", exc_info=True)
+        logger.error(f"カレンダーデータ構築中にエラー ({week}): {e}", exc_info=True)
         calendar_data = None # エラー発生
 
-    # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
+    # カレンダーデータの取得に失敗した場合、現在の週にフォールバックします。
     if not calendar_data or "weeks" not in calendar_data:
-        logger.error(f"カレンダーデータの構築に失敗: {month}")
-        month = get_current_month_formatted()
+        logger.error(f"カレンダーデータの構築に失敗: {week}")
+        week = get_current_week_formatted()
         # 再度データを取得して構築（エラーハンドリングは簡略化）
         try:
-            year, month_num = parse_month(month)
-            first_day = date(year, month_num, 1)
-            last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
-            attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
-            attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+            monday = parse_week(week)
+            attendances_for_cal = calendar_crud.get_week_attendances(db, monday=monday)
+            attendance_counts_for_cal = calendar_crud.get_week_attendance_counts(db, monday=monday)
             location_types_unsorted_for_cal = location_crud.get_all_locations(db)
             location_types_for_cal = sorted(location_types_unsorted_for_cal)
-            calendar_data = build_calendar_data(
-                month=month,
+            calendar_data = build_week_calendar_data(
+                week_str=week,
                 attendances=attendances_for_cal,
                 attendance_counts=attendance_counts_for_cal,
                 location_types=location_types_for_cal
             )
         except:
-            logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {month}")
+            logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {week}")
             # さらにエラーなら空データを設定
-            calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
+            calendar_data = {"weeks": [], "week_name": "エラー", "prev_week": week, "next_week": week}
 
     # 全ユーザー情報を取得します。
     all_users = user.get_all_users(db)
@@ -236,8 +233,8 @@ def attendance_page(
 
     # カレンダーの表示日数を計算 (テーブルのcolspan用)
     calendar_day_count = 0
-    for week in calendar_data["weeks"]:
-        for day in week:
+    for week_data in calendar_data["weeks"]:
+        for day in week_data:
             if day and day.get("day", 0) != 0:
                 calendar_day_count += 1
 
@@ -250,9 +247,9 @@ def attendance_page(
         "grouped_users": grouped_users,
         "group_names": sorted(grouped_users.keys(), key=lambda g: group_name_to_order.get(g, float('inf'))), # order順でソートされたグループ名のリスト
         "calendar_data": calendar_data["weeks"],
-        "month_name": calendar_data["month_name"],
-        "prev_month": calendar_data["prev_month"],
-        "next_month": calendar_data["next_month"],
+        "week_name": calendar_data["week_name"],
+        "prev_week": calendar_data["prev_week"],
+        "next_week": calendar_data["next_week"],
         "location_objects": location_objects, # オブジェクトリストを渡す
         "location_styles": location_styles, # 更新されたスタイル辞書
         "location_data_for_js": location_data_for_js, # JS 用データ
@@ -263,8 +260,8 @@ def attendance_page(
         "search_query": search_query,
     }
 
-    # 現在選択中の月 (YYYY-MM) をコンテキストに追加
-    context["current_month"] = month
+    # 現在選択中の週 (YYYY-MM-DD) をコンテキストに追加
+    context["current_week"] = week
 
     # HTMXリクエストの場合、勤怠テーブル部分のみをレンダリングして返します。
     if request.headers.get("HX-Request") == "true":

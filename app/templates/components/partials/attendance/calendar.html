@@ -11,12 +11,12 @@
   }
 </style>
 
-<!-- Month display and switcher -->
+<!-- Week display and switcher -->
 <div id="calendar">
   <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
-    <span class="text-xl font-bold">{{ month_name }}</span> {# 月名の表示 #}
-    <!-- 月切り替えコンポーネント -->
-    {{ ui.month_switcher( prev_month=prev_month, next_month=next_month, current_month=current_month,
+    <span class="text-xl font-bold">{{ week_name }}</span> {# 週名の表示 #}
+    <!-- 週切り替えコンポーネント -->
+    {{ ui.week_switcher( prev_week=prev_week, next_week=next_week, current_week=current_week,
     url_base='/attendance', use_htmx=true ) }}
   </div>
 
@@ -84,9 +84,9 @@
 
           <!-- 日付ヘッダー -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
-          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          loop.index0 %} {% set is_weekend = weekday_index == 5 or weekday_index == 6 %} {% set is_holiday =
           day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
-          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
           %}
 
           <th
@@ -98,14 +98,14 @@
             style="min-width: 70px; width: 70px"
           >
             <div
-              class="font-bold text-sm {% if is_holiday or weekday_index == 0 %}text-red-600 dark:text-red-400{% elif weekday_index == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+              class="font-bold text-sm {% if is_holiday or weekday_index == 6 %}text-red-600 dark:text-red-400{% elif weekday_index == 5 %}text-blue-600 dark:text-blue-400{% endif %}"
             >
               {{ day.day }}
             </div>
             <div
               class="text-xs opacity-70 {% if day.holiday_name|default('') %}custom-tooltip holiday-tooltip{% endif %}"
             >
-              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[weekday_index] }} {% if
+              {% set weekdays = ["月", "火", "水", "木", "金", "土", "日"] %} {{ weekdays[weekday_index] }} {% if
               day.holiday_name|default('') %}
               <span class="tooltip-text">{{ day.holiday_name }}</span>
               {% endif %}
@@ -145,7 +145,7 @@
             {# 未分類の場合も考慮 #} {{ user_type_name if user_type_name else "未分類" }}
           </td>
           {# 残りの日付セル分を埋めるためのセル #}
-          <td colspan="{{ calendar_day_count|default(31) }}" class="bg-base-200/80"></td>
+          <td colspan="{{ calendar_day_count|default(7) }}" class="bg-base-200/80"></td>
         </tr>
 
         {# --- この社員種別に属する社員データ行 --- #} {% for user_name, user_id, user_type_id, user_obj in user_list %}
@@ -174,9 +174,9 @@
 
           <!-- 日付ごとのセル -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
-          loop.index0 %} {% set is_weekend = weekday_index == 0 or weekday_index == 6 %} {% set is_holiday =
+          loop.index0 %} {% set is_weekend = weekday_index == 5 or weekday_index == 6 %} {% set is_holiday =
           day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
-          if weekday_index == 0 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 6 else "")
+          if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
           %}           {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
           user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set note =
           user_attendance_notes[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
