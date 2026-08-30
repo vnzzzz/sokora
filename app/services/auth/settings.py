@@ -1,40 +1,12 @@
 from dataclasses import dataclass
-from os import environ
-from pathlib import Path
 
+from app.core.settings import AppSettings
 from app.services.auth.state import AuthStateStore
-
-
-def _get_bool(name: str, default: bool = False) -> bool:
-    value = environ.get(name)
-    if value is None:
-        return default
-    return value.lower() in {"1", "true", "yes", "on"}
-
-
-def _get_int(name: str, default: int) -> int:
-    value = environ.get(name)
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except ValueError:
-        return default
-
-
-def _get_float(name: str, default: float) -> float:
-    value = environ.get(name)
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except ValueError:
-        return default
 
 
 @dataclass
 class AuthSettings:
-    """認証関連の環境設定を保持するデータクラス"""
+    """Authentication settings including the runtime OIDC toggle state."""
 
     auth_enabled: bool
     session_secret: str
@@ -77,30 +49,31 @@ class AuthSettings:
         )
 
     @classmethod
-    def from_env(cls) -> "AuthSettings":
-        state_path = environ.get("SOKORA_AUTH_STATE_PATH")
-        state_store = AuthStateStore(Path(state_path) if state_path else None)
+    def from_app_settings(cls, settings: AppSettings) -> "AuthSettings":
+        """Combine static application settings with mutable auth state."""
+        state_store = AuthStateStore(settings.auth_state_path)
         state = state_store.load_state()
         return cls(
-            auth_enabled=_get_bool("SOKORA_AUTH_ENABLED", default=False),
-            session_secret=environ.get(
-                "SOKORA_AUTH_SESSION_SECRET", "dev-session-secret"
-            ),
-            session_ttl_seconds=_get_int(
-                "SOKORA_AUTH_SESSION_TTL_SECONDS", default=3600
-            ),
-            local_auth_enabled=_get_bool("SOKORA_LOCAL_AUTH_ENABLED", default=True),
-            oidc_issuer=environ.get("OIDC_ISSUER"),
-            oidc_client_id=environ.get("OIDC_CLIENT_ID"),
-            oidc_client_secret=environ.get("OIDC_CLIENT_SECRET"),
-            oidc_redirect_uri=environ.get("OIDC_REDIRECT_URL"),
-            oidc_scope=environ.get("OIDC_SCOPES", "openid profile email"),
-            oidc_http_timeout=_get_float("OIDC_HTTP_TIMEOUT", default=3.0),
-            authorization_endpoint_override=environ.get("OIDC_AUTHORIZATION_ENDPOINT"),
-            token_endpoint_override=environ.get("OIDC_TOKEN_ENDPOINT"),
-            userinfo_endpoint_override=environ.get("OIDC_USERINFO_ENDPOINT"),
-            logout_endpoint_override=environ.get("OIDC_LOGOUT_ENDPOINT"),
+            auth_enabled=settings.auth_enabled,
+            session_secret=settings.session_secret,
+            session_ttl_seconds=settings.session_ttl_seconds,
+            local_auth_enabled=settings.local_auth_enabled,
+            oidc_issuer=settings.oidc_issuer,
+            oidc_client_id=settings.oidc_client_id,
+            oidc_client_secret=settings.oidc_client_secret,
+            oidc_redirect_uri=settings.oidc_redirect_uri,
+            oidc_scope=settings.oidc_scope,
+            oidc_http_timeout=settings.oidc_http_timeout,
+            authorization_endpoint_override=settings.authorization_endpoint_override,
+            token_endpoint_override=settings.token_endpoint_override,
+            userinfo_endpoint_override=settings.userinfo_endpoint_override,
+            logout_endpoint_override=settings.logout_endpoint_override,
             oidc_toggle_enabled=state.oidc_enabled,
-            local_admin_username=environ.get("SOKORA_LOCAL_ADMIN_USERNAME"),
-            local_admin_password=environ.get("SOKORA_LOCAL_ADMIN_PASSWORD"),
+            local_admin_username=settings.local_admin_username,
+            local_admin_password=settings.local_admin_password,
         )
+
+    @classmethod
+    def from_env(cls) -> "AuthSettings":
+        """Compatibility helper; environment parsing remains centralized."""
+        return cls.from_app_settings(AppSettings.from_env())
