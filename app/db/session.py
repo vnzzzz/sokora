@@ -9,6 +9,7 @@ from fastapi import Request
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from starlette.applications import Starlette
 
 from app.core.config import logger
 from app.core.settings import AppSettings
@@ -60,9 +61,7 @@ def get_default_database_runtime() -> DatabaseRuntime:
 
 
 def clear_database_runtime_cache() -> None:
-    """Dispose cached default runtimes; primarily useful for test isolation."""
-    for runtime in _cached_database_runtime.cache_info() and []:
-        runtime.dispose()
+    """Forget cached default runtimes; primarily useful for test isolation."""
     _cached_database_runtime.cache_clear()
 
 
@@ -71,21 +70,21 @@ def SessionLocal() -> Session:
     return get_default_database_runtime().session_factory()
 
 
-def get_app_database_runtime(request: Request) -> DatabaseRuntime:
-    """Return the database runtime associated with the current FastAPI app."""
-    runtime = getattr(request.app.state, "database_runtime", None)
+def get_app_database_runtime(app: Starlette) -> DatabaseRuntime:
+    """Return the database runtime associated with one application instance."""
+    runtime = getattr(app.state, "database_runtime", None)
     if isinstance(runtime, DatabaseRuntime):
         return runtime
 
-    settings = request.app.state.settings
+    settings: AppSettings = app.state.settings
     runtime = create_database_runtime(settings.database_url)
-    request.app.state.database_runtime = runtime
+    app.state.database_runtime = runtime
     return runtime
 
 
 def get_db(request: Request) -> Generator[Session, None, None]:
     """Yield a request-scoped SQLAlchemy session."""
-    runtime = get_app_database_runtime(request)
+    runtime = get_app_database_runtime(request.app)
     db = runtime.session_factory()
     try:
         yield db
