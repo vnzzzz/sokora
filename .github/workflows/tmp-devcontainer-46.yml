@@ -1,0 +1,44 @@
+name: Temporary Dev Container Validation
+
+on:
+  push:
+    branches:
+      - chore/46-agentic-development-toolkit
+
+jobs:
+  validate-devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Dev Containers CLI
+        run: npm install --global @devcontainers/cli
+
+      - name: Build and start Dev Container
+        run: devcontainer up --workspace-folder .
+
+      - name: Verify shared agent tooling and remote user
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -e
+            test "$(id -un)" = "vscode"
+            command -v codex
+            command -v claude
+            command -v gh
+            command -v agent-github-auth
+            command -v poetry
+            codex --version
+            claude --version
+            gh --version | head -n 1
+            poetry --version
+            test -w /app/data
+          '
+
+      - name: Show generated Dev Container lockfile
+        run: cat .devcontainer/devcontainer-lock.json
