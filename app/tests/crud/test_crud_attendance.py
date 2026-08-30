@@ -1,16 +1,18 @@
-import pytest
-from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from typing import Any, Dict
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+from sqlalchemy.orm import Session
 
 from app import crud
+from app.models import Location as LocationModel
+from app.models import User as UserModel
 from app.schemas.attendance import AttendanceCreate, AttendanceUpdate
-from app.models import User as UserModel, Location as LocationModel
-from app.schemas.user import UserCreate
 from app.schemas.group import GroupCreate
-from app.schemas.user_type import UserTypeCreate
 from app.schemas.location import LocationCreate
+from app.schemas.user import UserCreate
+from app.schemas.user_type import UserTypeCreate
 from app.tests.utils.utils import random_lower_string
 
 
@@ -30,7 +32,7 @@ def db_with_attendance_data(db: Session) -> Session:
         id=user_id,
         username=username,
         group_id=int(group.id),
-        user_type_id=int(user_type.id)
+        user_type_id=int(user_type.id),
     )
     crud.user.create(db=db, obj_in=user_in)
 
@@ -42,19 +44,24 @@ def db_with_attendance_data(db: Session) -> Session:
 
     return db
 
+
 def test_create_attendance(db_with_attendance_data: Session) -> None:
     """新しい勤怠記録を作成するテスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
 
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     attendance = crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -63,18 +70,23 @@ def test_create_attendance(db_with_attendance_data: Session) -> None:
     assert attendance.location_id == location.id
     assert hasattr(attendance, "id")
 
+
 def test_get_attendance(db_with_attendance_data: Session) -> None:
     """IDで勤怠記録を取得するテスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     attendance = crud.attendance.create(db=db, obj_in=attendance_in)
     attendance_2 = crud.attendance.get(db=db, id=attendance.id)
@@ -84,45 +96,59 @@ def test_get_attendance(db_with_attendance_data: Session) -> None:
     assert attendance.user_id == attendance_2.user_id
     assert attendance.date == attendance_2.date
 
+
 def test_update_attendance(db_with_attendance_data: Session) -> None:
     """勤怠記録を更新するテスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
-    remote_location = db.query(LocationModel).filter(LocationModel.name == "Test Location Remote").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
+    remote_location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Remote")
+        .first()
+    )
     assert user and location and remote_location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     attendance = crud.attendance.create(db=db, obj_in=attendance_in)
 
-    attendance_in_update = AttendanceUpdate(
-        location_id=int(remote_location.id)
-    )
+    attendance_in_update = AttendanceUpdate(location_id=int(remote_location.id))
 
-    attendance_updated = crud.attendance.update(db=db, db_obj=attendance, obj_in=attendance_in_update)
+    attendance_updated = crud.attendance.update(
+        db=db, db_obj=attendance, obj_in=attendance_in_update
+    )
 
     assert attendance_updated.id == attendance.id
     assert attendance_updated.location_id == remote_location.id
     assert attendance_updated.date == attendance.date
     assert attendance_updated.user_id == attendance.user_id
 
+
 def test_remove_attendance(db_with_attendance_data: Session) -> None:
     """勤怠記録を削除するテスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     attendance = crud.attendance.create(db=db, obj_in=attendance_in)
     attendance_id = int(attendance.id)
@@ -138,15 +164,19 @@ def test_remove_attendance(db_with_attendance_data: Session) -> None:
 def test_get_by_user_and_date(db_with_attendance_data: Session) -> None:
     """ユーザーIDと日付で勤怠記録を取得するテスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     created_attendance = crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -168,15 +198,19 @@ def test_get_by_user_and_date(db_with_attendance_data: Session) -> None:
 def test_delete_attendance_custom(db_with_attendance_data: Session) -> None:
     """指定ユーザーと日付の勤怠記録削除テスト（カスタムメソッド）"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -197,15 +231,19 @@ def test_delete_attendance_custom(db_with_attendance_data: Session) -> None:
 def test_delete_by_user_and_date(db_with_attendance_data: Session) -> None:
     """キャッシュクリア付きの勤怠記録削除テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -232,17 +270,25 @@ def test_delete_by_user_and_date(db_with_attendance_data: Session) -> None:
 def test_delete_attendances_by_user_id(db_with_attendance_data: Session) -> None:
     """ユーザーIDによる全勤怠記録削除テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     # 複数の勤怠記録を作成
-    dates = [date.today(), date.today() - timedelta(days=1), date.today() - timedelta(days=2)]
+    dates = [
+        date.today(),
+        date.today() - timedelta(days=1),
+        date.today() - timedelta(days=2),
+    ]
     for test_date in dates:
         attendance_in = AttendanceCreate(
-            user_id=str(user.id),
-            date=test_date,
-            location_id=int(location.id)
+            user_id=str(user.id), date=test_date, location_id=int(location.id)
         )
         crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -268,8 +314,12 @@ def analysis_seed(db: Session) -> Dict[str, Any]:
     full_time = crud.user_type.create(db=db, obj_in=UserTypeCreate(name="正社員"))
     contractor = crud.user_type.create(db=db, obj_in=UserTypeCreate(name="契約"))
 
-    office = crud.location.create(db=db, obj_in=LocationCreate(name="東京オフィス", order=1))
-    remote = crud.location.create(db=db, obj_in=LocationCreate(name="リモート", order=2))
+    office = crud.location.create(
+        db=db, obj_in=LocationCreate(name="東京オフィス", order=1)
+    )
+    remote = crud.location.create(
+        db=db, obj_in=LocationCreate(name="リモート", order=2)
+    )
 
     alice = crud.user.create(
         db=db,
@@ -377,17 +427,30 @@ def test_analysis_fiscal_year_range_and_grouping(analysis_seed: Dict[str, Any]) 
 def test_update_attendance_method(db_with_attendance_data: Session) -> None:
     """勤怠記録の作成・更新メソッドテスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
-    remote_location = db.query(LocationModel).filter(LocationModel.name == "Test Location Remote").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
+    remote_location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Remote")
+        .first()
+    )
     assert user and location and remote_location
 
     attendance_date = date.today()
 
     # 新規作成
     created_attendance = crud.attendance.update_attendance(
-        db=db, user_id=str(user.id), date_obj=attendance_date, 
-        location_id=int(location.id), note="テスト備考"
+        db=db,
+        user_id=str(user.id),
+        date_obj=attendance_date,
+        location_id=int(location.id),
+        note="テスト備考",
     )
     assert created_attendance
     assert created_attendance.location_id == location.id
@@ -395,8 +458,11 @@ def test_update_attendance_method(db_with_attendance_data: Session) -> None:
 
     # 更新
     updated_attendance = crud.attendance.update_attendance(
-        db=db, user_id=str(user.id), date_obj=attendance_date, 
-        location_id=int(remote_location.id), note="更新後備考"
+        db=db,
+        user_id=str(user.id),
+        date_obj=attendance_date,
+        location_id=int(remote_location.id),
+        note="更新後備考",
     )
     assert updated_attendance
     assert updated_attendance.id == created_attendance.id
@@ -407,16 +473,25 @@ def test_update_attendance_method(db_with_attendance_data: Session) -> None:
 def test_update_user_entry_create(db_with_attendance_data: Session) -> None:
     """update_user_entry 新規作成テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     date_str = date.today().strftime("%Y-%m-%d")
-    
+
     # 新規作成
     result = crud.attendance.update_user_entry(
-        db=db, user_id=str(user.id), date_str=date_str, 
-        location_id=int(location.id), note="新規テスト"
+        db=db,
+        user_id=str(user.id),
+        date_str=date_str,
+        location_id=int(location.id),
+        note="新規テスト",
     )
     assert result is True
 
@@ -431,21 +506,25 @@ def test_update_user_entry_create(db_with_attendance_data: Session) -> None:
 def test_update_user_entry_delete(db_with_attendance_data: Session) -> None:
     """update_user_entry 削除テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     # 事前に勤怠記録を作成
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
     date_str = attendance_date.strftime("%Y-%m-%d")
-    
+
     # 削除 (location_id = -1)
     result = crud.attendance.update_user_entry(
         db=db, user_id=str(user.id), date_str=date_str, location_id=-1
@@ -462,20 +541,32 @@ def test_update_user_entry_delete(db_with_attendance_data: Session) -> None:
 def test_update_user_entry_error_cases(db_with_attendance_data: Session) -> None:
     """update_user_entry エラーケーステスト"""
     db = db_with_attendance_data
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert location
 
     # 存在しないユーザー
     result = crud.attendance.update_user_entry(
-        db=db, user_id="nonexistent", date_str="2023-01-01", location_id=int(location.id)
+        db=db,
+        user_id="nonexistent",
+        date_str="2023-01-01",
+        location_id=int(location.id),
     )
     assert result is False
 
     # 無効な日付形式
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
     assert user
     result = crud.attendance.update_user_entry(
-        db=db, user_id=str(user.id), date_str="invalid-date", location_id=int(location.id)
+        db=db,
+        user_id=str(user.id),
+        date_str="invalid-date",
+        location_id=int(location.id),
     )
     assert result is False
 
@@ -483,8 +574,14 @@ def test_update_user_entry_error_cases(db_with_attendance_data: Session) -> None
 def test_get_user_data(db_with_attendance_data: Session) -> None:
     """ユーザー勤怠データ取得テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     # 複数の勤怠記録を作成
@@ -494,7 +591,7 @@ def test_get_user_data(db_with_attendance_data: Session) -> None:
             user_id=str(user.id),
             date=test_date,
             location_id=int(location.id),
-            note=f"備考{test_date}"
+            note=f"備考{test_date}",
         )
         crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -513,8 +610,14 @@ def test_get_user_data(db_with_attendance_data: Session) -> None:
 def test_get_day_data(db_with_attendance_data: Session) -> None:
     """日別データ取得テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
@@ -522,12 +625,12 @@ def test_get_day_data(db_with_attendance_data: Session) -> None:
         user_id=str(user.id),
         date=attendance_date,
         location_id=int(location.id),
-        note="テスト備考"
+        note="テスト備考",
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
     day_str = attendance_date.strftime("%Y-%m-%d")
-    
+
     # データ取得
     day_data = crud.attendance.get_day_data(db=db, day=day_str)
     assert "Test Location Office" in day_data
@@ -548,15 +651,19 @@ def test_get_day_data(db_with_attendance_data: Session) -> None:
 def test_get_attendance_data_for_csv(db_with_attendance_data: Session) -> None:
     """CSV用データ取得テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     attendance_date = date.today()
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=attendance_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=attendance_date, location_id=int(location.id)
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -578,23 +685,25 @@ def test_get_attendance_data_for_csv(db_with_attendance_data: Session) -> None:
 def test_get_attendance_analysis_data(db_with_attendance_data: Session) -> None:
     """勤怠集計データ取得テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     # テストデータ作成
     test_date = date(2023, 1, 15)  # 固定日付でテスト
     attendance_in = AttendanceCreate(
-        user_id=str(user.id),
-        date=test_date,
-        location_id=int(location.id)
+        user_id=str(user.id), date=test_date, location_id=int(location.id)
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
     # 月指定での取得
-    analysis_data = crud.attendance.get_attendance_analysis_data(
-        db=db, month="2023-01"
-    )
+    analysis_data = crud.attendance.get_attendance_analysis_data(db=db, month="2023-01")
     assert analysis_data["month"] == "2023-01"
     assert analysis_data["month_name"] == "2023年1月"
     assert "users" in analysis_data
@@ -607,11 +716,19 @@ def test_get_attendance_analysis_data(db_with_attendance_data: Session) -> None:
     assert "users" in current_analysis
 
 
-def test_get_attendance_by_type_for_fiscal_year(db_with_attendance_data: Session) -> None:
+def test_get_attendance_by_type_for_fiscal_year(
+    db_with_attendance_data: Session,
+) -> None:
     """年度別勤怠種別データ取得テスト"""
     db = db_with_attendance_data
-    user = db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
-    location = db.query(LocationModel).filter(LocationModel.name == "Test Location Office").first()
+    user = (
+        db.query(UserModel).filter(UserModel.username == "Attendance Test User").first()
+    )
+    location = (
+        db.query(LocationModel)
+        .filter(LocationModel.name == "Test Location Office")
+        .first()
+    )
     assert user and location
 
     # テストデータ作成
@@ -620,7 +737,7 @@ def test_get_attendance_by_type_for_fiscal_year(db_with_attendance_data: Session
         user_id=str(user.id),
         date=test_date,
         location_id=int(location.id),
-        note="年度テスト"
+        note="年度テスト",
     )
     crud.attendance.create(db=db, obj_in=attendance_in)
 
@@ -641,30 +758,34 @@ def test_get_attendance_by_type_for_fiscal_year(db_with_attendance_data: Session
 
 
 # エラーハンドリングのテスト
-@patch('app.crud.attendance.logger')
-def test_error_handling_delete_attendances_by_user_id(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_delete_attendances_by_user_id(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """delete_attendances_by_user_id エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # データベースエラーをシミュレート
-    with patch.object(db, 'query') as mock_query:
+    with patch.object(db, "query") as mock_query:
         mock_query.side_effect = Exception("Database error")
-        
+
         with pytest.raises(Exception):
             crud.attendance.delete_attendances_by_user_id(db=db, user_id="test")
-        
+
         mock_logger.error.assert_called()
 
 
-@patch('app.crud.attendance.logger')
-def test_error_handling_update_attendance(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_update_attendance(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """update_attendance エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # エラーをシミュレート
-    with patch.object(crud.attendance, 'get_by_user_and_date') as mock_get:
+    with patch.object(crud.attendance, "get_by_user_and_date") as mock_get:
         mock_get.side_effect = Exception("Database error")
-        
+
         result = crud.attendance.update_attendance(
             db=db, user_id="test", date_obj=date.today(), location_id=1
         )
@@ -672,73 +793,85 @@ def test_error_handling_update_attendance(mock_logger: MagicMock, db_with_attend
         mock_logger.error.assert_called()
 
 
-@patch('app.crud.attendance.logger')
-def test_error_handling_get_user_data(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_get_user_data(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """get_user_data エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # データベースエラーをシミュレート
-    with patch.object(db, 'query') as mock_query:
+    with patch.object(db, "query") as mock_query:
         mock_query.side_effect = Exception("Database error")
-        
+
         result = crud.attendance.get_user_data(db=db, user_id="test")
         assert result == []
         mock_logger.error.assert_called()
 
 
-@patch('app.crud.attendance.logger')
-def test_error_handling_get_day_data(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_get_day_data(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """get_day_data エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # データベースエラーをシミュレート
-    with patch.object(db, 'query') as mock_query:
+    with patch.object(db, "query") as mock_query:
         mock_query.side_effect = Exception("Database error")
-        
+
         result = crud.attendance.get_day_data(db=db, day="2023-01-01")
         assert result == {}
         mock_logger.error.assert_called()
 
 
-@patch('app.crud.attendance.logger')
-def test_error_handling_get_attendance_data_for_csv(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_get_attendance_data_for_csv(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """get_attendance_data_for_csv エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # データベースエラーをシミュレート
-    with patch.object(db, 'query') as mock_query:
+    with patch.object(db, "query") as mock_query:
         mock_query.side_effect = Exception("Database error")
-        
+
         result = crud.attendance.get_attendance_data_for_csv(db=db)
         assert result == {}
         mock_logger.error.assert_called()
 
 
-@patch('app.crud.attendance.logger')
-def test_error_handling_analysis_data(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_analysis_data(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """get_attendance_analysis_data エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # エラーをシミュレート - 正しいインスタンスメソッドをパッチ
-    with patch('app.crud.user.user.get_all_users_with_details') as mock_users:
+    with patch("app.crud.user.user.get_all_users_with_details") as mock_users:
         mock_users.side_effect = Exception("Database error")
-        
+
         result = crud.attendance.get_attendance_analysis_data(db=db, month="2023-01")
         assert result["month_name"] == "エラー"
         assert result["users"] == {}
         mock_logger.error.assert_called()
 
 
-@patch('app.crud.attendance.logger')
-def test_error_handling_fiscal_year_data(mock_logger: MagicMock, db_with_attendance_data: Session) -> None:
+@patch("app.crud.attendance.logger")
+def test_error_handling_fiscal_year_data(
+    mock_logger: MagicMock, db_with_attendance_data: Session
+) -> None:
     """get_attendance_by_type_for_fiscal_year エラーハンドリングテスト"""
     db = db_with_attendance_data
-    
+
     # エラーをシミュレート - 正しいインスタンスメソッドをパッチ
-    with patch('app.crud.location.location.get_multi') as mock_locations:
+    with patch("app.crud.location.location.get_multi") as mock_locations:
         mock_locations.side_effect = Exception("Database error")
-        
-        result = crud.attendance.get_attendance_by_type_for_fiscal_year(db=db, year=2023)
+
+        result = crud.attendance.get_attendance_by_type_for_fiscal_year(
+            db=db, year=2023
+        )
         assert result["location_name"] == "エラー"
         assert result["users_data"] == {}
-        mock_logger.error.assert_called() 
+        mock_logger.error.assert_called()

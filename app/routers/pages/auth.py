@@ -208,7 +208,12 @@ async def logout(
     id_token = auth_session.get("id_token") if isinstance(auth_session, dict) else None
     request.session.clear()
 
-    if auth_session and auth_session.get("method") == "oidc" and id_token and oidc_client:
+    if (
+        auth_session
+        and auth_session.get("method") == "oidc"
+        and id_token
+        and oidc_client
+    ):
         try:
             post_logout_redirect = f"{request.url_for('login_page')}?reason=logout"
             logout_url = oidc_client.get_logout_url(

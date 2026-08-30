@@ -7,7 +7,7 @@
 
 import datetime
 
-from sqlalchemy import Column, Date, Integer, String, UniqueConstraint, DateTime
+from sqlalchemy import Column, Date, DateTime, Integer, String, UniqueConstraint
 
 from app.db.session import Base
 
@@ -23,7 +23,10 @@ class CustomHoliday(Base):  # type: ignore
     name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
     )
 
     def __str__(self) -> str:

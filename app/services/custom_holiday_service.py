@@ -8,7 +8,7 @@ from typing import Optional, cast
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app import crud, schemas, models
+from app import crud, models, schemas
 from app.utils.holiday_cache import refresh_holiday_cache
 
 
@@ -20,7 +20,9 @@ def _validate_name(name: Optional[str]) -> None:
         )
 
 
-def _validate_date_unique(db: Session, *, date: Optional[datetime.date], exclude_id: Optional[int] = None) -> None:
+def _validate_date_unique(
+    db: Session, *, date: Optional[datetime.date], exclude_id: Optional[int] = None
+) -> None:
     if date is None:
         return
     existing = crud.custom_holiday.get_by_date(db, date=date)
@@ -43,12 +45,21 @@ def create_custom_holiday_with_validation(
 
 
 def update_custom_holiday_with_validation(
-    db: Session, *, custom_holiday_id: int, custom_holiday_in: schemas.custom_holiday.CustomHolidayUpdate
+    db: Session,
+    *,
+    custom_holiday_id: int,
+    custom_holiday_in: schemas.custom_holiday.CustomHolidayUpdate,
 ) -> models.CustomHoliday:
     db_obj = crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
-    new_name_raw = custom_holiday_in.name if custom_holiday_in.name is not None else db_obj.name
-    new_name: Optional[str] = new_name_raw if new_name_raw is None else str(new_name_raw)
-    new_date_raw = custom_holiday_in.date if custom_holiday_in.date is not None else db_obj.date
+    new_name_raw = (
+        custom_holiday_in.name if custom_holiday_in.name is not None else db_obj.name
+    )
+    new_name: Optional[str] = (
+        new_name_raw if new_name_raw is None else str(new_name_raw)
+    )
+    new_date_raw = (
+        custom_holiday_in.date if custom_holiday_in.date is not None else db_obj.date
+    )
     new_date: Optional[datetime.date] = (
         None if new_date_raw is None else cast(datetime.date, new_date_raw)
     )
@@ -65,7 +76,9 @@ def update_custom_holiday_with_validation(
     return updated
 
 
-def delete_custom_holiday(db: Session, *, custom_holiday_id: int) -> models.CustomHoliday:
+def delete_custom_holiday(
+    db: Session, *, custom_holiday_id: int
+) -> models.CustomHoliday:
     crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
     deleted = crud.custom_holiday.remove(db, id=custom_holiday_id)
     refresh_holiday_cache(db)

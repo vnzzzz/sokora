@@ -1,6 +1,7 @@
-from playwright.sync_api import Page, expect
 import datetime
 import re
+
+from playwright.sync_api import Page, expect
 
 # テスト対象の関数をインポート
 from app.utils.calendar_utils import format_date_jp
@@ -11,13 +12,16 @@ ATTENDANCE_WEEKLY_URL = f"{UI_BASE}/attendance/weekly"
 
 # このテストは /attendance/weekly ページの勤怠マトリックスからの登録・更新・削除を対象とする
 
+
 def test_edit_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を登録/更新するテスト"""
-    page.goto(ATTENDANCE_WEEKLY_URL) # 勤怠登録ページ
+    page.goto(ATTENDANCE_WEEKLY_URL)  # 勤怠登録ページ
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. 勤怠マトリックスが表示されるのを待つ
-    calendar_locator = page.locator("#calendar") # #attendance-content から #calendar に変更
+    calendar_locator = page.locator(
+        "#calendar"
+    )  # #attendance-content から #calendar に変更
     matrix_table_locator = calendar_locator.locator("table")
     expect(matrix_table_locator).to_be_visible(timeout=500)
 
@@ -26,8 +30,8 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     #    社員名セル (特定のクラスを持ち、"(ID)"形式のテキストを含むtd) を特定する
     #    :has-text() を使って括弧を含むテキストの存在を確認
     user_name_cell_selector = (
-        'td.font-medium.text-left.sticky.z-10.bg-base-100.whitespace-nowrap.p-1'
-        ':has-text("(")' # 括弧が含まれるセルを探す
+        "td.font-medium.text-left.sticky.z-10.bg-base-100.whitespace-nowrap.p-1"
+        ':has-text("(")'  # 括弧が含まれるセルを探す
     )
     user_name_cells = matrix_table_locator.locator(user_name_cell_selector)
     # 最初のユーザー名セルが表示されるのを待つ
@@ -35,19 +39,21 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     first_user_name_cell = user_name_cells.first
 
     # その親のtr要素を取得
-    first_user_row = first_user_name_cell.locator("xpath=..") # 親要素(tr)
-    row_id = first_user_row.get_attribute("id") # 行特定のためIDを取得 (あれば)
+    first_user_row = first_user_name_cell.locator("xpath=..")  # 親要素(tr)
+    row_id = first_user_row.get_attribute("id")  # 行特定のためIDを取得 (あれば)
 
     # 社員名セルのテキストを取得・検証
     user_name_cell_text = first_user_name_cell.inner_text() or ""
     # 正規表現のマッチングはPython側で行う (バックスラッシュを修正)
     user_name_text_match = re.search(r"^(.*?)\s*\((\S+)\)$", user_name_cell_text)
-    assert user_name_text_match, f"ユーザー名とIDが期待した形式で取得できませんでした: '{user_name_cell_text}'"
+    assert (
+        user_name_text_match
+    ), f"ユーザー名とIDが期待した形式で取得できませんでした: '{user_name_cell_text}'"
     user_id = user_name_text_match.group(2)
     user_name = user_name_text_match.group(1).strip()
 
     today = datetime.date.today()
-    target_day = 10 # 10日を対象とする
+    target_day = 10  # 10日を対象とする
     # 未来の日付になる場合、前月にするなどの考慮が必要だが、ここでは単純化
     target_date_str = f"{today.year}-{today.month:02d}-{target_day:02d}"
 
@@ -56,16 +62,20 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     target_cell_locator = first_user_row.locator(target_cell_selector)
     # 日付セルが存在するか念のため確認 (カレンダー表示範囲外の可能性)
     try:
-        expect(target_cell_locator).to_be_visible(timeout=500) # 短いタイムアウトで存在確認
+        expect(target_cell_locator).to_be_visible(
+            timeout=500
+        )  # 短いタイムアウトで存在確認
     except Exception:
-        print(f"警告: ユーザー {user_name}({user_id}) の日付 {target_date_str} のセルが見つかりませんでした。テストをスキップします。")
+        print(
+            f"警告: ユーザー {user_name}({user_id}) の日付 {target_date_str} のセルが見つかりませんでした。テストをスキップします。"
+        )
         return
 
     # --- 登録前のセルの状態を記録 ---
     target_cell_locator.click()
 
     # 3. 勤怠登録/編集モーダルが表示されるのを待つ (HTMX対応)
-    modal_container_locator = page.locator('#modal-container')
+    modal_container_locator = page.locator("#modal-container")
     modal_dialog_locator = modal_container_locator.locator("dialog")
     expect(modal_dialog_locator).to_be_visible(timeout=500)
     form_locator = modal_dialog_locator.locator("form")
@@ -83,7 +93,9 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     expect(location_select_locator).to_be_visible(timeout=500)
     first_option_locator = location_select_locator.locator("option").nth(1)
     selected_location_id_str = first_option_locator.get_attribute("value")
-    assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤怠種別の値が取得できませんでした"
+    assert (
+        selected_location_id_str is not None and selected_location_id_str != ""
+    ), "最初の有効な勤怠種別の値が取得できませんでした"
     selected_location_name = first_option_locator.inner_text() or ""
     assert selected_location_name, "最初の有効な勤怠種別名が取得できませんでした"
     location_select_locator.select_option(value=selected_location_id_str)
@@ -113,14 +125,22 @@ def test_edit_attendance_via_modal(page: Page) -> None:
 
     # 行を特定するセレクタを準備 (IDがあれば使う)
     # リフレッシュ後の行特定用の正規表現も修正
-    row_selector = f"#{row_id}" if row_id else f'tbody tr:has(td:text-matches("{user_name}.*\\({user_id}\\)"))'
+    row_selector = (
+        f"#{row_id}"
+        if row_id
+        else f'tbody tr:has(td:text-matches("{user_name}.*\\({user_id}\\)"))'
+    )
     # リフレッシュ後のテーブルで再度行を探す (より安定させるため matrix_table_locator から再検索)
     reloaded_row_locator = matrix_table_locator.locator(row_selector)
     # 行が表示されるのを待つ
-    expect(reloaded_row_locator.first).to_be_visible(timeout=500) # 最初の行が表示されることを確認
+    expect(reloaded_row_locator.first).to_be_visible(
+        timeout=500
+    )  # 最初の行が表示されることを確認
 
     # ユーザー名が一致する行を探す (より正確に)
-    target_row_locator = reloaded_row_locator.filter(has_text=f"{user_name} ({user_id})")
+    target_row_locator = reloaded_row_locator.filter(
+        has_text=f"{user_name} ({user_id})"
+    )
     expect(target_row_locator).to_be_visible(timeout=500)
 
     # 行の中から目的のセルを探す
@@ -129,22 +149,26 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     # 更新後のセルのテキストが選択した勤怠種別名を含むことを期待
     expect(reloaded_cell_locator).to_contain_text(selected_location_name, timeout=500)
     # 更新後の data-location 属性が選択した勤怠種別名になっていることを期待
-    expect(reloaded_cell_locator).to_have_attribute("data-location", selected_location_name.strip(), timeout=500)
+    expect(reloaded_cell_locator).to_have_attribute(
+        "data-location", selected_location_name.strip(), timeout=500
+    )
 
 
 def test_delete_attendance_via_modal(page: Page) -> None:
     """勤怠ページのマトリックスセルをクリックし、モーダルで勤怠を削除するテスト"""
-    page.goto(ATTENDANCE_WEEKLY_URL) # 勤怠登録ページ
+    page.goto(ATTENDANCE_WEEKLY_URL)  # 勤怠登録ページ
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 1. 勤怠マトリックスが表示されるのを待つ
-    calendar_locator = page.locator("#calendar") # #attendance-content から #calendar に変更
+    calendar_locator = page.locator(
+        "#calendar"
+    )  # #attendance-content から #calendar に変更
     matrix_table_locator = calendar_locator.locator("table")
     expect(matrix_table_locator).to_be_visible(timeout=500)
 
     # 2. 削除対象のユーザーと日付のセルを特定 (例: 最初のユーザー, 11日)
     user_name_cell_selector = (
-        'td.font-medium.text-left.sticky.z-10.bg-base-100.whitespace-nowrap.p-1'
+        "td.font-medium.text-left.sticky.z-10.bg-base-100.whitespace-nowrap.p-1"
         ':has-text("(")'
     )
     user_name_cells = matrix_table_locator.locator(user_name_cell_selector)
@@ -155,12 +179,14 @@ def test_delete_attendance_via_modal(page: Page) -> None:
 
     user_name_cell_text = first_user_name_cell.inner_text() or ""
     user_name_text_match = re.search(r"^(.*?)\s*\((\S+)\)$", user_name_cell_text)
-    assert user_name_text_match, f"ユーザー名とIDが期待した形式で取得できませんでした: '{user_name_cell_text}'"
+    assert (
+        user_name_text_match
+    ), f"ユーザー名とIDが期待した形式で取得できませんでした: '{user_name_cell_text}'"
     user_id = user_name_text_match.group(2)
     user_name = user_name_text_match.group(1).strip()
 
     today = datetime.date.today()
-    target_day = 11 # 削除テスト用に別の日にする (例: 11日)
+    target_day = 11  # 削除テスト用に別の日にする (例: 11日)
     target_date_str = f"{today.year}-{today.month:02d}-{target_day:02d}"
 
     target_cell_selector = f'td.attendance-cell[data-date="{target_date_str}"]'
@@ -168,13 +194,15 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     try:
         expect(target_cell_locator).to_be_visible(timeout=500)
     except Exception:
-        print(f"警告: 削除テスト対象のセル {target_date_str} が見つかりませんでした。テストをスキップします。")
+        print(
+            f"警告: 削除テスト対象のセル {target_date_str} が見つかりませんでした。テストをスキップします。"
+        )
         return
 
     # 3. [準備] 削除対象のデータがなければ作成する
     target_cell_locator.click()
     # モーダル表示待機 (HTMX対応)
-    modal_container_locator = page.locator('#modal-container')
+    modal_container_locator = page.locator("#modal-container")
     modal_dialog_locator = modal_container_locator.locator("dialog")
     expect(modal_dialog_locator).to_be_visible(timeout=500)
     form_locator = modal_dialog_locator.locator("form")
@@ -183,13 +211,17 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     delete_button = form_locator.locator('button[type="button"]:has-text("削除")')
     register_button = form_locator.locator('button[type="submit"]:has-text("登録")')
 
-    if not delete_button.is_visible(timeout=500): # 削除ボタンがなければ登録が必要
-        print(f"INFO: Deletion target data not found for {user_name} on {target_date_str}. Registering first...")
+    if not delete_button.is_visible(timeout=500):  # 削除ボタンがなければ登録が必要
+        print(
+            f"INFO: Deletion target data not found for {user_name} on {target_date_str}. Registering first..."
+        )
         location_select_locator = form_locator.locator('select[name="location_id"]')
         expect(location_select_locator).to_be_visible(timeout=500)
         first_option_locator = location_select_locator.locator("option").nth(1)
         selected_location_id_str = first_option_locator.get_attribute("value")
-        assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤怠種別の値が取得できませんでした"
+        assert (
+            selected_location_id_str is not None and selected_location_id_str != ""
+        ), "最初の有効な勤怠種別の値が取得できませんでした"
         location_select_locator.select_option(value=selected_location_id_str)
 
         expect(register_button).to_be_enabled()
@@ -197,10 +229,14 @@ def test_delete_attendance_via_modal(page: Page) -> None:
         expect(modal_dialog_locator).not_to_be_visible(timeout=500)
         target_cell_locator.click()
         # 新しいモーダルが表示されるのを待つ (再取得)
-        modal_dialog_locator = modal_container_locator.locator("dialog") # 再度 dialog を探す
+        modal_dialog_locator = modal_container_locator.locator(
+            "dialog"
+        )  # 再度 dialog を探す
         expect(modal_dialog_locator).to_be_visible(timeout=500)
         # 削除ボタンがあるはず (再取得)
-        delete_button = modal_dialog_locator.locator('form button[type="button"]:has-text("削除")') # dialogから辿る
+        delete_button = modal_dialog_locator.locator(
+            'form button[type="button"]:has-text("削除")'
+        )  # dialogから辿る
         expect(delete_button).to_be_visible(timeout=500)
 
     # 4. 削除ボタンをクリック
@@ -213,10 +249,16 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     expect(modal_dialog_locator).not_to_be_visible(timeout=500)
 
     # 6. カレンダー部分がリフレッシュされ、セルの内容が空になるのを待つ
-    row_selector = f"#{row_id}" if row_id else f'tbody tr:has(td:text-matches("{user_name}.*\\({user_id}\\)"))'
+    row_selector = (
+        f"#{row_id}"
+        if row_id
+        else f'tbody tr:has(td:text-matches("{user_name}.*\\({user_id}\\)"))'
+    )
     reloaded_row_locator = matrix_table_locator.locator(row_selector)
     expect(reloaded_row_locator.first).to_be_visible(timeout=500)
-    target_row_locator = reloaded_row_locator.filter(has_text=f"{user_name} ({user_id})")
+    target_row_locator = reloaded_row_locator.filter(
+        has_text=f"{user_name} ({user_id})"
+    )
     expect(target_row_locator).to_be_visible(timeout=500)
     reloaded_cell_locator = target_row_locator.locator(target_cell_selector)
 
@@ -224,6 +266,7 @@ def test_delete_attendance_via_modal(page: Page) -> None:
     expect(reloaded_cell_locator).to_be_empty(timeout=500)
     # data-location 属性が空になっていることを確認
     expect(reloaded_cell_locator).to_have_attribute("data-location", "", timeout=500)
+
 
 # TODO: 削除のテストケースも追加する
 # -def test_delete_attendance_via_modal(page: Page) -> None: ...

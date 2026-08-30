@@ -5,18 +5,18 @@
 社員種別の設定管理に関連するルートハンドラー
 """
 
-from typing import Any, Dict, Optional
 import json
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app import schemas  # スキーマをインポート
 from app.crud.user_type import user_type
 from app.db.session import get_db
-from app import schemas # スキーマをインポート
-from app.services import user_type_service # user_type_service をインポート
+from app.services import user_type_service  # user_type_service をインポート
 
 # ルーター定義
 router = APIRouter(prefix="/user-types", tags=["Pages"])
@@ -34,7 +34,9 @@ def get_user_type_manage_page(request: Request, db: Session = Depends(get_db)) -
 
 @router.get("/modal", response_class=HTMLResponse)
 @router.get("/modal/{user_type_id}", response_class=HTMLResponse)
-async def user_type_modal(request: Request, user_type_id: Optional[int] = None, db: Session = Depends(get_db)) -> Any:
+async def user_type_modal(
+    request: Request, user_type_id: Optional[int] = None, db: Session = Depends(get_db)
+) -> Any:
     """社員種別の追加または編集モーダルを表示します。
 
     Args:
@@ -49,17 +51,22 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
     if user_type_id:
         user_type_data = user_type.get(db, id=user_type_id)
         if not user_type_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
-    
-    modal_id = "add-user-type" if user_type_id is None else f"edit-user-type-{user_type_id}"
-    
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"UserType with id {user_type_id} not found",
+            )
+
+    modal_id = (
+        "add-user-type" if user_type_id is None else f"edit-user-type-{user_type_id}"
+    )
+
     ctx: Dict[str, Any] = {
         "request": request,
         "user_type": user_type_data,
         "modal_id": modal_id,
-        "errors": {}
+        "errors": {},
     }
-    
+
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
@@ -68,7 +75,9 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
 
 
 @router.get("/delete-modal/{user_type_id}", response_class=HTMLResponse)
-async def user_type_delete_modal(request: Request, user_type_id: int, db: Session = Depends(get_db)) -> Any:
+async def user_type_delete_modal(
+    request: Request, user_type_id: int, db: Session = Depends(get_db)
+) -> Any:
     """社員種別の削除確認モーダルを表示します。
 
     Args:
@@ -81,16 +90,19 @@ async def user_type_delete_modal(request: Request, user_type_id: int, db: Sessio
     """
     user_type_data = user_type.get(db, id=user_type_id)
     if not user_type_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
-        
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"UserType with id {user_type_id} not found",
+        )
+
     modal_id = f"user-type-delete-modal-{user_type_id}"
-    
+
     ctx: Dict[str, Any] = {
         "request": request,
         "user_type": user_type_data,
         "modal_id": modal_id,
     }
-    
+
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
@@ -101,8 +113,10 @@ async def user_type_delete_modal(request: Request, user_type_id: int, db: Sessio
 @router.post("", response_class=HTMLResponse)
 async def create_user_type(
     request: Request,
-    user_type_in: schemas.user_type.UserTypeCreate = Depends(schemas.user_type.UserTypeCreate.as_form),
-    db: Session = Depends(get_db)
+    user_type_in: schemas.user_type.UserTypeCreate = Depends(
+        schemas.user_type.UserTypeCreate.as_form
+    ),
+    db: Session = Depends(get_db),
 ) -> Any:
     """新規社員種別を作成します。
 
@@ -115,36 +129,31 @@ async def create_user_type(
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
     modal_id = "add-user-type"
-    
+
     try:
         # 社員種別作成を試みる
-        created_user_type = user_type_service.create_user_type_with_validation(db=db, user_type_in=user_type_in)
-        
+        created_user_type = user_type_service.create_user_type_with_validation(
+            db=db, user_type_in=user_type_in
+        )
+
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
             "components/partials/modals/user_type_modal.html",
-            {
-                "request": request,
-                "user_type": created_user_type,
-                "modal_id": modal_id
-            },
+            {"request": request, "user_type": created_user_type, "modal_id": modal_id},
             headers={
-                "HX-Trigger": json.dumps({
-                    "closeModal": modal_id,
-                    "refreshPage": True
-                })
-            }
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/user_type_modal.html",
             {
-                "request": request, 
+                "request": request,
                 "user_type": None,
                 "modal_id": modal_id,
-                "errors": {"name": [e.detail]}
-            }
+                "errors": {"name": [e.detail]},
+            },
         )
 
 
@@ -152,8 +161,10 @@ async def create_user_type(
 async def update_user_type(
     request: Request,
     user_type_id: int,
-    user_type_in: schemas.user_type.UserTypeUpdate = Depends(schemas.user_type.UserTypeUpdate.as_form),
-    db: Session = Depends(get_db)
+    user_type_in: schemas.user_type.UserTypeUpdate = Depends(
+        schemas.user_type.UserTypeUpdate.as_form
+    ),
+    db: Session = Depends(get_db),
 ) -> Any:
     """社員種別を更新します。
 
@@ -167,43 +178,38 @@ async def update_user_type(
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
     modal_id = f"edit-user-type-{user_type_id}"
-    
+
     try:
         # 社員種別更新を試みる
         updated_user_type = user_type_service.update_user_type_with_validation(
             db=db, user_type_id=user_type_id, user_type_in=user_type_in
         )
-        
+
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
             "components/partials/modals/user_type_modal.html",
-            {
-                "request": request,
-                "user_type": updated_user_type,
-                "modal_id": modal_id
-            },
+            {"request": request, "user_type": updated_user_type, "modal_id": modal_id},
             headers={
-                "HX-Trigger": json.dumps({
-                    "closeModal": modal_id,
-                    "refreshPage": True
-                })
-            }
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/user_type_modal.html",
             {
-                "request": request, 
+                "request": request,
                 "user_type": user_type.get(db, id=user_type_id),
                 "modal_id": modal_id,
-                "errors": {"name": [e.detail]}
-            }
+                "errors": {"name": [e.detail]},
+            },
         )
 
 
 @router.delete("/{user_type_id}", response_class=HTMLResponse)
-async def delete_user_type(request: Request, user_type_id: int, db: Session = Depends(get_db)) -> Any:
+async def delete_user_type(
+    request: Request, user_type_id: int, db: Session = Depends(get_db)
+) -> Any:
     """社員種別を削除します。
 
     Args:
@@ -218,23 +224,28 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
         # 社員種別が存在するか確認
         user_type_data = user_type.get(db, id=user_type_id)
         if not user_type_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
-        
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"UserType with id {user_type_id} not found",
+            )
+
         # 社員種別の削除処理
         user_type.remove(db=db, id=user_type_id)
-        
+
         # モーダルを閉じて画面をリロードするトリガーを返す
         modal_id = f"user-type-delete-modal-{user_type_id}"
         return HTMLResponse(
             content="",
             status_code=200,
             headers={
-                "HX-Trigger": json.dumps({
-                    "closeModal": modal_id,
-                    "refreshPage": True,
-                    "removeRow": f"user-type-row-{user_type_id}"
-                })
-            }
+                "HX-Trigger": json.dumps(
+                    {
+                        "closeModal": modal_id,
+                        "refreshPage": True,
+                        "removeRow": f"user-type-row-{user_type_id}",
+                    }
+                )
+            },
         )
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
@@ -243,7 +254,7 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
             "request": request,
             "user_type": user_type.get(db, id=user_type_id),
             "modal_id": modal_id,
-            "warning_message": e.detail
+            "warning_message": e.detail,
         }
         return templates.TemplateResponse(
             "components/partials/modals/user_type_delete_modal.html", ctx
@@ -254,32 +265,42 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
 def handle_create_user_type_row(
     request: Request,
     db: Session = Depends(get_db),
-    user_type_in: schemas.user_type.UserTypeCreate = Depends(schemas.user_type.UserTypeCreate.as_form)
+    user_type_in: schemas.user_type.UserTypeCreate = Depends(
+        schemas.user_type.UserTypeCreate.as_form
+    ),
 ) -> Any:
     """新規社員種別を作成し、新しいテーブル行のHTMLフラグメントを返します。"""
     try:
-        created_user_type = user_type_service.create_user_type_with_validation(db=db, user_type_in=user_type_in)
+        created_user_type = user_type_service.create_user_type_with_validation(
+            db=db, user_type_in=user_type_in
+        )
         # 作成成功時は、新しい行を描画して返す
         response = templates.TemplateResponse(
             "components/user_type/_user_type_row.html",
-            {"request": request, "user_type": created_user_type}
+            {"request": request, "user_type": created_user_type},
         )
         # 成功時にページリフレッシュとメッセージ表示をトリガー
-        response.headers["HX-Trigger"] = json.dumps({
-            "showMessage": f"社員種別 {created_user_type.name} を追加しました。",
-            "refreshPage": True
-        })
+        response.headers["HX-Trigger"] = json.dumps(
+            {
+                "showMessage": f"社員種別 {created_user_type.name} を追加しました。",
+                "refreshPage": True,
+            }
+        )
         return response
     except HTTPException as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",
-            {"request": request, "error_message": e.detail}
+            {"request": request, "error_message": e.detail},
         )
         response.status_code = e.status_code
-        response.headers["HX-Retarget"] = "#add-form-error" # 追加フォームのエラー表示領域ID
+        response.headers["HX-Retarget"] = (
+            "#add-form-error"  # 追加フォームのエラー表示領域ID
+        )
         # エラー時にもメッセージ表示をトリガー
-        response.headers["HX-Trigger"] = json.dumps({"showMessage": e.detail, "isError": True})
+        response.headers["HX-Trigger"] = json.dumps(
+            {"showMessage": e.detail, "isError": True}
+        )
         return response
 
 
@@ -288,7 +309,9 @@ def handle_update_user_type_row(
     request: Request,
     user_type_id: int,
     db: Session = Depends(get_db),
-    user_type_in: schemas.user_type.UserTypeUpdate = Depends(schemas.user_type.UserTypeUpdate.as_form)
+    user_type_in: schemas.user_type.UserTypeUpdate = Depends(
+        schemas.user_type.UserTypeUpdate.as_form
+    ),
 ) -> Any:
     """社員種別情報を更新し、更新されたテーブル行のHTMLフラグメントを返します。"""
     try:
@@ -298,22 +321,26 @@ def handle_update_user_type_row(
         # 更新成功時は、更新された行を描画して返す
         response = templates.TemplateResponse(
             "components/user_type/_user_type_row.html",
-            {"request": request, "user_type": updated_user_type}
+            {"request": request, "user_type": updated_user_type},
         )
         # 成功時にページリフレッシュとメッセージ表示をトリガー
-        response.headers["HX-Trigger"] = json.dumps({
-            "showMessage": f"社員種別 {updated_user_type.name} を更新しました。",
-            "refreshPage": True
-        })
+        response.headers["HX-Trigger"] = json.dumps(
+            {
+                "showMessage": f"社員種別 {updated_user_type.name} を更新しました。",
+                "refreshPage": True,
+            }
+        )
         return response
     except HTTPException as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",
-            {"request": request, "error_message": e.detail}
+            {"request": request, "error_message": e.detail},
         )
         response.status_code = e.status_code
         response.headers["HX-Retarget"] = f"#edit-form-error-{user_type_id}"
         # エラー時にもメッセージ表示をトリガー
-        response.headers["HX-Trigger"] = json.dumps({"showMessage": e.detail, "isError": True})
-        return response 
+        response.headers["HX-Trigger"] = json.dumps(
+            {"showMessage": e.detail, "isError": True}
+        )
+        return response

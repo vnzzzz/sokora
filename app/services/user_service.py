@@ -1,8 +1,9 @@
-# TODO: Implement user service logic 
+# TODO: Implement user service logic
 
 """
 ユーザー関連のビジネスロジックを提供するサービス層モジュール。
 """
+
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -22,13 +23,13 @@ def validate_dependencies(db: Session, *, group_id: int, user_type_id: int) -> N
     if not group:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'指定されたグループID({group_id})は存在しません。',
+            detail=f"指定されたグループID({group_id})は存在しません。",
         )
     user_type = crud.user_type.get(db, id=user_type_id)
     if not user_type:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'指定された社員種別ID({user_type_id})は存在しません。',
+            detail=f"指定された社員種別ID({user_type_id})は存在しません。",
         )
 
 
@@ -73,7 +74,7 @@ def create_user_with_validation(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='グループIDまたは社員種別IDが無効な形式です。',
+            detail="グループIDまたは社員種別IDが無効な形式です。",
         )
 
     validate_dependencies(db, group_id=group_id_int, user_type_id=user_type_id_int)
@@ -81,7 +82,7 @@ def create_user_with_validation(
 
     # int に変換した値でスキーマを更新して CRUD に渡す (より厳密にするため)
     user_create_validated = user_in.model_copy(
-        update={'group_id': group_id_int, 'user_type_id': user_type_id_int}
+        update={"group_id": group_id_int, "user_type_id": user_type_id_int}
     )
 
     return crud.user.create(db, obj_in=user_create_validated)
@@ -95,7 +96,9 @@ def update_user_with_validation(
     """
     db_user = crud.user.get_or_404(db, id=user_id)
 
-    validate_dependencies(db, group_id=user_in.group_id, user_type_id=user_in.user_type_id)
+    validate_dependencies(
+        db, group_id=user_in.group_id, user_type_id=user_in.user_type_id
+    )
     validate_user_update(db, user_id_to_update=user_id, user_in=user_in)
 
-    return crud.user.update(db, db_obj=db_user, obj_in=user_in) 
+    return crud.user.update(db, db_obj=db_user, obj_in=user_in)

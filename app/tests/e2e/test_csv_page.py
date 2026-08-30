@@ -1,11 +1,14 @@
 """
 E2E Tests for CSV Page
 """
+
 import re
+
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
 UI_BASE = BASE_URL
+
 
 def test_csv_page_title(page: Page) -> None:
     """CSVページのタイトルが正しいかテストします。"""
@@ -14,9 +17,10 @@ def test_csv_page_title(page: Page) -> None:
     # ページタイトルを確認
     expect(page).to_have_title(re.compile("CSV"))
 
+
 def test_csv_page_elements_visibility(page: Page) -> None:
     """CSVページの主要な要素が表示されているかテストします。"""
-    page.goto(f"{UI_BASE}/csv") # 各テストでページの状態をリセットするため再度goto
+    page.goto(f"{UI_BASE}/csv")  # 各テストでページの状態をリセットするため再度goto
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     # 主要な要素が存在することを確認
     expect(page.locator('h2:has-text("CSVデータダウンロード")')).to_be_visible()
@@ -25,6 +29,7 @@ def test_csv_page_elements_visibility(page: Page) -> None:
     # ここでは一般的なテキストを持つボタンまたはリンクを探します
     download_button = page.locator('button:has-text("CSVをダウンロード")').first
     expect(download_button).to_be_visible()
+
 
 # TODO: 必要に応じてCSVアップロード機能のテストを追加
 # 現状のルーターではアップロード機能が見当たらないため、ダウンロードのみテスト
@@ -43,4 +48,4 @@ def test_csv_page_elements_visibility(page: Page) -> None:
 #     download = download_info.value
 #     # ここでダウンロードされたファイル名などを検証可能
 #     print(f"Downloaded file: {download.suggested_filename}")
-#     # 注意: 実際のファイル内容の検証は複雑になる場合があります 
+#     # 注意: 実際のファイル内容の検証は複雑になる場合があります

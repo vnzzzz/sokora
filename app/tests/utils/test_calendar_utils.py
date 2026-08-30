@@ -2,18 +2,33 @@
 calendar_utils のテストケース
 """
 
-import pytest
 import datetime
-from unittest.mock import MagicMock, patch
 from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.utils.calendar_utils import (
-    format_date, format_date_jp, get_today_formatted, get_current_month_formatted,
-    get_last_viewed_date, parse_date, normalize_date_format, parse_month,
-    get_prev_month_date, get_next_month_date, get_current_week_formatted,
-    parse_week, get_prev_week_date, get_next_week_date, format_week_name,
-    build_week_calendar_data, build_calendar_data, DateFormat, _detect_date_format,
-    _split_date_string
+    DateFormat,
+    _detect_date_format,
+    _split_date_string,
+    build_calendar_data,
+    build_week_calendar_data,
+    format_date,
+    format_date_jp,
+    format_week_name,
+    get_current_month_formatted,
+    get_current_week_formatted,
+    get_last_viewed_date,
+    get_next_month_date,
+    get_next_week_date,
+    get_prev_month_date,
+    get_prev_week_date,
+    get_today_formatted,
+    normalize_date_format,
+    parse_date,
+    parse_month,
+    parse_week,
 )
 
 
@@ -42,19 +57,19 @@ class TestDateFormats:
         # 2024-01-14は日曜日
         sunday = datetime.date(2024, 1, 14)
         assert format_date_jp(sunday) == "2024年1月14日(日)"
-        
+
         # 2024-01-20は土曜日
         saturday = datetime.date(2024, 1, 20)
         assert format_date_jp(saturday) == "2024年1月20日(土)"
 
-    @patch('app.utils.calendar_utils.datetime')
+    @patch("app.utils.calendar_utils.datetime")
     def test_get_today_formatted(self, mock_datetime: Any) -> None:
         """get_today_formatted関数のテスト"""
         mock_datetime.date.today.return_value = datetime.date(2024, 1, 15)
         result = get_today_formatted()
         assert result == "2024-01-15"
 
-    @patch('app.utils.calendar_utils.datetime')
+    @patch("app.utils.calendar_utils.datetime")
     def test_get_current_month_formatted(self, mock_datetime: Any) -> None:
         """get_current_month_formatted関数のテスト"""
         mock_datetime.date.today.return_value = datetime.date(2024, 1, 15)
@@ -171,17 +186,21 @@ class TestLastViewedDate:
     def test_get_last_viewed_date_with_calendar_day(self) -> None:
         """get_last_viewed_date関数のテスト（カレンダー日付あり）"""
         mock_request = MagicMock()
-        mock_request.headers.get.return_value = "http://localhost:8000/calendar/day/2024-01-15?param=value"
-        
+        mock_request.headers.get.return_value = (
+            "http://localhost:8000/calendar/day/2024-01-15?param=value"
+        )
+
         result = get_last_viewed_date(mock_request)
         assert result == "2024-01-15"
 
     def test_get_last_viewed_date_with_legacy_ui_day(self) -> None:
         """旧UIパスは無視して今日の日付を返すことを確認"""
         mock_request = MagicMock()
-        mock_request.headers.get.return_value = "http://localhost:8000/ui/calendar/day/2024-01-15?param=value"
+        mock_request.headers.get.return_value = (
+            "http://localhost:8000/ui/calendar/day/2024-01-15?param=value"
+        )
 
-        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+        with patch("app.utils.calendar_utils.get_today_formatted") as mock_today:
             mock_today.return_value = "2024-02-01"
             result = get_last_viewed_date(mock_request)
             assert result == "2024-02-01"
@@ -189,9 +208,11 @@ class TestLastViewedDate:
     def test_get_last_viewed_date_with_legacy_api_day(self) -> None:
         """旧APIパスは無視して今日の日付を返すことを確認"""
         mock_request = MagicMock()
-        mock_request.headers.get.return_value = "http://localhost:8000/api/day/2024-01-15?param=value"
+        mock_request.headers.get.return_value = (
+            "http://localhost:8000/api/day/2024-01-15?param=value"
+        )
 
-        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+        with patch("app.utils.calendar_utils.get_today_formatted") as mock_today:
             mock_today.return_value = "2024-02-10"
             result = get_last_viewed_date(mock_request)
             assert result == "2024-02-10"
@@ -199,9 +220,11 @@ class TestLastViewedDate:
     def test_get_last_viewed_date_with_invalid_date(self) -> None:
         """get_last_viewed_date関数のテスト（無効な日付）"""
         mock_request = MagicMock()
-        mock_request.headers.get.return_value = "http://localhost:8000/calendar/day/invalid-date"
-        
-        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+        mock_request.headers.get.return_value = (
+            "http://localhost:8000/calendar/day/invalid-date"
+        )
+
+        with patch("app.utils.calendar_utils.get_today_formatted") as mock_today:
             mock_today.return_value = "2024-01-15"
             result = get_last_viewed_date(mock_request)
             assert result == "2024-01-15"
@@ -210,8 +233,8 @@ class TestLastViewedDate:
         """get_last_viewed_date関数のテスト（Refererなし）"""
         mock_request = MagicMock()
         mock_request.headers.get.return_value = ""
-        
-        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+
+        with patch("app.utils.calendar_utils.get_today_formatted") as mock_today:
             mock_today.return_value = "2024-01-15"
             result = get_last_viewed_date(mock_request)
             assert result == "2024-01-15"
@@ -220,8 +243,8 @@ class TestLastViewedDate:
         """get_last_viewed_date関数のテスト（API日付なし）"""
         mock_request = MagicMock()
         mock_request.headers.get.return_value = "http://localhost:8000/other/path"
-        
-        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+
+        with patch("app.utils.calendar_utils.get_today_formatted") as mock_today:
             mock_today.return_value = "2024-01-15"
             result = get_last_viewed_date(mock_request)
             assert result == "2024-01-15"
@@ -254,7 +277,7 @@ class TestMonthNavigation:
 class TestWeekOperations:
     """週操作関連のテスト"""
 
-    @patch('app.utils.calendar_utils.datetime')
+    @patch("app.utils.calendar_utils.datetime")
     def test_get_current_week_formatted(self, mock_datetime: Any) -> None:
         """get_current_week_formatted関数のテスト"""
         # 2024-01-15（月曜日）を設定
@@ -308,11 +331,11 @@ class TestCalendarDataBuilding:
         self.mock_user = MagicMock()
         self.mock_user.id = "test_user"
         self.mock_user.username = "テストユーザー"
-        
+
         self.mock_location = MagicMock()
         self.mock_location.id = 1
         self.mock_location.name = "オフィス"
-        
+
         self.attendance = MagicMock()
         self.attendance.id = 1
         self.attendance.user_id = "test_user"
@@ -326,22 +349,26 @@ class TestCalendarDataBuilding:
         self.attendance_counts = {1: 5}
         self.location_types = ["オフィス", "リモート"]
 
-    @patch('app.utils.calendar_utils.is_holiday')
-    @patch('app.utils.calendar_utils.get_holiday_name')
-    @patch('app.utils.calendar_utils.generate_location_data')
-    def test_build_week_calendar_data(self, mock_generate_location_data: Any, mock_get_holiday_name: Any, mock_is_holiday: Any) -> None:
+    @patch("app.utils.calendar_utils.is_holiday")
+    @patch("app.utils.calendar_utils.get_holiday_name")
+    @patch("app.utils.calendar_utils.generate_location_data")
+    def test_build_week_calendar_data(
+        self,
+        mock_generate_location_data: Any,
+        mock_get_holiday_name: Any,
+        mock_is_holiday: Any,
+    ) -> None:
         """build_week_calendar_data関数のテスト"""
         mock_is_holiday.return_value = False
         mock_get_holiday_name.return_value = None
-        mock_generate_location_data.return_value = [{"id": 1, "name": "オフィス", "count": 5}]
-        
+        mock_generate_location_data.return_value = [
+            {"id": 1, "name": "オフィス", "count": 5}
+        ]
+
         result = build_week_calendar_data(
-            "2024-01-15",
-            [self.attendance],
-            self.attendance_counts,
-            self.location_types
+            "2024-01-15", [self.attendance], self.attendance_counts, self.location_types
         )
-        
+
         assert "weeks" in result
         assert "week_name" in result
         assert "prev_week" in result
@@ -350,22 +377,26 @@ class TestCalendarDataBuilding:
         assert len(result["weeks"]) == 1
         assert len(result["weeks"][0]) == 7
 
-    @patch('app.utils.calendar_utils.is_holiday')
-    @patch('app.utils.calendar_utils.get_holiday_name')
-    @patch('app.utils.calendar_utils.generate_location_data')
-    def test_build_calendar_data(self, mock_generate_location_data: Any, mock_get_holiday_name: Any, mock_is_holiday: Any) -> None:
+    @patch("app.utils.calendar_utils.is_holiday")
+    @patch("app.utils.calendar_utils.get_holiday_name")
+    @patch("app.utils.calendar_utils.generate_location_data")
+    def test_build_calendar_data(
+        self,
+        mock_generate_location_data: Any,
+        mock_get_holiday_name: Any,
+        mock_is_holiday: Any,
+    ) -> None:
         """build_calendar_data関数のテスト"""
         mock_is_holiday.return_value = False
         mock_get_holiday_name.return_value = None
-        mock_generate_location_data.return_value = [{"id": 1, "name": "オフィス", "count": 5}]
-        
+        mock_generate_location_data.return_value = [
+            {"id": 1, "name": "オフィス", "count": 5}
+        ]
+
         result = build_calendar_data(
-            "2024-01",
-            [self.attendance],
-            self.attendance_counts,
-            self.location_types
+            "2024-01", [self.attendance], self.attendance_counts, self.location_types
         )
-        
+
         assert "weeks" in result
         assert "month_name" in result
         assert "prev_month" in result
@@ -373,23 +404,22 @@ class TestCalendarDataBuilding:
         assert "locations" in result
         assert len(result["weeks"]) > 0
 
-    @patch('app.utils.calendar_utils.is_holiday')
-    @patch('app.utils.calendar_utils.get_holiday_name')
-    def test_build_calendar_data_with_holiday(self, mock_get_holiday_name: Any, mock_is_holiday: Any) -> None:
+    @patch("app.utils.calendar_utils.is_holiday")
+    @patch("app.utils.calendar_utils.get_holiday_name")
+    def test_build_calendar_data_with_holiday(
+        self, mock_get_holiday_name: Any, mock_is_holiday: Any
+    ) -> None:
         """build_calendar_data関数のテスト（祝日あり）"""
         mock_is_holiday.side_effect = lambda d: d.day == 1  # 1日を祝日に設定
         mock_get_holiday_name.side_effect = lambda d: "元日" if d.day == 1 else None
-        
-        with patch('app.utils.calendar_utils.generate_location_data') as mock_generate_location_data:
+
+        with patch(
+            "app.utils.calendar_utils.generate_location_data"
+        ) as mock_generate_location_data:
             mock_generate_location_data.return_value = []
-            
-            result = build_calendar_data(
-                "2024-01",
-                [],
-                {},
-                self.location_types
-            )
-            
+
+            result = build_calendar_data("2024-01", [], {}, self.location_types)
+
             # 元日の情報を確認
             new_year_day = None
             for week in result["weeks"]:
@@ -397,7 +427,7 @@ class TestCalendarDataBuilding:
                     if day["day"] == 1:
                         new_year_day = day
                         break
-            
+
             assert new_year_day is not None
             assert new_year_day["is_holiday"] is True
-            assert new_year_day["holiday_name"] == "元日" 
+            assert new_year_day["holiday_name"] == "元日"

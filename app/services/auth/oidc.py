@@ -28,7 +28,9 @@ class OIDCLoginResult:
 class OIDCClient:
     """Keycloak OIDC と対話するクライアント"""
 
-    def __init__(self, settings: AuthSettings, http_client: httpx.Client | None = None) -> None:
+    def __init__(
+        self, settings: AuthSettings, http_client: httpx.Client | None = None
+    ) -> None:
         if not settings.oidc_enabled:
             raise OIDCError("OIDC settings are incomplete")
         self.settings = settings
@@ -88,7 +90,9 @@ class OIDCClient:
             refresh_token=refresh_token,
         )
 
-    def get_logout_url(self, id_token_hint: str, post_logout_redirect_uri: str) -> str | None:
+    def get_logout_url(
+        self, id_token_hint: str, post_logout_redirect_uri: str
+    ) -> str | None:
         endpoint = self._logout_endpoint()
         if endpoint is None:
             return None

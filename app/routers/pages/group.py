@@ -5,18 +5,18 @@
 グループの設定管理に関連するルートハンドラー
 """
 
-from typing import Any, Dict, Optional
 import json
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app import schemas  # スキーマをインポート
 from app.crud.group import group
 from app.db.session import get_db
-from app import schemas # スキーマをインポート
-from app.services import group_service # group_service をインポート
+from app.services import group_service  # group_service をインポート
 
 # ルーター定義
 router = APIRouter(prefix="/groups", tags=["Pages"])
@@ -42,7 +42,9 @@ def group_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
 @router.get("/modal", response_class=HTMLResponse)
 @router.get("/modal/{group_id}", response_class=HTMLResponse)
-async def group_modal(request: Request, group_id: Optional[int] = None, db: Session = Depends(get_db)) -> Any:
+async def group_modal(
+    request: Request, group_id: Optional[int] = None, db: Session = Depends(get_db)
+) -> Any:
     """グループの追加または編集モーダルを表示します。
 
     Args:
@@ -57,17 +59,20 @@ async def group_modal(request: Request, group_id: Optional[int] = None, db: Sess
     if group_id:
         group_data = group.get(db, id=group_id)
         if not group_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
-    
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Group with id {group_id} not found",
+            )
+
     modal_id = "add-group" if group_id is None else f"edit-group-{group_id}"
-    
+
     ctx: Dict[str, Any] = {
         "request": request,
         "group": group_data,
         "modal_id": modal_id,
-        "errors": {}
+        "errors": {},
     }
-    
+
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
@@ -76,7 +81,9 @@ async def group_modal(request: Request, group_id: Optional[int] = None, db: Sess
 
 
 @router.get("/delete-modal/{group_id}", response_class=HTMLResponse)
-async def group_delete_modal(request: Request, group_id: int, db: Session = Depends(get_db)) -> Any:
+async def group_delete_modal(
+    request: Request, group_id: int, db: Session = Depends(get_db)
+) -> Any:
     """グループの削除確認モーダルを表示します。
 
     Args:
@@ -89,18 +96,21 @@ async def group_delete_modal(request: Request, group_id: int, db: Session = Depe
     """
     group_data = group.get(db, id=group_id)
     if not group_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Group with id {group_id} not found",
+        )
+
     # 所属ユーザーの有無をチェック（オプション）
-    
+
     modal_id = f"group-delete-modal-{group_id}"
-    
+
     ctx: Dict[str, Any] = {
         "request": request,
         "group": group_data,
         "modal_id": modal_id,
     }
-    
+
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
@@ -109,7 +119,9 @@ async def group_delete_modal(request: Request, group_id: int, db: Session = Depe
 
 
 @router.delete("/{group_id}", response_class=HTMLResponse)
-async def delete_group(request: Request, group_id: int, db: Session = Depends(get_db)) -> Any:
+async def delete_group(
+    request: Request, group_id: int, db: Session = Depends(get_db)
+) -> Any:
     """グループを削除します。
 
     Args:
@@ -124,22 +136,22 @@ async def delete_group(request: Request, group_id: int, db: Session = Depends(ge
         # グループが存在するか確認
         group_data = group.get(db, id=group_id)
         if not group_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Group with id {group_id} not found")
-        
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Group with id {group_id} not found",
+            )
+
         # グループの削除処理
         group.remove(db=db, id=group_id)
-        
+
         # モーダルを閉じて画面をリロードするトリガーを返す
         modal_id = f"group-delete-modal-{group_id}"
         return HTMLResponse(
             content="",
             status_code=200,
             headers={
-                "HX-Trigger": json.dumps({
-                    "closeModal": modal_id,
-                    "refreshPage": True
-                })
-            }
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
@@ -148,7 +160,7 @@ async def delete_group(request: Request, group_id: int, db: Session = Depends(ge
             "request": request,
             "group": group.get(db, id=group_id),
             "modal_id": modal_id,
-            "warning_message": e.detail
+            "warning_message": e.detail,
         }
         return templates.TemplateResponse(
             "components/partials/modals/group_delete_modal.html", ctx
@@ -159,7 +171,7 @@ async def delete_group(request: Request, group_id: int, db: Session = Depends(ge
 async def create_group(
     request: Request,
     group_in: schemas.GroupCreate = Depends(schemas.GroupCreate.as_form),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """新規グループを作成します。
 
@@ -171,37 +183,32 @@ async def create_group(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "add-group"  
-    
+    modal_id = "add-group"
+
     try:
         # グループ作成を試みる
-        created_group = group_service.create_group_with_validation(db=db, group_in=group_in)
-        
+        created_group = group_service.create_group_with_validation(
+            db=db, group_in=group_in
+        )
+
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
             "components/partials/modals/group_modal.html",
-            {
-                "request": request,
-                "group": created_group,
-                "modal_id": modal_id
-            },
+            {"request": request, "group": created_group, "modal_id": modal_id},
             headers={
-                "HX-Trigger": json.dumps({
-                    "closeModal": modal_id,
-                    "refreshPage": True
-                })
-            }
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/group_modal.html",
             {
-                "request": request, 
+                "request": request,
                 "group": None,
                 "modal_id": modal_id,
-                "errors": {"name": [e.detail]}
-            }
+                "errors": {"name": [e.detail]},
+            },
         )
 
 
@@ -210,7 +217,7 @@ async def update_group(
     request: Request,
     group_id: int,
     group_in: schemas.GroupUpdate = Depends(schemas.GroupUpdate.as_form),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """グループを更新します。
 
@@ -223,37 +230,30 @@ async def update_group(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"edit-group-{group_id}" 
-    
+    modal_id = f"edit-group-{group_id}"
+
     try:
         # グループ更新を試みる
         updated_group = group_service.update_group_with_validation(
             db=db, group_id=group_id, group_in=group_in
         )
-        
+
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
             "components/partials/modals/group_modal.html",
-            {
-                "request": request,
-                "group": updated_group,
-                "modal_id": modal_id
-            },
+            {"request": request, "group": updated_group, "modal_id": modal_id},
             headers={
-                "HX-Trigger": json.dumps({
-                    "closeModal": modal_id,
-                    "refreshPage": True
-                })
-            }
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/group_modal.html",
             {
-                "request": request, 
+                "request": request,
                 "group": group.get(db, id=group_id),
                 "modal_id": modal_id,
-                "errors": {"name": [e.detail]}
-            }
-        ) 
+                "errors": {"name": [e.detail]},
+            },
+        )

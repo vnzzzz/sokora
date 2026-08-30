@@ -38,6 +38,7 @@ def test_update_group(db: Session) -> None:
     assert group_updated.name == new_name
     assert group_updated.id == group.id
 
+
 def test_remove_group(db: Session) -> None:
     """グループを削除するテスト"""
     name = random_lower_string()
@@ -49,4 +50,4 @@ def test_remove_group(db: Session) -> None:
     group_after_remove = crud.group.get(db=db, id=group_id)
 
     assert removed_group.id == group_id
-    assert group_after_remove is None 
+    assert group_after_remove is None

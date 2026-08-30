@@ -6,9 +6,6 @@ import datetime
 
 import pytest
 from fastapi import HTTPException
-
-from typing import Any
-
 from sqlalchemy.orm import Session
 
 from app.models.custom_holiday import CustomHoliday
@@ -20,7 +17,9 @@ def test_create_custom_holiday(db: Session) -> None:
     """祝日を新規作成できる"""
     holiday_in = CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="テスト休")
 
-    created = custom_holiday_service.create_custom_holiday_with_validation(db, custom_holiday_in=holiday_in)
+    created = custom_holiday_service.create_custom_holiday_with_validation(
+        db, custom_holiday_in=holiday_in
+    )
 
     assert created.id is not None
     assert created.date == holiday_in.date
@@ -30,19 +29,26 @@ def test_create_custom_holiday(db: Session) -> None:
 def test_create_custom_holiday_duplicate_date(db: Session) -> None:
     """同じ日付で重複作成はエラー"""
     holiday_in = CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="テスト休")
-    custom_holiday_service.create_custom_holiday_with_validation(db, custom_holiday_in=holiday_in)
+    custom_holiday_service.create_custom_holiday_with_validation(
+        db, custom_holiday_in=holiday_in
+    )
 
     with pytest.raises(HTTPException):
         custom_holiday_service.create_custom_holiday_with_validation(
             db,
-            custom_holiday_in=CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="別の名前"),
+            custom_holiday_in=CustomHolidayCreate(
+                date=datetime.date(2024, 12, 31), name="別の名前"
+            ),
         )
 
 
 def test_update_custom_holiday(db: Session) -> None:
     """祝日名を更新できる"""
     created = custom_holiday_service.create_custom_holiday_with_validation(
-        db, custom_holiday_in=CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="旧名称")
+        db,
+        custom_holiday_in=CustomHolidayCreate(
+            date=datetime.date(2024, 12, 31), name="旧名称"
+        ),
     )
 
     updated = custom_holiday_service.update_custom_holiday_with_validation(
@@ -57,10 +63,15 @@ def test_update_custom_holiday(db: Session) -> None:
 def test_delete_custom_holiday(db: Session) -> None:
     """祝日を削除できる"""
     created = custom_holiday_service.create_custom_holiday_with_validation(
-        db, custom_holiday_in=CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="削除対象")
+        db,
+        custom_holiday_in=CustomHolidayCreate(
+            date=datetime.date(2024, 12, 31), name="削除対象"
+        ),
     )
 
-    deleted = custom_holiday_service.delete_custom_holiday(db, custom_holiday_id=int(created.id))
+    deleted = custom_holiday_service.delete_custom_holiday(
+        db, custom_holiday_id=int(created.id)
+    )
 
     assert deleted.id == created.id
     assert db.query(CustomHoliday).count() == 0

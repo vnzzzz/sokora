@@ -19,45 +19,22 @@ api_router = APIRouter(prefix="/api/v1")
 
 # 各APIをマウント
 # ユーザー関連API
-api_router.include_router(
-    user.router, 
-    prefix="/users", 
-    tags=["Users"]
-)
+api_router.include_router(user.router, prefix="/users", tags=["Users"])
 
 # 勤怠データ関連API
-api_router.include_router(
-    attendance.router, 
-    prefix="/attendances", 
-    tags=["Attendance"]
-)
+api_router.include_router(attendance.router, prefix="/attendances", tags=["Attendance"])
 
 # 勤怠種別関連API
-api_router.include_router(
-    location.router, 
-    prefix="/locations", 
-    tags=["Locations"]
-)
+api_router.include_router(location.router, prefix="/locations", tags=["Locations"])
 
 # グループ関連API
-api_router.include_router(
-    group.router, 
-    prefix="/groups", 
-    tags=["Groups"]
-)
+api_router.include_router(group.router, prefix="/groups", tags=["Groups"])
 
 # 社員種別関連API
-api_router.include_router(
-    user_type.router, 
-    prefix="/user_types", 
-    tags=["UserTypes"]
-)
+api_router.include_router(user_type.router, prefix="/user_types", tags=["UserTypes"])
 
 # CSVデータダウンロードAPI
-api_router.include_router(
-    csv.router,
-    tags=["Data"]
-)
+api_router.include_router(csv.router, tags=["Data"])
 
 # v1 APIルーター
 router = api_router

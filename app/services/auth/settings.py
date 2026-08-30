@@ -58,20 +58,22 @@ class AuthSettings:
 
     @property
     def oidc_enabled(self) -> bool:
-        return all(
-            [
-                self.oidc_issuer,
-                self.oidc_client_id,
-                self.oidc_client_secret,
-                self.oidc_redirect_uri,
-            ]
-        ) and self.oidc_toggle_enabled
+        return (
+            all(
+                [
+                    self.oidc_issuer,
+                    self.oidc_client_id,
+                    self.oidc_client_secret,
+                    self.oidc_redirect_uri,
+                ]
+            )
+            and self.oidc_toggle_enabled
+        )
 
     @property
     def local_admin_enabled(self) -> bool:
-        return (
-            self.local_auth_enabled
-            and bool(self.local_admin_username and self.local_admin_password)
+        return self.local_auth_enabled and bool(
+            self.local_admin_username and self.local_admin_password
         )
 
     @classmethod
@@ -81,8 +83,12 @@ class AuthSettings:
         state = state_store.load_state()
         return cls(
             auth_enabled=_get_bool("SOKORA_AUTH_ENABLED", default=False),
-            session_secret=environ.get("SOKORA_AUTH_SESSION_SECRET", "dev-session-secret"),
-            session_ttl_seconds=_get_int("SOKORA_AUTH_SESSION_TTL_SECONDS", default=3600),
+            session_secret=environ.get(
+                "SOKORA_AUTH_SESSION_SECRET", "dev-session-secret"
+            ),
+            session_ttl_seconds=_get_int(
+                "SOKORA_AUTH_SESSION_TTL_SECONDS", default=3600
+            ),
             local_auth_enabled=_get_bool("SOKORA_LOCAL_AUTH_ENABLED", default=True),
             oidc_issuer=environ.get("OIDC_ISSUER"),
             oidc_client_id=environ.get("OIDC_CLIENT_ID"),

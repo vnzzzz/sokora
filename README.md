@@ -14,7 +14,7 @@
 ## Stack
 - Backend: Python 3.13 / FastAPI / SQLAlchemy / Pydantic v2 / SQLite
 - Frontend: Jinja2 (SSR) + HTMX + Alpine.js + Tailwind CSS (daisyUI)
-- Tooling: uv, pytest + pytest-playwright, mypy, ruff, Tailwind ビルド用 Node
+- Tooling: uv, pytest + pytest-playwright, Ruff, mypy, Tailwind ビルド用 Node
 - Runtime: Docker（multi-stage build）。ポートは `SERVICE_PORT` で指定。
 
 ## Quick Start（ローカル/Dev Container）
@@ -34,6 +34,20 @@ make run       # http://localhost:${SERVICE_PORT}
 Python依存関係は `pyproject.toml` と `uv.lock` で管理する。既存lockを変更せず再現する場合は `uv sync --locked` を使用する。
 
 静的スタイルを触る場合は `builder/input.css` を編集し、`make assets` で `assets/` を再生成（ビルド成果物は直接編集しない）。
+
+## Python quality
+
+Pythonのlint・import sorting・formatはRuff、型検査はmypyに統一している。ローカルとCIは同じMake targetを利用する。
+
+```bash
+make lint          # Ruff lint + import sorting check
+make format        # Ruffでimport sortingとformatを適用
+make format-check  # format差分がないことだけ確認
+make typecheck     # mypy
+make quality       # lint + format-check + typecheck
+```
+
+PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行する。
 
 ## Docker
 - プロダクションビルド: `make docker-build`（タグは `.env` の `VERSION`）  

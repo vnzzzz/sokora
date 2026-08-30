@@ -13,7 +13,7 @@ sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケ
 - SQLAlchemy / Alembic
 - SQLite（現行runtime）
 - uv
-- pytest / pytest-playwright / mypy / Ruff
+- pytest / pytest-playwright / Ruff / mypy
 - Tailwind CSS
 
 ## Source of truth
@@ -80,9 +80,11 @@ make run
 make test
 make seed
 make assets
-uv run ruff check app --exclude app/tests
-uv run mypy app
+make quality
+make format
 ```
+
+Pythonの品質ゲートはRuff（lint / import sorting / format）とmypy（typecheck）に統一する。個別確認が必要な場合は`make lint` / `make format-check` / `make typecheck`を使う。
 
 変更範囲に直接関係するtest/checkを先に実行し、PR前にはrepositoryの標準CIで成立する状態にする。
 

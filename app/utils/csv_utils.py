@@ -5,15 +5,17 @@ CSV変換ユーティリティ
 勤怠データをCSV形式に変換するためのユーティリティ関数を提供します。
 """
 
-from typing import Dict, List, Optional, Tuple, Generator
-from datetime import datetime, date
 import calendar
+from datetime import date, datetime
+from typing import Dict, Generator, List, Optional, Tuple
+
 from dateutil.relativedelta import relativedelta  # type: ignore
 from sqlalchemy.orm import Session
 
-from app.crud.user import user as crud_user # エイリアス変更
-from app.crud.attendance import attendance as crud_attendance # エイリアス変更
-from app.core.config import logger # loggerを追加
+from app.core.config import logger  # loggerを追加
+from app.crud.attendance import attendance as crud_attendance  # エイリアス変更
+from app.crud.user import user as crud_user  # エイリアス変更
+
 
 def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
     """
@@ -27,7 +29,7 @@ def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
     """
     today = datetime.now().date()
     months = []
-    
+
     # 現在の月から過去num_months分の月を生成
     for i in range(num_months):
         target_date = today - relativedelta(months=i)
@@ -35,8 +37,9 @@ def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
         # 日本語の年月表記
         label = f"{target_date.year}年{target_date.month}月"
         months.append({"value": value, "label": label})
-    
+
     return months
+
 
 def get_date_range_for_month(month: str) -> Tuple[date, date]:
     """
@@ -52,12 +55,13 @@ def get_date_range_for_month(month: str) -> Tuple[date, date]:
     year = int(year_str)
     month_int = int(month_str)
     start_date = date(year, month_int, 1)
-    
+
     # 月の最終日を取得
     _, last_day = calendar.monthrange(year, month_int)
     end_date = date(year, month_int, last_day)
-    
+
     return start_date, end_date
+
 
 def _generate_date_headers(month: Optional[str] = None) -> List[str]:
     """CSV用の日付ヘッダーリストを生成します。"""
@@ -72,13 +76,14 @@ def _generate_date_headers(month: Optional[str] = None) -> List[str]:
     else:
         # 月指定がない場合はデフォルトで過去3ヶ月（約90日）とする
         # 仕様に応じて調整可能
-        num_days = 90 
+        num_days = 90
         date_headers = [
-            (today - relativedelta(days=i)).strftime("%Y/%m/%d") 
+            (today - relativedelta(days=i)).strftime("%Y/%m/%d")
             for i in range(num_days)
         ]
-        date_headers.sort() # 日付順にソート
+        date_headers.sort()  # 日付順にソート
     return date_headers
+
 
 def generate_work_entries_csv_rows(
     db: Session, month: Optional[str] = None
@@ -96,18 +101,18 @@ def generate_work_entries_csv_rows(
     try:
         date_headers = _generate_date_headers(month)
         headers = ["user_name", "user_id", "group_name", "user_type"] + date_headers
-        yield headers # ヘッダー行をyield
+        yield headers  # ヘッダー行をyield
 
         # ユーザーデータを関連情報と共に取得
         users_data = crud_user.get_all_users_with_details(db)
         if not users_data:
             logger.info("CSV生成: 対象ユーザーが見つかりませんでした。")
-            return # ユーザーがいなければ終了
+            return  # ユーザーがいなければ終了
 
         # 勤怠データの日付範囲を決定
         date_range_start: Optional[date] = None
         date_range_end: Optional[date] = None
-        if date_headers: # ヘッダーがあれば範囲を決定
+        if date_headers:  # ヘッダーがあれば範囲を決定
             try:
                 # ヘッダーは YYYY/MM/DD 形式
                 date_range_start = datetime.strptime(date_headers[0], "%Y/%m/%d").date()
@@ -130,14 +135,16 @@ def generate_work_entries_csv_rows(
                 user_name or "",
                 user_id or "",
                 group_name or "",
-                user_type_name or ""
+                user_type_name or "",
             ]
 
             # 各日付列のデータを追加
             for date_str_header in date_headers:
                 # ヘッダー形式 (YYYY/MM/DD) からDB検索用のキー形式 (YYYY-MM-DD) へ
                 try:
-                    db_date_str = datetime.strptime(date_str_header, "%Y/%m/%d").strftime("%Y-%m-%d")
+                    db_date_str = datetime.strptime(
+                        date_str_header, "%Y/%m/%d"
+                    ).strftime("%Y-%m-%d")
                     user_date_key = f"{user_id}_{db_date_str}"
                     location_name = attendance_data.get(user_date_key, "")
                     row_data.append(location_name)
@@ -145,13 +152,14 @@ def generate_work_entries_csv_rows(
                     # 日付変換エラー時は空文字を追加
                     row_data.append("")
 
-            yield row_data # データ行をyield
+            yield row_data  # データ行をyield
 
     except Exception as e:
         logger.error(f"CSV行生成中にエラー: {e}", exc_info=True)
         # エラーが発生した場合、エラーを示す特別な行を返すか、ログに記録して終了
-        yield ["Error generating CSV data"] # エラーを示す行 (ヘッダーとは異なる列数)
+        yield ["Error generating CSV data"]  # エラーを示す行 (ヘッダーとは異なる列数)
+
 
 # get_work_entries_csv 関数は不要になる (エンドポイントで直接ジェネレータを使うため)
 # def get_work_entries_csv(...) -> bytes:
-#    ... (古い実装) ... 
+#    ... (古い実装) ...

@@ -6,15 +6,15 @@
 運用時にはAPIアクセスを行いません。
 """
 
-import json
 import datetime
-from typing import Dict, Any
+import json
 from pathlib import Path
+from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
-from app.core.config import logger
 from app import crud
+from app.core.config import logger
 
 # キャッシュファイルのパス
 ASSETS_JSON_DIR = Path(__file__).parent.parent.parent / "assets" / "json"
@@ -45,12 +45,18 @@ class HolidayCache:
                     self._build_time_cache = data.get("build_time", False)
 
                     if self._build_time_cache:
-                        logger.info(f"ビルド時祝日キャッシュを読み込みました: {len(self._file_cache)}件")
+                        logger.info(
+                            f"ビルド時祝日キャッシュを読み込みました: {len(self._file_cache)}件"
+                        )
                     else:
-                        logger.warning("レガシーキャッシュファイルを読み込みました。ビルド時キャッシュの作成を推奨します。")
+                        logger.warning(
+                            "レガシーキャッシュファイルを読み込みました。ビルド時キャッシュの作成を推奨します。"
+                        )
             else:
                 logger.error(f"祝日キャッシュファイルが見つかりません: {CACHE_FILE}")
-                logger.error("コンテナビルド時に祝日データの取得が失敗した可能性があります。")
+                logger.error(
+                    "コンテナビルド時に祝日データの取得が失敗した可能性があります。"
+                )
                 self._file_cache = {}
         except Exception as e:
             logger.error(f"祝日キャッシュの読み込みに失敗しました: {e}")
@@ -63,7 +69,8 @@ class HolidayCache:
         try:
             custom_holidays = crud.custom_holiday.get_all(db)
             self._custom_cache = {
-                holiday.date.strftime("%Y-%m-%d"): str(holiday.name) for holiday in custom_holidays
+                holiday.date.strftime("%Y-%m-%d"): str(holiday.name)
+                for holiday in custom_holidays
             }
             logger.info(f"カスタム祝日を読み込みました: {len(self._custom_cache)}件")
         except Exception as e:
@@ -88,7 +95,9 @@ class HolidayCache:
             "total_holidays": len(self._cache),
             "build_time_cache": self._build_time_cache,
             "cache_file_exists": CACHE_FILE.exists(),
-            "years_covered": sorted(list(set(date[:4] for date in self._cache.keys()))) if self._cache else [],
+            "years_covered": sorted(list(set(date[:4] for date in self._cache.keys())))
+            if self._cache
+            else [],
             "custom_total": len(self._custom_cache),
         }
 

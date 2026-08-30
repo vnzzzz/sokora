@@ -20,7 +20,9 @@ def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDC
     return OIDCClient(settings=settings)
 
 
-def get_optional_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient | None:
+def get_optional_oidc_client(
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> OIDCClient | None:
     """OIDC 設定が揃っている場合のみクライアントを返す"""
     if not settings.oidc_enabled:
         return None
@@ -37,5 +39,7 @@ def require_session_user(
     """API 用の認可依存関係。未認証なら 401 を返す。"""
     user = request.session.get("auth")
     if settings.auth_enabled and not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+        )
     return user if isinstance(user, dict) else None

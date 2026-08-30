@@ -5,11 +5,11 @@
 勤怠登録ページに関連するルートハンドラー
 """
 
-import logging
-from typing import Any, Dict, List, Optional
-from datetime import date
 import calendar
+import logging
 import operator
+from datetime import date
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,14 +17,18 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.crud.attendance import attendance
+from app.crud.calendar import calendar_crud
 from app.crud.group import group
 from app.crud.location import location as location_crud
-from app.crud.calendar import calendar_crud
 from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.models.location import Location
-from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted
+from app.utils.calendar_utils import (
+    build_calendar_data,
+    get_current_month_formatted,
+    parse_month,
+)
 from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
@@ -37,10 +41,10 @@ logger = logging.getLogger(__name__)
 
 @router.get("", response_class=HTMLResponse)
 def register_page(
-    request: Request, 
+    request: Request,
     search_query: Optional[str] = None,
     month: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """勤怠登録ページを表示します
 
@@ -74,8 +78,12 @@ def register_page(
         first_day = date(year, month_num, 1)
         last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
 
-        attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
-        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+        attendances_for_cal = calendar_crud.get_month_attendances(
+            db, first_day=first_day, last_day=last_day
+        )
+        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(
+            db, first_day=first_day, last_day=last_day
+        )
         location_types_unsorted_for_cal = location_crud.get_all_locations(db)
         location_types_for_cal = sorted(location_types_unsorted_for_cal)
 
@@ -85,14 +93,14 @@ def register_page(
             month=month,
             attendances=attendances_for_cal,
             attendance_counts=attendance_counts_for_cal,
-            location_types=location_types_for_cal
+            location_types=location_types_for_cal,
         )
     except ValueError as e:
         logger.error(f"月解析エラー ({month}): {e}")
-        calendar_data = None # エラー発生
+        calendar_data = None  # エラー発生
     except Exception as e:
         logger.error(f"カレンダーデータ構築中にエラー ({month}): {e}", exc_info=True)
-        calendar_data = None # エラー発生
+        calendar_data = None  # エラー発生
 
     # カレンダーデータの取得に失敗した場合、現在の月にフォールバックします。
     if not calendar_data or "weeks" not in calendar_data:
@@ -103,20 +111,29 @@ def register_page(
             year, month_num = parse_month(month)
             first_day = date(year, month_num, 1)
             last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
-            attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
-            attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+            attendances_for_cal = calendar_crud.get_month_attendances(
+                db, first_day=first_day, last_day=last_day
+            )
+            attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(
+                db, first_day=first_day, last_day=last_day
+            )
             location_types_unsorted_for_cal = location_crud.get_all_locations(db)
             location_types_for_cal = sorted(location_types_unsorted_for_cal)
             calendar_data = build_calendar_data(
                 month=month,
                 attendances=attendances_for_cal,
                 attendance_counts=attendance_counts_for_cal,
-                location_types=location_types_for_cal
+                location_types=location_types_for_cal,
             )
         except Exception:
             logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {month}")
             # さらにエラーなら空データを設定
-            calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
+            calendar_data = {
+                "weeks": [],
+                "month_name": "エラー",
+                "prev_month": month,
+                "next_month": month,
+            }
 
     # 全ユーザー情報を取得します。
     all_users = user.get_all_users(db)
@@ -125,7 +142,8 @@ def register_page(
     if search_query and search_query.strip():
         search_term = search_query.lower().strip()
         filtered_users = [
-            (user_name, user_id, user_type_id) for user_name, user_id, user_type_id in all_users
+            (user_name, user_id, user_type_id)
+            for user_name, user_id, user_type_id in all_users
             if search_term in user_name.lower() or search_term in user_id.lower()
         ]
         base_users = filtered_users
@@ -151,11 +169,11 @@ def register_page(
     grouped_users: Dict[str, Any] = {}
     # グループ名とorder値のマッピング
     group_name_to_order: Dict[str, float] = {}
-    
+
     for user_name, user_id, user_type_id, user_obj in users:
         group_obj = groups_map.get(user_obj.group_id)
         group_name = str(group_obj.name) if group_obj else "未分類"
-        
+
         user_type_obj = user_types_map.get(user_type_id)
         user_type_name = str(user_type_obj.name) if user_type_obj else "未分類"
 
@@ -163,14 +181,20 @@ def register_page(
             grouped_users[group_name] = {}
             # グループ名とorder値をマッピング（未分類は最後に表示）
             if group_obj:
-                group_name_to_order[group_name] = float(group_obj.order) if group_obj.order is not None else float('inf')
+                group_name_to_order[group_name] = (
+                    float(group_obj.order)
+                    if group_obj.order is not None
+                    else float("inf")
+                )
             else:
-                group_name_to_order[group_name] = float('inf')
+                group_name_to_order[group_name] = float("inf")
 
         if user_type_name not in grouped_users[group_name]:
             grouped_users[group_name][user_type_name] = []
 
-        grouped_users[group_name][user_type_name].append((user_name, user_id, user_type_id, user_obj))
+        grouped_users[group_name][user_type_name].append(
+            (user_name, user_id, user_type_id, user_obj)
+        )
 
     # 各グループ内の社員種別を order でソートし、各社員種別内のユーザーを名前でソートします。
     for g_name in list(grouped_users.keys()):
@@ -181,30 +205,36 @@ def register_page(
             for _, _, ut_id, _ in user_list:
                 user_type_obj = user_types_map.get(ut_id)
                 break
-            
+
             if user_type_obj:
-                order = float(user_type_obj.order) if user_type_obj.order is not None else float('inf')
+                order = (
+                    float(user_type_obj.order)
+                    if user_type_obj.order is not None
+                    else float("inf")
+                )
             else:
-                order = float('inf')
-            
+                order = float("inf")
+
             # ユーザーリストを名前でソート
             user_list.sort(key=lambda u: u[0])  # u[0] は user_name
-            
+
             user_type_list.append((order, ut_name, user_list))
-        
+
         # 社員種別をorderでソート
         user_type_list.sort(key=lambda x: (x[0], x[1]))
-        
+
         # ソート済みのリストを保存（辞書ではなくリスト）
         grouped_users[g_name] = user_type_list
-        
+
     # グループ名をorder順にソート（orderがNoneの場合は最後に表示）
-    sorted_group_names = sorted(grouped_users.keys(), key=lambda g: group_name_to_order.get(g, float('inf')))
+    sorted_group_names = sorted(
+        grouped_users.keys(), key=lambda g: group_name_to_order.get(g, float("inf"))
+    )
 
     # 利用可能な全勤怠種別を取得します。（オブジェクトのリストとして）
     location_objects_unsorted: List[Location] = location_crud.get_multi(db)
     # IDでソートした Location オブジェクトのリストをテンプレートに渡す
-    location_objects = sorted(location_objects_unsorted, key=operator.attrgetter('id'))
+    location_objects = sorted(location_objects_unsorted, key=operator.attrgetter("id"))
 
     # 勤怠種別名に対応するCSSクラス情報 (テキストと背景) を生成します。
     location_styles: Dict[str, Dict[str, str]] = {}
@@ -221,14 +251,14 @@ def register_page(
         "groups": groups,
         "user_types": user_types,
         "grouped_users": grouped_users,
-        "group_names": sorted_group_names, # order順でソートされたグループ名のリスト
+        "group_names": sorted_group_names,  # order順でソートされたグループ名のリスト
         "calendar_data": calendar_data["weeks"],
         "month_name": calendar_data["month_name"],
         "prev_month": calendar_data["prev_month"],
         "next_month": calendar_data["next_month"],
-        "location_objects": location_objects, # オブジェクトリストを渡す
-        "location_styles": location_styles, # 更新されたスタイル辞書
-        "location_data_for_js": location_data_for_js, # JS 用データ
+        "location_objects": location_objects,  # オブジェクトリストを渡す
+        "location_styles": location_styles,  # 更新されたスタイル辞書
+        "location_data_for_js": location_data_for_js,  # JS 用データ
         "search_query": search_query,
     }
 
@@ -239,15 +269,14 @@ def register_page(
     if request.headers.get("HX-Request") == "true":
         logger.debug("HTMXリクエストを検出。部分テンプレートを返します。")
         return templates.TemplateResponse(
-            "components/partials/register/user_list.html", context,
-            headers={"HX-Reswap": "outerHTML"} # HTMXに入れ替え方法を指定
+            "components/partials/register/user_list.html",
+            context,
+            headers={"HX-Reswap": "outerHTML"},  # HTMXに入れ替え方法を指定
         )
 
     # 通常のGETリクエストの場合、完全なHTMLページをレンダリングして返します。
     logger.debug("通常リクエスト。完全なページを返します。")
-    return templates.TemplateResponse(
-        "pages/register.html", context
-    )
+    return templates.TemplateResponse("pages/register.html", context)
 
 
 @router.get("/users/{user_id}", response_class=HTMLResponse)
@@ -255,7 +284,7 @@ def user_calendar(
     request: Request,
     user_id: str,
     month: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """特定ユーザーのカレンダーを表示します
 
@@ -289,32 +318,41 @@ def user_calendar(
         year, month_num = parse_month(month)
         first_day = date(year, month_num, 1)
         last_day = date(year, month_num, calendar.monthrange(year, month_num)[1])
-        
-        attendances_for_cal = calendar_crud.get_month_attendances(db, first_day=first_day, last_day=last_day)
-        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(db, first_day=first_day, last_day=last_day)
+
+        attendances_for_cal = calendar_crud.get_month_attendances(
+            db, first_day=first_day, last_day=last_day
+        )
+        attendance_counts_for_cal = calendar_crud.get_month_attendance_counts(
+            db, first_day=first_day, last_day=last_day
+        )
         location_types_unsorted_for_cal = location_crud.get_all_locations(db)
         location_types_for_cal = sorted(location_types_unsorted_for_cal)
-        
+
         calendar_data = build_calendar_data(
             month=month,
             attendances=attendances_for_cal,
             attendance_counts=attendance_counts_for_cal,
-            location_types=location_types_for_cal
+            location_types=location_types_for_cal,
         )
     except Exception:
         logger.exception(f"カレンダーデータの構築に失敗: {month}")
-        calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
+        calendar_data = {
+            "weeks": [],
+            "month_name": "エラー",
+            "prev_month": month,
+            "next_month": month,
+        }
 
     # ユーザーの勤怠データを取得
     user_entries = attendance.get_user_data(db, user_id=user_id)
     user_attendances = {}
-    
+
     for entry in user_entries:
         date_str = entry["date"]
         user_attendances[date_str] = {
             "location_name": entry["location_name"],
             "attendance_id": entry["id"],
-            "note": entry["note"]  # 備考データを追加
+            "note": entry["note"],  # 備考データを追加
         }
 
     # 勤怠種別情報を取得
@@ -340,11 +378,12 @@ def user_calendar(
     # HTMXリクエストの場合、カレンダー部分のみを返す
     if request.headers.get("HX-Request") == "true":
         return templates.TemplateResponse(
-            "components/partials/register/user_calendar.html", context,
-            headers={"HX-Reswap": "outerHTML"}
+            "components/partials/register/user_calendar.html",
+            context,
+            headers={"HX-Reswap": "outerHTML"},
         )
 
     # 通常リクエストの場合も同じテンプレートを使用
     return templates.TemplateResponse(
         "components/partials/register/user_calendar.html", context
-    ) 
+    )

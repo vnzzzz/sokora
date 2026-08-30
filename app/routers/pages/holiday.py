@@ -5,7 +5,7 @@
 import json
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -25,7 +25,9 @@ def get_holiday_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """祝日管理ページ"""
     custom_holidays = crud_custom_holiday.get_multi(db)
     cache_info = get_cache_info()
-    built_in_total = cache_info.get("total_holidays", 0) - cache_info.get("custom_total", 0)
+    built_in_total = cache_info.get("total_holidays", 0) - cache_info.get(
+        "custom_total", 0
+    )
 
     context = {
         "request": request,
@@ -48,9 +50,13 @@ async def custom_holiday_modal(
     if holiday_id:
         holiday = crud_custom_holiday.get(db, id=holiday_id)
         if not holiday:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="祝日が見つかりません")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="祝日が見つかりません"
+            )
 
-    modal_id = "add-custom-holiday" if holiday is None else f"edit-custom-holiday-{holiday.id}"
+    modal_id = (
+        "add-custom-holiday" if holiday is None else f"edit-custom-holiday-{holiday.id}"
+    )
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
 
     return templates.TemplateResponse(
@@ -74,7 +80,9 @@ async def custom_holiday_delete_modal(
     """削除確認モーダル"""
     holiday = crud_custom_holiday.get(db, id=holiday_id)
     if not holiday:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="祝日が見つかりません")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="祝日が見つかりません"
+        )
 
     modal_id = f"custom-holiday-delete-modal-{holiday.id}"
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
@@ -101,11 +109,15 @@ async def create_custom_holiday(
     """祝日追加"""
     modal_id = "add-custom-holiday"
     try:
-        created = custom_holiday_service.create_custom_holiday_with_validation(db, custom_holiday_in=holiday_in)
+        created = custom_holiday_service.create_custom_holiday_with_validation(
+            db, custom_holiday_in=holiday_in
+        )
         return templates.TemplateResponse(
             "components/partials/modals/custom_holiday_modal.html",
             {"request": request, "holiday": created, "modal_id": modal_id},
-            headers={"HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})},
+            headers={
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         field = "date" if "日付" in str(e.detail) else "name"
@@ -138,7 +150,9 @@ async def update_custom_holiday(
         return templates.TemplateResponse(
             "components/partials/modals/custom_holiday_modal.html",
             {"request": request, "holiday": updated, "modal_id": modal_id},
-            headers={"HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})},
+            headers={
+                "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+            },
         )
     except HTTPException as e:
         holiday = crud_custom_holiday.get(db, id=holiday_id)
@@ -162,9 +176,13 @@ async def delete_custom_holiday(
 ) -> Any:
     """祝日削除"""
     modal_id = f"custom-holiday-delete-modal-{holiday_id}"
-    deleted = custom_holiday_service.delete_custom_holiday(db, custom_holiday_id=holiday_id)
+    deleted = custom_holiday_service.delete_custom_holiday(
+        db, custom_holiday_id=holiday_id
+    )
     return templates.TemplateResponse(
         "components/partials/modals/custom_holiday_delete_modal.html",
         {"request": request, "holiday": deleted, "modal_id": modal_id},
-        headers={"HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})},
+        headers={
+            "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
+        },
     )
