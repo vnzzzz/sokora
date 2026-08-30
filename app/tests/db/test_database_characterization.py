@@ -10,7 +10,7 @@ def test_fresh_database_initialization_creates_seeded_sqlite(tmp_path: Path) -> 
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(repository_root)
 
-    script = r'''
+    script = r"""
 import json
 
 from sqlalchemy import func, select
@@ -48,7 +48,7 @@ print(
         }
     )
 )
-'''
+"""
 
     result = subprocess.run(
         [sys.executable, "-c", script],
@@ -62,7 +62,9 @@ print(
     assert result.returncode == 0, result.stderr or result.stdout
 
     output_line = next(
-        line for line in result.stdout.splitlines() if line.startswith("CHARACTERIZATION=")
+        line
+        for line in result.stdout.splitlines()
+        if line.startswith("CHARACTERIZATION=")
     )
     observed = json.loads(output_line.removeprefix("CHARACTERIZATION="))
     first_counts = observed["first_counts"]
