@@ -48,7 +48,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-def _matches_schema(inspector: Inspector, expected_columns: dict[str, set[str]]) -> bool:
+def _matches_schema(
+    inspector: Inspector, expected_columns: dict[str, set[str]]
+) -> bool:
     application_tables = set(inspector.get_table_names()) - {"alembic_version"}
     if application_tables != set(expected_columns):
         return False
