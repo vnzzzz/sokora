@@ -51,7 +51,7 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
         if not user_type_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
     
-    modal_id = f"user-type-modal-{user_type_id or 'new'}"
+    modal_id = "add-user-type" if user_type_id is None else f"edit-user-type-{user_type_id}"
     
     ctx: Dict[str, Any] = {
         "request": request,
@@ -63,7 +63,7 @@ async def user_type_modal(request: Request, user_type_id: Optional[int] = None, 
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/user_types/user_type_modal.html", ctx, headers=headers
+        "components/partials/user_types/user_type_modal.html", ctx, headers=headers
     )
 
 
@@ -94,7 +94,7 @@ async def user_type_delete_modal(request: Request, user_type_id: int, db: Sessio
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/user_types/user_type_delete_modal.html", ctx, headers=headers
+        "components/partials/user_types/user_type_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -114,7 +114,7 @@ async def create_user_type(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = "user-type-modal-new"
+    modal_id = "add-user-type"
     
     try:
         # 社員種別作成を試みる
@@ -122,7 +122,7 @@ async def create_user_type(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/user_types/user_type_modal.html",
+            "components/partials/user_types/user_type_modal.html",
             {
                 "request": request,
                 "user_type": created_user_type,
@@ -138,7 +138,7 @@ async def create_user_type(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/user_types/user_type_modal.html",
+            "components/partials/user_types/user_type_modal.html",
             {
                 "request": request, 
                 "user_type": None,
@@ -166,7 +166,7 @@ async def update_user_type(
     Returns:
         HTMLResponse: 更新されたモーダル、エラー時はエラーメッセージを含むモーダル
     """
-    modal_id = f"user-type-modal-{user_type_id}"
+    modal_id = f"edit-user-type-{user_type_id}"
     
     try:
         # 社員種別更新を試みる
@@ -176,7 +176,7 @@ async def update_user_type(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/user_types/user_type_modal.html",
+            "components/partials/user_types/user_type_modal.html",
             {
                 "request": request,
                 "user_type": updated_user_type,
@@ -192,7 +192,7 @@ async def update_user_type(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/user_types/user_type_modal.html",
+            "components/partials/user_types/user_type_modal.html",
             {
                 "request": request, 
                 "user_type": user_type.get(db, id=user_type_id),
@@ -245,24 +245,8 @@ async def delete_user_type(request: Request, user_type_id: int, db: Session = De
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "partials/user_types/user_type_delete_modal.html", ctx
+            "components/partials/user_types/user_type_delete_modal.html", ctx
         )
-
-
-@router.get("/pages/user_type/edit/{user_type_id}", response_class=HTMLResponse)
-def get_user_type_edit_form(request: Request, user_type_id: int, db: Session = Depends(get_db)) -> Any:
-    """指定された社員種別の編集フォームをHTMLフラグメントとして返します。"""
-    user_type_data = user_type.get(db, id=user_type_id)
-    if not user_type_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"UserType with id {user_type_id} not found")
-
-    return templates.TemplateResponse(
-        "components/user_type/_user_type_edit_form.html",
-        {
-            "request": request,
-            "user_type": user_type_data,
-        }
-    )
 
 
 @router.post("/pages/user_type/row", response_class=HTMLResponse)

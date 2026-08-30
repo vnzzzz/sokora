@@ -17,33 +17,37 @@ class UserTypeBase(BaseModel):
 
 class UserTypeCreate(UserTypeBase):
     """社員種別作成用スキーマ"""
-    pass
+    order: Optional[int] = None
 
     @classmethod
     async def as_form(
         cls,
         name: str = Form(...),
+        order: Optional[int] = Form(None),
     ) -> 'UserTypeCreate':
         """フォームデータからインスタンスを生成"""
-        return cls(name=name)
+        return cls(name=name, order=order)
 
 
 class UserTypeUpdate(BaseModel):
     """社員種別更新用スキーマ"""
     name: Optional[str] = None
+    order: Optional[int] = None
 
     @classmethod
     async def as_form(
         cls,
         name: Optional[str] = Form(None),
+        order: Optional[int] = Form(None),
     ) -> 'UserTypeUpdate':
         """フォームデータからインスタンスを生成"""
-        return cls(name=name)
+        return cls(name=name, order=order)
 
 
 class UserType(UserTypeBase):
     """社員種別取得用スキーマ"""
     id: int
+    order: Optional[int] = None
 
     model_config = ConfigDict(
         from_attributes=True

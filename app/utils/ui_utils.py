@@ -11,13 +11,13 @@ from typing import List, Dict, Any, Optional, TypedDict, Union, Callable, TypeVa
 
 # 型定義
 class LocationBase(TypedDict):
-    """勤務場所の基本情報型定義"""
+    """勤怠種別の基本情報型定義"""
     name: str
     badge: str
 
 
 class LocationData(LocationBase):
-    """勤務場所の詳細情報型定義"""
+    """勤怠種別の詳細情報型定義"""
     color: str
     key: str
 
@@ -48,7 +48,7 @@ def get_location_color_classes(location_id: Optional[int]) -> Dict[str, str]:
     """Location IDに基づいて文字色と背景色のCSSクラスを決定します。
 
     Args:
-        location_id: 勤務場所のID。Noneの場合はデフォルトの色を返します。
+        location_id: 勤怠種別のID。Noneの場合はデフォルトの色を返します。
 
     Returns:
         Dict[str, str]: "text_class" と "bg_class" をキーに持つ辞書。
@@ -76,14 +76,14 @@ def _map_locations(
     location_types: List[str], 
     transform_fn: Callable[[str, str], T]
 ) -> List[T]:
-    """勤務場所リストを変換して新しいフォーマットに変換します。
+    """勤怠種別リストを変換して新しいフォーマットに変換します。
 
     Args:
-        location_types: 勤務場所タイプのリスト
-        transform_fn: 変換関数（勤務場所名と色を受け取り、変換済みのデータを返す）
+        location_types: 勤怠種別タイプのリスト
+        transform_fn: 変換関数（勤怠種別名と色を受け取り、変換済みのデータを返す）
 
     Returns:
-        List[T]: 変換された勤務場所リスト
+        List[T]: 変換された勤怠種別リスト
     """
     return [
         transform_fn(loc_type, _get_color_for_index(i))
@@ -92,13 +92,13 @@ def _map_locations(
 
 
 def generate_location_styles(location_types: List[str]) -> Dict[str, str]:
-    """勤務場所のスタイル情報を生成します。
+    """勤怠種別のスタイル情報を生成します。
 
     Args:
-        location_types: 勤務場所タイプのリスト
+        location_types: 勤怠種別タイプのリスト
 
     Returns:
-        Dict[str, str]: 勤務場所とそのスタイル情報のマッピング
+        Dict[str, str]: 勤怠種別とそのスタイル情報のマッピング
     """
     return {
         loc_type: f"text-{_get_color_for_index(i)}"
@@ -107,13 +107,13 @@ def generate_location_styles(location_types: List[str]) -> Dict[str, str]:
 
 
 def generate_location_badges(location_types: List[str]) -> List[LocationBase]:
-    """勤務場所のバッジ情報を生成します。
+    """勤怠種別のバッジ情報を生成します。
 
     Args:
-        location_types: 勤務場所タイプのリスト
+        location_types: 勤怠種別タイプのリスト
 
     Returns:
-        List[LocationBase]: 勤務場所とそのバッジ情報のリスト
+        List[LocationBase]: 勤怠種別とそのバッジ情報のリスト
     """
     def transform(loc: str, color: str) -> LocationBase:
         return {"name": loc, "badge": color}
@@ -122,15 +122,15 @@ def generate_location_badges(location_types: List[str]) -> List[LocationBase]:
 
 
 def generate_location_data(location_types: List[str]) -> List[LocationData]:
-    """勤務場所の詳細なスタイル情報を生成します。
+    """勤怠種別の詳細なスタイル情報を生成します。
 
     generate_location_badgesより詳細な情報を含む拡張バージョンです。
 
     Args:
-        location_types: 勤務場所タイプのリスト
+        location_types: 勤怠種別タイプのリスト
 
     Returns:
-        List[LocationData]: 勤務場所とそのスタイル情報のリスト
+        List[LocationData]: 勤怠種別とそのスタイル情報のリスト
     """
     def transform(loc: str, color: str) -> LocationData:
         return {
@@ -147,7 +147,7 @@ def has_data_for_day(day_data: Dict[str, List]) -> bool:
     """特定の日にデータが存在するかどうかをチェックします。
 
     Args:
-        day_data: 日別データ（勤務場所をキー、ユーザーリストを値とする辞書）
+        day_data: 日別データ（勤怠種別をキー、ユーザーリストを値とする辞書）
 
     Returns:
         bool: データが存在する場合はTrue、そうでない場合はFalse

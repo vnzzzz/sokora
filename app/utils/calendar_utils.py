@@ -284,7 +284,7 @@ def build_calendar_data(
         month: 月文字列 (YYYY-MM または YYYY/MM)
         attendances: 対象月の全勤怠レコードのリスト
         attendance_counts: 日付の日部分をキー、勤怠データ数を値とする辞書
-        location_types: 利用可能な全勤務場所名のソート済みリスト
+        location_types: 利用可能な全勤怠種別名のソート済みリスト
 
     Returns:
         Dict[str, Any]: カレンダーデータ
@@ -299,10 +299,10 @@ def build_calendar_data(
         # Python標準のcalendarモジュールでその月のカレンダー構造を取得 (週ごとの日のリスト)
         cal = calendar.monthcalendar(year, month_num)
 
-        # 日付をキー、勤務場所名をサブキーとするネストしたカウント辞書を初期化
+        # 日付をキー、勤怠種別名をサブキーとするネストしたカウント辞書を初期化
         location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        # 取得した勤怠レコードを日ごと・勤務場所ごとに集計 (引数のattendancesを使用)
+        # 取得した勤怠レコードを日ごと・勤怠種別ごとに集計 (引数のattendancesを使用)
         for attendance_record in attendances: # 変数名を変更
             day = attendance_record.date.day
             # locationリレーションから名前を取得 (リレーションがロードされている前提)
@@ -322,7 +322,7 @@ def build_calendar_data(
                         "date": "",
                         "has_data": False,
                     }
-                    # プレースホルダーにも勤務場所カラムは用意 (UIの構造を合わせるため)
+                    # プレースホルダーにも勤怠種別カラムは用意 (UIの構造を合わせるため)
                     for loc_type in location_types:
                         day_data[loc_type] = 0
 
@@ -347,7 +347,7 @@ def build_calendar_data(
                         "holiday_name": holiday_name
                     }
 
-                    # 各勤務場所ごとの勤怠数を追加 (計算済みのlocation_countsを使用)
+                    # 各勤怠種別ごとの勤怠数を追加 (計算済みのlocation_countsを使用)
                     for loc_type in location_types:
                         day_data[loc_type] = location_counts[day].get(loc_type, 0)
 
@@ -361,7 +361,7 @@ def build_calendar_data(
         next_month_date_obj = get_next_month_date(year, month_num)
         next_month = f"{next_month_date_obj.year}-{next_month_date_obj.month:02d}"
 
-        # UI表示用の勤務場所データ (色情報などを含む) を生成
+        # UI表示用の勤怠種別データ (色情報などを含む) を生成
         locations_ui_data = generate_location_data(location_types) # 引数のlocation_typesを使用
 
         return {

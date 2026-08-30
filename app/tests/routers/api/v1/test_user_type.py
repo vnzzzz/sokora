@@ -218,16 +218,16 @@ async def test_delete_user_type_in_use(async_client: AsyncClient, db: Session) -
 
     # この社員種別を使用するユーザーを作成
     user_id_for_test = "testuser_utdel"
-    crud_user.create(db, obj_in=UserCreate(user_id=user_id_for_test, username="Test User UTDel", group_id=group.id, user_type_id=user_type_id)) # type: ignore
+    crud_user.create(db, obj_in=UserCreate(id=user_id_for_test, username="Test User UTDel", group_id=group.id, user_type_id=user_type_id)) # type: ignore
     db.commit()
 
-    # 社員種別を削除しようとする
+    # この社員種別を削除しようとする
     response = await async_client.delete(f"/api/user_types/{user_type_id}")
 
-    # crud.user_type.remove 内でチェックされるはず (400 Bad Request)
+    # 使用中のため削除できないはず
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "割り当てられているため削除できません" in response.json()["detail"]
+    assert "この社員種別は1人のユーザーに割り当てられているため削除できません" in response.json()["detail"]
 
     # DBに残っていることを確認
-    user_type_still_exists = db.query(UserType).filter(UserType.id == user_type_id).first()
-    assert user_type_still_exists is not None 
+    still_exists = db.query(UserType).filter(UserType.id == user_type_id).first()
+    assert still_exists is not None 

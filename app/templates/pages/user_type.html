@@ -46,12 +46,13 @@
       <span>社員種別が登録されていません。新しい社員種別を追加してください。</span>
     </div>
     {% else %}
-    <div class="overflow-x-auto rounded-lg max-w-[700px]">
+    <div class="overflow-x-auto rounded-lg table-responsive">
       <table class="table table-zebra w-full">
         <thead class="bg-base-300 text-base-content">
           <tr>
-            <th class="rounded-tl-lg">社員種別名</th>
-            <th class="text-right rounded-tr-lg">操作</th>
+            <th class="rounded-tl-lg w-20">表示順</th>
+            <th>社員種別名</th>
+            <th class="rounded-tr-lg">操作</th>
           </tr>
         </thead>
         <tbody id="user-type-table-body">

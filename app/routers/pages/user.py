@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, nullslast
 
 from app.crud.group import group
 from app.crud.user import user
@@ -57,18 +58,29 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
     # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List[Tuple[str, str, int, User]]] = {}
+    # グループのorder情報を保存する辞書
+    group_orders: Dict[str, float] = {}
+    
     for user_name, user_id, user_type_id, user_obj in users:
         group_obj = groups_map.get(user_obj.group_id)
         group_name = str(group_obj.name) if group_obj else "未分類"
 
         if group_name not in grouped_users:
             grouped_users[group_name] = []
+            # グループのorder情報を保存（未分類は最後に表示）
+            if group_obj:
+                group_orders[group_name] = float(group_obj.order) if group_obj.order is not None else float('inf')
+            else:
+                group_orders[group_name] = float('inf')
 
         grouped_users[group_name].append((user_name, user_id, user_type_id, user_obj))
 
     # 各グループ内のユーザーリストを社員種別IDでソートします。
     for g_name in list(grouped_users.keys()):
         grouped_users[g_name].sort(key=lambda u: u[2])
+
+    # グループ名をorder順にソート（orderがNoneの場合は最後に表示）
+    sorted_group_names = sorted(grouped_users.keys(), key=lambda g: group_orders.get(g, float('inf')))
 
     # テンプレートに渡すコンテキストを作成します。
     return templates.TemplateResponse(
@@ -78,7 +90,7 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
             "groups": groups, # 全グループのリスト
             "user_types": user_types, # 全社員種別のリスト
             "grouped_users": grouped_users, # グループ名で整理されたユーザー辞書
-            "group_names": sorted(list(grouped_users.keys())) # ソートされたグループ名のリスト
+            "group_names": sorted_group_names # order順でソートされたグループ名のリスト
         }
     )
 
@@ -124,7 +136,7 @@ async def user_modal(
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/users/user_modal.html", ctx, headers=headers
+        "components/partials/users/user_modal.html", ctx, headers=headers
     )
 
 
@@ -155,7 +167,7 @@ async def user_delete_modal(request: Request, user_id: str, db: Session = Depend
     # JSONオブジェクトとして正しい形式のトリガーを返す
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
     return templates.TemplateResponse(
-        "partials/users/user_delete_modal.html", ctx, headers=headers
+        "components/partials/users/user_delete_modal.html", ctx, headers=headers
     )
 
 
@@ -183,7 +195,7 @@ async def create_user(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request,
                 "user": created_user,
@@ -216,7 +228,7 @@ async def create_user(
         print(f"Create user error: {errors}")
         
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request, 
                 "user": None,
@@ -257,7 +269,7 @@ async def update_user(
         
         # 成功時はモーダルを閉じてページリフレッシュするトリガーを送信
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request,
                 "user": updated_user,
@@ -276,7 +288,7 @@ async def update_user(
     except HTTPException as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
-            "partials/users/user_modal.html",
+            "components/partials/users/user_modal.html",
             {
                 "request": request, 
                 "user": user.get(db, id=user_id),
@@ -332,41 +344,9 @@ async def delete_user(request: Request, user_id: str, db: Session = Depends(get_
             "warning_message": e.detail
         }
         return templates.TemplateResponse(
-            "partials/users/user_delete_modal.html", ctx
+            "components/partials/users/user_delete_modal.html", ctx
         )
 
-
-@router.get("/pages/user/edit/{user_id}", response_class=HTMLResponse)
-def get_user_edit_form(request: Request, user_id: str, db: Session = Depends(get_db)) -> Any:
-    """指定されたユーザーの編集フォームをHTMLフラグメントとして返します。
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: ユーザーID
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
-    """
-    # 関連情報を含めてユーザーを取得 (見つからなければ404)
-    user_data = user.get_user_with_details(db, id=user_id)
-    if not user_data:
-        # ここで404を返す代わりに、エラーメッセージを含むHTMLを返すことも検討できるが、
-        # 一般的にはリソースが存在しない場合は 404 が適切
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found")
-
-    groups = group.get_multi(db, limit=1000) # 十分な数を取得
-    user_types = user_type.get_multi(db, limit=1000) # 十分な数を取得
-
-    return templates.TemplateResponse(
-        "components/user/_user_edit_form.html",
-        {
-            "request": request,
-            "user": user_data,
-            "groups": groups,
-            "user_types": user_types,
-        }
-    )
 
 
 @router.post("/pages/user/row", response_class=HTMLResponse)

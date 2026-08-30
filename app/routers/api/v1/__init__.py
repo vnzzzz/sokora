@@ -32,7 +32,7 @@ api_router.include_router(
     tags=["Attendance"]
 )
 
-# 勤務場所関連API
+# 勤怠種別関連API
 api_router.include_router(
     location.router, 
     prefix="/locations", 

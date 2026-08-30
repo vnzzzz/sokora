@@ -34,7 +34,7 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[UserType]:
-        """複数社員種別の取得 (名前順ソート付き)
+        """複数社員種別の取得 (order順、次にname順でソート)
 
         Args:
             db: データベースセッション
@@ -44,7 +44,9 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
         Returns:
             List[UserType]: 社員種別のリスト
         """
-        return db.query(UserType).order_by(UserType.name).offset(skip).limit(limit).all()
+        return db.query(UserType)\
+            .order_by(UserType.order.nullslast(), UserType.name)\
+            .offset(skip).limit(limit).all()
 
     def remove(self, db: Session, *, id: int) -> UserType:
         """社員種別を削除 (関連ユーザーがいない場合のみ)

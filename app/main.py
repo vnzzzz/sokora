@@ -29,7 +29,7 @@ API_TAGS: List[Dict[str, str]] = [
     },
     {
         "name": "Locations",
-        "description": "勤務場所を管理するエンドポイント",
+        "description": "勤怠種別を管理するエンドポイント",
     },
     {
         "name": "Users",

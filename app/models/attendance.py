@@ -12,7 +12,7 @@ from app.db.session import Base
 
 
 class Attendance(Base):  # type: ignore
-    """ユーザーの日々の勤務場所を表す勤怠モデル"""
+    """ユーザーの日々の勤怠種別を表す勤怠モデル"""
 
     __tablename__ = "attendance"
 
@@ -20,6 +20,7 @@ class Attendance(Base):  # type: ignore
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     date = Column(Date, nullable=False, index=True)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
+    note = Column(String, nullable=True)  # 備考フィールド追加
 
     # Userモデルとのリレーションシップ定義 (多対一)
     user = relationship("User", back_populates="attendance_records")

@@ -15,6 +15,7 @@ class AttendanceBase(BaseModel):
 
     date: date
     location_id: int
+    note: Optional[str] = None  # 備考フィールド追加
 
 
 class AttendanceCreate(AttendanceBase):
@@ -44,6 +45,7 @@ class AttendanceUpdate(BaseModel):
     """勤怠データ更新用スキーマ"""
 
     location_id: Optional[int] = None
+    note: Optional[str] = None  # 備考フィールド追加
 
     model_config = ConfigDict(
         from_attributes=True
@@ -84,7 +86,7 @@ class UserAttendance(BaseModel):
 
     user_id: str
     user_name: str
-    dates: List[Dict[str, Any]]  # 日付、勤務場所、勤怠IDのリスト
+    dates: List[Dict[str, Any]]  # 日付、勤怠種別、勤怠IDのリスト
 
     model_config = ConfigDict(
         from_attributes=True

@@ -44,8 +44,8 @@ app/templates/
     ├── attendance/        # 勤怠編集・登録関連ページ
     │   ├── index.html     # 勤怠データ一覧表示ページ（現在未使用の可能性あり）
     │   └── attendance_calendar.html # 勤怠編集用カレンダー表示（HTMX部分テンプレート）
-    ├── location/          # 勤務場所管理ページ
-    │   └── index.html     # 勤務場所一覧、追加、編集、削除機能
+    ├── location/          # 勤怠種別管理ページ
+    │   └── index.html     # 勤怠種別一覧、追加、編集、削除機能
     ├── user/              # 社員管理ページ
     │   └── index.html     # 社員一覧、追加、編集、削除機能
     ├── user_type/         # 社員種別管理ページ

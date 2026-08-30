@@ -77,14 +77,14 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     expected_date_jp = format_date_jp(target_date_obj)
     expect(modal_dialog_locator.locator("h3")).to_contain_text(expected_date_jp)
 
-    # 4. 勤務場所を選択 (セレクトボックス対応)
+    # 4. 勤怠種別を選択 (セレクトボックス対応)
     location_select_locator = form_locator.locator('select[name="location_id"]')
     expect(location_select_locator).to_be_visible(timeout=5000)
     first_option_locator = location_select_locator.locator("option").nth(1)
     selected_location_id_str = first_option_locator.get_attribute("value")
-    assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤務場所の値が取得できませんでした"
+    assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤怠種別の値が取得できませんでした"
     selected_location_name = first_option_locator.inner_text() or ""
-    assert selected_location_name, "最初の有効な勤務場所名が取得できませんでした"
+    assert selected_location_name, "最初の有効な勤怠種別名が取得できませんでした"
     location_select_locator.select_option(value=selected_location_id_str)
 
     # 5. 「登録」または「更新」ボタンをクリック
@@ -125,9 +125,9 @@ def test_edit_attendance_via_modal(page: Page) -> None:
     # 行の中から目的のセルを探す
     reloaded_cell_locator = target_row_locator.locator(target_cell_selector)
 
-    # 更新後のセルのテキストが選択した勤務場所名を含むことを期待
+    # 更新後のセルのテキストが選択した勤怠種別名を含むことを期待
     expect(reloaded_cell_locator).to_contain_text(selected_location_name, timeout=1000)
-    # 更新後の data-location 属性が選択した勤務場所名になっていることを期待
+    # 更新後の data-location 属性が選択した勤怠種別名になっていることを期待
     expect(reloaded_cell_locator).to_have_attribute("data-location", selected_location_name.strip(), timeout=5000)
 
 
@@ -188,7 +188,7 @@ def test_delete_attendance_via_modal(page: Page) -> None:
         expect(location_select_locator).to_be_visible(timeout=5000)
         first_option_locator = location_select_locator.locator("option").nth(1)
         selected_location_id_str = first_option_locator.get_attribute("value")
-        assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤務場所の値が取得できませんでした"
+        assert selected_location_id_str is not None and selected_location_id_str != "", "最初の有効な勤怠種別の値が取得できませんでした"
         location_select_locator.select_option(value=selected_location_id_str)
 
         expect(register_button).to_be_enabled()

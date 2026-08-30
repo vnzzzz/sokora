@@ -38,10 +38,10 @@
   <script defer src="/static/js/calendar.js"></script>
 
   <!-- Main CSS -->
-  <link href="/static/css/main.css" rel="stylesheet" />
+  <link href="{{ url_for('static', path='css/main.css') }}" rel="stylesheet" /> 
 
   <!-- カレンダー共通CSS -->
-  <link href="/static/css/calendar.css" rel="stylesheet" />
+  <link href="{{ url_for('static', path='css/calendar.css') }}" rel="stylesheet" />
 
   <!-- テーマ切り替えアニメーション -->
   <style>
@@ -68,28 +68,6 @@
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
     rel="stylesheet"
   />
-
-  <!-- DaisyUI - Tailwind CSS フレームワーク -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- TailwindCSS設定 -->
-  <script>
-    tailwind.config = {
-      // ここで全てのTailwindCSSの設定を定義します
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Noto Sans JP', 'sans-serif']
-          }
-        }
-      },
-      // DaisyUIの設定
-      daisyui: {
-        themes: ['light', 'dark', 'cupcake', 'corporate', 'winter', 'night']
-      }
-    }
-  </script>
 
   <!-- Favicon指定 -->
   <script src="/static/js/circle-favicon.js"></script>
