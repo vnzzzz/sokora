@@ -28,30 +28,7 @@ jobs:
           fi
 
           uvx --from migrate-to-uv==0.12.0 migrate-to-uv
-
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("pyproject.toml")
-          text = path.read_text()
-          old = '''[tool.uv]
-default-groups = "all"
-
-[tool.uv.build-backend]
-module-name = ["app"]
-module-root = ""
-
-[build-system]
-requires = ["uv_build>=0.12.7,<0.13.0"]
-build-backend = "uv_build"
-'''
-          new = '''[tool.uv]
-package = false
-'''
-          if old not in text:
-              raise SystemExit("Unexpected migrate-to-uv pyproject output")
-          path.write_text(text.replace(old, new))
-          PY
+          python -c 'from pathlib import Path; p=Path("pyproject.toml"); t=p.read_text(); start=t.index("[tool.uv]\n"); end=t.index("[tool.black]\n"); p.write_text(t[:start] + "[tool.uv]\npackage = false\n\n" + t[end:])'
 
           uv lock
           uv lock --check
