@@ -25,7 +25,7 @@
 ## よく使うコマンド
 | 目的 | コマンド | 備考 |
 | --- | --- | --- |
-| 依存インストール | `make install` | Poetry + Tailwind builder のセットアップ。 |
+| 依存インストール | `make install` | uv + Tailwind builder のセットアップ。 |
 | 開発サーバ起動 | `make run` | Uvicorn リロード付き。初回は Tailwind/DB の準備を実施。 |
 | DB シード | `make seed` | `scripts/seeding/run_seeder.sh` 経由。 |
 | テスト一括 | `./scripts/testing/run_test.sh` | 事前/事後クリーンアップ込み。 |

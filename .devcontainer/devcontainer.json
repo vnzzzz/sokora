@@ -14,7 +14,7 @@
   "workspaceFolder": "/app",
   "mounts": [
     "source=sokora-data,target=/app/data,type=volume",
-    "source=sokora-poetry-cache,target=/home/vscode/.cache/pypoetry,type=volume"
+    "source=sokora-uv-cache,target=/home/vscode/.cache/uv,type=volume"
   ],
   "features": {
     "ghcr.io/vnzzzz/agentic-development-toolkit/agent-dev:1": {}
@@ -23,7 +23,7 @@
   "customizations": {
     "vscode": {
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.defaultInterpreterPath": "/opt/sokora-venv/bin/python",
         "editor.formatOnSave": true,
         "[html]": {
           "editor.formatOnSave": false

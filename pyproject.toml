@@ -1,40 +1,45 @@
-[tool.poetry]
+[project]
 name = "sokora"
 version = "0.1.0"
 description = "勤怠管理のためのシンプルなWebアプリケーション"
-authors = ["Sokora Team <info@example.com>"]
+authors = [{ name = "Sokora Team", email = "info@example.com" }]
+requires-python = ">=3.13,<4"
 readme = "README.md"
-packages = [{ include = "app" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "fastapi>=0.103.1,<0.104",
+    "uvicorn[standard]>=0.23.2,<0.24",
+    "jinja2>=3.1.2,<4",
+    "python-multipart>=0.0.6,<0.0.7",
+    "pydantic>=2.4.0,<3",
+    "sqlalchemy>=2.0.23,<3",
+    "httpx>=0.27.0,<0.28",
+    "pytz>=2023.3,<2024",
+    "python-dateutil>=2.9.0.post0,<3",
+    "aiosqlite>=0.20.0,<0.21",
+    "types-python-dateutil>=2.9.0.20241206,<3",
+    "itsdangerous>=2.2.0,<3",
+]
 
-[tool.poetry.dependencies]
-python = "^3.13"
-fastapi = "^0.103.1"
-uvicorn = {extras = ["standard"], version = "^0.23.2"}
-jinja2 = "^3.1.2"
-python-multipart = "^0.0.6"
-pydantic = "^2.4.0"
-sqlalchemy = "^2.0.23"
-httpx = "^0.27.0"
-pytz = "^2023.3"
-python-dateutil = "^2.9.0.post0"
-aiosqlite = "^0.20.0"
-types-python-dateutil = "^2.9.0.20241206"
-itsdangerous = "^2.2.0"
+[dependency-groups]
+dev = [
+    "black>=23.7.0,<24",
+    "isort>=5.12.0,<6",
+    "mypy>=1.10.0,<2",
+    "pytest>=8.2.2,<9",
+    "pytest-cov>=4.1.0,<5",
+    "pytest-asyncio>=0.23.7,<0.24",
+    "ruff>=0.5.0,<0.6",
+    "pytest-playwright>=0.7.0,<0.8",
+    "alembic>=1.15.2,<2",
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "^23.7.0"
-isort = "^5.12.0"
-mypy = "^1.10.0"
-pytest = "^8.2.2"
-pytest-cov = "^4.1.0"
-pytest-asyncio = "^0.23.7"
-ruff = "^0.5.0"
-pytest-playwright = "^0.7.0"
-alembic = "^1.15.2"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = false
 
 [tool.black]
 line-length = 88

@@ -14,17 +14,17 @@ echo "=========================================="
 
 # テスト実行前のDB状態確認
 echo "📊 テスト実行前のDB状態を確認しています..."
-python3 app/tests/utils/db_checker.py
+uv run python app/tests/utils/db_checker.py
 
 # テスト関連データが残っている場合はクリーンアップ
 echo ""
 echo "🧽 残存テストデータのクリーンアップを実行しています..."
-python3 app/tests/utils/data_cleanup.py
+uv run python app/tests/utils/data_cleanup.py
 
 # クリーンアップ後の状態確認
 echo ""
 echo "✅ クリーンアップ後のDB状態を確認しています..."
-python3 app/tests/utils/db_checker.py
+uv run python app/tests/utils/db_checker.py
 
 echo ""
 echo "=========================================="
@@ -32,7 +32,7 @@ echo "🧪 API・ユニットテスト実行"
 echo "=========================================="
 
 # API/ユニットテストを実行 (e2e を除く)
-poetry run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/
+uv run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/
 
 # APIテストが失敗したらスクリプトを終了
 if [ $? -ne 0 ]; then
@@ -58,7 +58,7 @@ function cleanup_server() {
 trap cleanup_server EXIT
 
 function is_server_running() {
-  python3 - <<'PY'
+  uv run python - <<'PY'
 import sys, urllib.request
 try:
     with urllib.request.urlopen("http://127.0.0.1:8000", timeout=1) as resp:
@@ -70,7 +70,7 @@ PY
 
 if ! is_server_running; then
   echo "🚀 E2E用にアプリサーバーを起動します (http://127.0.0.1:8000)..."
-  poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level warning > /tmp/e2e_server.log 2>&1 &
+  uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level warning > /tmp/e2e_server.log 2>&1 &
   SERVER_PID=$!
   SERVER_MANAGED=1
   # 起動待ち
@@ -90,7 +90,7 @@ else
 fi
 
 # E2Eテストを実行
-poetry run pytest -vv app/tests/e2e/
+uv run pytest -vv app/tests/e2e/
 
 # E2Eテストが失敗したらスクリプトを終了
 if [ $? -ne 0 ]; then
@@ -105,7 +105,7 @@ echo "=========================================="
 
 # テスト実行後のDB状態確認
 echo "📊 テスト実行後のDB状態を確認しています..."
-TEST_DATA_COUNT=$(python3 -c "
+TEST_DATA_COUNT=$(uv run python -c "
 import sys
 sys.path.insert(0, '/app')
 from app.tests.utils.db_checker import has_test_data, check_database
@@ -120,12 +120,12 @@ echo ""
 if [ "$TEST_DATA_COUNT" != "0" ] && [ -n "$TEST_DATA_COUNT" ]; then
     echo "⚠️  警告: テスト実行後にテスト関連データが残存しています（${TEST_DATA_COUNT}件）"
     echo "🧽 残存データのクリーンアップを実行しています..."
-    python3 app/tests/utils/data_cleanup.py
-    
+    uv run python app/tests/utils/data_cleanup.py
+
     # 最終確認
     echo ""
     echo "✅ 最終確認のDB状態:"
-    python3 app/tests/utils/db_checker.py
+    uv run python app/tests/utils/db_checker.py
 else
     echo "✅ テスト関連データの残存なし。クリーンアップが正常に動作しています。"
 fi
@@ -134,4 +134,4 @@ echo ""
 echo "=========================================="
 echo "🎉 すべてのテストが正常に完了しました！"
 echo "=========================================="
-exit 0 
+exit 0

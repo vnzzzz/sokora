@@ -12,7 +12,7 @@ mkdir -p "${ASSETS_JSON}"
 
 if [[ ! -s "${HOLIDAY_CACHE}" ]]; then
   echo "[build] Building holiday cache -> ${HOLIDAY_CACHE}"
-  (cd "${ROOT_DIR}" && poetry run python scripts/build_holiday_cache.py)
+  (cd "${ROOT_DIR}" && uv run python scripts/build_holiday_cache.py)
 else
   echo "[skip] Holiday cache already exists: ${HOLIDAY_CACHE}"
 fi

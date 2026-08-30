@@ -34,7 +34,8 @@ def test_devcontainer_uses_shared_agent_dev_feature() -> None:
 
     mounts = config.get("mounts", [])
     assert all("/root/" not in mount for mount in mounts)
-    assert any("/home/vscode/.cache/pypoetry" in mount for mount in mounts)
+    assert any("/home/vscode/.cache/uv" in mount for mount in mounts)
+    assert all("pypoetry" not in mount.lower() for mount in mounts)
 
 
 def test_devcontainer_does_not_install_agent_tools_directly() -> None:
@@ -48,13 +49,18 @@ def test_devcontainer_does_not_install_agent_tools_directly() -> None:
     assert "@anthropic-ai/claude-code" not in dockerfile
 
 
-def test_devcontainer_runtime_paths_support_vscode_user() -> None:
+def test_devcontainer_uses_uv_environment_for_vscode_user() -> None:
+    config = load_devcontainer_config()
     dockerfile = DEVCONTAINER_DOCKERFILE.read_text()
 
-    assert "POETRY_HOME=/opt/poetry" in dockerfile
-    assert "POETRY_VIRTUALENVS_CREATE=false" in dockerfile
+    assert "ghcr.io/astral-sh/uv:0.12.7" in dockerfile
+    assert "UV_PROJECT_ENVIRONMENT=/opt/sokora-venv" in dockerfile
+    assert "UV_CACHE_DIR=/home/vscode/.cache/uv" in dockerfile
+    assert "uv sync --locked" in dockerfile
     assert "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright" in dockerfile
-    assert "/home/vscode/.cache/pypoetry" in dockerfile
+    assert config["customizations"]["vscode"]["settings"]["python.defaultInterpreterPath"] == (
+        "/opt/sokora-venv/bin/python"
+    )
 
 
 def test_devcontainer_repairs_persisted_volume_ownership_after_start() -> None:
@@ -66,7 +72,31 @@ def test_devcontainer_repairs_persisted_volume_ownership_after_start() -> None:
     assert "id -g" in script
     assert "sudo chown -R" in script
     assert "/app/data" in script
-    assert "/home/vscode/.cache/pypoetry" in script
+    assert "/home/vscode/.cache/uv" in script
+
+
+def test_operational_config_has_no_poetry_dependency() -> None:
+    paths = [
+        "pyproject.toml",
+        "Makefile",
+        "Dockerfile",
+        "Dockerfile.proxy",
+        ".github/workflows/ci.yml",
+        ".devcontainer/Dockerfile",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/ensure-volume-ownership.sh",
+        "scripts/prepare_dev_assets.sh",
+        "scripts/seeding/data_seeder.py",
+        "scripts/seeding/run_seeder.sh",
+        "scripts/testing/run_test.sh",
+        "README.md",
+        "AGENTS.md",
+        "rules/development.md",
+    ]
+
+    for relative_path in paths:
+        text = (REPO_ROOT / relative_path).read_text().lower()
+        assert "poetry" not in text, f"{relative_path} still references Poetry"
 
 
 def test_devcontainer_cmd_is_idle_until_server_runs() -> None:

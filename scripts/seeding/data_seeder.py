@@ -7,7 +7,7 @@
 
 実行方法:
 プロジェクトルートディレクトリから以下のコマンドで実行してください。
-`poetry run python -m scripts.seeding.data_seeder --days-back <日数> --days-forward <日数>`
+`uv run python -m scripts.seeding.data_seeder --days-back <日数> --days-forward <日数>`
 """
 
 import random

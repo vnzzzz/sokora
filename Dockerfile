@@ -10,6 +10,9 @@ RUN ./scripts/build_assets.sh
 # 2) 本番コンテナ
 FROM python:3.13-slim-bookworm
 
+# uv を固定バージョンで導入
+COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /bin/
+
 # システム依存関係インストール
 RUN apt-get update && apt-get install -y curl && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -18,16 +21,13 @@ RUN apt-get update && apt-get install -y curl && \
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Poetry インストール
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-  python3 -m pip install --no-cache-dir --upgrade pip
-ENV PATH="/root/.local/bin:$PATH"
-
 WORKDIR /app
-# 依存関係インストール
-COPY pyproject.toml poetry.lock* ./
-RUN poetry config virtualenvs.create false && \
-  poetry install --no-root --no-interaction --no-ansi
+
+# 本番依存関係のみを独立したvirtualenvへ同期
+ENV UV_PROJECT_ENVIRONMENT=/opt/sokora-venv
+ENV PATH="/opt/sokora-venv/bin:$PATH"
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev
 
 # アプリケーションコード
 COPY ./app ./app
