@@ -39,9 +39,10 @@ def _sqlite_is_memory_database(url: URL) -> bool:
         return True
     if not _sqlite_uri_enabled(url):
         return False
-    return url.database == "file::memory:" or str(
-        url.query.get("mode", "")
-    ).lower() == "memory"
+    return (
+        url.database == "file::memory:"
+        or str(url.query.get("mode", "")).lower() == "memory"
+    )
 
 
 def create_database_runtime(database_url: str) -> DatabaseRuntime:
