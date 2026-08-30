@@ -86,9 +86,12 @@ def test_operational_config_has_no_poetry_dependency() -> None:
         ".devcontainer/devcontainer.json",
         ".devcontainer/ensure-volume-ownership.sh",
         "scripts/prepare_dev_assets.sh",
+        "scripts/seeding/data_seeder.py",
         "scripts/seeding/run_seeder.sh",
         "scripts/testing/run_test.sh",
         "README.md",
+        "AGENTS.md",
+        "rules/development.md",
     ]
 
     for relative_path in paths:
