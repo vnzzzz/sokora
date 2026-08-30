@@ -1,8 +1,5 @@
 from playwright.sync_api import Page, expect
 import time
-import re
-from urllib.parse import quote
-import contextlib # finally でのエラー抑制用
 
 BASE_URL = "http://localhost:8000"
 UI_BASE = BASE_URL
@@ -156,7 +153,6 @@ def test_add_new_user(page: Page) -> None:
     timestamp = int(time.time())
     group_name = f"テストグループ_追加_{timestamp}"
     user_type_name = f"テスト種別_追加_{timestamp}"
-    unique_username = f"テスト社員_追加_{timestamp}"
     unique_user_id = f"add{timestamp}"
 
     created_group_id = None
@@ -213,11 +209,6 @@ def test_edit_user(page: Page) -> None:
     initial_group_name = f"編集前グループ_{timestamp}"
     initial_user_type_name = f"編集前種別_{timestamp}"
     new_group_name = f"編集後グループ_{timestamp}" # グループ変更もテスト
-    # ユーザー情報
-    initial_username = f"編集前社員_{timestamp}"
-    initial_user_id = f"edit{timestamp}"
-    new_username = f"編集済_{initial_username}"
-
     initial_group_id = None
     initial_user_type_id = None
     new_group_id = None
@@ -274,8 +265,6 @@ def test_delete_user(page: Page) -> None:
     timestamp = int(time.time())
     group_name = f"削除用グループ_{timestamp}"
     user_type_name = f"削除用種別_{timestamp}"
-    username_to_delete = f"削除用社員_{timestamp}"
-    user_id_to_delete = f"del{timestamp}"
 
     created_group_id = None
     created_user_type_id = None

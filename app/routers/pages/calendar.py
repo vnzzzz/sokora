@@ -5,10 +5,9 @@
 カレンダー表示に関連するルートハンドラー
 """
 
-import html
 import time
-from typing import Any, Dict, List, Optional, Tuple
-from datetime import date, timedelta
+from typing import Any, Dict, List, Optional
+from datetime import date
 import calendar
 
 from fastapi import APIRouter, Depends, Request
@@ -33,7 +32,6 @@ from app.utils.calendar_utils import (
     parse_date
 )
 from app.utils.ui_utils import (
-    generate_location_badges,
     get_location_color_classes,
 )
 from app.models.location import Location
@@ -253,15 +251,10 @@ def get_day_detail(
 
     # さらに、グループを主キーとしてユーザーを整理するデータ構造も作成します。
     organized_by_group: Dict[str, Dict[str, Any]] = {}
-    # グループIDとグループ名のマッピング (ソート用)
-    group_id_to_name = {g.id: g.name for g in groups}
-    
     # グループをorder順でソート
     sorted_groups = sorted(groups, key=lambda g: (group_orders.get(g.id, float('inf')), g.id or 9999))
     sorted_group_names = [str(g.name) for g in sorted_groups]
 
-    # ユーザー種別IDと名前のマッピング (ソート用)
-    user_type_id_to_name = {ut.id: ut.name for ut in user_types}
     # ユーザー種別IDとorderのマッピング (ソート用)
     user_type_id_mapping = {}
     user_type_info_mapping = {}  # 社員種別名 -> (order, id) のマッピング

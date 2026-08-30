@@ -6,7 +6,7 @@ UI表示関連のユーティリティ関数を提供します。
 主にTailwindCSSのスタイル生成とUIデータ操作に関する関数が含まれています。
 """
 
-from typing import List, Dict, Any, Optional, TypedDict, Union, Callable, TypeVar, Generic, cast
+from typing import List, Dict, Optional, TypedDict, Callable, TypeVar
 
 
 # 型定義

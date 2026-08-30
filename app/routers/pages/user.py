@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import asc, nullslast
 
 from app.crud.group import group
 from app.crud.user import user
@@ -54,7 +53,6 @@ def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
-    user_types_map = {ut.id: ut for ut in user_types}
 
     # 表示用にユーザーをグループ名でグルーピングします。
     grouped_users: Dict[str, List[Tuple[str, str, int, User]]] = {}

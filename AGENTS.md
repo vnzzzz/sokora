@@ -167,7 +167,7 @@
 
 - `data/`
   - `sokora.db`: SQLite データベースファイル。`init_db()`（シーダー含む）が存在しない場合に作成する。
-  - アプリ起動時（`make run` / `make docker-run`）に `data/sokora.db` が無い場合は自動でテーブル作成とシーディング（60日/60日分）を実行し、旧 `data/sokora.sqlite` があれば `sokora.db` にリネームして利用する。
+  - アプリ起動時（`make run` / `make docker-run`）に `data/sokora.db` が無い場合は自動でテーブル作成とシーディング（60日/60日分）を実行する。
   - Docker ビルド時 (`make build` / `make docker-build`) も DB が無ければ初期化＋シーディングを実行し、ベースイメージに DB を含める。ビルド成果物は `/app/seed/sokora.db` にコピーされ、エントリポイントでホストマウントされた `data/` に複製される。
   - `data/.gitkeep` のみがコミットされており、DB は実行時に生成。
 

@@ -42,7 +42,7 @@ def test_validate_group_update_success(db: Session) -> None:
     """グループ更新バリデーション成功"""
     # 更新対象と、別名のグループを作成
     group_to_update = create_test_group(db, name=random_lower_string())
-    other_group = create_test_group(db, name=random_lower_string())
+    create_test_group(db, name=random_lower_string())
     db.commit()
 
     # ケース1: 存在しない名前に更新

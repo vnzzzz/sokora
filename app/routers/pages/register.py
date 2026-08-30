@@ -7,12 +7,11 @@
 
 import logging
 from typing import Any, Dict, List, Optional
-from datetime import date, timedelta
+from datetime import date
 import calendar
 import operator
-import json
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -25,8 +24,7 @@ from app.crud.user import user
 from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.models.location import Location
-from app.models.attendance import Attendance as AttendanceModel
-from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted, format_date_jp
+from app.utils.calendar_utils import build_calendar_data, parse_month, get_current_month_formatted
 from app.utils.ui_utils import get_location_color_classes
 
 # ルーター定義
@@ -115,7 +113,7 @@ def register_page(
                 attendance_counts=attendance_counts_for_cal,
                 location_types=location_types_for_cal
             )
-        except:
+        except Exception:
             logger.exception(f"フォールバック時のカレンダーデータ構築にも失敗: {month}")
             # さらにエラーなら空データを設定
             calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
@@ -144,9 +142,6 @@ def register_page(
     # グループ情報をIDをキーとする辞書として取得します。
     groups = group.get_multi(db)
     groups_map = {g.id: g for g in groups}
-
-    # グループのorder情報を保存する辞書
-    group_orders = {g.id: (g.order if g.order is not None else float('inf')) for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
     user_types = user_type.get_multi(db)
@@ -306,7 +301,7 @@ def user_calendar(
             attendance_counts=attendance_counts_for_cal,
             location_types=location_types_for_cal
         )
-    except:
+    except Exception:
         logger.exception(f"カレンダーデータの構築に失敗: {month}")
         calendar_data = {"weeks": [], "month_name": "エラー", "prev_month": month, "next_month": month}
 

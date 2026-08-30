@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 from app import crud
 from app.crud.calendar import calendar_crud
-from app.models import User as UserModel, Location as LocationModel, Attendance as AttendanceModel, Group as GroupModel, UserType as UserTypeModel
+from app.models import Attendance as AttendanceModel
 from app.schemas.attendance import AttendanceCreate
 from app.schemas.user import UserCreate
 from app.schemas.group import GroupCreate

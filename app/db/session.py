@@ -15,7 +15,6 @@ from app.core.config import logger
 
 # SQLiteデータベースファイルのパスとURL設定
 DB_PATH = Path("data/sokora.db")
-LEGACY_DB_PATH = Path("data/sokora.sqlite")
 DB_URL = f"sqlite:///{DB_PATH.absolute()}"
 
 # SQLAlchemyエンジンを作成（SQLiteの同時接続に対応）
@@ -58,7 +57,6 @@ def init_db() -> None:
     """
     # モデル定義をインポートします。
     # (関数内でインポートすることで、モジュール読み込み時の循環参照を回避)
-    from app.models import User, Attendance, Location, Group, UserType, CustomHoliday
 
     # データベースファイルが格納される`data/`ディレクトリを作成します (存在しない場合)。
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -76,13 +74,6 @@ def initialize_database() -> bool:
     成功時はTrue、エラー発生時はFalseを返します。
     """
     db_missing = not DB_PATH.exists()
-    legacy_exists = LEGACY_DB_PATH.exists()
-
-    if db_missing and legacy_exists:
-        logger.info("既存のデータベースファイルを新しいパスへ移行します。")
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        LEGACY_DB_PATH.rename(DB_PATH)
-        db_missing = False
     try:
         init_db()
         if db_missing:

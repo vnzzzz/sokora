@@ -23,4 +23,5 @@ FastAPIで構築されたシンプルな勤怠記録ツールです。
 from .core.config import APP_VERSION, logger
 
 __version__ = APP_VERSION
+__all__ = ["__version__", "logger"]
 __author__ = "Sokora Team"

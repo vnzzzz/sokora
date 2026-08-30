@@ -36,9 +36,10 @@ def _get_float(name: str, default: float) -> float:
 class AuthSettings:
     """認証関連の環境設定を保持するデータクラス"""
 
-    auth_required: bool
+    auth_enabled: bool
     session_secret: str
     session_ttl_seconds: int
+    local_auth_enabled: bool
 
     oidc_issuer: str | None
     oidc_client_id: str | None
@@ -68,7 +69,10 @@ class AuthSettings:
 
     @property
     def local_admin_enabled(self) -> bool:
-        return bool(self.local_admin_username and self.local_admin_password)
+        return (
+            self.local_auth_enabled
+            and bool(self.local_admin_username and self.local_admin_password)
+        )
 
     @classmethod
     def from_env(cls) -> "AuthSettings":
@@ -76,9 +80,10 @@ class AuthSettings:
         state_store = AuthStateStore(Path(state_path) if state_path else None)
         state = state_store.load_state()
         return cls(
-            auth_required=_get_bool("SOKORA_AUTH_REQUIRED", default=False),
+            auth_enabled=_get_bool("SOKORA_AUTH_ENABLED", default=False),
             session_secret=environ.get("SOKORA_AUTH_SESSION_SECRET", "dev-session-secret"),
             session_ttl_seconds=_get_int("SOKORA_AUTH_SESSION_TTL_SECONDS", default=3600),
+            local_auth_enabled=_get_bool("SOKORA_LOCAL_AUTH_ENABLED", default=True),
             oidc_issuer=environ.get("OIDC_ISSUER"),
             oidc_client_id=environ.get("OIDC_CLIENT_ID"),
             oidc_client_secret=environ.get("OIDC_CLIENT_SECRET"),

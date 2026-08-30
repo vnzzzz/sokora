@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.schemas.user_type import UserTypeCreate
 from app.services import user_service
-from app.tests.crud.test_crud_user import db_with_data
 from app.tests.utils.utils import random_lower_string
 
 

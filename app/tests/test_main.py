@@ -2,11 +2,9 @@
 main.py のテストケース
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from typing import Any
 
 from app.main import create_application, create_openapi_schema, app, API_TAGS
 
@@ -81,8 +79,7 @@ class TestCreateOpenApiSchema:
         }
         mock_get_openapi.return_value = mock_schema
         
-        schema = create_openapi_schema(app_instance)
-        
+        create_openapi_schema(app_instance)
         mock_get_openapi.assert_called_once()
         call_args = mock_get_openapi.call_args
         assert call_args[1]["title"] == "Sokora API"
@@ -152,4 +149,12 @@ class TestAppIntegration:
         
         # ReDocのテスト
         response = client.get("/redoc")
-        assert response.status_code == 200 
+        assert response.status_code == 200
+
+    def test_legacy_ui_route_not_available(self) -> None:
+        """旧 /ui プレフィックスが無効化されていることを確認"""
+        client = TestClient(app)
+
+        response = client.get("/ui")
+
+        assert response.status_code == 404

@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 import csv
 import io
 import calendar
-from typing import Dict, Any, AsyncGenerator, List, Tuple, Optional
+from typing import Dict, Any, AsyncGenerator, List, Optional
 
 pytestmark = pytest.mark.asyncio
 

@@ -5,8 +5,7 @@ calendar_utils のテストケース
 import pytest
 import datetime
 from unittest.mock import MagicMock, patch
-from fastapi import Request
-from typing import List, Any
+from typing import Any
 
 from app.utils.calendar_utils import (
     format_date, format_date_jp, get_today_formatted, get_current_month_formatted,
@@ -16,9 +15,6 @@ from app.utils.calendar_utils import (
     build_week_calendar_data, build_calendar_data, DateFormat, _detect_date_format,
     _split_date_string
 )
-from app.models.attendance import Attendance
-from app.models.location import Location
-from app.models.user import User
 
 
 class TestDateFormats:
@@ -181,12 +177,24 @@ class TestLastViewedDate:
         assert result == "2024-01-15"
 
     def test_get_last_viewed_date_with_legacy_ui_day(self) -> None:
-        """get_last_viewed_date関数のテスト（旧UIパス）"""
+        """旧UIパスは無視して今日の日付を返すことを確認"""
         mock_request = MagicMock()
         mock_request.headers.get.return_value = "http://localhost:8000/ui/calendar/day/2024-01-15?param=value"
-        
-        result = get_last_viewed_date(mock_request)
-        assert result == "2024-01-15"
+
+        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+            mock_today.return_value = "2024-02-01"
+            result = get_last_viewed_date(mock_request)
+            assert result == "2024-02-01"
+
+    def test_get_last_viewed_date_with_legacy_api_day(self) -> None:
+        """旧APIパスは無視して今日の日付を返すことを確認"""
+        mock_request = MagicMock()
+        mock_request.headers.get.return_value = "http://localhost:8000/api/day/2024-01-15?param=value"
+
+        with patch('app.utils.calendar_utils.get_today_formatted') as mock_today:
+            mock_today.return_value = "2024-02-10"
+            result = get_last_viewed_date(mock_request)
+            assert result == "2024-02-10"
 
     def test_get_last_viewed_date_with_invalid_date(self) -> None:
         """get_last_viewed_date関数のテスト（無効な日付）"""

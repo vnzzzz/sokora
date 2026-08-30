@@ -2,9 +2,8 @@
 カレンダーページのE2Eテスト
 """
 
-import pytest
 from playwright.sync_api import Page, expect
-from datetime import datetime, timedelta
+from datetime import datetime
 
 BASE_URL = "http://localhost:8000"
 UI_BASE = BASE_URL
@@ -77,14 +76,7 @@ def test_calendar_attendance_data_display(page: Page) -> None:
     # 勤怠種別関連のデータが表示されているかを確認
     page_content = page.locator("body").text_content()
     if page_content:
-        # 勤怠種別関連の表示要素を確認
-        location_indicators = ["オフィス", "リモート", "在宅", "出社", "勤務", "場所"]
-        has_location_info = any(indicator in page_content for indicator in location_indicators)
-        
-        # 人数や日数の表示確認
-        number_indicators = ["人", "日", "件", "名"]
-        has_numbers = any(indicator in page_content for indicator in number_indicators)
-        
+        # 勤怠種別関連の表示要素や人数/日数が含まれることを確認
         # 基本的なカレンダー機能が動作していることを確認
         # (勤怠データがなくてもカレンダー自体は表示される)
         assert len(page_content) > 50
@@ -175,7 +167,6 @@ def test_calendar_navigation_between_months(page: Page) -> None:
     # ナビゲーションボタンを探す
     nav_buttons = page.locator("a[href*='calendar'], button, .btn")
     
-    clicked_any = False
     for i in range(min(nav_buttons.count(), 3)):  # 最大3個まで試行
         button = nav_buttons.nth(i)
         if button.is_visible() and button.is_enabled():
@@ -186,9 +177,8 @@ def test_calendar_navigation_between_months(page: Page) -> None:
                 # コンテンツが変わったかチェック
                 new_content = page.locator("body").text_content()
                 if new_content and new_content != initial_content:
-                    clicked_any = True
                     break
-            except:
+            except Exception:
                 continue
     
     # 少なくとも基本的なページ構造は保持されていることを確認

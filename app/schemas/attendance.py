@@ -7,7 +7,7 @@
 
 from typing import List, Optional, Dict, Any, Union
 from datetime import date, datetime
-from pydantic import BaseModel, field_validator, Field, ConfigDict, field_serializer
+from pydantic import BaseModel, field_validator, ConfigDict
 
 
 class AttendanceBase(BaseModel):

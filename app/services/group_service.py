@@ -2,7 +2,6 @@
 """
 グループ関連のビジネスロジックを提供するサービス層モジュール。
 """
-from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session

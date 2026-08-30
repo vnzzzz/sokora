@@ -3,14 +3,14 @@ schemas の不足部分をカバーするテストケース
 """
 
 import pytest
-from datetime import date, datetime
+from datetime import date
 from pydantic import ValidationError
 
 from app.schemas.attendance import AttendanceCreate
-from app.schemas.group import GroupBase, GroupCreate
-from app.schemas.location import LocationBase, LocationCreate
-from app.schemas.user import UserBase, UserCreate
-from app.schemas.user_type import UserTypeBase, UserTypeCreate
+from app.schemas.group import GroupBase
+from app.schemas.location import LocationBase
+from app.schemas.user import UserBase
+from app.schemas.user_type import UserTypeBase
 
 
 class TestAttendanceSchemaValidation:

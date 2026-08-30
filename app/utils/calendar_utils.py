@@ -13,6 +13,7 @@ from fastapi import Request
 from typing import Dict, List, Any, Tuple, DefaultDict, Optional
 from collections import defaultdict
 from datetime import date, timedelta
+from urllib.parse import urlparse
 
 from app.models.attendance import Attendance # Attendancesの型ヒント用に必要
 from app.utils.ui_utils import generate_location_data
@@ -85,7 +86,6 @@ def get_last_viewed_date(request: Request) -> str:
 
     リクエストのRefererヘッダーから最後に表示された日付を抽出します。
     '/calendar/day/' パスの後に日付がある場合はその日付を返し、
-    （互換性のため旧パス '/ui/calendar/day/' や '/api/day/' も許容する）
     そうでない場合は今日の日付を返します。
 
     Args:
@@ -95,12 +95,13 @@ def get_last_viewed_date(request: Request) -> str:
         str: 最後に表示された日付（YYYY-MM-DD形式）
     """
     referer = request.headers.get("referer", "")
-    day_markers = ["/calendar/day/", "/ui/calendar/day/", "/api/day/"]
+    path = urlparse(referer).path
+    day_markers = ["/calendar/day/"]
 
     for marker in day_markers:
-        if marker in referer:
+        if path.startswith(marker):
             try:
-                date_part = referer.split(marker)[-1].split("?")[0].split("/")[0]
+                date_part = path.split(marker)[-1].split("/")[0]
                 # 日付形式の検証
                 if parse_date(date_part):
                     return date_part

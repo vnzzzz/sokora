@@ -41,7 +41,7 @@ def test_validate_location_update_success(db: Session) -> None:
     """勤怠種別更新バリデーション成功"""
     # 更新対象と、別名の勤怠種別を作成
     location_to_update = create_test_location(db, name=random_lower_string())
-    other_location = create_test_location(db, name=random_lower_string())
+    create_test_location(db, name=random_lower_string())
     db.commit()
 
     # ケース1: 存在しない名前に更新

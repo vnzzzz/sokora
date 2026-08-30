@@ -7,12 +7,16 @@ import datetime
 import pytest
 from fastapi import HTTPException
 
+from typing import Any
+
+from sqlalchemy.orm import Session
+
 from app.models.custom_holiday import CustomHoliday
 from app.schemas.custom_holiday import CustomHolidayCreate, CustomHolidayUpdate
 from app.services import custom_holiday_service
 
 
-def test_create_custom_holiday(db) -> None:
+def test_create_custom_holiday(db: Session) -> None:
     """祝日を新規作成できる"""
     holiday_in = CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="テスト休")
 
@@ -23,7 +27,7 @@ def test_create_custom_holiday(db) -> None:
     assert created.name == "テスト休"
 
 
-def test_create_custom_holiday_duplicate_date(db) -> None:
+def test_create_custom_holiday_duplicate_date(db: Session) -> None:
     """同じ日付で重複作成はエラー"""
     holiday_in = CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="テスト休")
     custom_holiday_service.create_custom_holiday_with_validation(db, custom_holiday_in=holiday_in)
@@ -35,7 +39,7 @@ def test_create_custom_holiday_duplicate_date(db) -> None:
         )
 
 
-def test_update_custom_holiday(db) -> None:
+def test_update_custom_holiday(db: Session) -> None:
     """祝日名を更新できる"""
     created = custom_holiday_service.create_custom_holiday_with_validation(
         db, custom_holiday_in=CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="旧名称")
@@ -43,20 +47,20 @@ def test_update_custom_holiday(db) -> None:
 
     updated = custom_holiday_service.update_custom_holiday_with_validation(
         db,
-        custom_holiday_id=created.id,
+        custom_holiday_id=int(created.id),
         custom_holiday_in=CustomHolidayUpdate(name="新名称"),
     )
 
     assert updated.name == "新名称"
 
 
-def test_delete_custom_holiday(db) -> None:
+def test_delete_custom_holiday(db: Session) -> None:
     """祝日を削除できる"""
     created = custom_holiday_service.create_custom_holiday_with_validation(
         db, custom_holiday_in=CustomHolidayCreate(date=datetime.date(2024, 12, 31), name="削除対象")
     )
 
-    deleted = custom_holiday_service.delete_custom_holiday(db, custom_holiday_id=created.id)
+    deleted = custom_holiday_service.delete_custom_holiday(db, custom_holiday_id=int(created.id))
 
     assert deleted.id == created.id
     assert db.query(CustomHoliday).count() == 0

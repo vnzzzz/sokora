@@ -1,6 +1,6 @@
 # UI 要件
 
-Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの配置は [templates.md](./templates.md) を参照し、API/DB の前提はそれぞれの要件ドキュメントに委譲します。SSR ルートはアプリルート直下（`/attendance/...` など）に配置し、OpenAPI には含めません。旧プレフィックス `/ui` へのアクセスはリダイレクトで後方互換を保ちます。
+Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの配置は [templates.md](./templates.md) を参照し、API/DB の前提はそれぞれの要件ドキュメントに委譲します。SSR ルートはアプリルート直下（`/attendance/...` など）に配置し、OpenAPI には含めません。
 
 ## 基本方針
 - `layout/base.html` を共通レイアウトとして、ページテンプレートは `pages/*.html`、再利用部品は `components/` 配下に置く。
@@ -31,7 +31,7 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 
 ## CSV と分析
 - `/csv`（`pages/csv.html`）：月選択とエンコーディング選択 UI。ダウンロードボタンが `/api/v1/csv/download` にクエリを付けてリダイレクトする。UI 側では単純なフォームで、バリデーションは API に委譲。
-- `/analysis`（`pages/analysis.html`）：勤怠集計ビュー。月/年モードの切替、グループ・勤怠種別の複数選択に対応し、テーブルは勤怠種別ごとの件数を表示する。表示順はロケーション `order` やグループ/社員種別の並び順を尊重する。詳細モードでは特定勤怠種別のユーザー別内訳を表示する。旧パス `/ui/analysis` は `/analysis` にリダイレクトされる。
+- `/analysis`（`pages/analysis.html`）：勤怠集計ビュー。月/年モードの切替、グループ・勤怠種別の複数選択に対応し、テーブルは勤怠種別ごとの件数を表示する。表示順はロケーション `order` やグループ/社員種別の並び順を尊重する。詳細モードでは特定勤怠種別のユーザー別内訳を表示する。
 
 ## 相互参照
 - API 呼び出しの前提やレスポンス構造は [API 要件](../api/requirements.md) を参照。

@@ -3,11 +3,10 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.schemas.user import UserCreate, UserUpdate
-from app.models.user import User
 from app.models import Group as GroupModel, UserType as UserTypeModel
 from app.schemas.group import GroupCreate
 from app.schemas.user_type import UserTypeCreate
-from app.tests.utils.utils import random_lower_string, random_email
+from app.tests.utils.utils import random_lower_string
 
 # pytestmark = pytest.mark.asyncio # CRUD操作は同期的であるため不要
 
@@ -17,10 +16,10 @@ def db_with_data(db: Session) -> Session:
     """テストに必要な基本データを投入したDBセッション"""
     # Group を作成
     group_in = GroupCreate(name="Test Group")
-    group = crud.group.create(db=db, obj_in=group_in)
+    crud.group.create(db=db, obj_in=group_in)
     # UserType を作成
     user_type_in = UserTypeCreate(name="Test Type")
-    user_type = crud.user_type.create(db=db, obj_in=user_type_in)
+    crud.user_type.create(db=db, obj_in=user_type_in)
 
     # このフィクスチャ内では User は作成しない
     # User 作成は各テストケース、またはそれを必要とするフィクスチャで行う
@@ -111,7 +110,7 @@ def test_update_user(db_with_data: Session) -> None:
     user_in_update = UserUpdate(username=new_username, group_id=int(new_group.id), user_type_id=int(new_user_type.id))
 
     # update を実行
-    updated_user_instance = crud.user.update(db=db, db_obj=user, obj_in=user_in_update)
+    crud.user.update(db=db, db_obj=user, obj_in=user_in_update)
     # update 後に commit を追加
     db.commit()
 

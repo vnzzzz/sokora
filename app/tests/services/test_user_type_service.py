@@ -41,7 +41,7 @@ def test_validate_user_type_update_success(db: Session) -> None:
     """社員種別更新バリデーション成功"""
     # 更新対象と、別名の社員種別を作成
     user_type_to_update = create_test_user_type(db, name=random_lower_string())
-    other_user_type = create_test_user_type(db, name=random_lower_string())
+    create_test_user_type(db, name=random_lower_string())
     db.commit()
 
     # ケース1: 存在しない名前に更新

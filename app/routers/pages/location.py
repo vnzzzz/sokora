@@ -5,7 +5,7 @@
 勤怠種別の設定管理に関連するルートハンドラー
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 import json
 from collections import defaultdict
 
@@ -18,7 +18,6 @@ from app.crud.location import location
 from app.db.session import get_db
 from app import schemas # スキーマをインポート
 from app.services import location_service # location_service をインポート
-from app.utils.ui_utils import TAILWIND_COLORS
 
 # ルーター定義
 router = APIRouter(prefix="/locations", tags=["Pages"])

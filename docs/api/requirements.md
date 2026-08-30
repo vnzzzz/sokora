@@ -9,7 +9,7 @@
 - 認証は Keycloak OIDC を一次経路とし、管理者のみが使えるローカルログインを併置する。自動フェイルオーバーは行わず、ログイン画面で利用者が選択する。
 
 ## 認証/セキュリティ
-- ガード: `SOKORA_AUTH_REQUIRED=true` 時に UI/`/api` 双方へセッションガードを適用し、未認証アクセスは UI → `/auth/login` へリダイレクト、API → 401 JSON（`{"detail": "Unauthorized"}`）を返す。`/auth/*` と静的ファイル、`/docs`/`/redoc` は例外。
+- ガード: `SOKORA_AUTH_ENABLED=true` 時に UI/`/api` 双方へセッションガードを適用し、未認証アクセスは UI → `/auth/login` へリダイレクト、API → 401 JSON（`{"detail": "Unauthorized"}`）を返す。`/auth/*` と静的ファイル、`/docs`/`/redoc` は例外。
 - セッション: Starlette セッションで管理。`SOKORA_AUTH_SESSION_SECRET` で署名鍵、`SOKORA_AUTH_SESSION_TTL_SECONDS`（デフォルト 3600 秒）で有効期限を指定。
 - Keycloak OIDC:
   - `.env` 設定: `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, `OIDC_SCOPES`（デフォルト `openid profile email`）, 任意で `OIDC_AUTHORIZATION_ENDPOINT`, `OIDC_TOKEN_ENDPOINT`, `OIDC_USERINFO_ENDPOINT`, `OIDC_LOGOUT_ENDPOINT`, `OIDC_HTTP_TIMEOUT`（デフォルト 3s）。
@@ -18,7 +18,7 @@
 - OIDC 有効/無効トグル:
   - ローカル管理者専用ページで切替可能。状態は `data/auth_state.json`（`SOKORA_AUTH_STATE_PATH` で上書き可）に保持し、`oidc_enabled=false` の場合は OIDC フローを開始せず 400 を返す。
 - ローカル管理者ログイン:
-  - 環境変数 `SOKORA_LOCAL_ADMIN_USERNAME`, `SOKORA_LOCAL_ADMIN_PASSWORD` が揃っている場合のみ有効。入力値は `secrets.compare_digest` で照合し、成功時は `role=admin` を持つセッションを発行する。
+  - 環境変数 `SOKORA_LOCAL_AUTH_ENABLED` が true かつ `SOKORA_LOCAL_ADMIN_USERNAME`, `SOKORA_LOCAL_ADMIN_PASSWORD` が揃っている場合のみ有効。入力値は `secrets.compare_digest` で照合し、成功時は `role=admin` を持つセッションを発行する。
   - Keycloak 障害時でもログイン画面のローカル経路は常に提示する。一般ユーザー向けのローカルログインは提供しない。
   - 設定欠落時は 400 を返し、ログイン画面にエラーを表示する。
 

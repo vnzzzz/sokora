@@ -1,10 +1,9 @@
 {% extends "layout/base.html" %}
 
 {% block content %}
-<section class="max-w-2xl mx-auto mt-8 space-y-4">
-  <div class="text-center space-y-1">
-    <h1 class="text-2xl font-bold">ログイン</h1>
-    <p class="text-sm text-base-content/70">Keycloak または管理者ローカル経路を選択してください。</p>
+<section class="space-y-6">
+  <div class="text-center space-y-2">
+    <h1 class="text-3xl font-bold">Sokora login</h1>
   </div>
 
   {% if error_message %}
@@ -13,44 +12,28 @@
   </div>
   {% endif %}
 
-  <div class="card bg-base-200 shadow">
-    <div class="card-body space-y-3">
-      <h2 class="card-title text-base">Keycloak でログイン</h2>
-      {% if oidc_enabled %}
-      <form action="/auth/redirect" method="get" class="space-y-3">
-        <input type="hidden" name="next" value="{{ next_path }}" />
-        <button type="submit" class="btn btn-primary w-full">Keycloak でログイン</button>
-      </form>
-      {% elif oidc_toggle_enabled %}
-      <p class="text-sm text-base-content/70">OIDC 設定が見つかりません。管理者に確認してください。</p>
-      {% else %}
-      <div class="alert alert-warning text-sm">
-        <span>OIDC は現在無効化されています。管理者設定ページで有効化してください。</span>
-      </div>
-      {% endif %}
-    </div>
+  <div class="space-y-3">
+    <form action="/auth/redirect" method="get" class="space-y-3">
+      <input type="hidden" name="next" value="{{ next_path }}" />
+      <button type="submit" class="btn btn-primary btn-lg w-full" {% if not oidc_enabled %}disabled{% endif %}>
+        SSOでログイン
+      </button>
+    </form>
+    {% if not oidc_enabled %}
+    <p class="text-sm text-base-content/70 text-center">SSOが現在利用できません。管理者に確認してください。</p>
+    {% endif %}
   </div>
 
-  <div class="card bg-base-200 shadow">
-    <div class="card-body space-y-3">
-      <h2 class="card-title text-base">管理者ローカルログイン</h2>
-      {% if local_enabled %}
-      <form action="/auth/local" method="post" class="space-y-3">
-        <input type="hidden" name="next" value="{{ next_path }}" />
-        <div class="form-control">
-          <label class="label text-sm font-semibold">ユーザー名</label>
-          <input name="username" class="input input-bordered" autocomplete="username" required />
-        </div>
-        <div class="form-control">
-          <label class="label text-sm font-semibold">パスワード</label>
-          <input type="password" name="password" class="input input-bordered" autocomplete="current-password" required />
-        </div>
-        <button type="submit" class="btn btn-outline w-full">管理者としてログイン</button>
-      </form>
-      {% else %}
-      <p class="text-sm text-base-content/70">ローカル管理者ログインは無効化されています。</p>
-      {% endif %}
-    </div>
+  <div class="divider text-xs text-base-content/70">or</div>
+
+  <div class="space-y-2 text-center">
+    {% if local_enabled %}
+    <a href="/auth/login/admin?next={{ next_path | urlencode }}" class="btn btn-ghost w-full">
+      管理者ログインへ進む
+    </a>
+    {% else %}
+    <p class="text-sm text-base-content/60">管理者ログインは現在無効化されています。</p>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

@@ -2,7 +2,6 @@
 
 from playwright.sync_api import Page, expect
 import time
-import re
 
 BASE_URL = "http://localhost:8000"
 UI_BASE = BASE_URL
@@ -42,8 +41,6 @@ def test_edit_group(page: Page) -> None:
     timestamp = int(time.time())
     initial_name = f"テスト編集前グループ_{timestamp}"
     new_name = f"テスト編集済みグループ_{timestamp}"
-    created_group_id = None
-
     page.goto(GROUPS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
