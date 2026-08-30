@@ -9,7 +9,7 @@ from app.schemas.location import LocationCreate # Create スキーマをイン�
 pytestmark = pytest.mark.asyncio
 
 # API エンドポイントのベースパス
-API_ENDPOINT = "/api/locations"
+API_ENDPOINT = "/api/v1/locations"
 
 async def test_get_locations_empty(async_client: AsyncClient) -> None:
     """
@@ -44,7 +44,7 @@ async def test_get_locations_with_data(async_client: AsyncClient, test_app: Fast
 
 async def test_create_location_success(async_client: AsyncClient, db: Session) -> None:
     """
-    POST /api/locations - 勤怠種別が正常に作成されることをテストします。
+    POST /api/v1/locations - 勤怠種別が正常に作成されることをテストします。
     """
     location_name = "New Test Location"
     payload = {"name": location_name}
@@ -64,7 +64,7 @@ async def test_create_location_success(async_client: AsyncClient, db: Session) -
 
 async def test_create_location_missing_name(async_client: AsyncClient) -> None:
     """
-    POST /api/locations - 勤怠種別名がない場合に 400/422 エラーが返されることをテストします。
+    POST /api/v1/locations - 勤怠種別名がない場合に 400/422 エラーが返されることをテストします。
     """
     # ケース1: name が空文字列 (サービス層で 400)
     payload_empty = {"name": ""}
@@ -79,7 +79,7 @@ async def test_create_location_missing_name(async_client: AsyncClient) -> None:
 
 async def test_create_location_duplicate_name(async_client: AsyncClient, db: Session) -> None:
     """
-    POST /api/locations - 重複する勤怠種別名で作成しようとした場合に 400 エラーが返されることをテストします。
+    POST /api/v1/locations - 重複する勤怠種別名で作成しようとした場合に 400 エラーが返されることをテストします。
     """
     from app.crud.location import location as crud_location
 
@@ -97,7 +97,7 @@ async def test_create_location_duplicate_name(async_client: AsyncClient, db: Ses
 
 async def test_update_location_success(async_client: AsyncClient, db: Session) -> None:
     """
-    PUT /api/locations/{location_id} - 勤怠種別が正常に更新されることをテストします。
+    PUT /api/v1/locations/{location_id} - 勤怠種別が正常に更新されることをテストします。
     """
     from app.crud.location import location as crud_location
 
@@ -124,7 +124,7 @@ async def test_update_location_success(async_client: AsyncClient, db: Session) -
 
 async def test_update_location_not_found(async_client: AsyncClient) -> None:
     """
-    PUT /api/locations/{location_id} - 存在しない勤怠種別IDを指定した場合に 404 エラーが返されることをテストします。
+    PUT /api/v1/locations/{location_id} - 存在しない勤怠種別IDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_location_id = 9999
     payload = {"name": "Non Existent Update"}
@@ -136,7 +136,7 @@ async def test_update_location_not_found(async_client: AsyncClient) -> None:
 
 async def test_update_location_duplicate_name(async_client: AsyncClient, db: Session) -> None:
     """
-    PUT /api/locations/{location_id} - 他の勤怠種別が使用中の名前に更新しようとした場合に 400 エラーが返されることをテストします。
+    PUT /api/v1/locations/{location_id} - 他の勤怠種別が使用中の名前に更新しようとした場合に 400 エラーが返されることをテストします。
     """
     from app.crud.location import location as crud_location
 
@@ -156,7 +156,7 @@ async def test_update_location_duplicate_name(async_client: AsyncClient, db: Ses
 
 async def test_update_location_same_name(async_client: AsyncClient, db: Session) -> None:
     """
-    PUT /api/locations/{location_id} - 同じ名前で更新しても正常に完了することをテストします。
+    PUT /api/v1/locations/{location_id} - 同じ名前で更新しても正常に完了することをテストします。
     """
     from app.crud.location import location as crud_location
 
@@ -181,7 +181,7 @@ async def test_update_location_same_name(async_client: AsyncClient, db: Session)
 
 async def test_delete_location_success(async_client: AsyncClient, db: Session) -> None:
     """
-    DELETE /api/locations/{location_id} - 勤怠種別が正常に削除されることをテストします。
+    DELETE /api/v1/locations/{location_id} - 勤怠種別が正常に削除されることをテストします。
     """
     from app.crud.location import location as crud_location
 
@@ -201,7 +201,7 @@ async def test_delete_location_success(async_client: AsyncClient, db: Session) -
 
 async def test_delete_location_not_found(async_client: AsyncClient) -> None:
     """
-    DELETE /api/locations/{location_id} - 存在しない勤怠種別IDを指定した場合に 404 エラーが返されることをテストします。
+    DELETE /api/v1/locations/{location_id} - 存在しない勤怠種別IDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_location_id = 9999
 

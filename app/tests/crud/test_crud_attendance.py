@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 from datetime import date, datetime, time, timedelta
+from typing import Any, Dict
 from unittest.mock import patch, MagicMock
 
 from app import crud
@@ -256,6 +257,121 @@ def test_delete_attendances_by_user_id(db_with_attendance_data: Session) -> None
         db=db, user_id="nonexistent"
     )
     assert deleted_count_zero == 0
+
+
+@pytest.fixture
+def analysis_seed(db: Session) -> Dict[str, Any]:
+    """月次・年度集計のテストデータを投入"""
+    dev_group = crud.group.create(db=db, obj_in=GroupCreate(name="開発部"))
+    sales_group = crud.group.create(db=db, obj_in=GroupCreate(name="営業部"))
+
+    full_time = crud.user_type.create(db=db, obj_in=UserTypeCreate(name="正社員"))
+    contractor = crud.user_type.create(db=db, obj_in=UserTypeCreate(name="契約"))
+
+    office = crud.location.create(db=db, obj_in=LocationCreate(name="東京オフィス", order=1))
+    remote = crud.location.create(db=db, obj_in=LocationCreate(name="リモート", order=2))
+
+    alice = crud.user.create(
+        db=db,
+        obj_in=UserCreate(
+            id="U-ALICE",
+            username="Alice",
+            group_id=int(dev_group.id),
+            user_type_id=int(full_time.id),
+        ),
+    )
+    bob = crud.user.create(
+        db=db,
+        obj_in=UserCreate(
+            id="U-BOB",
+            username="Bob",
+            group_id=int(sales_group.id),
+            user_type_id=int(contractor.id),
+        ),
+    )
+
+    def add_att(user_id: str, loc_id: int, y: int, m: int, d: int) -> None:
+        crud.attendance.create(
+            db=db,
+            obj_in=AttendanceCreate(
+                user_id=user_id,
+                location_id=loc_id,
+                date=date(y, m, d),
+            ),
+        )
+
+    # 2024-05 (月次集計に含める)
+    add_att("U-ALICE", int(office.id), 2024, 5, 2)
+    add_att("U-ALICE", int(remote.id), 2024, 5, 10)
+    add_att("U-BOB", int(remote.id), 2024, 5, 5)
+
+    # 2024年度 (4月開始〜翌年3月) に含まれる追加分
+    add_att("U-ALICE", int(office.id), 2024, 7, 1)
+    add_att("U-BOB", int(remote.id), 2024, 12, 1)
+    add_att("U-BOB", int(office.id), 2025, 2, 3)  # 同一年度内
+
+    # 2023年度のデータ（年度集計では除外される）
+    add_att("U-BOB", int(remote.id), 2024, 3, 15)
+
+    return {
+        "db": db,
+        "users": {"alice": str(alice.id), "bob": str(bob.id)},
+        "locations": {"office": int(office.id), "remote": int(remote.id)},
+        "groups": {"dev": dev_group.name, "sales": sales_group.name},
+    }
+
+
+def test_analysis_monthly_counts_and_dates(analysis_seed: Dict[str, Any]) -> None:
+    """月次集計で勤怠種別ごとの日数と日付が返る"""
+    db = analysis_seed["db"]
+    analysis = crud.attendance.get_attendance_analysis_data(db=db, month="2024-05")
+
+    period = analysis["period"]
+    assert period["mode"] == "month"
+    assert period["label"] == "2024年5月"
+
+    alice_id = analysis_seed["users"]["alice"]
+    office_id = analysis_seed["locations"]["office"]
+    remote_id = analysis_seed["locations"]["remote"]
+
+    alice_data = analysis["users"][alice_id]
+    assert alice_data["location_counts"][office_id] == 1
+    assert alice_data["location_counts"][remote_id] == 1
+    remote_dates = [d["date_str"] for d in alice_data["location_dates"][remote_id]]
+    assert remote_dates == ["2024-05-10"]
+
+    # グループ別集計も月次範囲で作成される
+    dev_group = analysis_seed["groups"]["dev"]
+    assert analysis["group_summary"][dev_group]["total_days"] == 2
+    assert analysis["group_summary"][dev_group]["location_counts"][office_id] == 1
+
+
+def test_analysis_fiscal_year_range_and_grouping(analysis_seed: Dict[str, Any]) -> None:
+    """年度集計で4月〜翌3月のデータがまとめて集計され、グループ別サマリーも返る"""
+    db = analysis_seed["db"]
+    analysis = crud.attendance.get_attendance_analysis_data(db=db, fiscal_year=2024)
+
+    period = analysis["period"]
+    assert period["mode"] == "fiscal_year"
+    assert period["start"] == date(2024, 4, 1)
+    assert period["end"] == date(2025, 3, 31)
+
+    bob_id = analysis_seed["users"]["bob"]
+    office_id = analysis_seed["locations"]["office"]
+    remote_id = analysis_seed["locations"]["remote"]
+
+    bob_data = analysis["users"][bob_id]
+    # 2024年度に含まれる出社が2日（5月と翌年2月）、3月のデータは除外
+    assert bob_data["location_counts"][remote_id] == 2  # 5月・12月の2日分
+    assert bob_data["location_counts"][office_id] == 1
+    office_dates = [d["date_str"] for d in bob_data["location_dates"][office_id]]
+    assert office_dates == ["2025-02-03"]
+
+    # グループ別サマリーは全勤怠種別を合算
+    sales_group = analysis_seed["groups"]["sales"]
+    group_totals = analysis["group_summary"][sales_group]["location_counts"]
+    assert group_totals[office_id] == 1
+    assert group_totals[remote_id] == 2
 
 
 def test_update_attendance_method(db_with_attendance_data: Session) -> None:

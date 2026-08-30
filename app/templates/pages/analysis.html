@@ -4,10 +4,13 @@ block content %}
   <div class="flex justify-between items-center mb-4">
     <div>
       <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
+      <div class="mt-1">
+        <span class="badge badge-outline badge-sm analysis-period-label">{{ analysis_data.period.label }}</span>
+      </div>
     </div>
   </div>
 
-  <div class="mt-4">
+  <div class="mt-4" id="analysis-root">
     <!-- 期間選択 -->
     <div class="mb-4 p-3 bg-base-100 border border-base-300 rounded-lg">
       <div class="flex flex-wrap items-center gap-4">
@@ -34,137 +37,93 @@ block content %}
               class="radio radio-sm"
               {% if is_year_mode %}checked{% endif %}
             />
-            <span class="text-sm">年別</span>
+            <span class="text-sm">年度別</span>
           </label>
         </div>
         
         <!-- 月選択 -->
         <div id="month-selection" class="{% if is_year_mode %}hidden{% endif %}">
-          <select id="month-select" class="select select-bordered select-sm w-48">
-            {% for month_option in month_options %}
-              {% set month_value = current_year ~ '-' ~ month_option %}
-              <option value="{{ month_value }}" {% if current_month and month_option == current_month.split('-')[1] %}selected{% endif %}>
-                {{ current_year }}年{{ month_option }}月
-              </option>
-            {% endfor %}
-            {% for year_option in year_options %}
-              {% if year_option != current_year %}
-                {% for month_num in range(1, 13) %}
-                  {% set month_str = '%02d'|format(month_num) %}
-                  {% set year_month_value = year_option ~ '-' ~ month_str %}
-                  <option value="{{ year_month_value }}" {% if current_month == year_month_value %}selected{% endif %}>
-                    {{ year_option }}年{{ month_num }}月
-                  </option>
-                {% endfor %}
-              {% endif %}
-            {% endfor %}
-          </select>
+          <input
+            type="month"
+            id="month-input"
+            class="input input-bordered input-sm w-48"
+            value="{{ current_month or '' }}"
+          />
         </div>
         
         <!-- 年選択 -->
         <div id="year-selection" class="{% if not is_year_mode %}hidden{% endif %}">
-          <select id="year-select" class="select select-bordered select-sm w-32">
+          <div class="flex items-center gap-2">
+            <select id="year-select" class="select select-bordered select-sm w-32">
             {% for year_option in year_options %}
-              <option value="{{ year_option }}" {% if is_year_mode and year_option == current_year %}selected{% endif %}>
+              <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
                 {{ year_option }}年度
               </option>
             {% endfor %}
           </select>
+            <span class="text-xs text-base-content/70">4月〜翌3月</span>
+          </div>
         </div>
         
-        <!-- 適用ボタン -->
-        <button id="apply-period" class="btn btn-primary btn-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-          </svg>
-          適用
-        </button>
       </div>
     </div>
 
-    <!-- グループ・勤怠種別選択 -->
+    <!-- フィルター（勤怠種別のみ） -->
     <div class="mb-4 p-3 bg-base-200 rounded-lg">
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <!-- グループ選択（左側） -->
-        <div class="lg:col-span-1">
-          <h4 class="text-sm font-medium mb-3">グループ</h4>
-          <div class="space-y-2">
-            {% for group_name in sorted_group_names %}
-            <label class="flex items-center space-x-2 cursor-pointer" for="group-{{ loop.index }}">
+      <h4 class="text-sm font-medium mb-3">勤怠種別</h4>
+      
+      {# 勤怠種別を分類ごとにグループ化 #}
+      {% if is_detail_mode %}
+        {% set locations = detail_data.locations %}
+      {% else %}
+        {% set locations = analysis_data.locations %}
+      {% endif %}
+      
+      {% set categories = {} %}
+      {% for location in locations %}
+        {% set category = location.category or '未分類' %}
+        {% if category not in categories %}
+          {% set _ = categories.update({category: []}) %}
+        {% endif %}
+        {% set _ = categories[category].append(location) %}
+      {% endfor %}
+      
+      {# 分類でソートしたカテゴリーリストを作成 #}
+      {% set sorted_categories = [] %}
+      {% for category_name in categories.keys()|sort %}
+        {% set _ = sorted_categories.append(category_name) %}
+      {% endfor %}
+      
+      {# 未分類カテゴリーは最後に表示 #}
+      {% if '未分類' in sorted_categories %}
+        {% set _ = sorted_categories.remove('未分類') %}
+        {% set _ = sorted_categories.append('未分類') %}
+      {% endif %}
+      
+      {# 各カテゴリーごとに表示 #}
+      {% for category in sorted_categories %}
+        {% set category_locations = categories[category] %}
+        <div class="mb-3">
+          <h5 class="font-medium text-base-content mb-2 border-b pb-1 text-xs">{{ category }}</h5>
+          <div class="flex flex-wrap gap-3">
+            {# 表示順（order）でソート #}
+            {% for location in category_locations|sort(attribute='order') %}
+            <label class="flex items-center space-x-2 cursor-pointer" for="location-{{ location.id }}">
               <input 
                 type="checkbox" 
-                id="group-{{ loop.index }}"
-                name="selected_groups"
-                value="{{ group_name }}"
-                class="checkbox checkbox-sm group-checkbox" 
-                data-group-name="{{ group_name }}"
-                checked
+                id="location-{{ location.id }}"
+                name="selected_locations"
+                value="{{ location.id }}"
+                class="checkbox checkbox-sm location-checkbox" 
+                data-location-id="{{ location.id }}"
+                data-location-name="{{ location.name }}"
               />
-              <span class="text-sm">{{ group_name }}</span>
+              <span class="text-sm">{{ location.name }}</span>
             </label>
             {% endfor %}
           </div>
         </div>
-        
-        <!-- 勤怠種別選択（右側） -->
-        <div class="lg:col-span-3">
-          <h4 class="text-sm font-medium mb-3">勤怠種別</h4>
-          
-          {# 勤怠種別を分類ごとにグループ化 #}
-          {% if is_detail_mode %}
-            {% set locations = detail_data.locations %}
-          {% else %}
-            {% set locations = analysis_data.locations %}
-          {% endif %}
-          
-          {% set categories = {} %}
-          {% for location in locations %}
-            {% set category = location.category or '未分類' %}
-            {% if category not in categories %}
-              {% set _ = categories.update({category: []}) %}
-            {% endif %}
-            {% set _ = categories[category].append(location) %}
-          {% endfor %}
-          
-          {# 分類でソートしたカテゴリーリストを作成 #}
-          {% set sorted_categories = [] %}
-          {% for category_name in categories.keys()|sort %}
-            {% set _ = sorted_categories.append(category_name) %}
-          {% endfor %}
-          
-          {# 未分類カテゴリーは最後に表示 #}
-          {% if '未分類' in sorted_categories %}
-            {% set _ = sorted_categories.remove('未分類') %}
-            {% set _ = sorted_categories.append('未分類') %}
-          {% endif %}
-          
-          {# 各カテゴリーごとに表示 #}
-          {% for category in sorted_categories %}
-            {% set category_locations = categories[category] %}
-            <div class="mb-3">
-              <h5 class="font-medium text-base-content mb-2 border-b pb-1 text-xs">{{ category }}</h5>
-              <div class="flex flex-wrap gap-3">
-                {# 表示順（order）でソート #}
-                {% for location in category_locations|sort(attribute='order') %}
-                <label class="flex items-center space-x-2 cursor-pointer" for="location-{{ location.id }}">
-                  <input 
-                    type="checkbox" 
-                    id="location-{{ location.id }}"
-                    name="selected_locations"
-                    value="{{ location.id }}"
-                    class="checkbox checkbox-sm location-checkbox" 
-                    data-location-id="{{ location.id }}"
-                    data-location-name="{{ location.name }}"
-                    {% if is_detail_mode and location.id == current_location_id %}checked{% endif %}
-                  />
-                  <span class="text-sm">{{ location.name }}</span>
-                </label>
-                {% endfor %}
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
+      {% endfor %}
     </div>
 
     <!-- データ表示 -->
@@ -184,8 +143,8 @@ block content %}
       </div>
       
       <div class="mb-6">
-        <div class="overflow-x-auto w-full">
-          <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed">
+      <div class="overflow-x-auto w-full">
+        <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed" data-testid="analysis-table">
             <thead>
               <tr>
                 <!-- グループ列ヘッダー -->
@@ -216,7 +175,7 @@ block content %}
                 {% set user_type_list = grouped_users[group_name] %}
                 {% for user_type_name in group_user_types[group_name] %}
                   <!-- 社員種別ヘッダー行 -->
-                    <tr class="bg-base-200/80 group-row" data-group-name="{{ group_name }}">
+                  <tr class="bg-base-200/80 group-row" data-group-name="{{ group_name }}">
                     <!-- グループ名セル (グループの最初の種別の行に表示) -->
                     <td class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top" style="width: 50px; min-width: 50px; max-width: 50px">
                       {% if loop.first %}
@@ -248,12 +207,12 @@ block content %}
                   {% endfor %}
                   
                   {% for user_id, user_info in user_types_in_group[user_type_name] %}
-                    <tr class="hover:bg-base-300/30 group-row" data-group-name="{{ group_name }}">
-                    <!-- グループ名セル (空) -->
-                    <td class="sticky left-0 z-20 bg-base-100" style="width: 50px; min-width: 50px; max-width: 50px"></td>
-                    <!-- 社員名セル -->
-                    <td class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1" style="width: 200px; min-width: 200px; max-width: 200px">
-                      {{ user_info.user_name }}
+                  <tr class="hover:bg-base-300/30 group-row" data-group-name="{{ group_name }}">
+                  <!-- グループ名セル (空) -->
+                  <td class="sticky left-0 z-20 bg-base-100" style="width: 50px; min-width: 50px; max-width: 50px"></td>
+                  <!-- 社員名セル -->
+                  <td class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1" style="width: 200px; min-width: 200px; max-width: 200px">
+                    {{ user_info.user_name }}
                     </td>
                     <!-- 勤怠種別ごとのセル -->
                     {% for location in analysis_data.locations %}
@@ -268,12 +227,28 @@ block content %}
                     {% endfor %}
                       <!-- 登録日数セル（常に表示） -->
                       <td class="text-center p-0.5 detail-count-cell" style="min-width: 80px; width: 80px;">
-                        <span class="text-base-content/30">-</span>
+                        {% set user_total = user_info.total_days or 0 %}
+                        <span class="{{ 'badge badge-primary badge-sm' if user_total else 'text-base-content/30' }}">{{ user_total if user_total else '-' }}</span>
                       </td>
                       <!-- 登録日付一覧セル（常に表示） -->
                       <td class="text-left p-0.5 detail-dates-cell" style="min-width: 400px;" data-user-id="{{ user_id }}">
-                        <div class="flex flex-wrap gap-2 text-sm">
-                          <!-- JavaScriptで動的に日付を表示 -->
+                        {% set rendered_any = false %}
+                        <div class="grid grid-cols-[140px,1fr] gap-x-2 gap-y-1 text-sm">
+                          {% for location in analysis_data.locations %}
+                            {% set dates = location_details.get(location.id, {}).get(user_id, []) %}
+                            {% if dates %}
+                              {% set rendered_any = true %}
+                              <div class="font-medium text-base-content whitespace-nowrap">{{ location.name }}</div>
+                              <div class="flex flex-wrap gap-1">
+                                {% for date_info in dates %}
+                                  <span class="badge badge-ghost badge-sm" title="{{ date_info.date_str }}">{{ date_info.date_simple }}</span>
+                                {% endfor %}
+                              </div>
+                            {% endif %}
+                          {% endfor %}
+                          {% if not rendered_any %}
+                            <span class="text-base-content/30">-</span>
+                          {% endif %}
                         </div>
                       </td>
                   </tr>
@@ -298,7 +273,7 @@ block content %}
     {% if analysis_data.users %}
     <div class="mb-6">
       <div class="overflow-x-auto w-full">
-        <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed">
+        <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed" data-testid="analysis-table">
           <thead>
             <tr>
               <!-- グループ列ヘッダー -->
@@ -329,7 +304,7 @@ block content %}
               {% set user_type_list = grouped_users[group_name] %}
               {% for user_type_name in group_user_types[group_name] %}
                 <!-- 社員種別ヘッダー行 -->
-                  <tr class="bg-base-200/80 group-row" data-group-name="{{ group_name }}">
+                  <tr class="bg-base-200/80 group-row group-header" data-group-name="{{ group_name }}">
                   <!-- グループ名セル (グループの最初の種別の行に表示) -->
                   <td class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top" style="width: 50px; min-width: 50px; max-width: 50px">
                     {% if loop.first %}
@@ -361,7 +336,7 @@ block content %}
                 {% endfor %}
                 
                 {% for user_id, user_info in user_types_in_group[user_type_name] %}
-                  <tr class="hover:bg-base-300/30 group-row" data-group-name="{{ group_name }}">
+                  <tr class="hover:bg-base-300/30 group-row user-row" data-group-name="{{ group_name }}" data-user-name="{{ user_info.user_name|lower }}">
                   <!-- グループ名セル (空) -->
                   <td class="sticky left-0 z-20 bg-base-100" style="width: 50px; min-width: 50px; max-width: 50px"></td>
                   <!-- 社員名セル -->
@@ -381,12 +356,28 @@ block content %}
                   {% endfor %}
                     <!-- 登録日数セル（常に表示） -->
                     <td class="text-center p-0.5 detail-count-cell" style="min-width: 80px; width: 80px;">
-                    <span class="text-base-content/30">-</span>
-                  </td>
+                      {% set user_total = user_info.total_days or 0 %}
+                      <span class="{{ 'badge badge-primary badge-sm' if user_total else 'text-base-content/30' }}">{{ user_total if user_total else '-' }}</span>
+                    </td>
                     <!-- 登録日付一覧セル（常に表示） -->
                     <td class="text-left p-0.5 detail-dates-cell" style="min-width: 400px;" data-user-id="{{ user_id }}">
-                      <div class="flex flex-wrap gap-2 text-sm">
-                        <!-- JavaScriptで動的に日付を表示 -->
+                      {% set rendered_any = false %}
+                      <div class="grid grid-cols-[140px,1fr] gap-x-2 gap-y-1 text-sm">
+                        {% for location in analysis_data.locations %}
+                          {% set dates = location_details.get(location.id, {}).get(user_id, []) %}
+                          {% if dates %}
+                            {% set rendered_any = true %}
+                            <div class="font-medium text-base-content whitespace-nowrap">{{ location.name }}</div>
+                            <div class="flex flex-wrap gap-1">
+                              {% for date_info in dates %}
+                                <span class="badge badge-ghost badge-sm" title="{{ date_info.date_str }}">{{ date_info.date_simple }}</span>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                        {% if not rendered_any %}
+                          <span class="text-base-content/30">-</span>
+                        {% endif %}
                       </div>
                     </td>
                 </tr>
@@ -419,7 +410,15 @@ block content %}
 <script id="analysis-config" type="application/json">
 {
   "isDetailMode": {% if is_detail_mode %}true{% else %}false{% endif %},
-  "locationDetails": {% if not is_detail_mode and location_details %}{{ location_details|tojson|safe }}{% else %}{}{% endif %}
+  "locationDetails": {{ location_details|tojson|safe }},
+  "period": {
+    "mode": "{{ analysis_data.period.mode }}",
+    "label": "{{ analysis_data.period.label }}",
+    "start": {% if analysis_data.period.start %}"{{ analysis_data.period.start.strftime('%Y-%m-%d') }}"{% else %}null{% endif %},
+    "end": {% if analysis_data.period.end %}"{{ analysis_data.period.end.strftime('%Y-%m-%d') }}"{% else %}null{% endif %},
+    "fiscal_year": {% if analysis_data.period.fiscal_year is not none %}{{ analysis_data.period.fiscal_year }}{% else %}null{% endif %},
+    "month": {% if analysis_data.period.month %}"{{ analysis_data.period.month }}"{% else %}null{% endif %}
+  }
 }
 </script>
 
@@ -428,15 +427,13 @@ block content %}
   try {
     const configScript = document.getElementById('analysis-config');
     const config = JSON.parse(configScript.textContent);
-    const isDetailMode = config.isDetailMode;
-    const locationDetails = config.locationDetails || {};
     
     // ページを初期化
-    initializeAnalysisPage(isDetailMode, locationDetails);
+    initializeAnalysisPage(config);
   } catch (error) {
     console.error('設定データの読み込みに失敗しました:', error);
     // フォールバック: 詳細モードとして初期化
-    initializeAnalysisPage(true, {});
+    initializeAnalysisPage({ isDetailMode: true, locationDetails: {}, period: {} });
   }
 </script>
 {% endblock %} 

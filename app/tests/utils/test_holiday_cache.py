@@ -2,7 +2,6 @@
 holiday_cache のテストケース
 """
 
-import pytest
 import datetime
 import json
 import os
@@ -11,8 +10,15 @@ from pathlib import Path
 from typing import Dict, Any
 
 from app.utils.holiday_cache import (
-    HolidayCache, is_holiday, get_holiday_name, get_cache_info, ASSETS_JSON_DIR, CACHE_FILE
+    HolidayCache,
+    is_holiday,
+    get_holiday_name,
+    get_cache_info,
+    ASSETS_JSON_DIR,
+    CACHE_FILE,
+    refresh_holiday_cache,
 )
+from app.models.custom_holiday import CustomHoliday
 
 
 class TestHolidayCache:
@@ -189,7 +195,8 @@ class TestGlobalFunctions:
             'total_holidays': 10,
             'build_time_cache': True,
             'cache_file_exists': True,
-            'years_covered': ['2024', '2025']
+            'years_covered': ['2024', '2025'],
+            'custom_total': 0,
         }
         mock_holiday_cache.get_cache_info.return_value = expected_info
         
@@ -244,4 +251,42 @@ class TestIntegration:
                 # キャッシュ情報チェック
                 info = test_cache.get_cache_info()
                 assert info['total_holidays'] == 11
-                assert info['build_time_cache'] is True 
+                assert info['build_time_cache'] is True
+
+    def test_refresh_with_custom_holiday_overrides_file(self, db) -> None:
+        """DBのカスタム祝日がファイルの祝日を上書きする"""
+        base_cache = {
+            'holidays': {
+                '2024-12-31': '大晦日(標準)',
+                '2024-01-01': '元日',
+            },
+            'build_time': True,
+        }
+        db.add(CustomHoliday(date=datetime.date(2024, 12, 31), name="社内特別休"))
+        db.commit()
+
+        with patch('app.utils.holiday_cache.CACHE_FILE') as mock_cache_file:
+            mock_cache_file.exists.return_value = True
+            with patch('builtins.open', mock_open(read_data=json.dumps(base_cache))):
+                cache = HolidayCache()
+                cache.refresh_from_db(db)
+
+        assert cache.is_holiday(datetime.date(2024, 12, 31)) is True
+        assert cache.get_holiday_name(datetime.date(2024, 12, 31)) == "社内特別休"
+        assert cache.get_holiday_name(datetime.date(2024, 1, 1)) == "元日"
+
+
+def test_refresh_holiday_cache_function(db) -> None:
+    """グローバルキャッシュをDBで再読込できる"""
+    db.add(CustomHoliday(date=datetime.date(2025, 1, 2), name="臨時休日"))
+    db.commit()
+
+    refresh_holiday_cache(db)
+
+    assert is_holiday(datetime.date(2025, 1, 2)) is True
+    assert get_holiday_name(datetime.date(2025, 1, 2)) == "臨時休日"
+
+    # 後続テストへの影響を避けるためにリセット
+    db.query(CustomHoliday).delete()
+    db.commit()
+    refresh_holiday_cache(db)

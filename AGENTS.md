@@ -166,7 +166,9 @@
   - `input.css`, `tailwind.config.js`, `postcss.config.js`, `package.json` を含む。
 
 - `data/`
-  - `sokora.sqlite`: SQLite データベースファイル。`init_db()`（シーダー含む）が存在しない場合に作成する。
+  - `sokora.db`: SQLite データベースファイル。`init_db()`（シーダー含む）が存在しない場合に作成する。
+  - アプリ起動時（`make run` / `make docker-run`）に `data/sokora.db` が無い場合は自動でテーブル作成とシーディング（60日/60日分）を実行し、旧 `data/sokora.sqlite` があれば `sokora.db` にリネームして利用する。
+  - Docker ビルド時 (`make build` / `make docker-build`) も DB が無ければ初期化＋シーディングを実行し、ベースイメージに DB を含める。ビルド成果物は `/app/seed/sokora.db` にコピーされ、エントリポイントでホストマウントされた `data/` に複製される。
   - `data/.gitkeep` のみがコミットされており、DB は実行時に生成。
 
 - `docs/`
@@ -258,7 +260,7 @@ cd /app
 ## 8. DB・マイグレーション・シーディング
 
 - データベース:
-  - SQLite: `data/sokora.sqlite`
+- SQLite: `data/sokora.db`
   - `app/db/session.init_db()` が存在しない場合にテーブルを作成する。`make seed` でも自動実行。
 
 - マイグレーション:
@@ -327,6 +329,7 @@ poetry run ruff check app
 - 仕様変更や画面変更を行うときは、以下を意識する：
 
   1. README / docs/（テンプレート仕様など）が実装とズレていないか確認する。
+     - 要件集約は `docs/requirements.md` に記載（API/DB/UI の詳細リンクあり）。
   2. 仕様変更があれば、コードより先にドキュメントを更新する。
   3. 実装後に再度 README / docs/ と実際の挙動を見比べる。
 

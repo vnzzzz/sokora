@@ -1,5 +1,5 @@
 """
-CSVダウンロードAPIエンドポイント (/api/csv/download) のテスト
+CSVダウンロードAPIエンドポイント (/api/v1/csv/download) のテスト
 """
 import pytest
 from httpx import AsyncClient
@@ -26,19 +26,19 @@ async def setup_basic_data(async_client: AsyncClient) -> AsyncGenerator[Dict[str
     try:
         # データ作成
         group_payload = {"name": group_name}
-        response = await async_client.post("/api/groups", json=group_payload)
+        response = await async_client.post("/api/v1/groups", json=group_payload)
         response.raise_for_status()
         group_data = response.json()
         created_data["group"] = {"id": group_data["id"], "name": group_data["name"]}
 
         user_type_payload = {"name": user_type_name}
-        response = await async_client.post("/api/user_types", json=user_type_payload)
+        response = await async_client.post("/api/v1/user_types", json=user_type_payload)
         response.raise_for_status()
         user_type_data = response.json()
         created_data["user_type"] = {"id": user_type_data["id"], "name": user_type_data["name"]}
 
         location_payload = {"name": location_name}
-        response = await async_client.post("/api/locations", json=location_payload)
+        response = await async_client.post("/api/v1/locations", json=location_payload)
         response.raise_for_status()
         location_data = response.json()
         created_data["location"] = {"id": location_data["id"], "name": location_data["name"]}
@@ -49,17 +49,17 @@ async def setup_basic_data(async_client: AsyncClient) -> AsyncGenerator[Dict[str
         # データ削除 (作成されたものだけ削除)
         if created_data.get("location") and created_data["location"].get("id") is not None:
             try:
-                await async_client.delete(f"/api/locations/{created_data['location']['id']}")
+                await async_client.delete(f"/api/v1/locations/{created_data['location']['id']}")
             except Exception as e:
                 print(f"Error deleting location {created_data['location']['id']}: {e}")
         if created_data.get("user_type") and created_data["user_type"].get("id") is not None:
             try:
-                await async_client.delete(f"/api/user_types/{created_data['user_type']['id']}")
+                await async_client.delete(f"/api/v1/user_types/{created_data['user_type']['id']}")
             except Exception as e:
                 print(f"Error deleting user_type {created_data['user_type']['id']}: {e}")
         if created_data.get("group") and created_data["group"].get("id") is not None:
             try:
-                await async_client.delete(f"/api/groups/{created_data['group']['id']}")
+                await async_client.delete(f"/api/v1/groups/{created_data['group']['id']}")
             except Exception as e:
                 print(f"Error deleting group {created_data['group']['id']}: {e}")
 
@@ -83,27 +83,27 @@ async def setup_test_users(async_client: AsyncClient) -> AsyncGenerator[Dict[str
         type_y_name = f"Type_Y_{datetime.now().strftime('%H%M%S%f')}"
         location_name = f"Location_Fixture_{datetime.now().strftime('%H%M%S%f')}"
 
-        response = await async_client.post("/api/groups", json={"name": group_a_name})
+        response = await async_client.post("/api/v1/groups", json={"name": group_a_name})
         response.raise_for_status()
         group_a = response.json()
         created_data["groups"].append(group_a)
 
-        response = await async_client.post("/api/groups", json={"name": group_b_name})
+        response = await async_client.post("/api/v1/groups", json={"name": group_b_name})
         response.raise_for_status()
         group_b = response.json()
         created_data["groups"].append(group_b)
 
-        response = await async_client.post("/api/user_types", json={"name": type_x_name})
+        response = await async_client.post("/api/v1/user_types", json={"name": type_x_name})
         response.raise_for_status()
         type_x = response.json()
         created_data["user_types"].append(type_x)
 
-        response = await async_client.post("/api/user_types", json={"name": type_y_name})
+        response = await async_client.post("/api/v1/user_types", json={"name": type_y_name})
         response.raise_for_status()
         type_y = response.json()
         created_data["user_types"].append(type_y)
 
-        response = await async_client.post("/api/locations", json={"name": location_name})
+        response = await async_client.post("/api/v1/locations", json={"name": location_name})
         response.raise_for_status()
         created_data["location"] = response.json()
 
@@ -119,7 +119,7 @@ async def setup_test_users(async_client: AsyncClient) -> AsyncGenerator[Dict[str
 
         # 3. ユーザー作成
         for user_payload in user_data_to_create:
-            response = await async_client.post("/api/users", json=user_payload)
+            response = await async_client.post("/api/v1/users", json=user_payload)
             response.raise_for_status()
             created_user = response.json()
             user_info = {
@@ -132,7 +132,7 @@ async def setup_test_users(async_client: AsyncClient) -> AsyncGenerator[Dict[str
 
         # 4. (オプション) 代表ユーザーに勤怠データ作成
         test_date = date.today().isoformat()
-        await async_client.post("/api/attendances", data={"user_id": "user_ax", "date": test_date, "location_id": str(created_data["location"]["id"])})
+        await async_client.post("/api/v1/attendances", data={"user_id": "user_ax", "date": test_date, "location_id": str(created_data["location"]["id"])})
 
         yield created_data
 
@@ -140,29 +140,29 @@ async def setup_test_users(async_client: AsyncClient) -> AsyncGenerator[Dict[str
         # データ削除
         for user_id in reversed(created_user_ids):
              try:
-                 await async_client.delete(f"/api/users/{user_id}")
+                 await async_client.delete(f"/api/v1/users/{user_id}")
              except Exception as e:
                  print(f"Error deleting user {user_id}: {e}")
 
         if created_data.get("location") and created_data["location"].get("id"):
              try:
-                 await async_client.delete(f"/api/locations/{created_data['location']['id']}")
+                 await async_client.delete(f"/api/v1/locations/{created_data['location']['id']}")
              except Exception as e:
                  print(f"Error deleting location {created_data['location']['id']}: {e}")
         for ut in reversed(created_data["user_types"]):
              if ut.get("id"):
                  try:
-                     await async_client.delete(f"/api/user_types/{ut['id']}")
+                     await async_client.delete(f"/api/v1/user_types/{ut['id']}")
                  except Exception as e:
                      print(f"Error deleting user_type {ut['id']}: {e}")
         for g in reversed(created_data["groups"]):
              if g.get("id"):
                  try:
-                     await async_client.delete(f"/api/groups/{g['id']}")
+                     await async_client.delete(f"/api/v1/groups/{g['id']}")
                  except Exception as e:
                      print(f"Error deleting group {g['id']}: {e}")
 
-# --- GET /api/csv/download Tests ---
+# --- GET /api/v1/csv/download Tests ---
 
 # 元のテストのコメントアウトを解除
 async def test_download_csv_success_all(
@@ -174,7 +174,7 @@ async def test_download_csv_success_all(
     first_user_info = next((u for u in setup_test_users["users"] if u["id"] == expected_user_id_order[0]), None)
     assert first_user_info is not None, "Fixture did not provide expected first user info"
 
-    response = await async_client.get("/api/csv/download")
+    response = await async_client.get("/api/v1/csv/download")
     assert response.status_code == status.HTTP_200_OK
     assert response.headers["content-type"] == "text/csv; charset=utf-8"
     assert 'attachment; filename="work_entries.csv"' in response.headers["content-disposition"]
@@ -227,12 +227,12 @@ async def test_download_csv_success_month_sjis(
             "group_id": group["id"],
             "user_type_id": user_type["id"]
         }
-        response = await async_client.post("/api/users", json=user_payload)
+        response = await async_client.post("/api/v1/users", json=user_payload)
         # 422も受け入れる
         if response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
             # 422の場合は、ユーザー作成をスキップして代わりのユーザーを探す
             # 既存のユーザーを検索して代用
-            all_users_resp = await async_client.get("/api/users")
+            all_users_resp = await async_client.get("/api/v1/users")
             if all_users_resp.status_code == status.HTTP_200_OK and all_users_resp.json().get("users"):
                 user_id = all_users_resp.json()["users"][0]["id"]
                 created_user_id = None  # 既存ユーザーなので削除しない
@@ -247,9 +247,9 @@ async def test_download_csv_success_month_sjis(
         month_param = target_month.strftime("%Y-%m")
 
         # 勤怠データ作成 (削除はユーザー削除に任せる)
-        await async_client.post("/api/attendances", data={"user_id": created_user_id, "date": test_date_in_month, "location_id": str(location["id"])})
+        await async_client.post("/api/v1/attendances", data={"user_id": created_user_id, "date": test_date_in_month, "location_id": str(location["id"])})
 
-        response = await async_client.get(f"/api/csv/download?month={month_param}&encoding=sjis")
+        response = await async_client.get(f"/api/v1/csv/download?month={month_param}&encoding=sjis")
         assert response.status_code == status.HTTP_200_OK
         assert response.headers["content-type"] == "text/csv; charset=shift_jis"
         assert f'attachment; filename="work_entries_{month_param}.csv"' in response.headers["content-disposition"]
@@ -286,14 +286,14 @@ async def test_download_csv_success_month_sjis(
         # 作成したユーザーを削除 (関連勤怠も削除される想定)
         if created_user_id:
             try:
-                await async_client.delete(f"/api/users/{created_user_id}")
+                await async_client.delete(f"/api/v1/users/{created_user_id}")
             except Exception as e:
                 print(f"Error deleting user {created_user_id} in month_sjis test: {e}")
 
 async def test_download_csv_no_data(async_client: AsyncClient) -> None:
     """データがない場合にヘッダー行のみのCSVが返されることをテストします。"""
     future_month = (date.today() + relativedelta(months=6)).strftime("%Y-%m")
-    response = await async_client.get(f"/api/csv/download?month={future_month}")
+    response = await async_client.get(f"/api/v1/csv/download?month={future_month}")
     assert response.status_code == status.HTTP_200_OK
     csv_content = response.text
     reader = csv.reader(io.StringIO(csv_content))
@@ -304,12 +304,12 @@ async def test_download_csv_no_data(async_client: AsyncClient) -> None:
 
 async def test_download_csv_invalid_month(async_client: AsyncClient) -> None:
     """無効な月形式でリクエストした場合に400エラーが返されることをテストします。"""
-    response = await async_client.get("/api/csv/download?month=invalid-month")
+    response = await async_client.get("/api/v1/csv/download?month=invalid-month")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "月の形式が無効です" in response.json()["detail"]
 
 async def test_download_csv_invalid_encoding(async_client: AsyncClient) -> None:
     """無効なエンコーディングでリクエストした場合に400エラーが返されることをテストします。"""
-    response = await async_client.get("/api/csv/download?encoding=invalid-encoding")
+    response = await async_client.get("/api/v1/csv/download?encoding=invalid-encoding")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "無効なエンコーディングです" in response.json()["detail"] 

@@ -80,4 +80,4 @@ class TestCsvPage:
         
         # 例外が発生してもページは表示される（エラーハンドリングによる）
         with pytest.raises(Exception):
-            self.client.get("/csv") 
+            self.client.get("/csv")

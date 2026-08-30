@@ -63,7 +63,7 @@
 
             <th
               class="text-center p-1 w-10 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
-              hx-get="/day/{{ day.date }}"
+              hx-get="/calendar/day/{{ day.date }}"
               hx-target="#detail-area"
               data-date="{{ day.date }}"
               data-day="{{ day.day }}"
@@ -126,7 +126,7 @@
 
               <td
                 class="text-center hover:bg-base-300 cursor-pointer p-1 {{ location.bg_class }} {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
-                hx-get="/day/{{ day.date }}"
+                hx-get="/calendar/day/{{ day.date }}"
                 hx-target="#detail-area"
                 data-date="{{ day.date }}"
                 data-day="{{ day.day }}"

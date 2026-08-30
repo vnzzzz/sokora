@@ -26,13 +26,13 @@ def create_test_dependencies(db: Session) -> tuple[Group, UserType]:
     return test_group, test_user_type
 
 
-# --- GET /api/users Tests ---
+# --- GET /api/v1/users Tests ---
 
 async def test_get_users_empty(async_client: AsyncClient) -> None:
     """
     ユーザーが登録されていない場合に空のリストが返されることをテストします。
     """
-    response = await async_client.get("/api/users")
+    response = await async_client.get("/api/v1/users")
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"users": []}
 
@@ -49,7 +49,7 @@ async def test_get_users_with_data(async_client: AsyncClient, test_app: FastAPI,
     user2 = crud_user.create(db, obj_in=UserCreate(id="user_a", username="User A", group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
     db.commit()
 
-    response = await async_client.get("/api/users")
+    response = await async_client.get("/api/v1/users")
     assert response.status_code == status.HTTP_200_OK
     
     data = response.json()
@@ -63,7 +63,7 @@ async def test_get_users_with_data(async_client: AsyncClient, test_app: FastAPI,
     # 必要であれば、より詳細な内容チェックを追加 
 
 
-# --- GET /api/users/{user_id} Tests ---
+# --- GET /api/v1/users/{user_id} Tests ---
 
 async def test_get_user_success(async_client: AsyncClient, db: Session) -> None:
     """
@@ -75,7 +75,7 @@ async def test_get_user_success(async_client: AsyncClient, db: Session) -> None:
     user = crud_user.create(db, obj_in=UserCreate(id=user_id_to_get, username=user_name, group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
     db.commit()
 
-    response = await async_client.get(f"/api/users/{user_id_to_get}")
+    response = await async_client.get(f"/api/v1/users/{user_id_to_get}")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["id"] == user_id_to_get
@@ -88,12 +88,12 @@ async def test_get_user_not_found(async_client: AsyncClient) -> None:
     存在しないユーザーIDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_user_id = "non_existent_user"
-    response = await async_client.get(f"/api/users/{non_existent_user_id}")
+    response = await async_client.get(f"/api/v1/users/{non_existent_user_id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"] 
 
 
-# --- POST /api/users Tests ---
+# --- POST /api/v1/users Tests ---
 
 async def test_create_user_success(async_client: AsyncClient, db: Session) -> None:
     """
@@ -108,7 +108,7 @@ async def test_create_user_success(async_client: AsyncClient, db: Session) -> No
         "group_id": test_group.id,
         "user_type_id": test_user_type.id
     }
-    response = await async_client.post("/api/users", json=payload)
+    response = await async_client.post("/api/v1/users", json=payload)
     
     assert response.status_code in [status.HTTP_200_OK, status.HTTP_201_CREATED, status.HTTP_422_UNPROCESSABLE_ENTITY]
     
@@ -138,7 +138,7 @@ async def test_create_user_missing_fields(async_client: AsyncClient, db: Session
     for field in base_payload.keys():
         payload = base_payload.copy()
         del payload[field]
-        response = await async_client.post("/api/users", json=payload)
+        response = await async_client.post("/api/v1/users", json=payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 async def test_create_user_duplicate_id(async_client: AsyncClient, db: Session) -> None:
@@ -158,7 +158,7 @@ async def test_create_user_duplicate_id(async_client: AsyncClient, db: Session) 
         "group_id": test_group.id,
         "user_type_id": test_user_type.id
     }
-    response = await async_client.post("/api/users", json=payload)
+    response = await async_client.post("/api/v1/users", json=payload)
     assert response.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
 
 async def test_create_user_invalid_dependency_id(async_client: AsyncClient, db: Session) -> None:
@@ -175,7 +175,7 @@ async def test_create_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "group_id": non_existent_id,
         "user_type_id": test_user_type.id
     }
-    response_group = await async_client.post("/api/users", json=payload_invalid_group)
+    response_group = await async_client.post("/api/v1/users", json=payload_invalid_group)
     assert response_group.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
     if response_group.status_code == status.HTTP_400_BAD_REQUEST:
         expected_detail_group = f"指定されたグループID({non_existent_id})は存在しません。"
@@ -188,14 +188,14 @@ async def test_create_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "group_id": test_group.id,
         "user_type_id": non_existent_id
     }
-    response_user_type = await async_client.post("/api/users", json=payload_invalid_user_type)
+    response_user_type = await async_client.post("/api/v1/users", json=payload_invalid_user_type)
     assert response_user_type.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
     if response_user_type.status_code == status.HTTP_400_BAD_REQUEST:
         expected_detail_ut = f"指定された社員種別ID({non_existent_id})は存在しません。"
         assert expected_detail_ut in response_user_type.json()["detail"]
 
 
-# --- PUT /api/users/{user_id} Tests ---
+# --- PUT /api/v1/users/{user_id} Tests ---
 
 async def test_update_user_success(async_client: AsyncClient, db: Session) -> None:
     """
@@ -217,7 +217,7 @@ async def test_update_user_success(async_client: AsyncClient, db: Session) -> No
         "user_type_id": ut2.id
     }
 
-    response = await async_client.put(f"/api/users/{user_id_to_update}", json=payload)
+    response = await async_client.put(f"/api/v1/users/{user_id_to_update}", json=payload)
     assert response.status_code in [status.HTTP_200_OK, status.HTTP_204_NO_CONTENT]
     
     # 成功した場合のみレスポンスボディをチェック
@@ -245,7 +245,7 @@ async def test_update_user_not_found(async_client: AsyncClient, db: Session) -> 
         "group_id": test_group.id,
         "user_type_id": test_user_type.id
     }
-    response = await async_client.put(f"/api/users/{non_existent_user_id}", json=payload)
+    response = await async_client.put(f"/api/v1/users/{non_existent_user_id}", json=payload)
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"]
 
@@ -266,7 +266,7 @@ async def test_update_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "group_id": non_existent_id,
         "user_type_id": ut1.id
     }
-    response_group = await async_client.put(f"/api/users/{user_id_to_update}", json=payload_invalid_group)
+    response_group = await async_client.put(f"/api/v1/users/{user_id_to_update}", json=payload_invalid_group)
     assert response_group.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
     if response_group.status_code == status.HTTP_400_BAD_REQUEST:
         expected_detail_group = f"指定されたグループID({non_existent_id})は存在しません。"
@@ -278,14 +278,14 @@ async def test_update_user_invalid_dependency_id(async_client: AsyncClient, db: 
         "group_id": group1.id,
         "user_type_id": non_existent_id
     }
-    response_user_type = await async_client.put(f"/api/users/{user_id_to_update}", json=payload_invalid_user_type)
+    response_user_type = await async_client.put(f"/api/v1/users/{user_id_to_update}", json=payload_invalid_user_type)
     assert response_user_type.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
     if response_user_type.status_code == status.HTTP_400_BAD_REQUEST:
         expected_detail_ut = f"指定された社員種別ID({non_existent_id})は存在しません。"
         assert expected_detail_ut in response_user_type.json()["detail"]
 
 
-# --- DELETE /api/users/{user_id} Tests ---
+# --- DELETE /api/v1/users/{user_id} Tests ---
 
 async def test_delete_user_success(async_client: AsyncClient, db: Session) -> None:
     """
@@ -297,7 +297,7 @@ async def test_delete_user_success(async_client: AsyncClient, db: Session) -> No
     user = crud_user.create(db, obj_in=UserCreate(id=user_id_to_delete, username="User To Delete", group_id=test_group.id, user_type_id=test_user_type.id)) # type: ignore
     db.commit()
 
-    response = await async_client.delete(f"/api/users/{user_id_to_delete}")
+    response = await async_client.delete(f"/api/v1/users/{user_id_to_delete}")
     assert response.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
 
     # DBでも確認
@@ -309,7 +309,7 @@ async def test_delete_user_not_found(async_client: AsyncClient) -> None:
     存在しないユーザーIDを指定して削除しようとした場合に 404 エラーが返されることをテストします。
     """
     non_existent_user_id = "non_existent_user"
-    response = await async_client.delete(f"/api/users/{non_existent_user_id}")
+    response = await async_client.delete(f"/api/v1/users/{non_existent_user_id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"]
 

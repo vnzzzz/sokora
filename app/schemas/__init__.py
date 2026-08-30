@@ -15,3 +15,4 @@ from .attendance import (
 )
 from .location import Location, LocationCreate, LocationUpdate, LocationList
 from .group import Group, GroupCreate, GroupUpdate, GroupList
+from .custom_holiday import CustomHoliday, CustomHolidayCreate, CustomHolidayUpdate

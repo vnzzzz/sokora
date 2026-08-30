@@ -19,6 +19,7 @@ pytz = "^2023.3"
 python-dateutil = "^2.9.0.post0"
 aiosqlite = "^0.20.0"
 types-python-dateutil = "^2.9.0.20241206"
+itsdangerous = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"

@@ -2,9 +2,13 @@ import re
 import datetime
 from playwright.sync_api import Page, expect
 
+BASE_URL = "http://localhost:8000"
+UI_BASE = f"{BASE_URL}"
+
+
 def test_top_page_title(page: Page) -> None:
     """トップページにアクセスし、タイトルを確認するテスト"""
-    page.goto("http://localhost:8000/") # アプリケーションのURLにアクセス
+    page.goto(UI_BASE)  # アプリケーションのURLにアクセス
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # タイトルに "Sokora" が含まれていることを確認
@@ -12,7 +16,7 @@ def test_top_page_title(page: Page) -> None:
 
 def test_top_page_elements(page: Page) -> None:
     """トップページの主要要素の存在を確認するテスト"""
-    page.goto("http://localhost:8000/")
+    page.goto(UI_BASE)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # ヘッダーテキストの確認
@@ -31,7 +35,7 @@ def test_top_page_elements(page: Page) -> None:
 
 def test_initial_day_detail(page: Page) -> None:
     """初期表示で本日日付の詳細が表示されることを確認するテスト"""
-    page.goto("http://localhost:8000/")
+    page.goto(UI_BASE)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # 詳細エリアが表示されるのを待つ（HTMXのロード完了を期待）
@@ -46,7 +50,7 @@ def test_initial_day_detail(page: Page) -> None:
 
 def test_click_day_shows_detail(page: Page) -> None:
     """特定の日付をクリックするとその日の詳細が表示されるテスト"""
-    page.goto("http://localhost:8000/")
+    page.goto(UI_BASE)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # カレンダーが表示されるのを待つ (最初のセルが表示されるかで判断)
@@ -69,7 +73,7 @@ def test_click_day_shows_detail(page: Page) -> None:
 
 def test_month_navigation(page: Page) -> None:
     """月遷移ボタンが機能することを確認するテスト"""
-    page.goto("http://localhost:8000/")
+    page.goto(UI_BASE)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
 
     # カレンダーエリアが表示されるのを待つ

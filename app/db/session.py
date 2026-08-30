@@ -6,16 +6,16 @@
 SQLAlchemyを使用したデータベース操作の基盤となるモジュールです。
 """
 
-import os
 from pathlib import Path
-from typing import Generator, Any
+from typing import Generator, Dict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 from app.core.config import logger
 
 # SQLiteデータベースファイルのパスとURL設定
-DB_PATH = Path("data/sokora.sqlite")
+DB_PATH = Path("data/sokora.db")
+LEGACY_DB_PATH = Path("data/sokora.sqlite")
 DB_URL = f"sqlite:///{DB_PATH.absolute()}"
 
 # SQLAlchemyエンジンを作成（SQLiteの同時接続に対応）
@@ -26,6 +26,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # モデル定義のベースクラスを作成
 Base = declarative_base()
+
+
+def seed_database(days_back: int = 60, days_forward: int = 60) -> Dict[str, int]:
+    """DBが存在しない場合の初回シーディングを実行する。"""
+    from scripts.seeding.data_seeder import run_seeder
+
+    return run_seeder(days_back=days_back, days_forward=days_forward, skip_init=True)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -51,7 +58,7 @@ def init_db() -> None:
     """
     # モデル定義をインポートします。
     # (関数内でインポートすることで、モジュール読み込み時の循環参照を回避)
-    from app.models import User, Attendance, Location, Group, UserType
+    from app.models import User, Attendance, Location, Group, UserType, CustomHoliday
 
     # データベースファイルが格納される`data/`ディレクトリを作成します (存在しない場合)。
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -68,8 +75,20 @@ def initialize_database() -> bool:
     `init_db` を呼び出し、データベースの初期化を実行します。
     成功時はTrue、エラー発生時はFalseを返します。
     """
+    db_missing = not DB_PATH.exists()
+    legacy_exists = LEGACY_DB_PATH.exists()
+
+    if db_missing and legacy_exists:
+        logger.info("既存のデータベースファイルを新しいパスへ移行します。")
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        LEGACY_DB_PATH.rename(DB_PATH)
+        db_missing = False
     try:
         init_db()
+        if db_missing:
+            logger.info("データベースファイルが存在しないため、シーディングを実行します。")
+            seed_result = seed_database(days_back=60, days_forward=60)
+            logger.info("シーディングが完了しました: %s", seed_result)
         logger.info("データベースの初期化が正常に完了しました。")
         return True
     except Exception as e:

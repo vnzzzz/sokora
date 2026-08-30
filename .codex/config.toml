@@ -1,0 +1,11 @@
+[ui]
+confirm_before_write = true   # 生成前に毎回確認（安全）
+confirm_before_run   = true   # 実行前に毎回確認
+
+[limits]
+max_tokens = 32000
+
+[project]
+# Codexが編集してよいパス（“壊してよい/ダメ”を明確化）
+allow_paths = ["app","assets","builder","docs","scripts","docker","rules",".devcontainer",".codex"]
+deny_paths  = [".git","data","node_modules",".env",".env.*"]

@@ -1,10 +1,10 @@
 """
 グループAPIのテスト
 
-POST /api/groups: グループ作成
-GET /api/groups: グループ一覧取得  
-PUT /api/groups/{group_id}: グループ更新
-DELETE /api/groups/{group_id}: グループ削除
+POST /api/v1/groups: グループ作成
+GET /api/v1/groups: グループ一覧取得  
+PUT /api/v1/groups/{group_id}: グループ更新
+DELETE /api/v1/groups/{group_id}: グループ削除
 """
 
 import pytest
@@ -18,9 +18,9 @@ from app.schemas.group import GroupCreate
 
 async def test_get_groups_empty(async_client: AsyncClient) -> None:
     """
-    GET /api/groups - グループが1つもない場合に空のリストが返されることをテストします。
+    GET /api/v1/groups - グループが1つもない場合に空のリストが返されることをテストします。
     """
-    response = await async_client.get("/api/groups")
+    response = await async_client.get("/api/v1/groups")
     assert response.status_code == status.HTTP_200_OK
     
     data = response.json()
@@ -30,7 +30,7 @@ async def test_get_groups_empty(async_client: AsyncClient) -> None:
 
 async def test_get_groups_with_data(async_client: AsyncClient, test_app: FastAPI, db: Session, test_data_tracker: dict) -> None:
     """
-    GET /api/groups - グループが存在する場合に正しくソートされたリストが返されることをテストします。
+    GET /api/v1/groups - グループが存在する場合に正しくソートされたリストが返されることをテストします。
     """
     # 関数内で crud_group をインポート
     from app.crud.group import group as crud_group
@@ -45,7 +45,7 @@ async def test_get_groups_with_data(async_client: AsyncClient, test_app: FastAPI
     
     db.commit()
 
-    response = await async_client.get("/api/groups")
+    response = await async_client.get("/api/v1/groups")
     assert response.status_code == status.HTTP_200_OK
     
     data = response.json()
@@ -61,12 +61,12 @@ async def test_get_groups_with_data(async_client: AsyncClient, test_app: FastAPI
 
 async def test_create_group_success(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    POST /api/groups - グループが正常に作成されることをテストします。
+    POST /api/v1/groups - グループが正常に作成されることをテストします。
     """
     group_name = test_data_tracker['create_test_name']("New_Group")
     payload = {"name": group_name}
     
-    response = await async_client.post("/api/groups", json=payload)
+    response = await async_client.post("/api/v1/groups", json=payload)
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -85,24 +85,24 @@ async def test_create_group_success(async_client: AsyncClient, db: Session, test
 
 async def test_create_group_missing_name(async_client: AsyncClient) -> None:
     """
-    POST /api/groups - グループ名がない場合に 400 エラーが返されることをテストします。
+    POST /api/v1/groups - グループ名がない場合に 400 エラーが返されることをテストします。
     """
     # ケース1: name が空文字列
     payload_empty = {"name": ""}
-    response_empty = await async_client.post("/api/groups", json=payload_empty)
+    response_empty = await async_client.post("/api/v1/groups", json=payload_empty)
     assert response_empty.status_code == status.HTTP_400_BAD_REQUEST
     assert response_empty.json()["detail"] == "グループ名を入力してください"
 
     # ケース2: name フィールド自体がない (不正なスキーマ)
     # FastAPI/Pydantic が 422 Unprocessable Entity を返すはず
     payload_no_name: dict = {}
-    response_no_name = await async_client.post("/api/groups", json=payload_no_name)
+    response_no_name = await async_client.post("/api/v1/groups", json=payload_no_name)
     assert response_no_name.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 async def test_create_group_duplicate_name(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    POST /api/groups - 重複するグループ名で作成しようとした場合に 400 エラーが返されることをテストします。
+    POST /api/v1/groups - 重複するグループ名で作成しようとした場合に 400 エラーが返されることをテストします。
     """
     # 関数内で crud_group をインポート
     from app.crud.group import group as crud_group
@@ -115,7 +115,7 @@ async def test_create_group_duplicate_name(async_client: AsyncClient, db: Sessio
 
     # 同じ名前で再度作成しようとする
     payload = {"name": group_name}
-    response = await async_client.post("/api/groups", json=payload)
+    response = await async_client.post("/api/v1/groups", json=payload)
     
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "このグループ名は既に存在します"
@@ -123,7 +123,7 @@ async def test_create_group_duplicate_name(async_client: AsyncClient, db: Sessio
 
 async def test_update_group_success(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    PUT /api/groups/{group_id} - グループが正常に更新されることをテストします。
+    PUT /api/v1/groups/{group_id} - グループが正常に更新されることをテストします。
     """
     # 関数内で crud_group をインポート
     from app.crud.group import group as crud_group
@@ -139,7 +139,7 @@ async def test_update_group_success(async_client: AsyncClient, db: Session, test
     updated_name = test_data_tracker['create_test_name']("Updated_Group")
     payload = {"name": updated_name}
     
-    response = await async_client.put(f"/api/groups/{group_id}", json=payload)
+    response = await async_client.put(f"/api/v1/groups/{group_id}", json=payload)
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -153,12 +153,12 @@ async def test_update_group_success(async_client: AsyncClient, db: Session, test
 
 async def test_update_group_not_found(async_client: AsyncClient) -> None:
     """
-    PUT /api/groups/{group_id} - 存在しないグループIDを指定した場合に 404 エラーが返されることをテストします。
+    PUT /api/v1/groups/{group_id} - 存在しないグループIDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_group_id = 9999
     payload = {"name": "Non Existent Update"}
     
-    response = await async_client.put(f"/api/groups/{non_existent_group_id}", json=payload)
+    response = await async_client.put(f"/api/v1/groups/{non_existent_group_id}", json=payload)
     
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"]
@@ -166,7 +166,7 @@ async def test_update_group_not_found(async_client: AsyncClient) -> None:
 
 async def test_update_group_duplicate_name(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    PUT /api/groups/{group_id} - 他のグループが使用中の名前に更新しようとした場合に 400 エラーが返されることをテストします。
+    PUT /api/v1/groups/{group_id} - 他のグループが使用中の名前に更新しようとした場合に 400 エラーが返されることをテストします。
     """
     # 関数内で crud_group をインポート
     from app.crud.group import group as crud_group
@@ -184,7 +184,7 @@ async def test_update_group_duplicate_name(async_client: AsyncClient, db: Sessio
 
     # group1 の名前を group2 と同じにしようとする
     payload = {"name": existing_name}
-    response = await async_client.put(f"/api/groups/{group_id_to_update}", json=payload)
+    response = await async_client.put(f"/api/v1/groups/{group_id_to_update}", json=payload)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "既に使用されています" in response.json()["detail"]
@@ -192,7 +192,7 @@ async def test_update_group_duplicate_name(async_client: AsyncClient, db: Sessio
 
 async def test_update_group_same_name(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    PUT /api/groups/{group_id} - 同じ名前で更新しても正常に完了することをテストします。
+    PUT /api/v1/groups/{group_id} - 同じ名前で更新しても正常に完了することをテストします。
     """
     # 関数内で crud_group をインポート
     from app.crud.group import group as crud_group
@@ -206,7 +206,7 @@ async def test_update_group_same_name(async_client: AsyncClient, db: Session, te
     
     # 同じ名前で更新
     payload = {"name": original_name}
-    response = await async_client.put(f"/api/groups/{group_id}", json=payload)
+    response = await async_client.put(f"/api/v1/groups/{group_id}", json=payload)
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -220,7 +220,7 @@ async def test_update_group_same_name(async_client: AsyncClient, db: Session, te
 
 async def test_delete_group_success(async_client: AsyncClient, db: Session, test_data_tracker: dict) -> None:
     """
-    DELETE /api/groups/{group_id} - グループが正常に削除されることをテストします。
+    DELETE /api/v1/groups/{group_id} - グループが正常に削除されることをテストします。
     """
     # 関数内で crud_group をインポート
     from app.crud.group import group as crud_group
@@ -232,7 +232,7 @@ async def test_delete_group_success(async_client: AsyncClient, db: Session, test
     group_id = group_to_delete.id
 
     # グループを削除
-    response = await async_client.delete(f"/api/groups/{group_id}")
+    response = await async_client.delete(f"/api/v1/groups/{group_id}")
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -246,11 +246,11 @@ async def test_delete_group_success(async_client: AsyncClient, db: Session, test
 
 async def test_delete_group_not_found(async_client: AsyncClient) -> None:
     """
-    DELETE /api/groups/{group_id} - 存在しないグループIDを指定した場合に 404 エラーが返されることをテストします。
+    DELETE /api/v1/groups/{group_id} - 存在しないグループIDを指定した場合に 404 エラーが返されることをテストします。
     """
     non_existent_group_id = 9999
     
-    response = await async_client.delete(f"/api/groups/{non_existent_group_id}")
+    response = await async_client.delete(f"/api/v1/groups/{non_existent_group_id}")
     
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"] 

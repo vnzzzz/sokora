@@ -15,12 +15,15 @@ ifndef VERSION
 $(error VERSION is not set. Define VERSION in .env)
 endif
 VERSION_TAG := $(IMAGE_NAME):$(VERSION)
-CONTAINER_NAME ?= sokora-app
+CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
+POETRY_STAMP := .cache/poetry-install.stamp
+DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg proxy=$(proxy) --build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),)
+DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),)
 
-.PHONY: help install run dev-shell seed test assets holiday-cache prepare-dev-assets build docker-build dev-build docker-run docker-stop
+.PHONY: help install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -29,17 +32,24 @@ help:
 	@printf "  make dev-shell       Attach to the running devcontainer (name: %s)\n" "$(DEV_CONTAINER_NAME)"
 	@printf "  make seed            Seed attendance data (vars: SEED_DAYS_BACK, SEED_DAYS_FORWARD)\n"
 	@printf "  make test            Run cleanup + API/unit + e2e tests\n"
-	@printf "  make assets          Build Tailwind CSS into assets/css/main.css\n"
+	@printf "  make assets          Build CSS/JS into assets/ via builder\n"
 	@printf "  make holiday-cache   Build holiday cache into assets/json/holidays_cache.json\n"
+	@printf "  make migrate         Run Alembic migrations (upgrade head)\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make docker-build    Build production image (%s) using VERSION tag from .env\n" "$(VERSION_TAG)"
+	@printf "  make docker-build-proxy Build production image (%s) via Dockerfile.proxy with proxy args from .env\n" "$(VERSION_TAG)"
 	@printf "  make docker-run      Run production container (tag: %s) with port mapping and data volume mount\n" "$(VERSION_TAG)"
+	@printf "  make docker-run-proxy   Run production container (tag: %s) with proxy env from .env\n" "$(VERSION_TAG)"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
-install:
+$(POETRY_STAMP): pyproject.toml poetry.lock
 	poetry install --no-root
-	cd builder && npm install
+	mkdir -p $(dir $(POETRY_STAMP))
+	touch $(POETRY_STAMP)
+
+install: $(POETRY_STAMP)
+	./scripts/build_assets.sh
 
 run: prepare-dev-assets
 	poetry run uvicorn app.main:app --host 0.0.0.0 --port $(SERVICE_PORT) --reload
@@ -51,20 +61,21 @@ seed:
 	mkdir -p data
 	./scripts/seeding/run_seeder.sh $(SEED_DAYS_BACK) $(SEED_DAYS_FORWARD)
 
-test:
+test: $(POETRY_STAMP)
 	./scripts/testing/run_test.sh
 
 assets:
-	mkdir -p assets/css assets/js assets/json
-	cd builder && npm install
-	cd builder && npx tailwindcss -i input.css -o ../assets/css/main.css --minify
+	./scripts/build_assets.sh
 
-prepare-dev-assets:
+prepare-dev-assets: $(POETRY_STAMP)
 	./scripts/prepare_dev_assets.sh
 
-holiday-cache:
+holiday-cache: $(POETRY_STAMP)
 	mkdir -p assets/json
 	poetry run python scripts/build_holiday_cache.py
+
+migrate: $(POETRY_STAMP)
+	PYTHONPATH=/app poetry run alembic -c scripts/migration/alembic.ini upgrade head
 
 build:
 	docker build -t $(IMAGE_NAME) .
@@ -72,15 +83,25 @@ build:
 docker-build:
 	docker build -t $(VERSION_TAG) .
 
+docker-build-proxy:
+	docker build $(DOCKER_BUILD_PROXY_ARGS) -f Dockerfile.proxy -t $(VERSION_TAG) .
+
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
 
-docker-run:
-	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) \
+docker-run: docker-build
+	mkdir -p data
+	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) --rm \
 		-p $(SERVICE_PORT):8000 \
-		-v $(PWD)/data:/app/data \
+		-v $(abspath data):/app/data \
+		$(VERSION_TAG)
+
+docker-run-proxy: docker-build-proxy
+	mkdir -p data
+	docker run -d --name $(CONTAINER_NAME) --env-file $(ENV_FILE) $(DOCKER_PROXY_ENV) --rm \
+		-p $(SERVICE_PORT):8000 \
+		-v $(abspath data):/app/data \
 		$(VERSION_TAG)
 
 docker-stop:
 	-docker stop $(CONTAINER_NAME)
-	-docker rm $(CONTAINER_NAME)

@@ -4,18 +4,28 @@
 
 import pytest
 from playwright.sync_api import Page, expect
+from datetime import datetime
+
+BASE_URL = "http://localhost:8000"
+UI_BASE = BASE_URL
+ANALYSIS_URL = f"{UI_BASE}/analysis"
+
+
+def _current_fiscal_year() -> int:
+    today = datetime.now()
+    return today.year if today.month >= 4 else today.year - 1
 
 
 def test_analysis_page_title(page: Page) -> None:
     """分析ページのタイトルが正しく表示されることを確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     expect(page).to_have_title("Sokora - 勤怠集計")
 
 
 def test_analysis_page_elements_visibility(page: Page) -> None:
     """分析ページの必須要素が表示されることを確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 基本的なページ表示確認
@@ -30,7 +40,7 @@ def test_analysis_page_elements_visibility(page: Page) -> None:
 
 def test_analysis_monthly_view(page: Page) -> None:
     """月別表示モードの動作確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 月別表示のデータが表示されていることを確認
@@ -45,10 +55,9 @@ def test_analysis_monthly_view(page: Page) -> None:
 
 def test_analysis_yearly_view(page: Page) -> None:
     """年別表示モードの動作確認"""
-    from datetime import datetime
     current_year = datetime.now().year
     
-    page.goto(f"http://localhost:8000/analysis?year={current_year}")
+    page.goto(f"{ANALYSIS_URL}?mode=year&year={current_year}")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 年別表示のデータが表示されていることを確認
@@ -62,7 +71,7 @@ def test_analysis_yearly_view(page: Page) -> None:
 
 def test_analysis_data_table(page: Page) -> None:
     """分析データテーブルの基本構造確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # テーブルまたはデータコンテナの存在確認
@@ -76,9 +85,22 @@ def test_analysis_data_table(page: Page) -> None:
         assert len(content) > 100  # 十分なコンテンツがあることを確認
 
 
+def test_analysis_period_controls_default(page: Page) -> None:
+    """期間切替UIがデフォルトで今月/今年度を指す"""
+    today = datetime.now()
+    expected_month = today.strftime("%Y-%m")
+    expected_fiscal = _current_fiscal_year()
+
+    page.goto(ANALYSIS_URL)
+    month_input = page.locator("input#month-input")
+    expect(month_input).to_have_value(expected_month)
+    expect(page.locator("#period-month")).to_be_checked()
+    expect(page.locator("#year-select")).to_have_value(str(expected_fiscal))
+
+
 def test_analysis_month_navigation(page: Page) -> None:
     """月ナビゲーションの動作確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 現在のURL/月を記録
@@ -102,9 +124,31 @@ def test_analysis_month_navigation(page: Page) -> None:
                 break
 
 
+def test_analysis_period_changes_interactively(page: Page) -> None:
+    """月変更でラベルが即時更新される"""
+    page.goto(ANALYSIS_URL)
+    label = page.locator(".analysis-period-label")
+    initial = label.text_content() or ""
+
+    # 前月の値を計算
+    today = datetime.now()
+    first_of_month = today.replace(day=1)
+    from datetime import timedelta
+    prev = first_of_month - timedelta(days=1)
+    new_value = f"{prev.year}-{prev.month:02d}"
+    expected_label = f"{prev.year}年{prev.month}月"
+
+    month_input = page.locator("#month-input")
+    month_input.fill(new_value)
+    month_input.dispatch_event("change")
+
+    expect(label).to_have_text(expected_label)
+    assert label.text_content() != initial
+
+
 def test_analysis_group_data_display(page: Page) -> None:
     """グループ別データ表示の確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # グループ関連のデータが表示されていることを確認
@@ -124,7 +168,7 @@ def test_analysis_group_data_display(page: Page) -> None:
 
 def test_analysis_location_data_display(page: Page) -> None:
     """勤怠種別データ表示の確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # 勤怠種別関連のデータが表示されていることを確認
@@ -145,7 +189,7 @@ def test_analysis_location_data_display(page: Page) -> None:
 def test_analysis_error_handling(page: Page) -> None:
     """エラーハンドリングの確認"""
     # 無効な月パラメータでアクセス
-    page.goto("http://localhost:8000/analysis?month=invalid")
+    page.goto(f"{ANALYSIS_URL}?month=invalid")
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # エラーが適切に処理されていることを確認
@@ -158,7 +202,7 @@ def test_analysis_error_handling(page: Page) -> None:
 
 def test_analysis_responsive_design(page: Page) -> None:
     """レスポンシブデザインの確認"""
-    page.goto("http://localhost:8000/analysis")
+    page.goto(ANALYSIS_URL)
     page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
     
     # デスクトップサイズでの表示確認

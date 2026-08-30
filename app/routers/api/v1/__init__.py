@@ -15,7 +15,7 @@ from fastapi import APIRouter
 from app.routers.api.v1 import attendance, csv, group, location, user, user_type
 
 # メインAPIルーターの作成（すべてのAPIエンドポイントを統合）
-api_router = APIRouter(prefix="/api")
+api_router = APIRouter(prefix="/api/v1")
 
 # 各APIをマウント
 # ユーザー関連API
