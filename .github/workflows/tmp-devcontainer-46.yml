@@ -26,7 +26,18 @@ jobs:
             --workspace-folder . \
             --feature ghcr.io/vnzzzz/agentic-development-toolkit/agent-dev \
             --target-version 1
-          cat .devcontainer/devcontainer-lock.json
+
+      - name: Show generated Dev Container lockfile
+        if: always()
+        run: cat .devcontainer/devcontainer-lock.json
+
+      - name: Upload generated Dev Container lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcontainer-lock
+          path: .devcontainer/devcontainer-lock.json
+          if-no-files-found: error
 
   validate-devcontainer:
     runs-on: ubuntu-latest
@@ -45,22 +56,27 @@ jobs:
       - name: Build and start Dev Container
         run: devcontainer up --workspace-folder .
 
-      - name: Verify shared agent tooling and remote user
-        run: |
-          devcontainer exec --workspace-folder . bash -lc '
-            set -e
-            test "$(id -un)" = "vscode"
-            command -v codex
-            command -v claude
-            command -v gh
-            command -v agent-github-auth
-            command -v poetry
-            codex --version
-            claude --version
-            gh --version | head -n 1
-            poetry --version
-            test -w /app/data
-          '
+      - name: Verify remote user
+        run: devcontainer exec --workspace-folder . bash -lc 'test "$(id -un)" = "vscode"'
+
+      - name: Verify Codex CLI
+        run: devcontainer exec --workspace-folder . bash -lc 'command -v codex && codex --version'
+
+      - name: Verify Claude Code
+        run: devcontainer exec --workspace-folder . bash -lc 'command -v claude && claude --version'
+
+      - name: Verify GitHub CLI
+        run: devcontainer exec --workspace-folder . bash -lc 'command -v gh && gh --version | head -n 1'
+
+      - name: Verify GitHub App auth helper
+        run: devcontainer exec --workspace-folder . bash -lc 'command -v agent-github-auth'
+
+      - name: Verify Poetry compatibility
+        run: devcontainer exec --workspace-folder . bash -lc 'command -v poetry && poetry --version'
+
+      - name: Verify data volume permissions
+        run: devcontainer exec --workspace-folder . bash -lc 'test -w /app/data'
 
       - name: Show generated Dev Container lockfile
+        if: always()
         run: cat .devcontainer/devcontainer-lock.json
