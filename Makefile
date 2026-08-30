@@ -82,14 +82,14 @@ migrate: sync
 	PYTHONPATH=/app uv run alembic -c scripts/migration/alembic.ini upgrade head
 
 lint: sync
-	uv run ruff check app
+	uv run ruff check app scripts
 
 format: sync
-	uv run ruff check app --select I --fix
-	uv run ruff format app
+	uv run ruff check app scripts --select I --fix
+	uv run ruff format app scripts
 
 format-check: sync
-	uv run ruff format --check app
+	uv run ruff format --check app scripts
 
 typecheck: sync
 	uv run mypy app
