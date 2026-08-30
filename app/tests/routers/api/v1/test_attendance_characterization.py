@@ -64,10 +64,7 @@ async def test_attendance_mutations_preserve_htmx_refresh_contract(
     month = "2024-12"
     week = "2024-12-16"
     headers = {
-        "Referer": (
-            "http://test/attendance/monthly"
-            f"?month={month}&week={week}"
-        )
+        "Referer": f"http://test/attendance/monthly?month={month}&week={week}"
     }
 
     create_response = await async_client.post(
