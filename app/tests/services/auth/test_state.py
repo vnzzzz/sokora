@@ -7,9 +7,7 @@ from app.main import create_application
 from app.services.auth.state import AuthState, AuthStateStore
 
 
-def test_auth_state_store_uses_explicit_path(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_auth_state_store_uses_explicit_path(monkeypatch, tmp_path: Path) -> None:
     env_path = tmp_path / "environment-state.json"
     explicit_path = tmp_path / "explicit-state.json"
     monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(env_path))
