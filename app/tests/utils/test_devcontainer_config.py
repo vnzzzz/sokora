@@ -52,6 +52,7 @@ def test_devcontainer_runtime_paths_support_vscode_user() -> None:
     dockerfile = DEVCONTAINER_DOCKERFILE.read_text()
 
     assert "POETRY_HOME=/opt/poetry" in dockerfile
+    assert "POETRY_VIRTUALENVS_CREATE=false" in dockerfile
     assert "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright" in dockerfile
     assert "/home/vscode/.cache/pypoetry" in dockerfile
 
