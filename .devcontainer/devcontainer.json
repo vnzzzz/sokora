@@ -19,6 +19,7 @@
   "features": {
     "ghcr.io/vnzzzz/agentic-development-toolkit/agent-dev:1": {}
   },
+  "postStartCommand": "bash .devcontainer/ensure-volume-ownership.sh",
   "customizations": {
     "vscode": {
       "settings": {
