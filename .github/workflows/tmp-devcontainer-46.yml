@@ -27,17 +27,12 @@ jobs:
             --feature ghcr.io/vnzzzz/agentic-development-toolkit/agent-dev \
             --target-version 1
 
+      - name: Verify committed lockfile is current
+        run: git diff --exit-code -- .devcontainer/devcontainer-lock.json
+
       - name: Show generated Dev Container lockfile
         if: always()
         run: cat .devcontainer/devcontainer-lock.json
-
-      - name: Upload generated Dev Container lockfile
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: devcontainer-lock
-          path: .devcontainer/devcontainer-lock.json
-          if-no-files-found: error
 
   validate-devcontainer:
     runs-on: ubuntu-latest
@@ -69,14 +64,34 @@ jobs:
         run: devcontainer exec --workspace-folder . bash -lc 'command -v gh && gh --version | head -n 1'
 
       - name: Verify GitHub App auth helper
-        run: devcontainer exec --workspace-folder . bash -lc 'command -v agent-github-auth'
+        run: devcontainer exec --workspace-folder . bash -lc 'command -v agent-github-auth && command -v agent-github-credential && agent-github-auth --help >/dev/null'
 
       - name: Verify Poetry compatibility
         run: devcontainer exec --workspace-folder . bash -lc 'command -v poetry && poetry --version'
 
-      - name: Verify data volume permissions
-        run: devcontainer exec --workspace-folder . bash -lc 'test -w /app/data'
+      - name: Verify legacy volume ownership migration
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            set -e
+            sudo touch /app/data/.legacy-root-owned
+            sudo chown -R root:root /app/data /home/vscode/.cache/pypoetry
+            bash .devcontainer/ensure-volume-ownership.sh
+            test "$(stat -c %u /app/data)" = "$(id -u)"
+            test "$(stat -c %g /app/data)" = "$(id -g)"
+            test "$(stat -c %u /app/data/.legacy-root-owned)" = "$(id -u)"
+            test "$(stat -c %u /home/vscode/.cache/pypoetry)" = "$(id -u)"
+            test -w /app/data
+            test -w /home/vscode/.cache/pypoetry
+            rm /app/data/.legacy-root-owned
+          '
 
-      - name: Show generated Dev Container lockfile
-        if: always()
-        run: cat .devcontainer/devcontainer-lock.json
+      - name: Verify agent-dev environment
+        run: |
+          devcontainer exec --workspace-folder . bash -lc '
+            test "$CLAUDE_CONFIG_DIR" = "/var/lib/agentic-dev/claude"
+            test "$CODEX_HOME" = "/var/lib/agentic-dev/codex"
+            test "$GH_CONFIG_DIR" = "/var/lib/agentic-dev/gh"
+            test -w /var/lib/agentic-dev/claude
+            test -w /var/lib/agentic-dev/codex
+            test -w /var/lib/agentic-dev/gh
+          '
