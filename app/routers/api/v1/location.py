@@ -6,6 +6,7 @@
 """
 
 from typing import Any
+
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
@@ -65,7 +66,7 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
     勤怠種別を削除します。
     """
     location.get_or_404(db=db, id=location_id)
-    
+
     # 削除しようとしている勤怠種別が現在勤怠データで使用されていないか確認します。
     # attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
     # if attendance_count > 0:
@@ -76,4 +77,4 @@ def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
     # ↑ このチェックは crud.location.remove 内に移動
 
     location.remove(db=db, id=location_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT) 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

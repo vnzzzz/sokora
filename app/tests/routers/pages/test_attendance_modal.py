@@ -1,13 +1,13 @@
 import datetime
 
 from app.crud import group as crud_group
-from app.crud import user_type as crud_user_type
 from app.crud import location as crud_location
 from app.crud import user as crud_user
+from app.crud import user_type as crud_user_type
 from app.schemas.group import GroupCreate
-from app.schemas.user_type import UserTypeCreate
 from app.schemas.location import LocationCreate
 from app.schemas.user import UserCreate
+from app.schemas.user_type import UserTypeCreate
 
 
 async def test_attendance_modal_can_be_loaded(async_client, db) -> None:
@@ -27,7 +27,9 @@ async def test_attendance_modal_can_be_loaded(async_client, db) -> None:
     db.commit()
 
     target_date = datetime.date(2024, 12, 1)
-    response = await async_client.get(f"/attendance/modals/U001/{target_date}?mode=register")
+    response = await async_client.get(
+        f"/attendance/modals/U001/{target_date}?mode=register"
+    )
 
     assert response.status_code == 200
     assert "勤怠編集" in response.text

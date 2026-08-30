@@ -6,17 +6,20 @@
 """
 
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+
 from fastapi import Form
+from pydantic import BaseModel, ConfigDict
 
 
 class UserTypeBase(BaseModel):
     """社員種別の基本スキーマ"""
+
     name: str
 
 
 class UserTypeCreate(UserTypeBase):
     """社員種別作成用スキーマ"""
+
     order: Optional[int] = None
 
     @classmethod
@@ -24,13 +27,14 @@ class UserTypeCreate(UserTypeBase):
         cls,
         name: str = Form(...),
         order: Optional[int] = Form(None),
-    ) -> 'UserTypeCreate':
+    ) -> "UserTypeCreate":
         """フォームデータからインスタンスを生成"""
         return cls(name=name, order=order)
 
 
 class UserTypeUpdate(BaseModel):
     """社員種別更新用スキーマ"""
+
     name: Optional[str] = None
     order: Optional[int] = None
 
@@ -39,21 +43,21 @@ class UserTypeUpdate(BaseModel):
         cls,
         name: Optional[str] = Form(None),
         order: Optional[int] = Form(None),
-    ) -> 'UserTypeUpdate':
+    ) -> "UserTypeUpdate":
         """フォームデータからインスタンスを生成"""
         return cls(name=name, order=order)
 
 
 class UserType(UserTypeBase):
     """社員種別取得用スキーマ"""
+
     id: int
     order: Optional[int] = None
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserTypeList(BaseModel):
     """複数社員種別取得用スキーマ"""
-    user_types: List[UserType] 
+
+    user_types: List[UserType]

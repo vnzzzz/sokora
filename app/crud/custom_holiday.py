@@ -8,18 +8,24 @@ from typing import List, Optional
 from sqlalchemy import asc
 from sqlalchemy.orm import Session
 
+from app.crud.base import CRUDBase
 from app.models.custom_holiday import CustomHoliday
 from app.schemas.custom_holiday import CustomHolidayCreate, CustomHolidayUpdate
-from app.crud.base import CRUDBase
 
 
-class CRUDCustomHoliday(CRUDBase[CustomHoliday, CustomHolidayCreate, CustomHolidayUpdate]):
+class CRUDCustomHoliday(
+    CRUDBase[CustomHoliday, CustomHolidayCreate, CustomHolidayUpdate]
+):
     """カスタム祝日のCRUD操作"""
 
-    def get_by_date(self, db: Session, *, date: datetime.date) -> Optional[CustomHoliday]:
+    def get_by_date(
+        self, db: Session, *, date: datetime.date
+    ) -> Optional[CustomHoliday]:
         return db.query(CustomHoliday).filter(CustomHoliday.date == date).first()
 
-    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[CustomHoliday]:
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CustomHoliday]:
         return (
             db.query(CustomHoliday)
             .order_by(asc(CustomHoliday.date))

@@ -36,7 +36,9 @@ class DummyOIDCResult:
 class FakeOIDCClient:
     """Keycloak への外部通信を行わないテスト用クライアント"""
 
-    def __init__(self, fail: bool = False, result: DummyOIDCResult | None = None) -> None:
+    def __init__(
+        self, fail: bool = False, result: DummyOIDCResult | None = None
+    ) -> None:
         self.fail = fail
         self.result = result or DummyOIDCResult()
         self.authorization_endpoint = "http://keycloak.example.com/auth"
@@ -80,16 +82,23 @@ class RecordingLogoutOIDCClient(FakeOIDCClient):
         self.logout_endpoint = logout_endpoint
         self.last_logout_redirect: str | None = None
 
-    def get_logout_url(self, id_token_hint: str, post_logout_redirect_uri: str) -> str | None:  # type: ignore[override]
+    def get_logout_url(
+        self, id_token_hint: str, post_logout_redirect_uri: str
+    ) -> str | None:  # type: ignore[override]
         self.last_logout_redirect = post_logout_redirect_uri
         query = urllib.parse.urlencode(
-            {"id_token_hint": id_token_hint, "post_logout_redirect_uri": post_logout_redirect_uri}
+            {
+                "id_token_hint": id_token_hint,
+                "post_logout_redirect_uri": post_logout_redirect_uri,
+            }
         )
         return f"{self.logout_endpoint}?{query}"
 
 
 @pytest.mark.asyncio
-async def test_oidc_login_allows_protected_api(async_client, monkeypatch, tmp_path) -> None:
+async def test_oidc_login_allows_protected_api(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """Keycloak 正常系でセッションが作られ、ガード済み API へアクセスできること"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -124,7 +133,9 @@ async def test_oidc_login_allows_protected_api(async_client, monkeypatch, tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_keycloak_failure_allows_local_admin_fallback(async_client, monkeypatch, tmp_path) -> None:
+async def test_keycloak_failure_allows_local_admin_fallback(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """Keycloak 障害時にローカル管理者ログインへ切り替えられること"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -140,7 +151,9 @@ async def test_keycloak_failure_allows_local_admin_fallback(async_client, monkey
     app.dependency_overrides[get_oidc_client] = lambda: FakeOIDCClient(fail=True)
     try:
         redirect_resp = await async_client.get("/auth/redirect", follow_redirects=False)
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(redirect_resp.headers["location"]).query)
+        params = urllib.parse.parse_qs(
+            urllib.parse.urlparse(redirect_resp.headers["location"]).query
+        )
         state = params["state"][0]
 
         callback_resp = await async_client.get(
@@ -168,7 +181,9 @@ async def test_keycloak_failure_allows_local_admin_fallback(async_client, monkey
 
 
 @pytest.mark.asyncio
-async def test_guard_blocks_when_not_authenticated(async_client, monkeypatch, tmp_path) -> None:
+async def test_guard_blocks_when_not_authenticated(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """認証必須時に未ログインだと UI はログイン画面へ、API は 401 を返す"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -183,7 +198,9 @@ async def test_guard_blocks_when_not_authenticated(async_client, monkeypatch, tm
 
 
 @pytest.mark.asyncio
-async def test_missing_oidc_config_returns_400(async_client, monkeypatch, tmp_path) -> None:
+async def test_missing_oidc_config_returns_400(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """OIDC 必須設定が無い状態で OIDC フローを開始すると 400 になる"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -198,7 +215,9 @@ async def test_missing_oidc_config_returns_400(async_client, monkeypatch, tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_oidc_callback_rejects_invalid_state(async_client, monkeypatch, tmp_path) -> None:
+async def test_oidc_callback_rejects_invalid_state(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """state 不一致のコールバックは 400 で拒否する"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -221,7 +240,9 @@ async def test_oidc_callback_rejects_invalid_state(async_client, monkeypatch, tm
 
 
 @pytest.mark.asyncio
-async def test_local_admin_can_toggle_oidc_off(async_client, monkeypatch, tmp_path) -> None:
+async def test_local_admin_can_toggle_oidc_off(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """管理者が OIDC を無効化すると OIDC フロー開始が拒否される"""
     state_path = tmp_path / "auth_state.json"
     monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(state_path))
@@ -257,7 +278,9 @@ async def test_local_admin_can_toggle_oidc_off(async_client, monkeypatch, tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_session_cookie_excludes_access_and_refresh_tokens(async_client, monkeypatch, tmp_path) -> None:
+async def test_session_cookie_excludes_access_and_refresh_tokens(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """セッションに access_token/refresh_token を保存しない（クッキー肥大化防止）"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -272,10 +295,14 @@ async def test_session_cookie_excludes_access_and_refresh_tokens(async_client, m
         access_token="A" * 3000,
         refresh_token="R" * 3000,
     )
-    app.dependency_overrides[get_oidc_client] = lambda: FakeOIDCClient(result=large_tokens)
+    app.dependency_overrides[get_oidc_client] = lambda: FakeOIDCClient(
+        result=large_tokens
+    )
     try:
         redirect_resp = await async_client.get("/auth/redirect", follow_redirects=False)
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(redirect_resp.headers["location"]).query)
+        params = urllib.parse.parse_qs(
+            urllib.parse.urlparse(redirect_resp.headers["location"]).query
+        )
         state = params["state"][0]
 
         callback_resp = await async_client.get(
@@ -305,7 +332,9 @@ async def test_session_cookie_excludes_access_and_refresh_tokens(async_client, m
 
 
 @pytest.mark.asyncio
-async def test_oidc_logout_uses_absolute_redirect(async_client, monkeypatch, tmp_path) -> None:
+async def test_oidc_logout_uses_absolute_redirect(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """ログアウト時の post_logout_redirect_uri は絶対URLになる"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -323,7 +352,9 @@ async def test_oidc_logout_uses_absolute_redirect(async_client, monkeypatch, tmp
     app.dependency_overrides[get_optional_oidc_client] = lambda: recorder
     try:
         redirect_resp = await async_client.get("/auth/redirect", follow_redirects=False)
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(redirect_resp.headers["location"]).query)
+        params = urllib.parse.parse_qs(
+            urllib.parse.urlparse(redirect_resp.headers["location"]).query
+        )
         state = params["state"][0]
 
         callback_resp = await async_client.get(
@@ -341,7 +372,9 @@ async def test_oidc_logout_uses_absolute_redirect(async_client, monkeypatch, tmp
 
 
 @pytest.mark.asyncio
-async def test_login_page_shows_sso_and_admin_buttons(async_client, monkeypatch, tmp_path) -> None:
+async def test_login_page_shows_sso_and_admin_buttons(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """ログインランディングは SSO 優先、管理者ログインは導線だけを見せる"""
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
     monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
@@ -381,7 +414,9 @@ async def test_admin_login_page_shows_form(async_client, monkeypatch, tmp_path) 
 
 
 @pytest.mark.asyncio
-async def test_sidebar_hidden_on_login_page(async_client, monkeypatch, tmp_path) -> None:
+async def test_sidebar_hidden_on_login_page(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """未ログイン時はサイドバーを表示しない"""
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
     monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
@@ -392,7 +427,9 @@ async def test_sidebar_hidden_on_login_page(async_client, monkeypatch, tmp_path)
 
 
 @pytest.mark.asyncio
-async def test_sidebar_auth_settings_visible_only_for_admin(async_client, monkeypatch, tmp_path) -> None:
+async def test_sidebar_auth_settings_visible_only_for_admin(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """認証設定リンクは管理者のみ表示し、ラベルはシンプルな表記にする"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -424,7 +461,9 @@ async def test_sidebar_auth_settings_visible_only_for_admin(async_client, monkey
         # 一般ユーザー（OIDC）では非表示
         async_client.cookies.clear()
         redirect_resp = await async_client.get("/auth/redirect", follow_redirects=False)
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(redirect_resp.headers["location"]).query)
+        params = urllib.parse.parse_qs(
+            urllib.parse.urlparse(redirect_resp.headers["location"]).query
+        )
         state = params["state"][0]
 
         callback_resp = await async_client.get(
@@ -442,7 +481,9 @@ async def test_sidebar_auth_settings_visible_only_for_admin(async_client, monkey
 
 
 @pytest.mark.asyncio
-async def test_header_shows_username_and_logout_button(async_client, monkeypatch, tmp_path) -> None:
+async def test_header_shows_username_and_logout_button(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """ログイン後はヘッダーにユーザー名とログアウトボタンを表示し、サイドバーのログアウトは無い"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -502,11 +543,15 @@ async def test_user_menu_is_overlay_and_does_not_shift_content(
     assert "justify-end" in classes
 
     main_classes = re.findall(r'class="([^"]+)"', page.text)
-    assert any("pt-14" in cls for cls in main_classes), "main should reserve top padding"
+    assert any(
+        "pt-14" in cls for cls in main_classes
+    ), "main should reserve top padding"
 
 
 @pytest.mark.asyncio
-async def test_login_page_does_not_show_logout_notice(async_client, monkeypatch, tmp_path) -> None:
+async def test_login_page_does_not_show_logout_notice(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """ログアウト後にログイン画面へ戻っても通知メッセージは表示しない"""
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
     monkeypatch.setenv("SOKORA_AUTH_STATE_PATH", str(tmp_path / "auth_state.json"))
@@ -530,7 +575,9 @@ async def test_login_page_does_not_show_session_expired_notice(
 
 
 @pytest.mark.asyncio
-async def test_sidebar_shown_when_auth_not_required(async_client, monkeypatch, tmp_path) -> None:
+async def test_sidebar_shown_when_auth_not_required(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """認証不要モードでも通常ページはサイドバー付きで表示する"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "false")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")
@@ -544,7 +591,9 @@ async def test_sidebar_shown_when_auth_not_required(async_client, monkeypatch, t
 
 
 @pytest.mark.asyncio
-async def test_local_admin_disabled_when_flag_off(async_client, monkeypatch, tmp_path) -> None:
+async def test_local_admin_disabled_when_flag_off(
+    async_client, monkeypatch, tmp_path
+) -> None:
     """ローカル管理者の有効フラグが false の場合は認証不可にする"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_AUTH_SESSION_SECRET", "test-secret")

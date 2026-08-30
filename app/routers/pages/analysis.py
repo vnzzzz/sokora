@@ -5,7 +5,8 @@
 勤怠集計に関連するルートハンドラー
 """
 
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -43,12 +44,15 @@ def get_analysis_page(
     try:
         # 現在日付を取得
         from datetime import datetime
+
         current_date = datetime.now()
 
         # モード判定: year クエリパラメータ、または mode=year があれば年度集計
         query_params = dict(request.query_params)
         mode_param = query_params.get("mode")
-        fiscal_default = current_date.year if current_date.month >= 4 else current_date.year - 1
+        fiscal_default = (
+            current_date.year if current_date.month >= 4 else current_date.year - 1
+        )
 
         is_year_mode = year is not None or mode_param == "year"
         target_fiscal_year = year if year is not None else fiscal_default
@@ -59,7 +63,9 @@ def get_analysis_page(
             )
         else:
             month_value = month or f"{current_date.year}-{current_date.month:02d}"
-            analysis_data = attendance.get_attendance_analysis_data(db, month=month_value)
+            analysis_data = attendance.get_attendance_analysis_data(
+                db, month=month_value
+            )
 
         # ナビゲーション用に前月・次月を計算（月次モードのみ）
         prev_month = next_month = None
@@ -130,7 +136,10 @@ def get_analysis_page(
         # 選択肢
         month_options = [f"{m:02d}" for m in range(1, 13)]
         year_options = list(range(fiscal_default - 3, fiscal_default + 4))
-        current_month_value = analysis_data["period"]["month"] or f"{current_date.year}-{current_date.month:02d}"
+        current_month_value = (
+            analysis_data["period"]["month"]
+            or f"{current_date.year}-{current_date.month:02d}"
+        )
 
         context: Dict[str, Any] = {
             "request": request,
@@ -154,7 +163,9 @@ def get_analysis_page(
         return templates.TemplateResponse("pages/analysis.html", context)
 
     except Exception as e:
-        logger.error(f"勤怠集計ページ表示中にエラーが発生しました: {str(e)}", exc_info=True)
+        logger.error(
+            f"勤怠集計ページ表示中にエラーが発生しました: {str(e)}", exc_info=True
+        )
         # エラー時は空のデータで表示
         error_context: Dict[str, Any] = {
             "request": request,
@@ -190,4 +201,4 @@ def get_analysis_page(
             "location_details": {},
             "group_summary": {},
         }
-        return templates.TemplateResponse("pages/analysis.html", error_context) 
+        return templates.TemplateResponse("pages/analysis.html", error_context)

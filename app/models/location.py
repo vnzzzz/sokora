@@ -20,10 +20,10 @@ class Location(Base):  # type: ignore
     name = Column(String, unique=True, nullable=False, index=True)
     category = Column(String, nullable=True, index=True)
     order = Column(Integer, nullable=True)
-    
+
     # 関連する勤怠記録
     attendances = relationship("Attendance", back_populates="location_info")
-    
+
     def __str__(self) -> str:
         """オブジェクトの文字列表現として勤怠種別名を返します。"""
         return str(self.name) if self.name is not None else ""

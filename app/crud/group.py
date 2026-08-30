@@ -5,15 +5,16 @@
 グループモデルに対するCRUD操作を提供します。
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
-from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
-from .base import CRUDBase
 from app.models.group import Group
 from app.models.user import User
 from app.schemas.group import GroupCreate, GroupUpdate
+
+from .base import CRUDBase
 
 
 class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
@@ -30,10 +31,8 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
             Optional[Group]: 見つかったグループまたはNone
         """
         return db.query(Group).filter(Group.name == name).first()
-        
-    def get_multi(
-        self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> List[Group]:
+
+    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Group]:
         """複数グループの取得 (order順、次にname順でソート)
 
         Args:
@@ -44,9 +43,13 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
         Returns:
             List[Group]: グループのリスト
         """
-        return db.query(Group)\
-            .order_by(Group.order.nullslast(), Group.name)\
-            .offset(skip).limit(limit).all()
+        return (
+            db.query(Group)
+            .order_by(Group.order.nullslast(), Group.name)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def remove(self, db: Session, *, id: int) -> Group:
         """グループを削除 (関連ユーザーがいない場合のみ)
@@ -64,18 +67,19 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
         """
         # まずオブジェクトが存在するか確認 (なければ404)
         db_obj = self.get_or_404(db, id)
-        
+
         # 関連するユーザーがいないかチェック
         user_count = db.query(User).filter(User.group_id == id).count()
         if user_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"このグループは{user_count}人のユーザーに割り当てられているため削除できません"
+                detail=f"このグループは{user_count}人のユーザーに割り当てられているため削除できません",
             )
-        
+
         # 依存関係がなければ削除を実行
         db.delete(db_obj)
         db.commit()
         return db_obj
 
-group = CRUDGroup(Group) 
+
+group = CRUDGroup(Group)

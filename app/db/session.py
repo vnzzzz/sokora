@@ -7,9 +7,10 @@ SQLAlchemyを使用したデータベース操作の基盤となるモジュー�
 """
 
 from pathlib import Path
-from typing import Generator, Dict
+from typing import Dict, Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from app.core.config import logger
 
@@ -77,7 +78,9 @@ def initialize_database() -> bool:
     try:
         init_db()
         if db_missing:
-            logger.info("データベースファイルが存在しないため、シーディングを実行します。")
+            logger.info(
+                "データベースファイルが存在しないため、シーディングを実行します。"
+            )
             seed_result = seed_database(days_back=60, days_forward=60)
             logger.info("シーディングが完了しました: %s", seed_result)
         logger.info("データベースの初期化が正常に完了しました。")

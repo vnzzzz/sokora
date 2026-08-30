@@ -1,12 +1,11 @@
-
 from app.crud import group as crud_group
-from app.crud import user_type as crud_user_type
 from app.crud import location as crud_location
 from app.crud import user as crud_user
+from app.crud import user_type as crud_user_type
 from app.schemas.group import GroupCreate
-from app.schemas.user_type import UserTypeCreate
 from app.schemas.location import LocationCreate
 from app.schemas.user import UserCreate
+from app.schemas.user_type import UserTypeCreate
 
 
 async def test_register_user_calendar_partial(async_client, db) -> None:

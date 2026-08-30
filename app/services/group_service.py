@@ -1,4 +1,4 @@
-# TODO: Implement group service logic 
+# TODO: Implement group service logic
 """
 グループ関連のビジネスロジックを提供するサービス層モジュール。
 """
@@ -60,9 +60,9 @@ def update_group_with_validation(
     """
     # まず更新対象が存在するか確認 (なければ404)
     db_group = crud.group.get_or_404(db, id=group_id)
-    
+
     # 更新バリデーションを実行
     validate_group_update(db, group_id_to_update=group_id, group_in=group_in)
 
     # バリデーションが通れば更新を実行
-    return crud.group.update(db, db_obj=db_group, obj_in=group_in) 
+    return crud.group.update(db, db_obj=db_group, obj_in=group_in)

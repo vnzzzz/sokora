@@ -17,6 +17,7 @@ from app.utils.csv_utils import get_available_months
 router = APIRouter(prefix="/csv", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
+
 @router.get("", response_class=HTMLResponse)
 def csv_page(request: Request) -> Any:
     """
@@ -30,8 +31,7 @@ def csv_page(request: Request) -> Any:
     """
     # CSVダウンロード対象として選択可能な月のリストを取得します。
     months = get_available_months()
-    
+
     return templates.TemplateResponse(
-        "pages/csv.html", 
-        {"request": request, "months": months}
-    ) 
+        "pages/csv.html", {"request": request, "months": months}
+    )

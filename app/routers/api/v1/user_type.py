@@ -66,7 +66,7 @@ def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any
     社員種別を削除します。
     """
     user_type.get_or_404(db=db, id=user_type_id)
-    
+
     # 削除しようとしている社員種別が現在ユーザーに割り当てられていないか確認します。
     # user_count = db.query(User).filter(User.user_type_id == user_type_id).count()
     # if user_count > 0:
@@ -77,4 +77,4 @@ def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any
     # ↑ このチェックは crud.user_type.remove 内に移動
 
     user_type.remove(db=db, id=user_type_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT) 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

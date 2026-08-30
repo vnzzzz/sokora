@@ -6,26 +6,33 @@ UI表示関連のユーティリティ関数を提供します。
 主にTailwindCSSのスタイル生成とUIデータ操作に関する関数が含まれています。
 """
 
-from typing import List, Dict, Optional, TypedDict, Callable, TypeVar
+from typing import Callable, Dict, List, Optional, TypedDict, TypeVar
 
 
 # 型定義
 class LocationBase(TypedDict):
     """勤怠種別の基本情報型定義"""
+
     name: str
     badge: str
 
 
 class LocationData(LocationBase):
     """勤怠種別の詳細情報型定義"""
+
     color: str
     key: str
 
 
 # Tailwind CSSで使用する色のリスト
 TAILWIND_COLORS = [
-    "success", "primary", "warning", "error", 
-    "info", "accent", "secondary"
+    "success",
+    "primary",
+    "warning",
+    "error",
+    "info",
+    "accent",
+    "secondary",
 ]
 
 
@@ -58,7 +65,7 @@ def get_location_color_classes(location_id: Optional[int]) -> Dict[str, str]:
         # IDがない場合 (例: 未分類など) はデフォルトの色 (例: neutralやbase) を返すか、
         # またはエラーを示す色にするか、仕様に応じて決定します。
         # ここではシンプルに最初の色を使いますが、必要に応じて変更してください。
-        color_name = _get_color_for_index(0) 
+        color_name = _get_color_for_index(0)
     else:
         color_name = _get_color_for_index(location_id)
 
@@ -69,12 +76,11 @@ def get_location_color_classes(location_id: Optional[int]) -> Dict[str, str]:
 
 
 # 型変数の定義
-T = TypeVar('T', LocationBase, LocationData)
+T = TypeVar("T", LocationBase, LocationData)
 
 
 def _map_locations(
-    location_types: List[str], 
-    transform_fn: Callable[[str, str], T]
+    location_types: List[str], transform_fn: Callable[[str, str], T]
 ) -> List[T]:
     """勤怠種別リストを変換して新しいフォーマットに変換します。
 
@@ -115,9 +121,10 @@ def generate_location_badges(location_types: List[str]) -> List[LocationBase]:
     Returns:
         List[LocationBase]: 勤怠種別とそのバッジ情報のリスト
     """
+
     def transform(loc: str, color: str) -> LocationBase:
         return {"name": loc, "badge": color}
-        
+
     return _map_locations(location_types, transform)
 
 
@@ -132,6 +139,7 @@ def generate_location_data(location_types: List[str]) -> List[LocationData]:
     Returns:
         List[LocationData]: 勤怠種別とそのスタイル情報のリスト
     """
+
     def transform(loc: str, color: str) -> LocationData:
         return {
             "name": loc,
@@ -139,7 +147,7 @@ def generate_location_data(location_types: List[str]) -> List[LocationData]:
             "key": loc,
             "badge": color,
         }
-        
+
     return _map_locations(location_types, transform)
 
 

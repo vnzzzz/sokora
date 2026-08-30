@@ -5,18 +5,21 @@
 ユーザーグループのPydanticスキーマ。
 """
 
-from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
+
 from fastapi import Form  # Form をインポート
+from pydantic import BaseModel, ConfigDict
 
 
 class GroupBase(BaseModel):
     """グループの基本スキーマ"""
+
     name: str
 
 
 class GroupCreate(GroupBase):
     """グループ作成用スキーマ"""
+
     order: Optional[int] = None
 
     @classmethod
@@ -24,13 +27,14 @@ class GroupCreate(GroupBase):
         cls,
         name: str = Form(...),
         order: Optional[int] = Form(None),
-    ) -> 'GroupCreate':
+    ) -> "GroupCreate":
         """フォームデータからインスタンスを生成"""
         return cls(name=name, order=order)
 
 
 class GroupUpdate(BaseModel):
     """グループ更新用スキーマ"""
+
     name: Optional[str] = None
     order: Optional[int] = None
 
@@ -39,21 +43,21 @@ class GroupUpdate(BaseModel):
         cls,
         name: Optional[str] = Form(None),  # Optional なのでデフォルトを None に
         order: Optional[int] = Form(None),
-    ) -> 'GroupUpdate':
+    ) -> "GroupUpdate":
         """フォームデータからインスタンスを生成"""
         return cls(name=name, order=order)
 
 
 class Group(GroupBase):
     """グループ取得用スキーマ"""
+
     id: int
     order: Optional[int] = None
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GroupList(BaseModel):
     """複数グループ取得用スキーマ"""
-    groups: List[Group] 
+
+    groups: List[Group]

@@ -6,15 +6,17 @@
 """
 
 from typing import Dict, List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import asc, nullslast
-from fastapi import HTTPException, status
 
-from .base import CRUDBase
+from fastapi import HTTPException, status
+from sqlalchemy import asc, nullslast
+from sqlalchemy.orm import Session
+
+from app.core.config import logger
 from app.models.attendance import Attendance
 from app.models.location import Location
 from app.schemas.location import LocationCreate, LocationUpdate
-from app.core.config import logger
+
+from .base import CRUDBase
 
 
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
@@ -37,9 +39,9 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(self.model.category)), 
-                nullslast(asc(self.model.order)), 
-                asc(self.model.id)
+                nullslast(asc(self.model.category)),
+                nullslast(asc(self.model.order)),
+                asc(self.model.id),
             )
             .offset(skip)
             .limit(limit)
@@ -59,9 +61,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         """
         return db.query(Location).filter(Location.name == name).first()
 
-    def create_with_name(
-        self, db: Session, *, name: str
-    ) -> Location:
+    def create_with_name(self, db: Session, *, name: str) -> Location:
         """
         名前を指定して新しい勤怠種別を作成
 
@@ -92,11 +92,15 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             List[str]: 勤怠種別名のリスト
         """
         try:
-            locations = db.query(Location).order_by(
-                nullslast(asc(Location.category)),
-                nullslast(asc(Location.order)), 
-                asc(Location.id)
-            ).all()
+            locations = (
+                db.query(Location)
+                .order_by(
+                    nullslast(asc(Location.category)),
+                    nullslast(asc(Location.order)),
+                    asc(Location.id),
+                )
+                .all()
+            )
             return [str(loc.name) for loc in locations]
         except Exception as e:
             logger.error(f"Error getting location types: {str(e)}")
@@ -113,11 +117,15 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             Dict[int, str]: location_idをキー、名前を値とする辞書
         """
         try:
-            locations = db.query(Location).order_by(
-                nullslast(asc(Location.category)),
-                nullslast(asc(Location.order)), 
-                asc(Location.id)
-            ).all()
+            locations = (
+                db.query(Location)
+                .order_by(
+                    nullslast(asc(Location.category)),
+                    nullslast(asc(Location.order)),
+                    asc(Location.id),
+                )
+                .all()
+            )
             return {int(loc.id): str(loc.name) for loc in locations}
         except Exception as e:
             logger.error(f"Error getting location dict: {str(e)}")
@@ -161,14 +169,16 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             HTTPException: 勤怠種別に関連勤怠記録が存在する場合 (400)
         """
         db_obj = self.get_or_404(db, id)
-        
-        attendance_count = db.query(Attendance).filter(Attendance.location_id == id).count()
+
+        attendance_count = (
+            db.query(Attendance).filter(Attendance.location_id == id).count()
+        )
         if attendance_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"この勤怠種別は{attendance_count}件の勤怠データで使用されているため削除できません"
+                detail=f"この勤怠種別は{attendance_count}件の勤怠データで使用されているため削除できません",
             )
-        
+
         db.delete(db_obj)
         db.commit()
         return db_obj

@@ -11,18 +11,19 @@
 """
 
 import random
-from typing import List, Dict, Optional, Tuple
 from datetime import date, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from typing import Dict, List, Optional, Tuple
 
-from app.db.session import SessionLocal, init_db
-from app.models.user import User
-from app.models.attendance import Attendance
-from app.models.location import Location
-from app.models.group import Group
-from app.models.user_type import UserType
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.core.config import logger
+from app.db.session import SessionLocal, init_db
+from app.models.attendance import Attendance
+from app.models.group import Group
+from app.models.location import Location
+from app.models.user import User
+from app.models.user_type import UserType
 
 # ベースとなるサンプルデータ
 DEFAULT_GROUPS = [
@@ -56,7 +57,7 @@ DEFAULT_USERS = [
 def create_location_preferences(
     locations: List[Location],
     primary_location: Optional[Location] = None,
-    primary_weight: float = 0.7
+    primary_weight: float = 0.7,
 ) -> Dict[int, float]:
     """指定された勤怠種別リストに基づき、特定の場所を優先する確率分布を生成します。
 
@@ -74,11 +75,11 @@ def create_location_preferences(
 
     # すべての勤怠種別に基本的な重みを設定
     prefs = {int(loc.id): random.uniform(0.1, 0.3) for loc in locations}
-    
+
     # 優先勤怠種別が指定されている場合は重みを上げる
     if primary_location and primary_location.id in [loc.id for loc in locations]:
         prefs[int(primary_location.id)] = primary_weight
-    
+
     return prefs
 
 
@@ -120,7 +121,9 @@ def bootstrap_core_data(db: Session) -> Dict[str, int]:
     if not users:
         # グループ・社員種別が存在することを確認
         if not groups or not user_types:
-            logger.error("グループまたは社員種別の作成に失敗しました。ユーザーを投入できません。")
+            logger.error(
+                "グループまたは社員種別の作成に失敗しました。ユーザーを投入できません。"
+            )
         else:
             for idx, user in enumerate(DEFAULT_USERS):
                 group = groups[idx % len(groups)]
@@ -139,7 +142,9 @@ def bootstrap_core_data(db: Session) -> Dict[str, int]:
     return created_counts
 
 
-def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) -> List[Attendance]:
+def seed_attendance(
+    db: Session, days_back: int = 30, days_forward: int = 30
+) -> List[Attendance]:
     """
     データベース内の既存ユーザーと勤怠種別を利用して、ダミーの勤怠記録を生成します。
 
@@ -156,7 +161,7 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
     if not users:
         logger.error("データベースにユーザーが存在しません。勤怠記録を生成できません。")
         return []
-    
+
     logger.info(f"{len(users)} 人のユーザーが見つかりました。")
 
     # 既存の勤怠種別を取得
@@ -164,8 +169,10 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
     if not locations:
         logger.error("データベースに勤怠種別が存在しません。勤怠記録を生成できません。")
         return []
-    
-    logger.info(f"{len(locations)} 個の勤怠種別が見つかりました: {[loc.name for loc in locations]}")
+
+    logger.info(
+        f"{len(locations)} 個の勤怠種別が見つかりました: {[loc.name for loc in locations]}"
+    )
 
     # 既存レコードを効率的にチェックするための準備
     existing_records: Dict[Tuple[str, date], Attendance] = {}
@@ -181,12 +188,16 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
     created_records = []
 
     # 勤怠種別を名前で分類
-    office_locations = [loc for loc in locations if loc.name not in ["テレワーク", "夜勤"]]
-    telework_location = next((loc for loc in locations if loc.name == "テレワーク"), None)
+    office_locations = [
+        loc for loc in locations if loc.name not in ["テレワーク", "夜勤"]
+    ]
+    telework_location = next(
+        (loc for loc in locations if loc.name == "テレワーク"), None
+    )
 
     for user in users:
         logger.info(f"ユーザー {user.username} ({user.id}) の勤怠記録を生成中...")
-        
+
         # ユーザーごとの勤務傾向（オフィス派/テレワーク派、好みのオフィス）をランダムに設定
         is_office_worker = random.random() > 0.3
 
@@ -205,15 +216,21 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
         # 平日 (月曜=0 〜 金曜=4) の勤務パターンを設定
         for weekday in range(5):
             if is_office_worker:
-                location_prefs = create_location_preferences(locations, preferred_location)
+                location_prefs = create_location_preferences(
+                    locations, preferred_location
+                )
             else:
                 # テレワークを好むユーザー
-                location_prefs = create_location_preferences(locations, telework_location)
+                location_prefs = create_location_preferences(
+                    locations, telework_location
+                )
             weekday_patterns[weekday] = location_prefs
 
         # 休日 (土曜=5, 日曜=6) の勤務パターンを設定 (出勤は稀)
         for weekday in range(5, 7):
-            location_prefs = create_location_preferences(locations, preferred_location, 0.8)
+            location_prefs = create_location_preferences(
+                locations, preferred_location, 0.8
+            )
             weekday_patterns[weekday] = location_prefs
 
         # 指定された日付範囲で勤怠記録を生成
@@ -236,15 +253,15 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
                 # パターンに基づいて勤怠種別を選択
                 location_ids_in_pattern = list(current_pattern.keys())
                 weights = list(current_pattern.values())
-                
+
                 if location_ids_in_pattern:
-                    chosen_location_id = random.choices(location_ids_in_pattern, weights=weights, k=1)[0]
+                    chosen_location_id = random.choices(
+                        location_ids_in_pattern, weights=weights, k=1
+                    )[0]
 
                     # 新しい勤怠記録オブジェクトを作成
                     attendance = Attendance(
-                        user_id=str(user.id),
-                        date=day,
-                        location_id=chosen_location_id
+                        user_id=str(user.id), date=day, location_id=chosen_location_id
                     )
                     db.add(attendance)
                     created_records.append(attendance)
@@ -255,7 +272,9 @@ def seed_attendance(db: Session, days_back: int = 30, days_forward: int = 30) ->
     return created_records
 
 
-def run_seeder(days_back: int = 60, days_forward: int = 30, skip_init: bool = False) -> Dict[str, int]:
+def run_seeder(
+    days_back: int = 60, days_forward: int = 30, skip_init: bool = False
+) -> Dict[str, int]:
     """
     既存のユーザーと勤怠種別を利用して勤怠記録を生成します。
 
@@ -295,11 +314,13 @@ def run_seeder(days_back: int = 60, days_forward: int = 30, skip_init: bool = Fa
 
         # 勤怠記録を生成
         logger.info("勤怠データの生成を開始します...")
-        attendances = seed_attendance(db, days_back=days_back, days_forward=days_forward)
+        attendances = seed_attendance(
+            db, days_back=days_back, days_forward=days_forward
+        )
         logger.info("勤怠データの生成が完了しました。")
 
         return {"attendances": len(attendances)}
-        
+
     except Exception as e:
         logger.error(f"シーダー実行中にエラーが発生しました: {e}", exc_info=True)
         db.rollback()
@@ -311,13 +332,19 @@ def run_seeder(days_back: int = 60, days_forward: int = 30, skip_init: bool = Fa
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="既存のユーザーと勤怠種別を利用して勤怠記録を追加します")
-    parser.add_argument("--days-back", type=int, default=60, help="過去何日分のデータを生成するか")
-    parser.add_argument("--days-forward", type=int, default=30, help="未来何日分のデータを生成するか")
+    parser = argparse.ArgumentParser(
+        description="既存のユーザーと勤怠種別を利用して勤怠記録を追加します"
+    )
+    parser.add_argument(
+        "--days-back", type=int, default=60, help="過去何日分のデータを生成するか"
+    )
+    parser.add_argument(
+        "--days-forward", type=int, default=30, help="未来何日分のデータを生成するか"
+    )
 
     args = parser.parse_args()
 
-    print(f"勤怠データシーダーを実行中...")
+    print("勤怠データシーダーを実行中...")
     result = run_seeder(days_back=args.days_back, days_forward=args.days_forward)
-    print(f"完了しました！")
-    print(f"生成された勤怠記録: {result['attendances']} 件") 
+    print("完了しました！")
+    print(f"生成された勤怠記録: {result['attendances']} 件")

@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 
 
-def validate_user_type_creation(db: Session, *, user_type_in: schemas.user_type.UserTypeCreate) -> None:
+def validate_user_type_creation(
+    db: Session, *, user_type_in: schemas.user_type.UserTypeCreate
+) -> None:
     """社員種別新規作成時のバリデーション（名前の重複チェック）を行います。"""
     if not user_type_in.name:
         raise HTTPException(
@@ -24,7 +26,10 @@ def validate_user_type_creation(db: Session, *, user_type_in: schemas.user_type.
 
 
 def validate_user_type_update(
-    db: Session, *, user_type_id_to_update: int, user_type_in: schemas.user_type.UserTypeUpdate
+    db: Session,
+    *,
+    user_type_id_to_update: int,
+    user_type_in: schemas.user_type.UserTypeUpdate,
 ) -> None:
     """社員種別更新時のバリデーション（名前の重複チェック）を行います。"""
     if not user_type_in.name:
@@ -61,7 +66,9 @@ def update_user_type_with_validation(
     db_user_type = crud.user_type.get_or_404(db, id=user_type_id)
 
     # 更新バリデーションを実行
-    validate_user_type_update(db, user_type_id_to_update=user_type_id, user_type_in=user_type_in)
+    validate_user_type_update(
+        db, user_type_id_to_update=user_type_id, user_type_in=user_type_in
+    )
 
     # バリデーションが通れば更新を実行
-    return crud.user_type.update(db, db_obj=db_user_type, obj_in=user_type_in) 
+    return crud.user_type.update(db, db_obj=db_user_type, obj_in=user_type_in)

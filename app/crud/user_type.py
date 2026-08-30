@@ -5,15 +5,16 @@
 社員種別モデルに対するCRUD操作を提供します。
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from .base import CRUDBase
 from app.models.user import User
 from app.models.user_type import UserType
 from app.schemas.user_type import UserTypeCreate, UserTypeUpdate
-from fastapi import HTTPException, status
+
+from .base import CRUDBase
 
 
 class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
@@ -44,9 +45,13 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
         Returns:
             List[UserType]: 社員種別のリスト
         """
-        return db.query(UserType)\
-            .order_by(UserType.order.nullslast(), UserType.name)\
-            .offset(skip).limit(limit).all()
+        return (
+            db.query(UserType)
+            .order_by(UserType.order.nullslast(), UserType.name)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def remove(self, db: Session, *, id: int) -> UserType:
         """社員種別を削除 (関連ユーザーがいない場合のみ)
@@ -63,17 +68,17 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
             HTTPException: 社員種別に関連ユーザーが存在する場合 (400)
         """
         db_obj = self.get_or_404(db, id)
-        
+
         user_count = db.query(User).filter(User.user_type_id == id).count()
         if user_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"この社員種別は{user_count}人のユーザーに割り当てられているため削除できません"
+                detail=f"この社員種別は{user_count}人のユーザーに割り当てられているため削除できません",
             )
-            
+
         db.delete(db_obj)
         db.commit()
         return db_obj
 
 
-user_type = CRUDUserType(UserType) 
+user_type = CRUDUserType(UserType)

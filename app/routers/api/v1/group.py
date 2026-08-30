@@ -6,6 +6,7 @@
 """
 
 from typing import Any
+
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
@@ -29,9 +30,7 @@ def get_groups(db: Session = Depends(get_db)) -> Any:
 
 
 @router.post("", response_model=Group)
-def create_group(
-    *, db: Session = Depends(get_db), group_in: GroupCreate
-) -> Any:
+def create_group(*, db: Session = Depends(get_db), group_in: GroupCreate) -> Any:
     """
     新しいグループを作成します。
     サービス層でバリデーションを実行します。
@@ -63,6 +62,6 @@ def delete_group(*, db: Session = Depends(get_db), group_id: int) -> Any:
     グループを削除します。
     """
     group.get_or_404(db=db, id=group_id)
-    
+
     group.remove(db=db, id=group_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

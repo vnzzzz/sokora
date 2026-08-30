@@ -10,11 +10,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.crud.user import user
 from app.crud.attendance import attendance
+from app.crud.user import user
 from app.db.session import get_db
 from app.schemas.user import User, UserCreate, UserList, UserUpdate
-from app.services import user_service # サービス層をインポート
+from app.services import user_service  # サービス層をインポート
 
 # API用ルーター
 router = APIRouter(tags=["Users"])
@@ -27,12 +27,12 @@ def get_users(db: Session = Depends(get_db)) -> Any:
     """
     users_data = user.get_all_users(db)
     users_list = []
-    
+
     for user_name, user_id_str, user_type_id in users_data:
         user_obj = user.get(db, id=user_id_str)
         if user_obj:
             users_list.append(user_obj)
-    
+
     return {"users": users_list}
 
 
@@ -75,27 +75,26 @@ async def update_user(
 
 
 @router.delete("/{user_id}")
-async def delete_user(
-    user_id: str, 
-    db: Session = Depends(get_db)
-) -> Any:
+async def delete_user(user_id: str, db: Session = Depends(get_db)) -> Any:
     """
     ユーザーを削除します。
     """
     try:
         user.get_or_404(db, id=user_id)
-            
+
         # 先に関連する勤怠データを削除
         attendance.delete_attendances_by_user_id(db=db, user_id=user_id)
-            
+
         # ユーザーを削除
         user.remove(db, id=user_id)
-        
-        db.commit() # 勤怠削除とユーザー削除をコミット
+
+        db.commit()  # 勤怠削除とユーザー削除をコミット
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
-        db.rollback() # エラー時はロールバック
+        db.rollback()  # エラー時はロールバック
         raise
     except Exception as e:
-        db.rollback() # エラー時はロールバック
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) 
+        db.rollback()  # エラー時はロールバック
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )

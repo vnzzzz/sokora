@@ -11,11 +11,11 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.db.session import Base
 from app.core.config import logger
+from app.db.session import Base
 
 # ここでの型バインドは文字列として指定
-ModelType = TypeVar("ModelType", bound="Base") #type: ignore
+ModelType = TypeVar("ModelType", bound="Base")  # type: ignore
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
@@ -57,7 +57,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         Returns:
             ModelType: 見つかったオブジェクト
-            
+
         Raises:
             HTTPException: ステータスコード404で見つからなかった場合
         """
@@ -66,8 +66,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             # モデル名を取得してエラーメッセージに含める
             model_name = self.model.__name__
             raise HTTPException(
-                status_code=404, 
-                detail=f"{model_name} with id {id} not found"
+                status_code=404, detail=f"{model_name} with id {id} not found"
             )
         return db_obj
 
