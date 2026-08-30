@@ -10,9 +10,8 @@ RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
 # 2) 開発コンテナ
 FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm
 
-# 開発用のツールインストール
+# sokora固有の開発ツール。Agent/Codex/Claude/GitHub CLI等はagent-dev Featureが管理する。
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  git \
   curl \
   vim \
   nano \
@@ -23,10 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Poetryのインストール（グローバルに）
+# Poetryは#48でuvへ移行予定。vscodeユーザーからも利用できる共有パスへ配置する。
+ENV POETRY_HOME=/opt/poetry
+ENV POETRY_VIRTUALENVS_CREATE=false
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
   python3 -m pip install --no-cache-dir --upgrade pip
-ENV PATH="/root/.local/bin:$PATH"
+ENV PATH="${POETRY_HOME}/bin:${PATH}"
 
 # 開発ツールをグローバルにインストール
 RUN pip install --no-cache-dir black isort mypy flake8
@@ -37,16 +38,22 @@ COPY ./scripts ./scripts
 # 依存関係ファイルのコピー
 COPY pyproject.toml poetry.lock* README.md ./
 
-# 依存関係のインストール
-RUN poetry config virtualenvs.create false && \
-  poetry install --no-root --no-interaction --no-ansi --with dev
+# image build時の依存関係はsystem環境へインストールする。
+RUN poetry install --no-root --no-interaction --no-ansi --with dev
 
-# （必要であれば）Playwright を使う場合の依存インストール
-# ※ pyproject.toml に playwright が入っている前提
-RUN poetry run playwright install --with-deps
+# Playwright browserをremoteUserに依存しない共有パスへ配置する。
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN poetry run playwright install --with-deps && \
+  chmod -R a+rX /ms-playwright
 
-# 静的ファイル用ディレクトリを作成
-RUN mkdir -p /app/assets/css /app/assets/js /app/assets/json
+# runtime用ディレクトリとPoetry cache mount先をvscodeユーザーで利用可能にする。
+RUN mkdir -p \
+  /app/assets/css \
+  /app/assets/js \
+  /app/assets/json \
+  /app/data \
+  /home/vscode/.cache/pypoetry && \
+  chown -R vscode:vscode /app/data /home/vscode/.cache
 
 # 祝日データをビルド時に取得
 RUN python3 scripts/build_holiday_cache.py
