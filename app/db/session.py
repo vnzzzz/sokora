@@ -8,6 +8,7 @@ from fastapi import Request
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.pool import StaticPool
 from starlette.applications import Starlette
 
 from app.core.config import logger
@@ -32,10 +33,12 @@ def create_database_runtime(database_url: str) -> DatabaseRuntime:
     """Create an isolated database runtime for a database URL."""
     url = make_url(database_url)
     if url.get_backend_name() == "sqlite":
-        engine = create_engine(
-            database_url,
-            connect_args={"check_same_thread": False},
-        )
+        engine_kwargs: dict[str, object] = {
+            "connect_args": {"check_same_thread": False}
+        }
+        if url.database in {None, "", ":memory:"}:
+            engine_kwargs["poolclass"] = StaticPool
+        engine = create_engine(database_url, **engine_kwargs)
     else:
         engine = create_engine(database_url)
 
