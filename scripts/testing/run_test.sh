@@ -31,10 +31,10 @@ echo "=========================================="
 echo "🧪 API・ユニットテスト実行"
 echo "=========================================="
 
-# API/ユニットテストを実行 (e2e を除く)
-uv run pytest -vv app/tests/routers/ app/tests/crud/ app/tests/services/ app/tests/utils/
+# E2E以外の全テストを実行する。
+uv run pytest -vv app/tests --ignore=app/tests/e2e
 
-# APIテストが失敗したらスクリプトを終了
+# API/ユニットテストが失敗したらスクリプトを終了
 if [ $? -ne 0 ]; then
     echo "❌ API/Unit tests failed. Exiting."
     exit 1
