@@ -5,8 +5,9 @@
 ユーザーの社員種別のPydanticスキーマ。
 """
 
-from pydantic import BaseModel
 from typing import List, Optional
+
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class UserTypeBase(BaseModel):
@@ -26,11 +27,11 @@ class UserTypeUpdate(BaseModel):
 
 class UserType(UserTypeBase):
     """社員種別取得用スキーマ"""
-    user_type_id: int
+    id: int
 
-    class Config:
-        """設定クラス"""
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class UserTypeList(BaseModel):

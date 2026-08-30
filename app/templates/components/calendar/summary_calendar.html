@@ -1,0 +1,89 @@
+<section>
+  {# JavaScriptに渡すためのメタデータ #}
+  <div id="calendar-metadata" data-today-date="{{ today_date }}" class="hidden"></div>
+
+  <div class="flex items-center justify-start space-x-4 mb-2">
+    <span class="text-xl font-bold">{{ current_month }}</span>
+    {% with prev_month=calendar.prev_month, next_month=calendar.next_month, current_month=current_month, use_htmx=true,
+    target_id="calendar-area", url_base="/calendar" %} {% include "components/common/month_switcher.html" %} {% endwith
+    %}
+  </div>
+
+  <div class="overflow-x-auto max-w-[850px]">
+    <table class="table table-xs w-full" style="table-layout: fixed">
+      <thead>
+        <tr>
+          <th class="text-left sticky left-0 z-10 w-32" style="width: 130px; min-width: 130px">勤務場所</th>
+
+          {# 日付データを前処理して配列に格納 - パフォーマンス最適化 #} {% set day_data_array = [] %} {% set
+          weekday_array = [] %} {% for week in calendar.weeks %} {% for day_idx in range(7) %} {% if week[day_idx] and
+          week[day_idx].day != 0 %} {% set day = week[day_idx] %} {% set day_idx_val = day_idx %} {% set is_weekend =
+          day_idx == 0 or day_idx == 6 %} {% set is_holiday = day.is_holiday|default(false) %} {% set weekend_class =
+          "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10" if day_idx == 0 or is_holiday else "bg-blue-900/10
+          dark:bg-blue-300/10" if day_idx == 6 else "") %} {% set _ = day_data_array.append({ 'day': day, 'day_idx':
+          day_idx_val, 'is_weekend': is_weekend, 'is_holiday': is_holiday, 'weekend_class': weekend_class }) %} {% endif
+          %} {% endfor %} {% endfor %} {# 日付ヘッダーを効率的に出力 #} {% for item in day_data_array %} {% set day =
+          item.day %} {% set day_idx = item.day_idx %} {% set is_weekend = item.is_weekend %} {% set is_holiday =
+          item.is_holiday %} {% set weekend_class = item.weekend_class %}
+
+          <th
+            class="text-center p-1 w-10 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
+            hx-get="/day/{{ day.date }}"
+            hx-target="#detail-area"
+            data-date="{{ day.date }}"
+            data-day="{{ day.day }}"
+            style="width: 20px; min-width: 20px; max-width: 20px"
+          >
+            <div
+              class="font-bold text-sm {% if is_holiday or day_idx == 0 %}text-red-600 dark:text-red-400{% elif day_idx == 6 %}text-blue-600 dark:text-blue-400{% endif %}"
+            >
+              {{ day.day }}
+            </div>
+            {% if day.holiday_name|default('') %}
+            <div class="text-xs opacity-70 custom-tooltip holiday-tooltip">
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[day_idx] }}
+              <span class="tooltip-text">{{ day.holiday_name }}</span>
+            </div>
+            {% else %}
+            <div class="text-xs opacity-70">
+              {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %} {{ weekdays[day_idx] }}
+            </div>
+            {% endif %}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 勤務場所の行 -->
+        {% for location in calendar.locations %}
+        <tr class="border-b border-base-300">
+          <td
+            class="font-medium text-left sticky left-0 z-10 w-32 whitespace-nowrap"
+            style="width: 130px; min-width: 130px"
+          >
+            <span class="text-{{ location.badge }}">{{ location.name }}</span>
+          </td>
+
+          {# 各勤務場所のデータを一度のループで効率的に表示 #} {% for item in day_data_array %} {% set day = item.day %}
+          {% set day_idx = item.day_idx %} {% set is_weekend = item.is_weekend %} {% set is_holiday = item.is_holiday %}
+          {% set weekend_class = item.weekend_class %}
+
+          <td
+            class="text-center hover:bg-base-300 cursor-pointer p-1 {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %} calendar-cell"
+            hx-get="/day/{{ day.date }}"
+            hx-target="#detail-area"
+            data-date="{{ day.date }}"
+            data-day="{{ day.day }}"
+            style="width: 40px; min-width: 40px; max-width: 40px"
+          >
+            <span class="{{ location.color }} whitespace-nowrap text-base">
+              {% if day and location.key in day and day[location.key] != 0 %} {{ day[location.key] }} {% endif %}
+            </span>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

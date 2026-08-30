@@ -8,10 +8,10 @@ CRUDベースクラス
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 import typing
 
+from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy.ext.declarative import DeclarativeMeta
 
 from app.db.session import Base
 from app.core.config import logger
@@ -48,6 +48,30 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             Optional[ModelType]: 見つかったオブジェクト、またはNone
         """
         return db.query(self.model).filter(self.model.id == id).first()
+
+    def get_or_404(self, db: Session, id: Any) -> ModelType:
+        """
+        IDによるオブジェクト取得 (見つからない場合は404エラー)
+
+        Args:
+            db: データベースセッション
+            id: オブジェクトのID
+
+        Returns:
+            ModelType: 見つかったオブジェクト
+            
+        Raises:
+            HTTPException: ステータスコード404で見つからなかった場合
+        """
+        db_obj = self.get(db, id)
+        if db_obj is None:
+            # モデル名を取得してエラーメッセージに含める
+            model_name = self.model.__name__
+            raise HTTPException(
+                status_code=404, 
+                detail=f"{model_name} with id {id} not found"
+            )
+        return db_obj
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100

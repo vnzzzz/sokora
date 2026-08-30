@@ -6,18 +6,15 @@ CSV変換ユーティリティ
 """
 
 import csv
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import io
 from datetime import datetime, date
 import calendar
 from dateutil.relativedelta import relativedelta  # type: ignore
-import pytz  # type: ignore
 from sqlalchemy.orm import Session
 
-from app.core.config import logger
 from app.crud.user import user
 from app.crud.attendance import attendance
-from app.crud.location import location
 
 def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
     """
@@ -120,7 +117,7 @@ def get_work_entries_csv(db: Session, month: Optional[str] = None, encoding: str
     
     # 各ユーザーについて行を作成
     for user_name, user_id, user_type_id in users_data:
-        user_obj = user.get_by_user_id(db, user_id=user_id)
+        user_obj = user.get(db, id=user_id)
         if not user_obj:
             continue
             

@@ -7,7 +7,7 @@
 
 from typing import List, Optional, Dict, Any, Union
 from datetime import date, datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, field_validator, Field, ConfigDict, field_serializer
 
 
 class AttendanceBase(BaseModel):
@@ -22,7 +22,7 @@ class AttendanceCreate(AttendanceBase):
 
     user_id: str  # ユーザーID
 
-    @validator('date')
+    @field_validator('date', mode='before')
     def validate_date(cls, v: Union[str, date]) -> date:
         if isinstance(v, str):
             try:
@@ -31,11 +31,13 @@ class AttendanceCreate(AttendanceBase):
                 raise ValueError("日付形式が無効です。YYYY-MM-DD形式で入力してください。")
         return v
 
-    class Config:
-        json_encoders = {
-            date: lambda v: v.isoformat()  # dateオブジェクトをISO形式の文字列に変換
-        }
-        from_attributes = True  # Pydantic V2の新しい設定
+    @field_serializer('date')
+    def serialize_date(self, v: date) -> str:
+        return v.isoformat()
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class AttendanceUpdate(BaseModel):
@@ -43,8 +45,9 @@ class AttendanceUpdate(BaseModel):
 
     location_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class AttendanceInDBBase(AttendanceBase):
@@ -53,15 +56,17 @@ class AttendanceInDBBase(AttendanceBase):
     id: int
     user_id: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class Attendance(AttendanceInDBBase):
     """勤怠データレスポンス用スキーマ"""
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class AttendanceList(BaseModel):
@@ -69,8 +74,9 @@ class AttendanceList(BaseModel):
 
     records: List[Attendance]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 class UserAttendance(BaseModel):
@@ -80,5 +86,6 @@ class UserAttendance(BaseModel):
     user_name: str
     dates: List[Dict[str, Any]]  # 日付、勤務場所、勤怠IDのリスト
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )

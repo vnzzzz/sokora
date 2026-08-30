@@ -13,14 +13,23 @@ function setupAddFormHandler(formId, endpoint, redirectUrl = null, successCallba
   const form = document.getElementById(formId)
   if (!form) return
 
-  form.addEventListener('submit', function (event) {
+  form.addEventListener('submit', async function (event) {
     event.preventDefault()
     const formData = new FormData(this)
     const data = {}
 
     // FormDataからJSONに変換
     formData.forEach((value, key) => {
-      data[key] = value
+      // 特定のキーの値を整数に変換
+      if (key === 'group_id' || key === 'user_type_id') {
+        // parseInt で整数に変換。失敗時は NaN になるので、元の値を使うか、
+        // エラーにするかは要件次第。ここでは元の文字列のまま送るよりはマシとして変換を試みる。
+        // 失敗時 (NaN) の挙動はバックエンドのバリデーションに任せる。
+        const intValue = parseInt(value, 10)
+        data[key] = isNaN(intValue) ? value : intValue // 変換失敗時は元の値を保持（バリデーションエラーになるはず）
+      } else {
+        data[key] = value
+      }
     })
 
     // 送信ボタンを無効化
@@ -31,40 +40,37 @@ function setupAddFormHandler(formId, endpoint, redirectUrl = null, successCallba
     }
 
     // APIにPOSTリクエスト
-    fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((data) => {
-            throw new Error(data.detail || 'エラーが発生しました')
-          })
-        }
-        return response.json()
-      })
-      .then((data) => {
-        // 成功時の処理
-        if (redirectUrl) {
-          window.location.href = redirectUrl
-        } else if (successCallback) {
-          successCallback(data)
-        } else {
-          // デフォルトはページリロード
-          window.location.reload()
-        }
-      })
-      .catch((error) => {
-        alert(error.message || 'エラーが発生しました')
-        // エラー時はボタンを元に戻す
-        if (submitBtn) {
-          submitBtn.disabled = false
+    try {
+      const responseData = await window.apiClient.postJson(endpoint, data)
+      // 成功時の処理
+      if (redirectUrl) {
+        window.location.href = redirectUrl
+      } else if (successCallback) {
+        successCallback(responseData)
+      } else {
+        // デフォルトはページリロード
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('追加処理エラー:', error)
+      const message =
+        error instanceof window.apiClient.ApiClientError
+          ? error.message
+          : '追加処理中に予期せぬエラーが発生しました。' + error.message
+      alert(message)
+      // エラー時はボタンを元に戻す
+      if (submitBtn) {
+        submitBtn.disabled = false
+        // ボタンテキストはフォームによって異なる可能性があるので注意
+        // 例: ユーザー追加フォームなら「追加」
+        if (formId === 'addUserForm') {
+          // 仮のフォームID
           submitBtn.textContent = '追加'
+        } else {
+          submitBtn.textContent = '送信' // デフォルト
         }
-      })
+      }
+    }
   })
 }
 
@@ -72,7 +78,7 @@ function setupAddFormHandler(formId, endpoint, redirectUrl = null, successCallba
  * 編集フォームのハンドラーを一括設定
  * @param {string} selector - ボタンセレクタ
  * @param {string} formIdPrefix - フォームID接頭辞
- * @param {string} endpointTemplate - APIエンドポイントテンプレート
+ * @param {string} endpointTemplate - APIエンドポイントテンプレート (例: '/api/users/{user_id}')
  * @param {Function} successCallback - 成功時のコールバック関数（省略可）
  */
 function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, successCallback = null) {
@@ -80,7 +86,7 @@ function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, success
     const form = button.closest('form')
     if (!form) return
 
-    form.addEventListener('submit', function (event) {
+    form.addEventListener('submit', async function (event) {
       event.preventDefault()
 
       const itemId = button.getAttribute('data-item-id')
@@ -91,7 +97,13 @@ function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, success
 
       // FormDataからJSONに変換
       formData.forEach((value, key) => {
-        data[key] = value
+        // 編集時も group_id と user_type_id は整数に変換
+        if (key === 'group_id' || key === 'user_type_id') {
+          const intValue = parseInt(value, 10)
+          data[key] = isNaN(intValue) ? value : intValue
+        } else {
+          data[key] = value
+        }
       })
 
       // モーダル要素を事前に取得
@@ -102,50 +114,40 @@ function setupEditFormHandlers(selector, formIdPrefix, endpointTemplate, success
       button.textContent = '保存中...'
 
       // APIにPUTリクエスト
-      fetch(endpointTemplate.replace('{id}', itemId), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      })
-        .then((response) => {
-          if (!response.ok) {
-            return response.json().then((data) => {
-              throw new Error(data.detail || 'エラーが発生しました')
-            })
-          }
-          return response.json()
-        })
-        .then((data) => {
-          // 更新されたデータを画面に反映
-          updateUIAfterEdit(data, itemId)
+      const endpoint = endpointTemplate.replace(/\{[a-zA-Z_]+\}/, itemId) // 正規表現でプレースホルダーを置換
+      try {
+        const responseData = await window.apiClient.putJson(endpoint, data)
+        // 更新されたデータを画面に反映
+        updateUIAfterEdit(responseData, itemId)
 
-          // 成功時の処理
-          if (successCallback) {
-            successCallback(data, itemId)
-          }
+        // 成功時の処理
+        if (successCallback) {
+          successCallback(responseData, itemId)
+        }
 
-          // 処理完了後、モーダルを閉じる (Alpine.jsのモーダルを閉じる)
-          if (modalElement) {
-            // ボタンを元に戻す
-            button.disabled = false
-            button.textContent = '保存'
-
-            // モーダルを閉じる（シンプルな方法）
-            const closeBtn = modalElement.querySelector('button[type="button"]')
-            if (closeBtn) {
-              closeBtn.click()
-            }
-          }
-        })
-        .catch((error) => {
-          alert(error.message || 'エラーが発生しました')
-
-          // エラー時はボタンを元に戻す
+        // 処理完了後、モーダルを閉じる (Alpine.jsのモーダルを閉じる)
+        if (modalElement) {
+          // ボタンを元に戻す
           button.disabled = false
           button.textContent = '保存'
-        })
+
+          // モーダルを閉じる（シンプルな方法）
+          const closeBtn = modalElement.querySelector('button[type="button"]')
+          if (closeBtn) {
+            closeBtn.click()
+          }
+        }
+      } catch (error) {
+        console.error('編集処理エラー:', error)
+        const message =
+          error instanceof window.apiClient.ApiClientError
+            ? error.message
+            : '編集処理中に予期せぬエラーが発生しました。' + error.message
+        alert(message)
+        // エラー時はボタンを元に戻す
+        button.disabled = false
+        button.textContent = '保存'
+      }
     })
   })
 }
@@ -203,7 +205,7 @@ function updateUIAfterEdit(data, itemId) {
 /**
  * 削除確認のハンドラーを一括設定
  * @param {string} selector - ボタンセレクタ
- * @param {string} endpointTemplate - APIエンドポイントテンプレート
+ * @param {string} endpointTemplate - APIエンドポイントテンプレート (例: '/api/users/{user_id}')
  * @param {Function} successCallback - 成功時のコールバック関数（省略可）
  */
 function setupDeleteHandlers(selector, endpointTemplate, successCallback = null) {
@@ -211,7 +213,7 @@ function setupDeleteHandlers(selector, endpointTemplate, successCallback = null)
     const form = button.closest('form')
     if (!form) return
 
-    form.addEventListener('submit', function (event) {
+    form.addEventListener('submit', async function (event) {
       event.preventDefault()
 
       const itemId = button.getAttribute('data-item-id')
@@ -225,47 +227,40 @@ function setupDeleteHandlers(selector, endpointTemplate, successCallback = null)
       button.textContent = '処理中...'
 
       // APIにDELETEリクエスト
-      fetch(endpointTemplate.replace('{id}', itemId), {
-        method: 'DELETE'
-      })
-        .then((response) => {
-          if (!response.ok) {
-            return response.json().then((data) => {
-              throw new Error(data.detail || 'エラーが発生しました')
-            })
-          }
-          // 削除成功（204 No Content）の場合
-          if (response.status === 204) {
-            return {}
-          }
-          return response.json()
-        })
-        .then((data) => {
+      const endpoint = endpointTemplate.replace(/\{[a-zA-Z_]+\}/, itemId) // 正規表現でプレースホルダーを置換
+      try {
+        // apiClient.delete は成功時 { success: true } を返す想定
+        const responseData = await window.apiClient.delete(endpoint)
+
+        if (responseData.success) {
           // モーダルを閉じる
           if (modalElement && typeof modalElement.__x !== 'undefined') {
+            // Alpine.js のデータプロパティを直接変更してモーダルを閉じる
             modalElement.__x.$data.showDeleteConfirm = false
-          }
-
-          // 成功時の処理
-          if (successCallback) {
-            successCallback(data, itemId)
           } else {
-            // デフォルトはページリロード
-            window.location.reload()
+            // フォールバックとして従来のクリックを試みる (もしAlpineが見つからない場合)
+            const closeBtn = modalElement?.querySelector('button[type="button"]')
+            closeBtn?.click()
           }
-        })
-        .catch((error) => {
-          alert(error.message || 'エラーが発生しました')
 
-          // エラー時はボタンを元に戻す
-          button.disabled = false
-          button.textContent = '削除'
-
-          // モーダルを閉じる
-          if (modalElement && typeof modalElement.__x !== 'undefined') {
-            modalElement.__x.$data.showDeleteConfirm = false
+          // 成功時のコールバック関数を実行
+          if (successCallback) {
+            successCallback(responseData, itemId)
           }
-        })
+        } else {
+          alert('エラー: 削除に失敗しました。(不明な応答)')
+        }
+      } catch (error) {
+        console.error('削除処理エラー:', error)
+        const message =
+          error instanceof window.apiClient.ApiClientError
+            ? error.message
+            : '削除処理中に予期せぬエラーが発生しました。' + error.message
+        alert(message)
+        // エラー時はボタンを元に戻す
+        button.disabled = false
+        button.textContent = '削除' // または元のテキスト
+      }
     })
   })
 }

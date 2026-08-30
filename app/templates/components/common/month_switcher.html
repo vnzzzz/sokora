@@ -38,9 +38,8 @@
     endif
     %}
     hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
   >
-    ＜前月
+    ＜
   </button>
   <button
     class="btn btn-sm btn-neutral"
@@ -64,7 +63,6 @@
     endif
     %}
     hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
   >
     今月
   </button>
@@ -90,9 +88,8 @@
     endif
     %}
     hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
   >
-    次月＞
+    ＞
   </button>
   {% else %}
   <!-- JavaScript版の月切り替えボタン -->
@@ -101,7 +98,7 @@
     data-month="{{ prev_month }}"
     onclick="navigateToMonth('{{ prev_month }}', '{{ user_id }}', '{{ url_base }}')"
   >
-    ＜前月
+    ＜
   </button>
   <button class="btn btn-sm btn-neutral month-nav-btn" onclick="navigateToMonth('', '{{ user_id }}', '{{ url_base }}')">
     今月
@@ -111,7 +108,7 @@
     data-month="{{ next_month }}"
     onclick="navigateToMonth('{{ next_month }}', '{{ user_id }}', '{{ url_base }}')"
   >
-    次月＞
+    ＞
   </button>
   {% endif %}
 </div>

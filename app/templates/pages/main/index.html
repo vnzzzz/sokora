@@ -1,0 +1,14 @@
+{% extends "layout/base.html" %} {% set title_text = "勤怠確認" %} {% block content %}
+<div class="p-4">
+  <h2 class="text-lg font-bold mb-3">勤怠確認</h2>
+  <!-- カレンダーエリア -->
+  <div id="calendar-area" hx-get="/calendar" hx-trigger="load" hx-target="#calendar-area">
+    <!-- 初期ロード時に/calendarを呼び出し、結果をここに挿入 -->
+  </div>
+
+  <!-- 詳細表示エリア -->
+  <div id="detail-area">
+    <!-- 詳細データは/dayエンドポイントから非同期に読み込まれます -->
+  </div>
+</div>
+{% endblock %}
