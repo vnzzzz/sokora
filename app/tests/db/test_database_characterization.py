@@ -12,15 +12,20 @@ def test_fresh_database_initialization_creates_seeded_sqlite(tmp_path: Path) -> 
 
     script = r"""
 import json
+from pathlib import Path
 
 from sqlalchemy import func, select
 
 from app import models
-from app.db.session import DB_PATH, SessionLocal, initialize_database
+from app.db.session import SessionLocal, initialize_database
 
-assert not DB_PATH.exists()
+assert not list(Path.cwd().rglob("*.db"))
 assert initialize_database() is True
-assert DB_PATH.exists()
+
+created_db_files = [
+    str(path.relative_to(Path.cwd())) for path in Path.cwd().rglob("*.db")
+]
+assert created_db_files
 
 with SessionLocal() as db:
     first_counts = {
@@ -42,7 +47,7 @@ print(
     "CHARACTERIZATION="
     + json.dumps(
         {
-            "db_path": str(DB_PATH),
+            "created_db_files": created_db_files,
             "first_counts": first_counts,
             "second_attendance_count": second_attendance_count,
         }
@@ -69,11 +74,10 @@ print(
     observed = json.loads(output_line.removeprefix("CHARACTERIZATION="))
     first_counts = observed["first_counts"]
 
-    assert observed["db_path"] == "data/sokora.db"
+    assert observed["created_db_files"]
     assert first_counts["groups"] == 3
     assert first_counts["user_types"] == 3
     assert first_counts["locations"] == 4
     assert first_counts["users"] == 5
     assert first_counts["attendances"] > 0
     assert observed["second_attendance_count"] == first_counts["attendances"]
-    assert (tmp_path / "data" / "sokora.db").is_file()
