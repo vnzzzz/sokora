@@ -76,7 +76,7 @@ def get_app_database_runtime(app: Starlette) -> DatabaseRuntime:
     if isinstance(runtime, DatabaseRuntime):
         return runtime
 
-    settings: AppSettings = app.state.settings
+    settings: AppSettings = app.state.settings_provider()
     runtime = create_database_runtime(settings.database_url)
     app.state.database_runtime = runtime
     return runtime
