@@ -23,7 +23,7 @@ SEED_DAYS_FORWARD ?= 60
 DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg proxy=$(proxy) --build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),)
 DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),)
 
-.PHONY: help sync install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
+.PHONY: help sync install run dev-shell seed test assets holiday-cache migrate lint format format-check typecheck quality build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -36,6 +36,11 @@ help:
 	@printf "  make assets          Build CSS/JS into assets/ via builder\n"
 	@printf "  make holiday-cache   Build holiday cache into assets/json/holidays_cache.json\n"
 	@printf "  make migrate         Run Alembic migrations (upgrade head)\n"
+	@printf "  make lint            Run Ruff lint and import checks\n"
+	@printf "  make format          Apply Ruff import sorting and formatting\n"
+	@printf "  make format-check    Check Ruff formatting without modifying files\n"
+	@printf "  make typecheck       Run mypy\n"
+	@printf "  make quality         Run lint + format-check + typecheck\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make docker-build    Build production image (%s) using VERSION tag from .env\n" "$(VERSION_TAG)"
@@ -75,6 +80,21 @@ holiday-cache: sync
 
 migrate: sync
 	PYTHONPATH=/app uv run alembic -c scripts/migration/alembic.ini upgrade head
+
+lint: sync
+	uv run ruff check app
+
+format: sync
+	uv run ruff check app --select I --fix
+	uv run ruff format app
+
+format-check: sync
+	uv run ruff format --check app
+
+typecheck: sync
+	uv run mypy app
+
+quality: lint format-check typecheck
 
 build:
 	docker build -t $(IMAGE_NAME) .
