@@ -20,8 +20,9 @@ FastAPIで構築されたシンプルな勤怠記録ツールです。
 - Jinja2 (テンプレート)
 """
 
-from .core.config import APP_VERSION, logger
+from .core.config import logger
+from .core.settings import AppSettings
 
-__version__ = APP_VERSION
+__version__ = AppSettings().app_version
 __all__ = ["__version__", "logger"]
 __author__ = "Sokora Team"

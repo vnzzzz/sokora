@@ -6,9 +6,10 @@ from app.services.auth.oidc import OIDCClient, OIDCError
 from app.services.auth.settings import AuthSettings
 
 
-def get_auth_settings() -> AuthSettings:
-    """リクエスト毎に環境変数から最新の設定を構築する"""
-    return AuthSettings.from_env()
+def get_auth_settings(request: Request) -> AuthSettings:
+    """Build request auth settings from the application's settings provider."""
+    settings = request.app.state.settings_provider()
+    return AuthSettings.from_app_settings(settings)
 
 
 def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient:
@@ -23,7 +24,7 @@ def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDC
 def get_optional_oidc_client(
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> OIDCClient | None:
-    """OIDC 設定が揃っている場合のみクライアントを返す"""
+    """Return an OIDC client only when OIDC settings are complete."""
     if not settings.oidc_enabled:
         return None
     try:
@@ -36,7 +37,7 @@ def require_session_user(
     request: Request,
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Dict[str, Any] | None:
-    """API 用の認可依存関係。未認証なら 401 を返す。"""
+    """API authorization dependency; return 401 when auth is required."""
     user = request.session.get("auth")
     if settings.auth_enabled and not user:
         raise HTTPException(

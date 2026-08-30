@@ -28,7 +28,8 @@ make install   # uv sync --locked + builder npm ci + assets/ と祝日キャッ�
 make run       # http://localhost:${SERVICE_PORT}
 ```
    - Makefile は `VERSION` 未設定だとエラー。`.env` に必ず設定する。
-   - `data/sokora.db` が無ければ起動時に自動でテーブル作成とシーディング（60日/60日分）を実施。
+   - DB接続先は `DATABASE_URL` で指定する。既定値は `sqlite:///data/sokora.db`。
+   - 既定SQLite DBが無ければ起動時に自動でテーブル作成とシーディング（60日/60日分）を実施。
 4) 停止: `make docker-stop`（コンテナ実行時）またはサーバープロセスを終了
 
 Python依存関係は `pyproject.toml` と `uv.lock` で管理する。既存lockを変更せず再現する場合は `uv sync --locked` を使用する。
@@ -51,7 +52,8 @@ PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行�
 
 ## Docker
 - プロダクションビルド: `make docker-build`（タグは `.env` の `VERSION`）  
-- 実行: `make docker-run`（`data/` をボリュームマウント、ビルド済み DB が無ければ初回にコピー）  
+- 実行: `make docker-run`（`data/` をボリュームマウント、既定SQLite DBが無ければ初回にコピー）  
+- DB接続先はapplicationとentrypointの双方で `DATABASE_URL` を参照する。
 - プロキシ経由は `proxy` を `.env` に設定し、`make docker-build-proxy` / `make docker-run-proxy`
 
 ## Authentication
@@ -67,6 +69,7 @@ PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行�
 | VERSION | なし (必須) | Docker イメージタグ（Makefile が必須扱い） | 1.0.0 |
 | proxy | なし | Docker ビルド/実行時のプロキシ URL | http://proxy.local:8080 |
 | SOKORA_LOG_LEVEL | INFO | ログレベル | DEBUG |
+| DATABASE_URL | sqlite:///data/sokora.db | SQLAlchemy DB接続URL | sqlite:////app/data/sokora.db |
 | SOKORA_AUTH_ENABLED | false | 認証ガードの有効/無効 | true |
 | SOKORA_AUTH_SESSION_SECRET | dev-session-secret | セッション署名キー | change-me-prod-secret |
 | SOKORA_AUTH_SESSION_TTL_SECONDS | 3600 | セッション有効期限（秒） | 7200 |

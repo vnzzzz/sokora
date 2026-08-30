@@ -11,7 +11,7 @@ sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケ
 - FastAPI / Jinja2
 - HTMX / Alpine.js
 - SQLAlchemy / Alembic
-- SQLite（現行runtime）
+- SQLite（既定runtime。接続先は`DATABASE_URL`で設定）
 - uv
 - pytest / pytest-playwright / Ruff / mypy
 - Tailwind CSS
@@ -64,7 +64,7 @@ app/templates/
 - Tailwind等の生成物を直接編集しない。sourceを変更して既存build flowを使う。
 - DB modelを変更する場合、既存Alembic versionを書き換えず、新しいmigrationを追加する。
 - `.env`、credential、token等のsecretをcommitしない。`.env.sample`にはsample値だけを置く。
-- `data/sokora.db`はruntime dataとして扱い、sourceとしてcommitしない。
+- `DATABASE_URL`の既定値は`sqlite:///data/sokora.db`。`data/sokora.db`はruntime dataとして扱い、sourceとしてcommitしない。
 - UI変更では既存のJinja/HTMX/Alpine patternと`docs/ui/`を確認する。
 - API変更では`docs/api/requirements.md`とpage側への影響を確認する。
 - DB変更では`docs/db/requirements.md`、model、migration、seed、testの整合を確認する。
@@ -91,9 +91,9 @@ Pythonの品質ゲートはRuff（lint / import sorting / format）とmypy（typ
 ## GitHub workflow
 
 - base branchは`main`。
-- 原則 **1 Issue = 1 PR**。
+- 原則 **1 Issue = 1 PR**。ただし変更が強く結合し、分割すると実装・検証が重複するIssueは、レビュー性・ロールバック性を損なわない範囲で1 PRにまとめてよい。
 - short-lived branchを`main`から作成する。
-- PR本文に`Closes #<issue>`を記載する。
+- PR本文に対応する`Closes #<issue>`をすべて記載する。
 - unrelated cleanupを同じPRへ混ぜない。
 - mainへの統合は**squash mergeを基本**とし、履歴上の理由がある場合だけrebaseを検討する。
 - userから明示的な依頼がない限り、agentはmergeしない。

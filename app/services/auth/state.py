@@ -1,7 +1,6 @@
 import json
 import logging
 from dataclasses import dataclass
-from os import environ
 from pathlib import Path
 from typing import Any
 
@@ -17,9 +16,7 @@ class AuthStateStore:
     """OIDC 有効/無効状態をファイルに保持するシンプルなストア"""
 
     def __init__(self, path: Path | None = None) -> None:
-        env_path = environ.get("SOKORA_AUTH_STATE_PATH")
-        resolved = Path(env_path) if env_path else path
-        self.path = resolved or Path("data/auth_state.json")
+        self.path = path or Path("data/auth_state.json")
 
     def load_state(self) -> AuthState:
         if not self.path.exists():

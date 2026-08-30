@@ -1,10 +1,7 @@
-"""
-Sokora Webアプリケーションのメインエントリーポイント
-==============================================
+"""Sokora FastAPI application factory."""
 
-FastAPIアプリケーションの設定と初期化を行います。
-"""
-
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from typing import Any, Dict, List
 
 from fastapi import FastAPI
@@ -12,17 +9,15 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.core.config import APP_VERSION, logger
-from app.db.session import SessionLocal, initialize_database
+from app.core.config import configure_logging, logger
+from app.core.settings import AppSettings
+from app.db.session import get_app_database_runtime, initialize_database
 from app.middleware.auth import AuthRequiredMiddleware
-
-# ローカルモジュールのインポート
-from app.routers.api.v1 import router as api_v1_router  # API v1用ルーター
-from app.routers.pages import router as pages_router  # UIページ用ルーター
+from app.routers.api.v1 import router as api_v1_router
+from app.routers.pages import router as pages_router
 from app.services.auth.settings import AuthSettings
 from app.utils.holiday_cache import refresh_holiday_cache
 
-# APIタグ定義
 API_TAGS: List[Dict[str, str]] = [
     {
         "name": "Attendance",
@@ -51,36 +46,72 @@ API_TAGS: List[Dict[str, str]] = [
 ]
 
 
-def create_application() -> FastAPI:
-    """アプリケーションインスタンスを作成します。
+@asynccontextmanager
+async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Create and release application-scoped runtime resources."""
+    settings: AppSettings = app.state.settings_provider()
+    app.state.settings = settings
+    configure_logging(settings.log_level)
 
-    Returns:
-        FastAPI: 設定済みのFastAPIアプリケーションインスタンス
+    runtime = get_app_database_runtime(app)
+    logger.info("Initializing database")
+    initialize_database(runtime)
+
+    db = runtime.session_factory()
+    try:
+        refresh_holiday_cache(db)
+    finally:
+        db.close()
+
+    try:
+        yield
+    finally:
+        runtime.dispose()
+        app.state.database_runtime = None
+
+
+def create_application(settings: AppSettings | None = None) -> FastAPI:
+    """Create a configured FastAPI application.
+
+    Passing ``settings`` gives tests and alternate runtimes an explicit,
+    process-environment-independent configuration. Without an explicit object,
+    the provider reads the current environment when runtime startup begins.
     """
+    settings_provider: Callable[[], AppSettings]
+    if settings is None:
+        settings_provider = AppSettings.from_env
+        initial_settings = settings_provider()
+    else:
+        initial_settings = settings
+
+        def explicit_settings_provider() -> AppSettings:
+            return initial_settings
+
+        settings_provider = explicit_settings_provider
+
     app = FastAPI(
         title="Sokora API",
         description="勤怠管理システムSokora APIのドキュメント",
-        version=APP_VERSION,
-        docs_url="/docs",  # デフォルトの/docsを有効化
-        redoc_url="/redoc",  # デフォルトの/redocを有効化
+        version=initial_settings.app_version,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=application_lifespan,
     )
+    app.state.settings_provider = settings_provider
+    app.state.settings = initial_settings
 
-    # /staticから静的ファイルを提供（開発時ファイル用）
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-    # /assetsからビルド時生成ファイルを提供（本番ファイル用）
     app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
-    # UIページ用ルーターを組み込み（OpenAPI には含めない）
     app.include_router(pages_router, include_in_schema=False)
-
-    # API v1用ルーターを組み込み
     app.include_router(api_v1_router)
 
-    # セッション + 認証ガード
-    auth_settings = AuthSettings.from_env()
+    auth_settings = AuthSettings.from_app_settings(initial_settings)
     app.state.auth_enabled = auth_settings.auth_enabled
-    app.add_middleware(AuthRequiredMiddleware, settings_provider=AuthSettings.from_env)
+    app.add_middleware(
+        AuthRequiredMiddleware,
+        settings_provider=lambda: AuthSettings.from_app_settings(settings_provider()),
+    )
     app.add_middleware(
         SessionMiddleware,
         secret_key=auth_settings.session_secret,
@@ -91,51 +122,23 @@ def create_application() -> FastAPI:
 
 
 def create_openapi_schema(app: FastAPI) -> Dict[str, Any]:
-    """カスタムOpenAPIスキーマを生成します。
-
-    Args:
-        app: FastAPIアプリケーションインスタンス
-
-    Returns:
-        Dict[str, Any]: 生成されたOpenAPIスキーマ
-    """
+    """Create the custom OpenAPI schema."""
     if app.openapi_schema:
         return app.openapi_schema
 
+    settings: AppSettings = app.state.settings_provider()
     openapi_schema = get_openapi(
         title="Sokora API",
-        version=APP_VERSION,
+        version=settings.app_version,
         description="勤怠管理システムSokora APIのドキュメント",
         routes=app.routes,
     )
-
-    # OpenAPIバージョンを明示的に設定
     openapi_schema["openapi"] = "3.0.2"
-    # タグの順序とカスタム説明を追加
     openapi_schema["tags"] = API_TAGS
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 
-# アプリケーションインスタンスの作成
 app = create_application()
-
-# OpenAPIスキーマの設定
 app.openapi = lambda: create_openapi_schema(app)  # type: ignore
-
-
-# アプリケーション起動時の初期化処理
-@app.on_event("startup")
-async def startup_event() -> None:
-    """アプリケーション起動時の初期化処理を実行します。
-
-    データベースの初期化などの処理を行います。
-    """
-    logger.info("Initializing database")
-    initialize_database()
-    db = SessionLocal()
-    try:
-        refresh_holiday_cache(db)
-    finally:
-        db.close()

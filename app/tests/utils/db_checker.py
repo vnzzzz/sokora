@@ -3,14 +3,14 @@ import sys
 
 sys.path.insert(0, "/app")
 
-from app.db.session import Base, SessionLocal, engine
+from app.db.session import Base, SessionLocal, get_default_database_runtime
 from app.models import Attendance, Group, Location, User, UserType
 
 
 def check_database() -> int:
     """データベースの状態を確認し、テスト関連データの残存をチェックする"""
     # テーブル作成
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=get_default_database_runtime().engine)
 
     db = SessionLocal()
     try:
