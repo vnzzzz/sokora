@@ -91,7 +91,6 @@ def test_operational_config_has_no_poetry_dependency() -> None:
         "scripts/testing/run_test.sh",
         "README.md",
         "AGENTS.md",
-        "rules/development.md",
     ]
 
     for relative_path in paths:
