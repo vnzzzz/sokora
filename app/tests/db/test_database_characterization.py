@@ -62,23 +62,16 @@ print(
     assert result.returncode == 0, result.stderr or result.stdout
 
     output_line = next(
-        line
-        for line in result.stdout.splitlines()
-        if line.startswith("CHARACTERIZATION=")
+        line for line in result.stdout.splitlines() if line.startswith("CHARACTERIZATION=")
     )
     observed = json.loads(output_line.removeprefix("CHARACTERIZATION="))
+    first_counts = observed["first_counts"]
 
     assert observed["db_path"] == "data/sokora.db"
-    assert observed["first_counts"] == {
-        "groups": 3,
-        "user_types": 3,
-        "locations": 4,
-        "users": 5,
-        "attendances": observed["first_counts"]["attendances"],
-    }
-    assert observed["first_counts"]["attendances"] > 0
-    assert (
-        observed["second_attendance_count"]
-        == observed["first_counts"]["attendances"]
-    )
+    assert first_counts["groups"] == 3
+    assert first_counts["user_types"] == 3
+    assert first_counts["locations"] == 4
+    assert first_counts["users"] == 5
+    assert first_counts["attendances"] > 0
+    assert observed["second_attendance_count"] == first_counts["attendances"]
     assert (tmp_path / "data" / "sokora.db").is_file()
