@@ -62,6 +62,16 @@ class TestApplicationLifespan:
 
         assert app_instance.state.database_runtime is None
 
+    def test_in_memory_database_is_shared_with_request_sessions(self) -> None:
+        settings = AppSettings(database_url="sqlite:///:memory:")
+        app_instance = create_application(settings)
+
+        with TestClient(app_instance) as client:
+            response = client.get("/api/v1/locations")
+
+        assert response.status_code == 200
+        assert response.json() == []
+
 
 class TestCreateOpenApiSchema:
     """create_openapi_schema関数のテスト"""
