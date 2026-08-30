@@ -70,7 +70,7 @@ class TestApplicationLifespan:
             response = client.get("/api/v1/locations")
 
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json() == {"locations": []}
 
 
 class TestCreateOpenApiSchema:
