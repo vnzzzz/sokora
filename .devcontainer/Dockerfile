@@ -10,6 +10,9 @@ RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
 # 2) 開発コンテナ
 FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm
 
+# uv を固定バージョンで導入
+COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /bin/
+
 # sokora固有の開発ツール。Agent/Codex/Claude/GitHub CLI等はagent-dev Featureが管理する。
 RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
@@ -22,38 +25,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Poetryは#48でuvへ移行予定。vscodeユーザーからも利用できる共有パスへ配置する。
-ENV POETRY_HOME=/opt/poetry
-ENV POETRY_VIRTUALENVS_CREATE=false
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-  python3 -m pip install --no-cache-dir --upgrade pip
-ENV PATH="${POETRY_HOME}/bin:${PATH}"
-
-# 開発ツールをグローバルにインストール
-RUN pip install --no-cache-dir black isort mypy flake8
-
 WORKDIR /app
 COPY ./scripts ./scripts
 
-# 依存関係ファイルのコピー
-COPY pyproject.toml poetry.lock* README.md ./
+# workspace bind mountで隠れない場所に開発用virtualenvを作る。
+ENV UV_PROJECT_ENVIRONMENT=/opt/sokora-venv
+ENV UV_CACHE_DIR=/home/vscode/.cache/uv
+ENV PATH="/opt/sokora-venv/bin:$PATH"
 
-# image build時の依存関係はsystem環境へインストールする。
-RUN poetry install --no-root --no-interaction --no-ansi --with dev
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --locked
 
 # Playwright browserをremoteUserに依存しない共有パスへ配置する。
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN poetry run playwright install --with-deps && \
+RUN uv run python -m playwright install --with-deps && \
   chmod -R a+rX /ms-playwright
 
-# runtime用ディレクトリとPoetry cache mount先をvscodeユーザーで利用可能にする。
+# runtime用ディレクトリ、uv環境、cache mount先をvscodeユーザーで利用可能にする。
 RUN mkdir -p \
   /app/assets/css \
   /app/assets/js \
   /app/assets/json \
   /app/data \
-  /home/vscode/.cache/pypoetry && \
-  chown -R vscode:vscode /app/data /home/vscode/.cache
+  /home/vscode/.cache/uv && \
+  chown -R vscode:vscode /app/data /home/vscode/.cache /opt/sokora-venv
 
 # 祝日データをビルド時に取得
 RUN python3 scripts/build_holiday_cache.py

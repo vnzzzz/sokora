@@ -6,6 +6,5 @@
 DAYS_BACK=${1:-60}   # デフォルト: 60
 DAYS_FORWARD=${2:-60}  # デフォルト: 60
 
-# python -m を使って data_seeder.py をモジュールとして実行
-# 引数を渡すように修正
-poetry run python -m scripts.seeding.data_seeder --days-back "${DAYS_BACK}" --days-forward "${DAYS_FORWARD}"
+# uv環境で data_seeder.py をモジュールとして実行
+uv run python -m scripts.seeding.data_seeder --days-back "${DAYS_BACK}" --days-forward "${DAYS_FORWARD}"

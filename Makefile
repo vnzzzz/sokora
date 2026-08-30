@@ -20,15 +20,15 @@ CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
-POETRY_STAMP := .cache/poetry-install.stamp
 DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg proxy=$(proxy) --build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),)
 DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),)
 
-.PHONY: help install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
+.PHONY: help sync install run dev-shell seed test assets holiday-cache migrate prepare-dev-assets build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
-	@printf "  make install         Install python deps via poetry and npm packages for builder\n"
+	@printf "  make sync            Sync Python dependencies from uv.lock\n"
+	@printf "  make install         Sync Python deps and npm packages for builder\n"
 	@printf "  make run             Run FastAPI (devcontainer) with reload on SERVICE_PORT (default: 8000)\n"
 	@printf "  make dev-shell       Attach to the running devcontainer (name: %s)\n" "$(DEV_CONTAINER_NAME)"
 	@printf "  make seed            Seed attendance data (vars: SEED_DAYS_BACK, SEED_DAYS_FORWARD)\n"
@@ -44,16 +44,14 @@ help:
 	@printf "  make docker-run-proxy   Run production container (tag: %s) with proxy env from .env\n" "$(VERSION_TAG)"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
-$(POETRY_STAMP): pyproject.toml poetry.lock
-	poetry install --no-root
-	mkdir -p $(dir $(POETRY_STAMP))
-	touch $(POETRY_STAMP)
+sync:
+	uv sync --locked
 
-install: $(POETRY_STAMP)
+install: sync
 	./scripts/build_assets.sh
 
 run: prepare-dev-assets
-	poetry run uvicorn app.main:app --host 0.0.0.0 --port $(SERVICE_PORT) --reload
+	uv run uvicorn app.main:app --host 0.0.0.0 --port $(SERVICE_PORT) --reload
 
 dev-shell:
 	docker exec -it $(DEV_CONTAINER_NAME) bash
@@ -62,21 +60,21 @@ seed:
 	mkdir -p data
 	./scripts/seeding/run_seeder.sh $(SEED_DAYS_BACK) $(SEED_DAYS_FORWARD)
 
-test: $(POETRY_STAMP)
+test: sync
 	./scripts/testing/run_test.sh
 
 assets:
 	./scripts/build_assets.sh
 
-prepare-dev-assets: $(POETRY_STAMP)
+prepare-dev-assets: sync
 	./scripts/prepare_dev_assets.sh
 
-holiday-cache: $(POETRY_STAMP)
+holiday-cache: sync
 	mkdir -p assets/json
-	poetry run python scripts/build_holiday_cache.py
+	uv run python scripts/build_holiday_cache.py
 
-migrate: $(POETRY_STAMP)
-	PYTHONPATH=/app poetry run alembic -c scripts/migration/alembic.ini upgrade head
+migrate: sync
+	PYTHONPATH=/app uv run alembic -c scripts/migration/alembic.ini upgrade head
 
 build:
 	docker build -t $(IMAGE_NAME) .

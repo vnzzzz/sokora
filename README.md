@@ -14,14 +14,14 @@
 ## Stack
 - Backend: Python 3.13 / FastAPI / SQLAlchemy / Pydantic v2 / SQLite
 - Frontend: Jinja2 (SSR) + HTMX + Alpine.js + Tailwind CSS (daisyUI)
-- Tooling: Poetry, pytest + pytest-playwright, mypy, ruff, Tailwind ビルド用 Node
+- Tooling: uv, pytest + pytest-playwright, mypy, ruff, Tailwind ビルド用 Node
 - Runtime: Docker（multi-stage build）。ポートは `SERVICE_PORT` で指定。
 
 ## Quick Start（ローカル/Dev Container）
 1) `.env.sample` をコピーして `.env` を用意し、少なくとも `VERSION`（任意のタグ）と `SERVICE_PORT` を埋める  
 2) 依存と開発用アセットを準備:  
 ```bash
-make install   # poetry install + builder npm ci + assets/ と祝日キャッシュを生成
+make install   # uv sync --locked + builder npm ci + assets/ と祝日キャッシュを生成
 ```
 3) アプリ起動（ホットリロード）:  
 ```bash
@@ -30,6 +30,8 @@ make run       # http://localhost:${SERVICE_PORT}
    - Makefile は `VERSION` 未設定だとエラー。`.env` に必ず設定する。
    - `data/sokora.db` が無ければ起動時に自動でテーブル作成とシーディング（60日/60日分）を実施。
 4) 停止: `make docker-stop`（コンテナ実行時）またはサーバープロセスを終了
+
+Python依存関係は `pyproject.toml` と `uv.lock` で管理する。既存lockを変更せず再現する場合は `uv sync --locked` を使用する。
 
 静的スタイルを触る場合は `builder/input.css` を編集し、`make assets` で `assets/` を再生成（ビルド成果物は直接編集しない）。
 

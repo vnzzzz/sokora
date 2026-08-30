@@ -16,4 +16,4 @@ ensure_owned_by_remote_user() {
 }
 
 ensure_owned_by_remote_user /app/data
-ensure_owned_by_remote_user /home/vscode/.cache/pypoetry
+ensure_owned_by_remote_user /home/vscode/.cache/uv

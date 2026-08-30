@@ -12,6 +12,7 @@ __pycache__/
 *.pyd
 *.pyw
 *.pyz
+.venv/
 
 # vscode
 .vscode
