@@ -109,15 +109,23 @@ def seed_database(
     days_back: int = 60,
     days_forward: int = 60,
 ) -> Dict[str, int]:
-    """Seed a newly-created local SQLite database."""
-    from scripts.seeding.data_seeder import run_seeder
+    """Seed a newly-created local SQLite database using the supplied runtime."""
+    from scripts.seeding.data_seeder import bootstrap_core_data, seed_attendance
 
-    return run_seeder(
-        days_back=days_back,
-        days_forward=days_forward,
-        skip_init=True,
-        session_factory=runtime.session_factory,
-    )
+    db = runtime.session_factory()
+    try:
+        bootstrap_result = bootstrap_core_data(db)
+        attendances = seed_attendance(
+            db,
+            days_back=days_back,
+            days_forward=days_forward,
+        )
+        return {
+            **bootstrap_result,
+            "attendances": len(attendances),
+        }
+    finally:
+        db.close()
 
 
 def init_db(runtime: DatabaseRuntime | None = None) -> None:
