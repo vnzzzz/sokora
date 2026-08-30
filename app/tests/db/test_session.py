@@ -52,15 +52,12 @@ def test_sqlite_database_path_resolves_file_urls(tmp_path: Path, monkeypatch) ->
         tmp_path / "data" / "sokora.db"
     )
     assert (
-        sqlite_database_path(f"sqlite:///file:{encoded_uri_path}?uri=true")
-        == uri_path
+        sqlite_database_path(f"sqlite:///file:{encoded_uri_path}?uri=true") == uri_path
     )
     assert sqlite_database_path("sqlite:///:memory:") is None
     assert sqlite_database_path("sqlite:///file::memory:?cache=shared&uri=true") is None
     assert (
-        sqlite_database_path(
-            "sqlite:///file:memdb2?mode=memory&cache=shared&uri=true"
-        )
+        sqlite_database_path("sqlite:///file:memdb2?mode=memory&cache=shared&uri=true")
         is None
     )
     assert sqlite_database_path("postgresql://db.example/sokora") is None
