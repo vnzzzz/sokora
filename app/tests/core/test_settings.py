@@ -1,4 +1,4 @@
-from app.core.settings import AppSettings, DEFAULT_DATABASE_URL
+from app.core.settings import DEFAULT_DATABASE_URL, AppSettings
 
 
 def test_app_settings_defaults_are_local_runtime_safe() -> None:
