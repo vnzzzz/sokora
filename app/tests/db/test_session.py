@@ -150,6 +150,42 @@ def test_migrate_database_adopts_unversioned_current_schema(tmp_path: Path) -> N
         runtime.dispose()
 
 
+def test_migrate_database_adopts_pre_custom_holidays_schema(tmp_path: Path) -> None:
+    database_path = tmp_path / "pre-custom-holidays.db"
+    runtime = create_database_runtime(f"sqlite:///{database_path}")
+    try:
+        # Reproduce the c678232-era create_all schema: the first four legacy
+        # changes were already represented in the models, but custom_holidays
+        # did not exist yet and there was no Alembic version marker.
+        Base.metadata.create_all(bind=runtime.engine)
+        with runtime.engine.begin() as connection:
+            connection.execute(text("drop table custom_holidays"))
+            connection.execute(
+                text(
+                    'insert into groups (id, name, "order") '
+                    "values (101, 'legacy group', 7)"
+                )
+            )
+
+        table_names = inspect(runtime.engine).get_table_names()
+        assert "custom_holidays" not in table_names
+        assert "alembic_version" not in table_names
+
+        migrate_database(runtime)
+
+        table_names = inspect(runtime.engine).get_table_names()
+        assert "custom_holidays" in table_names
+        assert "alembic_version" in table_names
+        with runtime.session_factory() as db:
+            assert db.scalar(text("select version_num from alembic_version"))
+            assert (
+                db.scalar(text("select name from groups where id = 101"))
+                == "legacy group"
+            )
+    finally:
+        runtime.dispose()
+
+
 def test_initialize_database_seeds_only_when_sqlite_file_is_missing(
     tmp_path: Path, monkeypatch
 ) -> None:
