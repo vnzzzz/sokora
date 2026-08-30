@@ -82,8 +82,12 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
         settings_provider = AppSettings.from_env
         initial_settings = settings_provider()
     else:
-        settings_provider = lambda: settings
         initial_settings = settings
+
+        def explicit_settings_provider() -> AppSettings:
+            return initial_settings
+
+        settings_provider = explicit_settings_provider
 
     app = FastAPI(
         title="Sokora API",
