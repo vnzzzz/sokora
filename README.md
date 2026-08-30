@@ -1,44 +1,49 @@
 # sokora
 
-誰がどこで働いているか、カレンダーと簡単な操作でサクッと管理できる勤怠（勤務場所）管理アプリです。「在宅 / 出社 / 出張」
-などが一目でわかり、日別の詳細やユーザー別の予定もすぐに確認できます。
+![image](docs/images/image1.png)
 
-## 特徴
+A sleek attendance management app that visualizes work locations through an intuitive calendar interface. Instantly
+track who's "working from home", "in office", or "on business trip" with daily details and personal schedules available
+at a glance.
 
-- カレンダー UI
-  - 月単位のカレンダーで在宅・出社などの人数を集計表示
-- シンプルな操作感日付クリックで日別詳細、ユーザー名クリックで個人の予定を閲覧
-- CSV アップロード & ダウンロード
-  - 一括編集やバックアップに便利
+## Features
 
-## How to
+- Interactive Calendar UI
+  - Monthly view with aggregated stats for remote/office attendance
+- Intuitive UX: Single-click navigation to view daily details or individual schedules
+- Seamless CSV Import/Export
+  - Perfect for bulk editing and data backups
 
-1. 起動
+## How to Use
+
+1. Setup
+
+   Copy `.env.sample` to create `.env`, then:
 
    ```bash
    docker compose up --build
    ```
 
-2. アクセス
+2. Access
 
-   ブラウザで下記にアクセス
+   Open in your browser:
 
    ```bash
-   http://localhost:8000
+   http://localhost:[SERVICE_PORT]
    ```
 
-3. 終了
+3. Shutdown
 
    ```bash
    docker compose down
    ```
 
-## 技術スタック
+## Tech Stack
 
-軽量かつシンプルを意識しました。
+Built with a focus on performance and simplicity.
 
-- Docker (コンテナ化)
-- Poetry (依存管理)
-- FastAPI (API)
-- HTMX & Alpine.js (ビルド不要 UI)
-- Chart.js (円グラフなどのビジュアル表示)
+- Docker (Containerization)
+- Poetry (Python dependency management)
+- FastAPI (Backend API)
+- HTMX & Alpine.js (Frontend without build steps)
+- CSV files (Data source, no database required)

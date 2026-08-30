@@ -1,8 +1,8 @@
 """
-勤怠関連のエンドポイント
+Attendance-Related Endpoints
 ----------------
 
-勤怠入力や編集に関連するルートハンドラー
+Route handlers related to attendance input and editing
 """
 
 from fastapi import APIRouter, Request, Form, HTTPException
@@ -18,22 +18,22 @@ from ..utils.date_utils import (
 )
 from ..utils.common import generate_location_styles
 
-# API用ルーター
-router = APIRouter(prefix="/api", tags=["勤怠管理"])
-# HTML表示用ルーター
-page_router = APIRouter(tags=["ページ表示"])
+# Router for API
+router = APIRouter(prefix="/api", tags=["Attendance Management"])
+# Router for HTML display
+page_router = APIRouter(tags=["Page Display"])
 templates = Jinja2Templates(directory="src/templates")
 
 
 @page_router.get("/attendance", response_class=HTMLResponse)
 def attendance_page(request: Request) -> HTMLResponse:
-    """勤怠入力ページを表示する
+    """Display the attendance management page
 
     Args:
-        request: FastAPIリクエストオブジェクト
+        request: FastAPI request object
 
     Returns:
-        HTMLResponse: レンダリングされたHTMLページ
+        HTMLResponse: Rendered HTML page
     """
     users = csv_store.get_all_users()
     return templates.TemplateResponse(
@@ -45,36 +45,34 @@ def attendance_page(request: Request) -> HTMLResponse:
 def edit_user_attendance(
     request: Request, user_id: str, month: Optional[str] = None
 ) -> HTMLResponse:
-    """ユーザーの勤怠を編集するページを表示する
+    """Display page to edit user attendance
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 編集するユーザーID
-        month: YYYY-MM形式の月指定（未指定の場合は現在の月）
+        request: FastAPI request object
+        user_id: User ID to edit
+        month: Month in YYYY-MM format (current month if not specified)
 
     Returns:
-        HTMLResponse: レンダリングされたHTMLページ
+        HTMLResponse: Rendered HTML page
     """
     if month is None:
         month = get_current_month_formatted()
 
-    # 指定された月のカレンダーデータを取得
+    # Get calendar data for the specified month
     calendar_data = csv_store.get_calendar_data(month)
 
-    # ユーザー名の取得
+    # Get user name
     user_name = csv_store.get_user_name_by_id(user_id)
 
-    # ユーザーのデータを取得
+    # Get user data
     user_entries = csv_store.get_user_data(user_id)
     all_users = csv_store.get_all_users()
     all_user_ids = [user[1] for user in all_users]
 
     if not user_entries and user_id not in all_user_ids:
-        raise HTTPException(
-            status_code=404, detail=f"ユーザーID '{user_id}' が見つかりません"
-        )
+        raise HTTPException(status_code=404, detail=f"User ID '{user_id}' not found")
 
-    # ユーザーの予定がある日付と勤務場所のマップを作成
+    # Create a map of dates and work locations for the user
     user_dates = []
     user_locations = {}
     for entry in user_entries:
@@ -82,15 +80,23 @@ def edit_user_attendance(
         user_dates.append(date)
         user_locations[date] = entry["location"]
 
-    # 勤務場所のスタイル情報を生成
-    location_styles = generate_location_styles()
+    # Get types of work locations
     location_types = csv_store.get_location_types()
 
-    # 前月と次月の設定
-    year, month_num = map(int, month.split("-"))
-    prev_month = csv_store.get_prev_month_date(year, month_num)
+    # Generate style information for work locations
+    location_styles = generate_location_styles(location_types)
+
+    # Set up previous and next month
+    from ..utils.calendar_utils import (
+        parse_month,
+        get_prev_month_date,
+        get_next_month_date,
+    )
+
+    year, month_num = parse_month(month)
+    prev_month = get_prev_month_date(year, month_num)
     prev_month_str = f"{prev_month.year}-{prev_month.month:02d}"
-    next_month = csv_store.get_next_month_date(year, month_num)
+    next_month = get_next_month_date(year, month_num)
     next_month_str = f"{next_month.year}-{next_month.month:02d}"
 
     context = {
@@ -104,25 +110,29 @@ def edit_user_attendance(
         "location_types": location_types,
         "prev_month": prev_month_str,
         "next_month": next_month_str,
+        "month_name": calendar_data["month_name"],
     }
 
     return templates.TemplateResponse("attendance_edit.html", context)
 
 
-# APIエンドポイント
+# API endpoints
 @router.post("/user/add", response_class=RedirectResponse)
-async def add_user(request: Request, username: str = Form(...)) -> RedirectResponse:
-    """新しいユーザーを追加する
+async def add_user(
+    request: Request, username: str = Form(...), user_id: str = Form(...)
+) -> RedirectResponse:
+    """Add a new user
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        username: 追加するユーザー名（フォームデータ）
+        request: FastAPI request object
+        username: Username to add (form data)
+        user_id: User ID (form data)
 
     Returns:
-        RedirectResponse: 勤怠入力ページへのリダイレクト
+        RedirectResponse: Redirect to attendance page
     """
     try:
-        csv_store.add_user(username)
+        csv_store.add_user(username, user_id)
         return RedirectResponse(url="/attendance", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -130,14 +140,14 @@ async def add_user(request: Request, username: str = Form(...)) -> RedirectRespo
 
 @router.post("/user/delete/{user_id}", response_class=RedirectResponse)
 async def delete_user(request: Request, user_id: str) -> RedirectResponse:
-    """ユーザーを削除する
+    """Delete a user
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 削除するユーザーID
+        request: FastAPI request object
+        user_id: User ID to delete
 
     Returns:
-        RedirectResponse: 勤怠入力ページへのリダイレクト
+        RedirectResponse: Redirect to attendance page
     """
     try:
         csv_store.delete_user(user_id)
@@ -153,16 +163,16 @@ async def update_attendance(
     date: str = Form(...),
     location: str = Form(...),
 ) -> RedirectResponse:
-    """ユーザーの勤務場所を更新する
+    """Update a user's work location
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 更新するユーザーID（フォームデータ）
-        date: 更新する日付（フォームデータ）
-        location: 更新する勤務場所（フォームデータ）
+        request: FastAPI request object
+        user_id: User ID to update (form data)
+        date: Date to update (form data)
+        location: Work location to update (form data)
 
     Returns:
-        RedirectResponse: ユーザー編集ページへのリダイレクト
+        RedirectResponse: Redirect to user edit page
     """
     try:
         csv_store.update_user_entry(user_id, date, location)

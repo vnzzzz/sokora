@@ -1,5 +1,8 @@
+# git
+**/!.gitkeep
+
 # data
-data/
+data/*
 
 # env
 .env
@@ -11,3 +14,6 @@ __pycache__/
 *.pyd
 *.pyw
 *.pyz
+
+# vscode
+.vscode

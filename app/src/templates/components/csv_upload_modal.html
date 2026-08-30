@@ -1,21 +1,21 @@
-<!-- CSVアップロードモーダルコンポーネント -->
+<!-- CSV Upload Modal Component -->
 <div x-data="{ showImport: false }" x-show="$store.importModal.open" style="display:none;"
   class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
   <div class="bg-base-100 p-6 rounded-lg shadow-xl max-w-md w-full">
-    <h3 class="font-bold text-lg mb-4">CSVアップロード</h3>
+    <h3 class="font-bold text-lg mb-4">CSV Upload</h3>
     <form hx-post="/api/csv/import" hx-encoding="multipart/form-data" hx-target="#detail-area"
       hx-on::after-request="closeImportModal()" class="space-y-4">
       <input type="file" name="file" class="file-input file-input-bordered w-full" />
       <div class="flex justify-end space-x-2">
-        <button type="button" class="btn btn-outline" @click="$store.importModal.toggle()">キャンセル</button>
-        <button type="submit" class="btn btn-primary">インポート</button>
+        <button type="button" class="btn btn-outline" @click="$store.importModal.toggle()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Import</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  // モーダルを閉じる関数
+  // Function to close the modal
   function closeImportModal() {
     if (typeof Alpine !== 'undefined') {
       Alpine.store('importModal').open = false;

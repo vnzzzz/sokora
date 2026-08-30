@@ -1,8 +1,8 @@
 """
-CSV関連のエンドポイント
+CSV-Related Endpoints
 ----------------
 
-CSVデータのインポートとエクスポートに関連するルートハンドラー
+Route handlers related to CSV data import and export
 """
 
 from fastapi import APIRouter, Request, UploadFile, File, HTTPException
@@ -13,34 +13,50 @@ import os
 from .. import csv_store
 from ..utils.date_utils import get_today_formatted
 from ..utils.common import generate_location_badges, has_data_for_day
+from ..utils.file_utils import get_csv_file_path
 
-router = APIRouter(prefix="/api/csv", tags=["CSVデータ"])
+router = APIRouter(prefix="/api/csv", tags=["CSV Data"])
 templates = Jinja2Templates(directory="src/templates")
 
 
 @router.post("/import")
 async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResponse:
-    """CSVファイルをインポートする
+    """Import a CSV file
 
     Args:
-        request: FastAPIリクエストオブジェクト
-        file: アップロードされたCSVファイル
+        request: FastAPI request object
+        file: Uploaded CSV file
 
     Returns:
-        HTMLResponse: インポート結果のHTMLレスポンス
+        HTMLResponse: HTML response with import results
     """
     try:
         contents = await file.read()
-        csv_store.import_csv_data(contents.decode("utf-8"))
+        # Try to decode with different encodings
+        try:
+            # Try UTF-8 with BOM first
+            content_str = contents.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            try:
+                # Try UTF-8 without BOM
+                content_str = contents.decode("utf-8")
+            except UnicodeDecodeError:
+                # Fallback to SHIFT-JIS (common on Windows in Japan)
+                content_str = contents.decode("shift-jis")
 
-        # 今日のデータを取得してコンテキストを作成
+        csv_store.import_csv_data(content_str)
+
+        # Get today's data and create context
         today_str = get_today_formatted()
         day_data = csv_store.get_day_data(today_str)
 
-        # 勤務場所のバッジ情報を生成
-        locations = generate_location_badges()
+        # Get types of work locations
+        location_types = csv_store.get_location_types()
 
-        # データがあるかどうかをチェック
+        # Generate badge information for work locations
+        locations = generate_location_badges(location_types)
+
+        # Check if data exists
         has_data = has_data_for_day(day_data)
 
         context = {
@@ -49,30 +65,33 @@ async def import_csv(request: Request, file: UploadFile = File(...)) -> HTMLResp
             "data": day_data,
             "locations": locations,
             "has_data": has_data,
-            "success_message": "CSVデータが正常にインポートされました。",
+            "success_message": "CSV data imported successfully.",
         }
 
         return templates.TemplateResponse("partials/day_detail.html", context)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CSVインポートエラー: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"CSV import error: {str(e)}")
 
 
 @router.get("/export")
 def export_csv() -> FileResponse:
-    """勤務データをCSV形式でエクスポートする
+    """Export attendance data as CSV
 
     Returns:
-        FileResponse: CSVファイルのダウンロードレスポンス
+        FileResponse: CSV file download response
     """
-    csv_path = csv_store.get_csv_file_path()
+    csv_path = get_csv_file_path()
 
     if not os.path.exists(csv_path):
-        raise HTTPException(status_code=404, detail="CSVファイルが見つかりません")
+        raise HTTPException(status_code=404, detail="CSV file not found")
 
     filename = "work_entries.csv"
     return FileResponse(
         path=csv_path,
         filename=filename,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Type": "text/csv; charset=utf-8-sig",
+        },
     )

@@ -1,29 +1,28 @@
 <section class="p-2" hx-swap-oob="true" id="detail-area">
   <div class="space-y-4">
     <div class="flex justify-between items-center">
-      <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) の勤務予定</h3>
+      <h3 class="text-lg font-bold">{{ user_name }} ({{ user_id }}) Work Schedule</h3>
 
       <div class="btn-group">
-        <a href="/api/user/{{ user_id }}?month={{ prev_month }}" class="btn btn-sm"
-          hx-get="/api/user/{{ user_id }}?month={{ prev_month }}" hx-target="#detail-area">前月</a>
-        <a href="/api/user/{{ user_id }}" class="btn btn-sm" hx-get="/api/user/{{ user_id }}"
-          hx-target="#detail-area">今月</a>
-        <a href="/api/user/{{ user_id }}?month={{ next_month }}" class="btn btn-sm"
-          hx-get="/api/user/{{ user_id }}?month={{ next_month }}" hx-target="#detail-area">翌月</a>
+        <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ user_id }}?month={{ prev_month }}"
+          hx-target="#detail-area">＜Prev</button>
+        <button class="btn btn-sm" hx-get="/api/user/{{ user_id }}" hx-target="#detail-area">Current</button>
+        <button class="btn btn-sm btn-outline" hx-get="/api/user/{{ user_id }}?month={{ next_month }}"
+          hx-target="#detail-area">Next＞</button>
       </div>
     </div>
 
-    <!-- カレンダー形式の表示 -->
+    <!-- Calendar View -->
     <div class="overflow-x-auto">
-      <!-- 曜日ヘッダー -->
+      <!-- Weekday Headers -->
       <div class="grid grid-cols-7 gap-1 mb-2 text-center font-bold">
-        {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
+        {% set weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] %}
         {% for day in weekdays %}
         <div class="p-1">{{ day }}</div>
         {% endfor %}
       </div>
 
-      <!-- カレンダーグリッド -->
+      <!-- Calendar Grid -->
       <div class="grid grid-cols-7 gap-1">
         {% for week in calendar_data %}
         {% for day in week %}
@@ -52,7 +51,7 @@
       </div>
     </div>
 
-    <!-- 編集リンク -->
+    <!-- Edit Link -->
     <div class="flex justify-end">
       <a href="/attendance/edit/{{ user_id }}" class="btn btn-primary btn-sm">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
@@ -60,7 +59,7 @@
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
         </svg>
-        編集する
+        Edit
       </a>
     </div>
   </div>
