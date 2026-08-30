@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Generator
+from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
 from sqlalchemy import Engine, create_engine
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.applications import Starlette
@@ -29,6 +30,20 @@ class DatabaseRuntime:
         self.engine.dispose()
 
 
+def _sqlite_uri_enabled(url: URL) -> bool:
+    return str(url.query.get("uri", "")).lower() == "true"
+
+
+def _sqlite_is_memory_database(url: URL) -> bool:
+    if url.database in {None, "", ":memory:"}:
+        return True
+    if not _sqlite_uri_enabled(url):
+        return False
+    return url.database == "file::memory:" or str(
+        url.query.get("mode", "")
+    ).lower() == "memory"
+
+
 def create_database_runtime(database_url: str) -> DatabaseRuntime:
     """Create an isolated database runtime for a database URL."""
     url = make_url(database_url)
@@ -36,7 +51,7 @@ def create_database_runtime(database_url: str) -> DatabaseRuntime:
         engine_kwargs: dict[str, object] = {
             "connect_args": {"check_same_thread": False}
         }
-        if url.database in {None, "", ":memory:"}:
+        if _sqlite_is_memory_database(url):
             engine_kwargs["poolclass"] = StaticPool
         engine = create_engine(database_url, **engine_kwargs)
     else:
@@ -102,14 +117,23 @@ def get_db(request: Request) -> Generator[Session, None, None]:
 
 
 def sqlite_database_path(database_url: str) -> Path | None:
-    """Resolve a file-backed SQLite URL to a filesystem path."""
+    """Resolve a file-backed SQLite URL to the filesystem path SQLite opens."""
     url = make_url(database_url)
     if url.get_backend_name() != "sqlite" or not url.database:
         return None
-    if url.database == ":memory:":
+    if _sqlite_is_memory_database(url):
         return None
 
-    path = Path(url.database)
+    database = url.database
+    if _sqlite_uri_enabled(url) and database.startswith("file:"):
+        parsed = urlsplit(database)
+        if parsed.netloc and parsed.netloc != "localhost":
+            database = f"//{parsed.netloc}{parsed.path}"
+        else:
+            database = parsed.path
+        database = unquote(database)
+
+    path = Path(database)
     return path if path.is_absolute() else Path.cwd() / path
 
 
