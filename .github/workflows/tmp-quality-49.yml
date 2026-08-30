@@ -17,8 +17,11 @@ jobs:
         with:
           version: "0.12.7"
       - run: uv sync --locked
-      - name: Current lint baseline
+      - name: Current production lint baseline
         run: uv run ruff check app --exclude app/tests
+      - name: Full lint baseline
+        continue-on-error: true
+        run: uv run ruff check app --output-format concise
       - name: Import sorting baseline
         continue-on-error: true
         run: uv run ruff check app --select I --output-format concise
