@@ -8,6 +8,9 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEVCONTAINER_JSON = REPO_ROOT / ".devcontainer" / "devcontainer.json"
 DEVCONTAINER_DOCKERFILE = REPO_ROOT / ".devcontainer" / "Dockerfile"
+DEVCONTAINER_VOLUME_OWNERSHIP_SCRIPT = (
+    REPO_ROOT / ".devcontainer" / "ensure-volume-ownership.sh"
+)
 AGENT_DEV_FEATURE = "ghcr.io/vnzzzz/agentic-development-toolkit/agent-dev:1"
 
 
@@ -51,6 +54,18 @@ def test_devcontainer_runtime_paths_support_vscode_user() -> None:
     assert "POETRY_HOME=/opt/poetry" in dockerfile
     assert "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright" in dockerfile
     assert "/home/vscode/.cache/pypoetry" in dockerfile
+
+
+def test_devcontainer_repairs_persisted_volume_ownership_after_start() -> None:
+    config = load_devcontainer_config()
+    script = DEVCONTAINER_VOLUME_OWNERSHIP_SCRIPT.read_text()
+
+    assert config["postStartCommand"] == "bash .devcontainer/ensure-volume-ownership.sh"
+    assert "id -u" in script
+    assert "id -g" in script
+    assert "sudo chown -R" in script
+    assert "/app/data" in script
+    assert "/home/vscode/.cache/pypoetry" in script
 
 
 def test_devcontainer_cmd_is_idle_until_server_runs() -> None:
