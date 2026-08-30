@@ -51,6 +51,7 @@ ignore_errors = true
 [tool.ruff]
 line-length = 88
 target-version = "py313"
+extend-exclude = ["scripts/migration/alembic/versions"]
 
 [tool.ruff.lint]
 extend-select = ["I"]
