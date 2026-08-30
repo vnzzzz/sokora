@@ -48,7 +48,7 @@ def test_init_db_creates_parent_and_schema(tmp_path: Path) -> None:
 
         assert database_path.exists()
         assert "users" in inspect(runtime.engine).get_table_names()
-        assert "attendances" in inspect(runtime.engine).get_table_names()
+        assert "attendance" in inspect(runtime.engine).get_table_names()
     finally:
         runtime.dispose()
 
