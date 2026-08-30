@@ -1,7 +1,6 @@
 """Database engine and session lifecycle helpers."""
 
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Generator
 
@@ -32,11 +31,14 @@ class DatabaseRuntime:
 def create_database_runtime(database_url: str) -> DatabaseRuntime:
     """Create an isolated database runtime for a database URL."""
     url = make_url(database_url)
-    engine_kwargs: dict[str, object] = {}
     if url.get_backend_name() == "sqlite":
-        engine_kwargs["connect_args"] = {"check_same_thread": False}
+        engine = create_engine(
+            database_url,
+            connect_args={"check_same_thread": False},
+        )
+    else:
+        engine = create_engine(database_url)
 
-    engine = create_engine(database_url, **engine_kwargs)
     session_factory = sessionmaker(
         autocommit=False,
         autoflush=False,
@@ -49,20 +51,24 @@ def create_database_runtime(database_url: str) -> DatabaseRuntime:
     )
 
 
-@lru_cache(maxsize=None)
-def _cached_database_runtime(database_url: str) -> DatabaseRuntime:
-    return create_database_runtime(database_url)
+_default_database_runtimes: dict[str, DatabaseRuntime] = {}
 
 
 def get_default_database_runtime() -> DatabaseRuntime:
     """Return the lazily-created runtime for the current process settings."""
-    settings = AppSettings.from_env()
-    return _cached_database_runtime(settings.database_url)
+    database_url = AppSettings.from_env().database_url
+    runtime = _default_database_runtimes.get(database_url)
+    if runtime is None:
+        runtime = create_database_runtime(database_url)
+        _default_database_runtimes[database_url] = runtime
+    return runtime
 
 
 def clear_database_runtime_cache() -> None:
-    """Forget cached default runtimes; primarily useful for test isolation."""
-    _cached_database_runtime.cache_clear()
+    """Dispose cached default runtimes; primarily useful for test isolation."""
+    for runtime in _default_database_runtimes.values():
+        runtime.dispose()
+    _default_database_runtimes.clear()
 
 
 def SessionLocal() -> Session:
