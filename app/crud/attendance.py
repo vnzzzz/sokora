@@ -61,9 +61,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             for attendance, location in rows
         ]
 
-    def get_day_data(
-        self, db: Session, *, day: str
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    def get_day_data(self, db: Session, *, day: str) -> Dict[str, List[Dict[str, Any]]]:
         """指定日の勤怠を勤怠種別ごとに返す。process-local cacheは持たない。"""
         try:
             date_obj = date.fromisoformat(day)
