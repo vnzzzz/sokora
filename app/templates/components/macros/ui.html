@@ -35,7 +35,6 @@
 {%- endmacro %}
 
 {% macro add_modal(title, form_id, content_block, endpoint_url, submit_btn_text="追加") -%}
-<!-- 追加モーダル -->
 <div
   x-show="showAddModal"
   @click.away="showAddModal = false"
@@ -57,7 +56,6 @@
 {%- endmacro %}
 
 {% macro edit_modal(title, form_id, content_block, item_id, btn_color_class="", submit_btn_text="保存") -%}
-<!-- 編集モーダル -->
 <div
   x-show="showEditModal"
   @click.away="showEditModal = false"
@@ -73,7 +71,6 @@
 {%- endmacro %}
 
 {% macro delete_confirm_modal(title, content_block, item_id, item_name, endpoint_url, submit_btn_text="削除") -%}
-<!-- 削除確認モーダル -->
 <div
   x-show="showDeleteConfirm"
   @click.away="showDeleteConfirm = false"
@@ -105,7 +102,6 @@
 {%- endmacro %}
 
 {% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
-<!-- 月切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
   <button
     class="btn btn-sm btn-outline"
@@ -161,7 +157,6 @@
 {%- endmacro %}
 
 {% macro week_switcher(prev_week, next_week, current_week, url_base='/attendance/weekly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
-<!-- 週切り替えボタングループ -->
 <div class="btn-group shadow-sm {{ class }}">
   <button
     class="btn btn-sm btn-outline"
@@ -299,24 +294,22 @@
 {% set del_btn = "" %}
 {% if attendance_id %}
   {% set is_register_mode = mode == "register" %}
-  
   {% if is_register_mode %}
-    {% set trigger_attrs = 'hx-trigger-after-settle="refreshRegisterCalendar" ' ~ 
+    {% set trigger_attrs = 'hx-trigger-after-settle="refreshRegisterCalendar" ' ~
         'data-user-id="' ~ user_id ~ '" data-month="' ~ (date | default(""))[0:7] ~ '"' %}
   {% else %}
     {% set trigger_attrs = "" %}
   {% endif %}
-  
-  {% set del_btn = "<button type='button' class='btn btn-error' " 
-    ~ "hx-delete=\"/api/v1/attendances/" ~ attendance_id ~ "\" " 
+  {% set del_btn = "<button type='button' class='btn btn-error' "
+    ~ "hx-delete=\"/attendance/entries/" ~ attendance_id ~ "\" "
     ~ "hx-target='closest dialog' hx-swap='outerHTML' "
     ~ trigger_attrs
-    ~ (is_register_mode and " hx-trigger-after-settle=\"modalSuccess\"" or "") 
+    ~ (is_register_mode and " hx-trigger-after-settle=\"modalSuccess\"" or "")
     ~ ">削除</button>" %}
 {% endif %}
 
 {% if mode == "register" %}
-  {% set form_trigger_attrs = 'hx-trigger-after-settle="refreshRegisterCalendar" ' ~ 
+  {% set form_trigger_attrs = 'hx-trigger-after-settle="refreshRegisterCalendar" ' ~
       'data-user-id="' ~ user_id ~ '" data-month="' ~ (date | default(""))[0:7] ~ '"' %}
 {% else %}
   {% set form_trigger_attrs = "" %}
@@ -325,7 +318,7 @@
 {% call modal_form(
   id = "attendance-modal-" ~ user_id ~ "-" ~ date,
   title = "勤怠編集: " ~ user_name ~ " (" ~ formatted_date ~ ")",
-  action = attendance_id and ("/api/v1/attendances/" ~ attendance_id) or "/api/v1/attendances",
+  action = attendance_id and ("/attendance/entries/" ~ attendance_id) or "/attendance/entries",
   method = attendance_id and "PUT" or "POST",
   submit_text = attendance_id and "更新" or "登録",
   size = "lg",
@@ -333,6 +326,7 @@
   extra_attrs = form_trigger_attrs ~ " " ~ (mode == "register" and "hx-trigger-after-settle=\"modalSuccess\"" or "")
 ) %}
 
+<div id="attendance-form-error" class="text-error text-sm" role="alert"></div>
 <input type="hidden" name="user_id" value="{{ user_id }}">
 <input type="hidden" name="date" value="{{ date }}">
 <input type="hidden" name="location_id" id="selected-location-id-{{ user_id }}-{{ date }}" value="{{ current_location_id }}">
@@ -340,36 +334,27 @@
 <div class="space-y-6">
   <div>
     <label class="label"><span class="label-text font-medium text-base">勤怠種別選択</span></label>
-    
-    {# カテゴリーごとにグループ化 #}
     {% set categories = {} %}
-      {% for loc in locations %}
+    {% for loc in locations %}
       {% set category = loc.category or '未分類' %}
       {% if category not in categories %}
         {% set _ = categories.update({category: []}) %}
       {% endif %}
       {% set _ = categories[category].append(loc) %}
     {% endfor %}
-    
-    {# 分類でソートしたカテゴリーリストを作成 #}
     {% set sorted_categories = [] %}
     {% for category_name in categories.keys()|sort %}
       {% set _ = sorted_categories.append(category_name) %}
     {% endfor %}
-    
-    {# 未分類カテゴリーは最後に表示 #}
     {% if '未分類' in sorted_categories %}
       {% set _ = sorted_categories.remove('未分類') %}
       {% set _ = sorted_categories.append('未分類') %}
     {% endif %}
-    
-    {# 各カテゴリーごとに表示 #}
     {% for category in sorted_categories %}
       {% set category_locations = categories[category] %}
       <div class="mt-4">
         <h4 class="font-medium text-base-content mb-2 border-b pb-1 text-sm">{{ category }}</h4>
         <div class="grid grid-cols-3 gap-x-2 gap-y-1">
-          {# 表示順（order）でソート #}
           {% for loc in category_locations|sort(attribute='order') %}
             <button
               type="button"
@@ -377,19 +362,19 @@
               data-location-id="{{ loc.id }}"
               onclick="selectLocation('{{ user_id }}', '{{ date }}', '{{ loc.id }}')"
             >
-        {{ loc.name }}
+              {{ loc.name }}
             </button>
           {% endfor %}
         </div>
       </div>
-      {% endfor %}
+    {% endfor %}
   </div>
 
   <div>
     <label class="label"><span class="label-text font-medium text-base">備考（任意）</span></label>
-    <textarea 
-      name="note" 
-      class="textarea textarea-bordered w-full" 
+    <textarea
+      name="note"
+      class="textarea textarea-bordered w-full"
       placeholder="備考を入力してください（任意）"
       rows="3"
     >{{ note or '' }}</textarea>
@@ -398,7 +383,6 @@
 
 <script>
 function selectLocation(userId, date, locationId) {
-  // 選択された勤怠種別のボタンをアクティブにし、他のボタンを非アクティブにする
   const modalId = `attendance-modal-${userId}-${date}`;
   const modal = document.getElementById(modalId);
   const buttons = modal.querySelectorAll('.location-select-btn');
@@ -409,22 +393,16 @@ function selectLocation(userId, date, locationId) {
       btn.classList.remove('btn-active');
     }
   });
-  
-  // hidden inputの値を更新
   document.getElementById(`selected-location-id-${userId}-${date}`).value = locationId;
 }
 
-// モーダルが開かれた時にlocalStorageを更新
 (function() {
   const modalDate = '{{ date }}';
   if (modalDate && window.saveWeekFromDate) {
-    // 日付から週情報を計算してlocalStorageに保存
     window.saveWeekFromDate(modalDate);
   }
-  
-  // 月情報も保存
   if (modalDate && modalDate.length >= 7) {
-    const monthStr = modalDate.substring(0, 7); // YYYY-MM
+    const monthStr = modalDate.substring(0, 7);
     if (window.localStorage) {
       localStorage.setItem('selectedMonth', monthStr);
     }
