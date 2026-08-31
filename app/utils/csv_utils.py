@@ -50,8 +50,7 @@ def _generate_date_headers(month: Optional[str] = None) -> List[str]:
         return date_headers
 
     date_headers = [
-        (today - relativedelta(days=index)).strftime("%Y/%m/%d")
-        for index in range(90)
+        (today - relativedelta(days=index)).strftime("%Y/%m/%d") for index in range(90)
     ]
     date_headers.sort()
     return date_headers
