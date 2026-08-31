@@ -61,7 +61,9 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             for attendance, location in rows
         ]
 
-    def get_day_data(self, db: Session, *, day: str) -> Dict[str, List[Dict[str, str]]]:
+    def get_day_data(
+        self, db: Session, *, day: str
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """指定日の勤怠を勤怠種別ごとに返す。process-local cacheは持たない。"""
         try:
             date_obj = date.fromisoformat(day)
@@ -84,16 +86,16 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             .all()
         )
 
-        location_groups: Dict[str, List[Dict[str, str]]] = {}
+        location_groups: Dict[str, List[Dict[str, Any]]] = {}
         for row in rows:
             location_name = str(row.location_name)
             location_groups.setdefault(location_name, []).append(
                 {
-                    "user_name": str(row.username),
-                    "user_id": str(row.user_id),
-                    "user_type_id": str(row.user_type_id),
-                    "user_type_name": str(row.user_type_name or ""),
-                    "note": str(row.note or ""),
+                    "user_name": row.username,
+                    "user_id": row.user_id,
+                    "user_type_id": row.user_type_id,
+                    "user_type_name": row.user_type_name or "",
+                    "note": row.note,
                 }
             )
         return location_groups
