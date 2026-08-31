@@ -107,7 +107,8 @@ def get_analysis_page(
             group_user_types[group_name] = user_types_in_group
 
         sorted_group_names = sorted(
-            grouped_users.keys(), key=lambda item: group_sort_info.get(str(item), (999, 999))
+            grouped_users.keys(),
+            key=lambda item: group_sort_info.get(str(item), (999, 999)),
         )
 
         month_options = [f"{month_num:02d}" for month_num in range(1, 13)]
