@@ -46,9 +46,10 @@ async def test_download_csv_contains_json_api_attendance(
 
     assert response.status_code == status.HTTP_200_OK
     assert response.headers["content-type"].startswith("text/csv")
-    assert 'filename="work_entries_2032-05.csv"' in response.headers[
-        "content-disposition"
-    ]
+    assert (
+        'filename="work_entries_2032-05.csv"'
+        in response.headers["content-disposition"]
+    )
     rows = list(csv.reader(io.StringIO(response.text)))
     assert rows[0][:4] == ["user_name", "user_id", "group_name", "user_type"]
     user_row = next(row for row in rows[1:] if row[1] == user_id)
