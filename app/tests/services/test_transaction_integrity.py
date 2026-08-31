@@ -54,8 +54,6 @@ def test_duplicate_write_is_translated_after_stale_precheck(
     )
     db.commit()
 
-    # Model a concurrent race: the service-side pre-check saw no row, while a
-    # competing writer committed the same key before this writer flushed.
     monkeypatch.setattr(
         crud.attendance,
         "get_by_user_and_date",
@@ -65,9 +63,11 @@ def test_duplicate_write_is_translated_after_stale_precheck(
     with pytest.raises(DataIntegrityError):
         attendance_service.create_attendance(
             db,
-            user_id=str(user.id),
-            attendance_date=target_date,
-            location_id=int(location.id),
+            attendance_in=schemas.AttendanceCreate(
+                user_id=str(user.id),
+                date=target_date,
+                location_id=int(location.id),
+            ),
         )
 
     assert (
