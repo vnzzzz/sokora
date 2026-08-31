@@ -18,33 +18,16 @@ from .base import CRUDBase
 
 
 class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
-    """社員種別に対するCRUD操作クラス"""
+    """社員種別固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
     def get_by_name(self, db: Session, name: str) -> Optional[UserType]:
-        """名前による社員種別取得
-
-        Args:
-            db: データベースセッション
-            name: 社員種別名
-
-        Returns:
-            Optional[UserType]: 見つかった社員種別またはNone
-        """
+        """社員種別名で1件取得し、存在しない場合は ``None`` を返します。"""
         return db.query(UserType).filter(UserType.name == name).first()
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[UserType]:
-        """複数社員種別の取得 (order順、次にname順でソート)
-
-        Args:
-            db: データベースセッション
-            skip: スキップする件数
-            limit: 取得する最大件数
-
-        Returns:
-            List[UserType]: 社員種別のリスト
-        """
+        """``order``、次に名前の順で社員種別一覧を取得します。"""
         return (
             db.query(UserType)
             .order_by(UserType.order.nullslast(), UserType.name)
@@ -54,21 +37,15 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
         )
 
     def remove(self, db: Session, *, id: int) -> UserType:
-        """社員種別を削除 (関連ユーザーがいない場合のみ)
+        """未使用の社員種別を削除対象としてflushし、削除対象を返します。
 
-        Args:
-            db: データベースセッション
-            id: 削除する社員種別のID
-
-        Returns:
-            UserType: 削除された社員種別
-
-        Raises:
-            HTTPException: 社員種別が見つからない場合 (404)
-            HTTPException: 社員種別に関連ユーザーが存在する場合 (400)
+        ユーザーから参照されている場合はHTTP 400を送出します。commit/rollbackは
+        呼び出し側serviceが所有します。
         """
         db_obj = self.get_or_404(db, id)
 
+        # この事前チェックは利用者向けエラーのために行う。
+        # 並行writeとの競合時はDBのFK制約が最終的な参照整合性を保証する。
         user_count = db.query(User).filter(User.user_type_id == id).count()
         if user_count > 0:
             raise HTTPException(
@@ -77,7 +54,7 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
             )
 
         db.delete(db_obj)
-        db.commit()
+        db.flush()
         return db_obj
 
 

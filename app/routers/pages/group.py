@@ -17,6 +17,7 @@ from app import schemas  # スキーマをインポート
 from app.crud.group import group
 from app.db.session import get_db
 from app.services import group_service  # group_service をインポート
+from app.services.errors import ApplicationError
 
 # ルーター定義
 router = APIRouter(prefix="/groups", tags=["Pages"])
@@ -142,7 +143,7 @@ async def delete_group(
             )
 
         # グループの削除処理
-        group.remove(db=db, id=group_id)
+        group_service.delete_group(db=db, group_id=group_id)
 
         # モーダルを閉じて画面をリロードするトリガーを返す
         modal_id = f"group-delete-modal-{group_id}"
@@ -153,7 +154,7 @@ async def delete_group(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         modal_id = f"group-delete-modal-{group_id}"
         ctx = {
@@ -199,7 +200,7 @@ async def create_group(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/group_modal.html",
@@ -246,7 +247,7 @@ async def update_group(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/group_modal.html",

@@ -25,7 +25,8 @@ from .base import CRUDBase
 class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
     """勤怠記録モデルのCRUD操作クラス"""
 
-    # キャッシュの追加（パフォーマンス最適化）
+    # 日別表示のread cacheはprocess-localで共有する。write pathでは対象日を
+    # invalidateし、rollback時に余分なinvalidateが起きても次回readで再構築する。
     _day_data_cache: Dict[str, Dict[str, List[Dict[str, str]]]] = {}
     _cache_ttl = 60  # キャッシュの有効期間（秒）
     _cache_timestamp: Dict[str, float] = {}
@@ -51,97 +52,54 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         )
 
     def delete_attendance(self, db: Session, *, user_id: str, date_obj: date) -> bool:
+        """ユーザーと日付に一致する勤怠を削除対象としてflushします。
+
+        対象が無い場合はFalseを返します。commit/rollbackは呼び出し側serviceが所有します。
         """
-        指定されたユーザーIDと日付の勤怠記録を削除します。
-
-        注意: この関数は直接コミットを行いません。呼び出し元でコミットが必要です。
-        `update_user_entry` から利用されることを想定しています。
-
-        Args:
-            db: データベースセッション
-            user_id: 削除対象のユーザーID
-            date_obj: 削除対象の日付オブジェクト
-
-        Returns:
-            bool: 削除が成功した場合はTrue、対象が見つからない場合やエラー時はFalse
-        """
-        try:
-            attendance = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
-            if attendance:
-                db.delete(attendance)
-                # コミットは呼び出し元の `update_user_entry` で実施されます。
-                return True
+        attendance = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
+        if attendance is None:
             return False
-        except Exception as e:
-            logger.error(
-                f"勤怠削除処理中にエラーが発生しました: {str(e)}", exc_info=True
-            )
-            return False
+        db.delete(attendance)
+        db.flush()
+        return True
 
     def delete_by_user_and_date(
         self, db: Session, *, user_id: str, date_obj: date
     ) -> bool:
-        """
-        指定されたユーザーIDと日付の勤怠記録を削除します。
+        """ユーザーと日付に一致する勤怠を削除対象としてflushし、該当日のread cacheを無効化します。
 
-        `delete_attendance` と異なり、この関数はキャッシュのクリアも行います。
-        APIエンドポイントなどから直接呼び出されることを想定しています。
-
-        Args:
-            db: データベースセッション
-            user_id: 削除対象のユーザーID
-            date_obj: 削除対象の日付オブジェクト
-
-        Returns:
-            bool: 削除に成功した場合はTrue、対象が見つからない場合はFalse
+        対象が無い場合はFalseを返し、transactionの確定は呼び出し側へ委ねます。
         """
         obj = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
-        if obj:
+        if obj is None:
             logger.debug(
-                f"勤怠レコード削除実行: id={obj.id}, user_id={user_id}, date={date_obj}"
+                f"削除対象の勤怠レコードが見つかりません: user_id={user_id}, date={date_obj}"
             )
-            # CRUDBase の remove は内部で commit する可能性があるため、
-            # ここでは直接 delete を呼び出し、コミットは呼び出し元に委ねます。
-            db.delete(obj)
-            # 関連する日のキャッシュを無効化します。
-            day_key = date_obj.strftime("%Y-%m-%d")
-            if day_key in self._day_data_cache:
-                del self._day_data_cache[day_key]
-                logger.debug(f"日別キャッシュクリア: {day_key}")
-            return True
+            return False
+
         logger.debug(
-            f"削除対象の勤怠レコードが見つかりません: user_id={user_id}, date={date_obj}"
+            f"勤怠レコード削除実行: id={obj.id}, user_id={user_id}, date={date_obj}"
         )
-        return False
+        db.delete(obj)
+        db.flush()
+        self._day_data_cache.pop(date_obj.strftime("%Y-%m-%d"), None)
+        return True
 
     def delete_attendances_by_user_id(self, db: Session, *, user_id: str) -> int:
-        """
-        指定されたユーザーIDに紐づく全ての勤怠記録を削除します。
+        """指定ユーザーの勤怠を一括で削除対象としてflushし、対象件数を返します。
 
-        Args:
-            db: データベースセッション
-            user_id: 削除対象のユーザーID
-
-        Returns:
-            int: 削除されたレコード数
+        user削除など複数tableを扱うservice transaction内で使用します。
         """
-        try:
-            num_deleted = (
-                db.query(Attendance).filter(Attendance.user_id == user_id).delete()
-            )
-            # CRUDBaseと異なり、ここではコミットを行わない (呼び出し元に委ねる)
-            # キャッシュクリアは不要 (ユーザー自体が削除されるため)
-            logger.info(
-                f"ユーザーID '{user_id}' に紐づく勤怠レコードを {num_deleted} 件削除しました。"
-            )
-            return num_deleted
-        except Exception as e:
-            logger.error(
-                f"ユーザーID '{user_id}' の勤怠レコード一括削除中にエラーが発生しました: {str(e)}",
-                exc_info=True,
-            )
-            db.rollback()  # エラー発生時はロールバック
-            raise  # エラーを再送出して呼び出し元に通知
+        num_deleted = (
+            db.query(Attendance)
+            .filter(Attendance.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
+        db.flush()
+        logger.info(
+            f"ユーザーID '{user_id}' に紐づく勤怠レコードを {num_deleted} 件削除しました。"
+        )
+        return num_deleted
 
     def update_attendance(
         self,
@@ -151,45 +109,26 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         date_obj: date,
         location_id: int,
         note: Optional[str] = None,
-    ) -> Optional[Attendance]:
+    ) -> Attendance:
+        """ユーザーと日付の勤怠を更新し、無ければ新規行をflushします。
+
+        commit/rollbackは呼び出し側serviceが所有します。
         """
-        指定されたユーザーIDと日付の勤怠記録を作成または更新します。
-
-        該当する日付の記録が存在すれば更新し、存在しなければ新規作成します。
-
-        Args:
-            db: データベースセッション
-            user_id: 対象のユーザーID
-            date_obj: 対象の日付オブジェクト
-            location_id: 設定する勤怠種別ID
-            note: 備考
-
-        Returns:
-            Optional[Attendance]: 作成または更新された勤怠記録オブジェクト、エラー時はNone
-        """
-        try:
-            # 既存の記録を検索
-            attendance = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
-
-            if attendance:
-                # 既存レコードを更新
-                return self.update(
-                    db,
-                    db_obj=attendance,
-                    obj_in={"location_id": location_id, "note": note},
-                )
-            else:
-                # 新規レコードを作成
-                attendance_in = AttendanceCreate(
-                    user_id=user_id, date=date_obj, location_id=location_id, note=note
-                )
-                return self.create(db, obj_in=attendance_in)
-        except Exception as e:
-            logger.error(
-                f"勤怠情報の更新または作成中にエラーが発生しました: {str(e)}",
-                exc_info=True,
+        attendance = self.get_by_user_and_date(db, user_id=user_id, date=date_obj)
+        if attendance is not None:
+            return self.update(
+                db,
+                db_obj=attendance,
+                obj_in={"location_id": location_id, "note": note},
             )
-            return None
+
+        attendance_in = AttendanceCreate(
+            user_id=user_id,
+            date=date_obj,
+            location_id=location_id,
+            note=note,
+        )
+        return self.create(db, obj_in=attendance_in)
 
     def update_user_entry(
         self,
@@ -200,93 +139,40 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         location_id: int,
         note: Optional[str] = None,
     ) -> bool:
+        """従来caller向けに日付文字列から勤怠の更新・削除をstageする互換helperです。
+
+        date_strはYYYY-MM-DD、location_id=-1は削除を表します。transactionは確定しません。
         """
-        ユーザーの特定の日付における勤怠情報を更新または削除します。
-
-        location_id に有効なIDが指定された場合は情報を更新し、
-        特別な値 (-1) が指定された場合は情報を削除します。
-        処理完了後にデータベースのコミットを実行します。
-
-        Args:
-            db: データベースセッション
-            user_id: 対象のユーザーID文字列
-            date_str: 対象の日付文字列 (YYYY-MM-DD形式)
-            location_id: 設定する勤怠種別ID。削除の場合は -1 を指定。
-            note: 備考
-
-        Returns:
-            bool: 処理が成功した場合はTrue、失敗した場合はFalse
-        """
-        try:
-            logger.debug(
-                f"勤怠情報更新/削除処理開始: user_id={user_id}, date={date_str}, location_id={location_id}"
-            )
-
-            # 対象ユーザーが存在するか確認
-            user = db.query(User).filter(User.id == user_id).first()
-            if not user:
-                logger.error(f"指定されたユーザーが見つかりません: user_id={user_id}")
-                return False
-
-            # 日付文字列をdateオブジェクトに変換
-            try:
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-                logger.debug(f"日付変換成功: {date_obj}")
-            except ValueError:
-                logger.error(f"無効な日付形式です: {date_str}")
-                return False
-
-            # location_id が -1 の場合は削除処理を実行
-            if location_id == -1:
-                logger.debug(
-                    f"勤怠レコード削除処理開始: user_id={user.id}, date={date_obj}"
-                )
-                result = self.delete_attendance(
-                    db, user_id=str(user.id), date_obj=date_obj
-                )
-                if result:
-                    db.commit()  # 変更を確定
-                    logger.debug("勤怠レコード削除成功")
-                    # 関連する日のキャッシュを無効化
-                    day_key = date_obj.strftime("%Y-%m-%d")
-                    if day_key in self._day_data_cache:
-                        del self._day_data_cache[day_key]
-                    return True
-                else:
-                    # 削除対象が存在しなかった場合も正常とみなす
-                    logger.debug("削除対象のレコードが存在しませんでした。")
-                    return True
-            else:
-                # location_id が有効な場合は更新または新規作成処理を実行
-                logger.debug(
-                    f"勤怠レコード更新/作成処理開始: user_id={user.id}, date={date_obj}, location_id={location_id}"
-                )
-                attendance_result = self.update_attendance(
-                    db,
-                    user_id=str(user.id),
-                    date_obj=date_obj,
-                    location_id=location_id,
-                    note=note,
-                )
-                if attendance_result is not None:
-                    db.commit()  # 変更を確定
-                    logger.debug("勤怠レコード更新/作成成功")
-                    # 関連する日のキャッシュを無効化
-                    day_key = date_obj.strftime("%Y-%m-%d")
-                    if day_key in self._day_data_cache:
-                        del self._day_data_cache[day_key]
-                    return True
-                else:
-                    db.rollback()  # エラー発生時はロールバック
-                    logger.error("勤怠レコード更新/作成失敗")
-                    return False
-        except Exception as e:
-            db.rollback()  # 予期せぬエラー発生時もロールバック
-            logger.error(
-                f"勤怠情報更新/削除処理中に予期せぬエラーが発生しました: {str(e)}",
-                exc_info=True,
-            )
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is None:
+            logger.error(f"指定されたユーザーが見つかりません: user_id={user_id}")
             return False
+
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            logger.error(f"無効な日付形式です: {date_str}")
+            return False
+
+        if location_id == -1:
+            deleted = self.delete_attendance(
+                db,
+                user_id=str(user.id),
+                date_obj=date_obj,
+            )
+            if deleted:
+                self._day_data_cache.pop(date_obj.strftime("%Y-%m-%d"), None)
+            return True
+
+        self.update_attendance(
+            db,
+            user_id=str(user.id),
+            date_obj=date_obj,
+            location_id=location_id,
+            note=note,
+        )
+        self._day_data_cache.pop(date_obj.strftime("%Y-%m-%d"), None)
+        return True
 
     def get_user_data(self, db: Session, *, user_id: str) -> List[Dict[str, Any]]:
         """

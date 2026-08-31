@@ -13,8 +13,6 @@ from sqlalchemy.orm import Session
 from app.crud.group import group
 from app.db.session import get_db
 from app.schemas.group import Group, GroupCreate, GroupList, GroupUpdate
-
-# サービス層をインポート
 from app.services import group_service
 
 router = APIRouter(tags=["Groups"])
@@ -22,20 +20,14 @@ router = APIRouter(tags=["Groups"])
 
 @router.get("", response_model=GroupList)
 def get_groups(db: Session = Depends(get_db)) -> Any:
-    """
-    全てのグループを取得します。表示順（order）順、次に名前順でソートされます。
-    """
+    """グループ一覧を表示順、次に名前順で返します。"""
     groups = group.get_multi(db=db)
     return {"groups": groups}
 
 
 @router.post("", response_model=Group)
 def create_group(*, db: Session = Depends(get_db), group_in: GroupCreate) -> Any:
-    """
-    新しいグループを作成します。
-    サービス層でバリデーションを実行します。
-    """
-    # バリデーションと作成をサービス層に委譲
+    """入力を検証してグループを作成し、作成後のグループを返します。"""
     return group_service.create_group_with_validation(db=db, group_in=group_in)
 
 
@@ -46,11 +38,7 @@ def update_group(
     group_id: int,
     group_in: GroupUpdate,
 ) -> Any:
-    """
-    グループを更新します。
-    サービス層でバリデーションを実行します。
-    """
-    # バリデーションと更新をサービス層に委譲
+    """指定IDのグループを検証して更新し、更新後のグループを返します。"""
     return group_service.update_group_with_validation(
         db=db, group_id=group_id, group_in=group_in
     )
@@ -58,10 +46,6 @@ def update_group(
 
 @router.delete("/{group_id}")
 def delete_group(*, db: Session = Depends(get_db), group_id: int) -> Any:
-    """
-    グループを削除します。
-    """
-    group.get_or_404(db=db, id=group_id)
-
-    group.remove(db=db, id=group_id)
+    """指定IDの未使用グループを削除し、成功時は204を返します。"""
+    group_service.delete_group(db=db, group_id=group_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

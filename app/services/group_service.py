@@ -1,16 +1,14 @@
-# TODO: Implement group service logic
-"""
-グループ関連のビジネスロジックを提供するサービス層モジュール。
-"""
+"""グループ関連のvalidationとtransaction境界を提供するservice。"""
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.services.transaction import transaction
 
 
 def validate_group_creation(db: Session, *, group_in: schemas.GroupCreate) -> None:
-    """グループ新規作成時のバリデーション（名前の重複チェック）を行います。"""
+    """作成前に必須名と名前重複を検証し、違反時はHTTP 400を送出します。"""
     if not group_in.name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -27,14 +25,13 @@ def validate_group_creation(db: Session, *, group_in: schemas.GroupCreate) -> No
 def validate_group_update(
     db: Session, *, group_id_to_update: int, group_in: schemas.GroupUpdate
 ) -> None:
-    """グループ更新時のバリデーション（名前の重複チェック）を行います。"""
+    """更新対象自身を除外してグループ名の必須・重複条件を検証します。"""
     if not group_in.name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="グループ名を入力してください",
         )
     existing_group = crud.group.get_by_name(db, name=group_in.name)
-    # 取得したグループが、更新対象のグループ自身でなければ重複エラー
     if existing_group and existing_group.id != group_id_to_update:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -45,24 +42,26 @@ def validate_group_update(
 def create_group_with_validation(
     db: Session, *, group_in: schemas.GroupCreate
 ) -> models.Group:
-    """
-    バリデーションを実行してからグループを新規作成します。
-    """
-    validate_group_creation(db, group_in=group_in)
-    return crud.group.create(db, obj_in=group_in)
+    """グループを検証して作成し、service所有のtransactionでcommitします。"""
+    with transaction(db, integrity_detail="このグループ名は既に存在します"):
+        validate_group_creation(db, group_in=group_in)
+        created = crud.group.create(db, obj_in=group_in)
+    return created
 
 
 def update_group_with_validation(
     db: Session, *, group_id: int, group_in: schemas.GroupUpdate
 ) -> models.Group:
-    """
-    バリデーションを実行してからグループ情報を更新します。
-    """
-    # まず更新対象が存在するか確認 (なければ404)
-    db_group = crud.group.get_or_404(db, id=group_id)
+    """既存グループを検証して更新し、1 transactionでcommitします。"""
+    with transaction(db, integrity_detail="このグループ名は既に使用されています"):
+        db_group = crud.group.get_or_404(db, id=group_id)
+        validate_group_update(db, group_id_to_update=group_id, group_in=group_in)
+        updated = crud.group.update(db, db_obj=db_group, obj_in=group_in)
+    return updated
 
-    # 更新バリデーションを実行
-    validate_group_update(db, group_id_to_update=group_id, group_in=group_in)
 
-    # バリデーションが通れば更新を実行
-    return crud.group.update(db, db_obj=db_group, obj_in=group_in)
+def delete_group(db: Session, *, group_id: int) -> models.Group:
+    """未使用グループを削除し、参照競合はDB制約エラーとして扱います。"""
+    with transaction(db, integrity_detail="利用中のグループは削除できません"):
+        deleted = crud.group.remove(db, id=group_id)
+    return deleted

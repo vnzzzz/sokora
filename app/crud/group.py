@@ -18,31 +18,14 @@ from .base import CRUDBase
 
 
 class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
-    """グループに対するCRUD操作クラス"""
+    """グループ固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
     def get_by_name(self, db: Session, name: str) -> Optional[Group]:
-        """名前によるグループ取得
-
-        Args:
-            db: データベースセッション
-            name: グループ名
-
-        Returns:
-            Optional[Group]: 見つかったグループまたはNone
-        """
+        """グループ名で1件取得し、存在しない場合は ``None`` を返します。"""
         return db.query(Group).filter(Group.name == name).first()
 
     def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Group]:
-        """複数グループの取得 (order順、次にname順でソート)
-
-        Args:
-            db: データベースセッション
-            skip: スキップする件数
-            limit: 取得する最大件数
-
-        Returns:
-            List[Group]: グループのリスト
-        """
+        """``order``、次に名前の順でグループ一覧を取得します。"""
         return (
             db.query(Group)
             .order_by(Group.order.nullslast(), Group.name)
@@ -52,23 +35,15 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
         )
 
     def remove(self, db: Session, *, id: int) -> Group:
-        """グループを削除 (関連ユーザーがいない場合のみ)
+        """未使用のグループを削除対象としてflushし、削除対象を返します。
 
-        Args:
-            db: データベースセッション
-            id: 削除するグループのID
-
-        Returns:
-            Group: 削除されたグループ
-
-        Raises:
-            HTTPException: グループが見つからない場合 (404)
-            HTTPException: グループに関連ユーザーが存在する場合 (400)
+        ユーザーから参照されている場合はHTTP 400を送出します。commit/rollbackは
+        呼び出し側serviceが所有します。
         """
-        # まずオブジェクトが存在するか確認 (なければ404)
         db_obj = self.get_or_404(db, id)
 
-        # 関連するユーザーがいないかチェック
+        # この事前チェックは利用者向けエラーのために行う。
+        # 並行writeとの競合時はDBのFK制約が最終的な参照整合性を保証する。
         user_count = db.query(User).filter(User.group_id == id).count()
         if user_count > 0:
             raise HTTPException(
@@ -76,9 +51,8 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
                 detail=f"このグループは{user_count}人のユーザーに割り当てられているため削除できません",
             )
 
-        # 依存関係がなければ削除を実行
         db.delete(db_obj)
-        db.commit()
+        db.flush()
         return db_obj
 
 

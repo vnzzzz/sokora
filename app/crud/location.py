@@ -20,22 +20,12 @@ from .base import CRUDBase
 
 
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
-    """勤怠種別モデルのCRUD操作クラス"""
+    """勤怠種別固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[Location]:
-        """
-        複数の勤怠種別を取得 (category、orderでソート)
-
-        Args:
-            db: データベースセッション
-            skip: スキップするレコード数
-            limit: 取得するレコード数の上限
-
-        Returns:
-            List[Location]: 勤怠種別のリスト
-        """
+        """category、order、IDの順で勤怠種別一覧を取得します。"""
         return (
             db.query(self.model)
             .order_by(
@@ -49,48 +39,18 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         )
 
     def get_by_name(self, db: Session, *, name: str) -> Optional[Location]:
-        """
-        名前で勤怠種別を取得
-
-        Args:
-            db: データベースセッション
-            name: 勤怠種別名
-
-        Returns:
-            Optional[Location]: 見つかった勤怠種別、またはNone
-        """
+        """勤怠種別名で1件取得し、存在しない場合は ``None`` を返します。"""
         return db.query(Location).filter(Location.name == name).first()
 
     def create_with_name(self, db: Session, *, name: str) -> Location:
-        """
-        名前を指定して新しい勤怠種別を作成
-
-        Args:
-            db: データベースセッション
-            name: 勤怠種別名
-
-        Returns:
-            Location: 作成された勤怠種別
-        """
-        # 既存の勤怠種別を確認
+        """同名の勤怠種別を再利用し、無い場合だけ新規行をflushします。"""
         existing = self.get_by_name(db, name=name)
         if existing:
             return existing
-
-        # 新しい勤怠種別を作成
-        location_in = LocationCreate(name=name)
-        return self.create(db, obj_in=location_in)
+        return self.create(db, obj_in=LocationCreate(name=name))
 
     def get_all_locations(self, db: Session) -> List[str]:
-        """
-        すべての勤怠種別名を取得
-
-        Args:
-            db: データベースセッション
-
-        Returns:
-            List[str]: 勤怠種別名のリスト
-        """
+        """表示順に並べた勤怠種別名だけを返します。取得失敗時は空listです。"""
         try:
             locations = (
                 db.query(Location)
@@ -107,15 +67,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             return []
 
     def get_location_dict(self, db: Session) -> Dict[int, str]:
-        """
-        すべての勤怠種別をID:名前の辞書として取得
-
-        Args:
-            db: データベースセッション
-
-        Returns:
-            Dict[int, str]: location_idをキー、名前を値とする辞書
-        """
+        """勤怠種別を ``{id: name}`` 形式で返します。取得失敗時は空dictです。"""
         try:
             locations = (
                 db.query(Location)
@@ -134,16 +86,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     def get_or_create_multiple(
         self, db: Session, *, location_names: List[str]
     ) -> Dict[str, Location]:
-        """
-        複数の勤怠種別を取得または作成
-
-        Args:
-            db: データベースセッション
-            location_names: 勤怠種別名のリスト
-
-        Returns:
-            Dict[str, Location]: 勤怠種別名をキーとする勤怠種別オブジェクトの辞書
-        """
+        """空文字を除外し、各名前の既存行または新規flush済み行を返します。"""
         result = {}
         for name in location_names:
             if not name.strip():
@@ -155,21 +98,15 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return result
 
     def remove(self, db: Session, *, id: int) -> Location:
-        """勤怠種別を削除 (関連勤怠記録がない場合のみ)
+        """未使用の勤怠種別を削除対象としてflushし、削除対象を返します。
 
-        Args:
-            db: データベースセッション
-            id: 削除する勤怠種別のID
-
-        Returns:
-            Location: 削除された勤怠種別
-
-        Raises:
-            HTTPException: 勤怠種別が見つからない場合 (404)
-            HTTPException: 勤怠種別に関連勤怠記録が存在する場合 (400)
+        勤怠から参照されている場合はHTTP 400を送出します。commit/rollbackは
+        呼び出し側serviceが所有します。
         """
         db_obj = self.get_or_404(db, id)
 
+        # この事前チェックは利用者向けエラーのために行う。
+        # 並行writeとの競合時はDBのFK制約が最終的な参照整合性を保証する。
         attendance_count = (
             db.query(Attendance).filter(Attendance.location_id == id).count()
         )
@@ -180,7 +117,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             )
 
         db.delete(db_obj)
-        db.commit()
+        db.flush()
         return db_obj
 
 

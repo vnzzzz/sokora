@@ -13,8 +13,6 @@ from sqlalchemy.orm import Session
 from app.crud.location import location
 from app.db.session import get_db
 from app.schemas.location import Location, LocationCreate, LocationList, LocationUpdate
-
-# サービス層をインポート
 from app.services import location_service
 
 router = APIRouter(tags=["Locations"])
@@ -22,9 +20,7 @@ router = APIRouter(tags=["Locations"])
 
 @router.get("", response_model=LocationList)
 def get_locations(db: Session = Depends(get_db)) -> Any:
-    """
-    全ての勤怠種別を取得します。名前順でソートされます。
-    """
+    """勤怠種別一覧を名前順で返します。"""
     locations = db.query(location.model).order_by(location.model.name).all()
     return {"locations": locations}
 
@@ -33,11 +29,7 @@ def get_locations(db: Session = Depends(get_db)) -> Any:
 def create_location(
     *, db: Session = Depends(get_db), location_in: LocationCreate
 ) -> Any:
-    """
-    新しい勤怠種別を作成します。
-    サービス層でバリデーションを実行します。
-    """
-    # バリデーションと作成をサービス層に委譲
+    """入力を検証して勤怠種別を作成し、作成後の勤怠種別を返します。"""
     return location_service.create_location_with_validation(
         db=db, location_in=location_in
     )
@@ -50,11 +42,7 @@ def update_location(
     location_id: int,
     location_in: LocationUpdate,
 ) -> Any:
-    """
-    勤怠種別を更新します。
-    サービス層でバリデーションを実行します。
-    """
-    # バリデーションと更新をサービス層に委譲
+    """指定IDの勤怠種別を検証して更新し、更新後の勤怠種別を返します。"""
     return location_service.update_location_with_validation(
         db=db, location_id=location_id, location_in=location_in
     )
@@ -62,19 +50,6 @@ def update_location(
 
 @router.delete("/{location_id}")
 def delete_location(*, db: Session = Depends(get_db), location_id: int) -> Any:
-    """
-    勤怠種別を削除します。
-    """
-    location.get_or_404(db=db, id=location_id)
-
-    # 削除しようとしている勤怠種別が現在勤怠データで使用されていないか確認します。
-    # attendance_count = db.query(Attendance).filter(Attendance.location_id == location_id).count()
-    # if attendance_count > 0:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail=f"この勤怠種別は{attendance_count}件の勤怠データで使用されているため削除できません"
-    #     )
-    # ↑ このチェックは crud.location.remove 内に移動
-
-    location.remove(db=db, id=location_id)
+    """指定IDの未使用勤怠種別を削除し、成功時は204を返します。"""
+    location_service.delete_location(db=db, location_id=location_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
