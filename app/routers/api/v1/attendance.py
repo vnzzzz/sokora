@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.db.session import get_db
-from app.schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate
+from app.schemas.attendance import (
+    Attendance,
+    AttendanceCreate,
+    AttendanceList,
+    AttendanceUpdate,
+)
 from app.services import attendance_service
 
 router = APIRouter(tags=["Attendance"])
