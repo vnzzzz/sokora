@@ -153,7 +153,5 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         assert len(matching_records) == 1
         assert matching_records[0]["location_id"] == location_id
 
-        duplicate_response = client.post(
-            "/api/v1/attendances", json=attendance_payload
-        )
+        duplicate_response = client.post("/api/v1/attendances", json=attendance_payload)
         assert duplicate_response.status_code == 400
