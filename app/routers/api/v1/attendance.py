@@ -8,8 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.db.session import get_db
-from app.schemas.attendance import AttendanceCreate, AttendanceList, AttendanceUpdate
-from app.schemas.attendance import Attendance as AttendanceSchema
+from app.schemas.attendance import Attendance, AttendanceCreate, AttendanceList, AttendanceUpdate
 from app.services import attendance_service
 
 router = APIRouter(tags=["Attendance"])
@@ -29,23 +28,23 @@ def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
 
 @router.post(
     "",
-    response_model=AttendanceSchema,
+    response_model=Attendance,
     status_code=status.HTTP_201_CREATED,
 )
 def create_attendance(
     attendance_in: AttendanceCreate,
     db: Session = Depends(get_db),
-) -> AttendanceSchema:
+) -> Attendance:
     """JSON bodyから勤怠を作成する。"""
     return attendance_service.create_attendance(db, attendance_in=attendance_in)
 
 
-@router.put("/{attendance_id}", response_model=AttendanceSchema)
+@router.put("/{attendance_id}", response_model=Attendance)
 def update_attendance(
     attendance_id: int,
     attendance_in: AttendanceUpdate,
     db: Session = Depends(get_db),
-) -> AttendanceSchema:
+) -> Attendance:
     """JSON bodyから勤怠を更新する。"""
     return attendance_service.update_attendance(
         db,
