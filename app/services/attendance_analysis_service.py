@@ -55,9 +55,7 @@ def get_attendance_analysis_data(
         int(location.id): 0 for location in locations_sorted if location.id is not None
     }
     location_details: Dict[int, Dict[str, List[Dict[str, Any]]]] = {
-        int(location.id): {}
-        for location in locations_sorted
-        if location.id is not None
+        int(location.id): {} for location in locations_sorted if location.id is not None
     }
 
     attendances_by_user: Dict[str, list[Any]] = {}
