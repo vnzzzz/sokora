@@ -51,7 +51,9 @@ async def create_test_user_via_api(
     return user_id
 
 
-async def _attendance_references(async_client: AsyncClient, suffix: str) -> tuple[str, int]:
+async def _attendance_references(
+    async_client: AsyncClient, suffix: str
+) -> tuple[str, int]:
     group_id = await create_test_group_via_api(async_client, f"Group {suffix}")
     user_type_id = await create_test_user_type_via_api(
         async_client, f"User Type {suffix}"
@@ -108,9 +110,7 @@ async def test_attendance_json_api_crud(async_client: AsyncClient) -> None:
     assert update_response.json()["location_id"] == second_location_id
     assert update_response.json()["note"] == "updated"
 
-    delete_response = await async_client.delete(
-        f"/api/v1/attendances/{attendance_id}"
-    )
+    delete_response = await async_client.delete(f"/api/v1/attendances/{attendance_id}")
     assert delete_response.status_code == status.HTTP_204_NO_CONTENT
     assert "HX-Trigger" not in delete_response.headers
 
