@@ -25,7 +25,6 @@ def test_bare_postgresql_url_uses_psycopg3() -> None:
     url = sqlalchemy_database_url(
         "postgresql://sokora:secret@db.example:5432/sokora?sslmode=require"
     )
-
     assert url.drivername == "postgresql+psycopg"
     assert url.host == "db.example"
     assert url.database == "sokora"
@@ -34,7 +33,6 @@ def test_bare_postgresql_url_uses_psycopg3() -> None:
 
 def test_explicit_postgresql_driver_is_preserved() -> None:
     url = sqlalchemy_database_url("postgresql+pg8000://sokora@db.example/sokora")
-
     assert url.drivername == "postgresql+pg8000"
 
 
@@ -46,14 +44,12 @@ def test_database_url_logging_omits_credentials_and_query_parameters() -> None:
     runtime = create_database_runtime(database_url)
     try:
         diagnostic_url = _database_url_for_logging(runtime.database_url)
-
         assert runtime.database_url == database_url
         assert runtime.engine.url.password == "s3cr@t"
         assert runtime.engine.url.drivername == "postgresql+psycopg"
         assert runtime.engine.url.query["sslmode"] == "require"
         assert runtime.engine.url.query["sslpassword"] == "tls-secret"
         assert runtime.engine.url.query["application_name"] == "sokora"
-
         assert "s3cr@t" not in diagnostic_url
         assert "s3cr%40t" not in diagnostic_url
         assert "tls-secret" not in diagnostic_url
@@ -94,7 +90,6 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
 
         assert client.get("/healthz").status_code == 200
 
-        # Master CRUD: create -> read/list -> update -> delete.
         group_response = client.post(
             "/api/v1/groups", json={"name": f"pg-crud-{suffix}"}
         )
@@ -114,11 +109,8 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         assert updated_group_name in {
             group["name"] for group in list_response.json()["groups"]
         }
+        assert client.delete(f"/api/v1/groups/{disposable_group_id}").status_code == 204
 
-        delete_response = client.delete(f"/api/v1/groups/{disposable_group_id}")
-        assert delete_response.status_code == 204
-
-        # Relational/domain CRUD path used by attendance.
         group_id = client.post(
             "/api/v1/groups", json={"name": f"pg-group-{suffix}"}
         ).json()["id"]
@@ -141,15 +133,15 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         assert user_response.status_code == 200
 
         attendance_date = date(2031, 1, 15).isoformat()
+        attendance_payload = {
+            "user_id": user_id,
+            "date": attendance_date,
+            "location_id": location_id,
+        }
         attendance_response = client.post(
-            "/api/v1/attendances",
-            data={
-                "user_id": user_id,
-                "date": attendance_date,
-                "location_id": str(location_id),
-            },
+            "/api/v1/attendances", json=attendance_payload
         )
-        assert attendance_response.status_code == 204
+        assert attendance_response.status_code == 201
 
         records_response = client.get("/api/v1/attendances")
         assert records_response.status_code == 200
@@ -162,11 +154,6 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         assert matching_records[0]["location_id"] == location_id
 
         duplicate_response = client.post(
-            "/api/v1/attendances",
-            data={
-                "user_id": user_id,
-                "date": attendance_date,
-                "location_id": str(location_id),
-            },
+            "/api/v1/attendances", json=attendance_payload
         )
         assert duplicate_response.status_code == 400
