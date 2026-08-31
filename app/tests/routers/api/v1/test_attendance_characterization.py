@@ -3,6 +3,7 @@
 import json
 from datetime import date
 
+import pytest
 from fastapi import status
 from httpx import AsyncClient, Response
 
@@ -12,6 +13,8 @@ from app.tests.routers.api.v1.test_attendance import (
     create_test_user_type_via_api,
     create_test_user_via_api,
 )
+
+pytestmark = pytest.mark.asyncio
 
 
 def assert_attendance_refresh_contract(
