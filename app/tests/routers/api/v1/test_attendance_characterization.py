@@ -100,9 +100,7 @@ async def test_htmx_mutations_preserve_refresh_contract_without_referer(
         attendance_date=attendance_date,
     )
 
-    delete_response = await async_client.delete(
-        f"/attendance/entries/{attendance_id}"
-    )
+    delete_response = await async_client.delete(f"/attendance/entries/{attendance_id}")
     assert_attendance_refresh_contract(
         delete_response,
         user_id=user_id,
