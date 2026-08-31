@@ -30,7 +30,11 @@ def get_attendance_analysis_data(
         year, month_num = map(int, month.split("-"))
         period_mode = "month"
         start_date = date(year, month_num, 1)
-        end_date = date(year, month_num, calendar_module.monthrange(year, month_num)[1])
+        end_date = date(
+            year,
+            month_num,
+            calendar_module.monthrange(year, month_num)[1],
+        )
         period_label = f"{year}年{month_num}月"
         month_value = month
 
