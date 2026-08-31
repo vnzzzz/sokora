@@ -82,7 +82,6 @@ def test_operational_config_has_no_poetry_dependency() -> None:
         "pyproject.toml",
         "Makefile",
         "Dockerfile",
-        "Dockerfile.proxy",
         ".github/workflows/ci.yml",
         ".devcontainer/Dockerfile",
         ".devcontainer/devcontainer.json",

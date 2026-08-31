@@ -32,7 +32,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install Playwright browsers
         run: uv run python -m playwright install --with-deps chromium
@@ -77,3 +77,113 @@ jobs:
           fi
           uv run pytest -vv app/tests/e2e/
           kill $SERVER_PID || true
+
+  production-image:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ci
+      SERVICE_PORT: "18080"
+      PORT: "8080"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and start production image without explicit proxy
+        run: make docker-run
+
+      - name: Smoke production runtime contract
+        run: |
+          READY=0
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/healthz >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Production container failed to become healthy. Logs:"
+            docker logs sokora || true
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:18080/healthz | grep -q '"status":"ok"'
+          docker exec sokora sh -ceu '
+            test ! -e /app/app/tests
+            test ! -e /app/docs
+            test ! -e /app/.devcontainer
+            test ! -e /app/AGENTS.md
+            ! command -v uv
+            ! command -v node
+            python -c "import importlib.util; raise SystemExit(1 if importlib.util.find_spec(\"pytest\") else 0)"
+          '
+
+      - name: Stop production container
+        if: always()
+        run: make docker-stop
+
+  production-image-proxy:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ci-proxy
+      SERVICE_PORT: "18081"
+      PORT: "8081"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start local forward proxy
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tinyproxy
+          cat <<'EOF' | sudo tee -a /etc/tinyproxy/tinyproxy.conf >/dev/null
+          Allow 10.0.0.0/8
+          Allow 172.16.0.0/12
+          Allow 192.168.0.0/16
+          EOF
+          sudo service tinyproxy restart
+          GATEWAY="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}')"
+          echo "PROXY_URL=http://${GATEWAY}:8888" >> "$GITHUB_ENV"
+          sudo truncate -s 0 /var/log/tinyproxy/tinyproxy.log
+
+      - name: Build and start production image through proxy
+        run: proxy="$PROXY_URL" NO_PROXY="localhost,127.0.0.1" make docker-run
+
+      - name: Verify build and runtime proxy behavior
+        run: |
+          READY=0
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18081/healthz >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Proxy-configured production container failed to start. Logs:"
+            docker logs sokora || true
+            exit 1
+          fi
+
+          # Build-time npm/uv/holiday-cache traffic must have reached the proxy.
+          sudo grep -Eq 'registry\.npmjs\.org|pypi\.org|pythonhosted\.org|holidays-jp\.github\.io' /var/log/tinyproxy/tinyproxy.log
+
+          # Runtime proxy variables are injected, including bypass configuration.
+          docker exec sokora env | grep -Fx "HTTP_PROXY=$PROXY_URL"
+          docker exec sokora env | grep -Fx "HTTPS_PROXY=$PROXY_URL"
+          docker exec sokora env | grep -Fx 'NO_PROXY=localhost,127.0.0.1'
+
+          # HTTPX is used by the OIDC client and honors the runtime proxy environment.
+          docker exec sokora python -c 'import httpx; response = httpx.get("https://example.com", timeout=10); response.raise_for_status()'
+          sudo grep -q 'example.com' /var/log/tinyproxy/tinyproxy.log
+
+          # The in-container health probe remains direct and independent of proxy env.
+          docker exec sokora python -c 'import http.client, os; connection = http.client.HTTPConnection("127.0.0.1", int(os.environ["PORT"]), timeout=3); connection.request("GET", "/healthz"); response = connection.getresponse(); raise SystemExit(0 if response.status == 200 else 1)'
+
+      - name: Show proxy logs on failure
+        if: failure()
+        run: sudo cat /var/log/tinyproxy/tinyproxy.log || true
+
+      - name: Stop production container
+        if: always()
+        run: make docker-stop

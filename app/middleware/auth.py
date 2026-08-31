@@ -34,6 +34,7 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
                 "/assets",
                 "/static",
                 "/favicon.ico",
+                "/healthz",
                 "/docs",
                 "/redoc",
                 "/openapi.json",
