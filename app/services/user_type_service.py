@@ -1,17 +1,16 @@
-"""
-社員種別関連のビジネスロジックを提供するサービス層モジュール。
-"""
+"""社員種別関連のvalidationとtransaction境界を提供するservice。"""
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.services.transaction import transaction
 
 
 def validate_user_type_creation(
     db: Session, *, user_type_in: schemas.user_type.UserTypeCreate
 ) -> None:
-    """社員種別新規作成時のバリデーション（名前の重複チェック）を行います。"""
+    """作成前に必須名と名前重複を検証し、違反時はHTTP 400を送出します。"""
     if not user_type_in.name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -31,14 +30,13 @@ def validate_user_type_update(
     user_type_id_to_update: int,
     user_type_in: schemas.user_type.UserTypeUpdate,
 ) -> None:
-    """社員種別更新時のバリデーション（名前の重複チェック）を行います。"""
+    """更新対象自身を除外して社員種別名の必須・重複条件を検証します。"""
     if not user_type_in.name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="社員種別名を入力してください",
         )
     existing_user_type = crud.user_type.get_by_name(db, name=user_type_in.name)
-    # 取得した社員種別が、更新対象の社員種別自身でなければ重複エラー
     if existing_user_type and existing_user_type.id != user_type_id_to_update:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -49,26 +47,28 @@ def validate_user_type_update(
 def create_user_type_with_validation(
     db: Session, *, user_type_in: schemas.user_type.UserTypeCreate
 ) -> models.UserType:
-    """
-    バリデーションを実行してから社員種別を新規作成します。
-    """
-    validate_user_type_creation(db, user_type_in=user_type_in)
-    return crud.user_type.create(db, obj_in=user_type_in)
+    """社員種別を検証して作成し、service所有のtransactionでcommitします。"""
+    with transaction(db, integrity_detail="この社員種別名は既に存在します"):
+        validate_user_type_creation(db, user_type_in=user_type_in)
+        created = crud.user_type.create(db, obj_in=user_type_in)
+    return created
 
 
 def update_user_type_with_validation(
     db: Session, *, user_type_id: int, user_type_in: schemas.user_type.UserTypeUpdate
 ) -> models.UserType:
-    """
-    バリデーションを実行してから社員種別情報を更新します。
-    """
-    # まず更新対象が存在するか確認 (なければ404)
-    db_user_type = crud.user_type.get_or_404(db, id=user_type_id)
+    """既存社員種別を検証して更新し、1 transactionでcommitします。"""
+    with transaction(db, integrity_detail="この社員種別名は既に使用されています"):
+        db_user_type = crud.user_type.get_or_404(db, id=user_type_id)
+        validate_user_type_update(
+            db, user_type_id_to_update=user_type_id, user_type_in=user_type_in
+        )
+        updated = crud.user_type.update(db, db_obj=db_user_type, obj_in=user_type_in)
+    return updated
 
-    # 更新バリデーションを実行
-    validate_user_type_update(
-        db, user_type_id_to_update=user_type_id, user_type_in=user_type_in
-    )
 
-    # バリデーションが通れば更新を実行
-    return crud.user_type.update(db, db_obj=db_user_type, obj_in=user_type_in)
+def delete_user_type(db: Session, *, user_type_id: int) -> models.UserType:
+    """未使用社員種別を削除し、参照競合はDB制約エラーとして扱います。"""
+    with transaction(db, integrity_detail="利用中の社員種別は削除できません"):
+        deleted = crud.user_type.remove(db, id=user_type_id)
+    return deleted

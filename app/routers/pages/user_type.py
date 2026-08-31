@@ -17,6 +17,7 @@ from app import schemas  # スキーマをインポート
 from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.services import user_type_service  # user_type_service をインポート
+from app.services.errors import ApplicationError
 
 # ルーター定義
 router = APIRouter(prefix="/user-types", tags=["Pages"])
@@ -144,7 +145,7 @@ async def create_user_type(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/user_type_modal.html",
@@ -193,7 +194,7 @@ async def update_user_type(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/user_type_modal.html",
@@ -230,7 +231,7 @@ async def delete_user_type(
             )
 
         # 社員種別の削除処理
-        user_type.remove(db=db, id=user_type_id)
+        user_type_service.delete_user_type(db=db, user_type_id=user_type_id)
 
         # モーダルを閉じて画面をリロードするトリガーを返す
         modal_id = f"user-type-delete-modal-{user_type_id}"
@@ -247,7 +248,7 @@ async def delete_user_type(
                 )
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         modal_id = f"user-type-delete-modal-{user_type_id}"
         ctx = {
@@ -287,7 +288,7 @@ def handle_create_user_type_row(
             }
         )
         return response
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",
@@ -331,7 +332,7 @@ def handle_update_user_type_row(
             }
         )
         return response
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",

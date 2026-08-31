@@ -4,8 +4,9 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -16,6 +17,7 @@ from app.middleware.auth import AuthRequiredMiddleware
 from app.routers.api.v1 import router as api_v1_router
 from app.routers.pages import router as pages_router
 from app.services.auth.settings import AuthSettings
+from app.services.errors import ApplicationError
 from app.utils.holiday_cache import refresh_holiday_cache
 
 API_TAGS: List[Dict[str, str]] = [
@@ -46,24 +48,41 @@ API_TAGS: List[Dict[str, str]] = [
 ]
 
 
+async def application_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    """adapterで未処理のapplication errorをJSONへ変換します。
+
+    HTML/HTMX page adapterは画面固有fragmentを返すため、write handler内でApplicationErrorを処理します。
+    """
+    if not isinstance(exc, ApplicationError):
+        raise exc
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+
 @asynccontextmanager
 async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Create and release application-scoped runtime resources."""
+    """DB schema初期化後にapplication resourceを公開し、終了時にruntimeを解放します。
+
+    migration失敗はlifespanから伝播させ、Alembic headでない状態ではrequestを受け付けません。
+    """
     settings: AppSettings = app.state.settings_provider()
     app.state.settings = settings
     configure_logging(settings.log_level)
 
     runtime = get_app_database_runtime(app)
     logger.info("Initializing database")
-    initialize_database(runtime)
-
-    db = runtime.session_factory()
     try:
-        refresh_holiday_cache(db)
-    finally:
-        db.close()
+        # schema headは起動前提。失敗を握り潰さずlifespanを失敗させる。
+        initialize_database(runtime)
 
-    try:
+        db = runtime.session_factory()
+        try:
+            refresh_holiday_cache(db)
+        finally:
+            db.close()
+
         yield
     finally:
         runtime.dispose()
@@ -99,6 +118,7 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
     )
     app.state.settings_provider = settings_provider
     app.state.settings = initial_settings
+    app.add_exception_handler(ApplicationError, application_error_handler)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.mount("/assets", StaticFiles(directory="assets"), name="assets")

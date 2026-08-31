@@ -20,6 +20,7 @@ from app.crud.user_type import user_type
 from app.db.session import get_db
 from app.models.user import User  # User モデルをインポート
 from app.services import user_service  # user_service を直接インポート
+from app.services.errors import ApplicationError
 
 # ルーター定義
 router = APIRouter(prefix="/users", tags=["Pages"])
@@ -224,7 +225,7 @@ async def create_user(
                 )
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         errors = {"error": [e.detail]}
 
@@ -300,7 +301,7 @@ async def update_user(
                 )
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/user_modal.html",
@@ -339,7 +340,7 @@ async def delete_user(
             )
 
         # 社員の削除処理
-        user.remove(db=db, id=user_id)
+        user_service.delete_user(db=db, user_id=user_id)
 
         # モーダルを閉じて画面をリロードするトリガーを返す
         modal_id = f"user-delete-modal-{user_id}"
@@ -356,7 +357,7 @@ async def delete_user(
                 )
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         modal_id = f"user-delete-modal-{user_id}"
         ctx = {
@@ -407,7 +408,7 @@ def handle_create_user_row(
             }
         )
         return response
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",
@@ -465,7 +466,7 @@ def handle_update_user_row(
             }
         )
         return response
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",

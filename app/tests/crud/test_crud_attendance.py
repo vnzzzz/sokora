@@ -758,39 +758,37 @@ def test_get_attendance_by_type_for_fiscal_year(
 
 
 # エラーハンドリングのテスト
-@patch("app.crud.attendance.logger")
-def test_error_handling_delete_attendances_by_user_id(
-    mock_logger: MagicMock, db_with_attendance_data: Session
+
+
+def test_delete_attendances_by_user_id_propagates_db_error(
+    db_with_attendance_data: Session,
 ) -> None:
-    """delete_attendances_by_user_id エラーハンドリングテスト"""
+    """Write DB failures propagate to the service transaction owner."""
     db = db_with_attendance_data
 
-    # データベースエラーをシミュレート
     with patch.object(db, "query") as mock_query:
         mock_query.side_effect = Exception("Database error")
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="Database error"):
             crud.attendance.delete_attendances_by_user_id(db=db, user_id="test")
 
-        mock_logger.error.assert_called()
 
-
-@patch("app.crud.attendance.logger")
-def test_error_handling_update_attendance(
-    mock_logger: MagicMock, db_with_attendance_data: Session
+def test_update_attendance_propagates_db_error(
+    db_with_attendance_data: Session,
 ) -> None:
-    """update_attendance エラーハンドリングテスト"""
+    """Write DB failures are not swallowed inside CRUD."""
     db = db_with_attendance_data
 
-    # エラーをシミュレート
     with patch.object(crud.attendance, "get_by_user_and_date") as mock_get:
         mock_get.side_effect = Exception("Database error")
 
-        result = crud.attendance.update_attendance(
-            db=db, user_id="test", date_obj=date.today(), location_id=1
-        )
-        assert result is None
-        mock_logger.error.assert_called()
+        with pytest.raises(Exception, match="Database error"):
+            crud.attendance.update_attendance(
+                db=db,
+                user_id="test",
+                date_obj=date.today(),
+                location_id=1,
+            )
 
 
 @patch("app.crud.attendance.logger")

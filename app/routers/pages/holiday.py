@@ -14,6 +14,7 @@ from app import schemas
 from app.crud import custom_holiday as crud_custom_holiday
 from app.db.session import get_db
 from app.services import custom_holiday_service
+from app.services.errors import ApplicationError
 from app.utils.holiday_cache import get_cache_info
 
 router = APIRouter(prefix="/holidays", tags=["Pages"])
@@ -119,7 +120,7 @@ async def create_custom_holiday(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         field = "date" if "日付" in str(e.detail) else "name"
         return templates.TemplateResponse(
             "components/partials/modals/custom_holiday_modal.html",
@@ -154,7 +155,7 @@ async def update_custom_holiday(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         holiday = crud_custom_holiday.get(db, id=holiday_id)
         field = "date" if "日付" in str(e.detail) else "name"
         return templates.TemplateResponse(

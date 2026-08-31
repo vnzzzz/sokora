@@ -1,6 +1,4 @@
-"""
-カスタム祝日サービス
-"""
+"""カスタム祝日のvalidation、transaction、cache更新を扱うservice。"""
 
 import datetime
 from typing import Optional, cast
@@ -9,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.services.transaction import transaction
 from app.utils.holiday_cache import refresh_holiday_cache
 
 
@@ -33,13 +32,18 @@ def _validate_date_unique(
         )
 
 
+# 祝日cacheはDBから派生するため、write transactionがcommitした後だけ再構築する。
+# 先にcacheを更新すると、rollback時にDBとcacheが異なる状態になり得る。
+
+
 def create_custom_holiday_with_validation(
     db: Session, *, custom_holiday_in: schemas.custom_holiday.CustomHolidayCreate
 ) -> models.CustomHoliday:
-    _validate_name(custom_holiday_in.name)
-    _validate_date_unique(db, date=custom_holiday_in.date)
-
-    created = crud.custom_holiday.create(db, obj_in=custom_holiday_in)
+    """祝日名と日付を検証して作成し、commit後に祝日cacheを更新します。"""
+    with transaction(db, integrity_detail="この日付は既に登録されています"):
+        _validate_name(custom_holiday_in.name)
+        _validate_date_unique(db, date=custom_holiday_in.date)
+        created = crud.custom_holiday.create(db, obj_in=custom_holiday_in)
     refresh_holiday_cache(db)
     return created
 
@@ -50,28 +54,33 @@ def update_custom_holiday_with_validation(
     custom_holiday_id: int,
     custom_holiday_in: schemas.custom_holiday.CustomHolidayUpdate,
 ) -> models.CustomHoliday:
-    db_obj = crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
-    new_name_raw = (
-        custom_holiday_in.name if custom_holiday_in.name is not None else db_obj.name
-    )
-    new_name: Optional[str] = (
-        new_name_raw if new_name_raw is None else str(new_name_raw)
-    )
-    new_date_raw = (
-        custom_holiday_in.date if custom_holiday_in.date is not None else db_obj.date
-    )
-    new_date: Optional[datetime.date] = (
-        None if new_date_raw is None else cast(datetime.date, new_date_raw)
-    )
+    """未指定項目を維持して祝日を更新し、commit後に祝日cacheを更新します。"""
+    with transaction(db, integrity_detail="この日付は既に登録されています"):
+        db_obj = crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
+        new_name_raw = (
+            custom_holiday_in.name
+            if custom_holiday_in.name is not None
+            else db_obj.name
+        )
+        new_name: Optional[str] = (
+            new_name_raw if new_name_raw is None else str(new_name_raw)
+        )
+        new_date_raw = (
+            custom_holiday_in.date
+            if custom_holiday_in.date is not None
+            else db_obj.date
+        )
+        new_date: Optional[datetime.date] = (
+            None if new_date_raw is None else cast(datetime.date, new_date_raw)
+        )
 
-    _validate_name(new_name)
-    _validate_date_unique(db, date=new_date, exclude_id=custom_holiday_id)
-
-    updated = crud.custom_holiday.update(
-        db,
-        db_obj=db_obj,
-        obj_in={"name": new_name, "date": new_date},
-    )
+        _validate_name(new_name)
+        _validate_date_unique(db, date=new_date, exclude_id=custom_holiday_id)
+        updated = crud.custom_holiday.update(
+            db,
+            db_obj=db_obj,
+            obj_in={"name": new_name, "date": new_date},
+        )
     refresh_holiday_cache(db)
     return updated
 
@@ -79,7 +88,9 @@ def update_custom_holiday_with_validation(
 def delete_custom_holiday(
     db: Session, *, custom_holiday_id: int
 ) -> models.CustomHoliday:
-    crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
-    deleted = crud.custom_holiday.remove(db, id=custom_holiday_id)
+    """カスタム祝日を削除し、commit後に祝日cacheを更新します。"""
+    with transaction(db):
+        crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
+        deleted = crud.custom_holiday.remove(db, id=custom_holiday_id)
     refresh_holiday_cache(db)
     return deleted

@@ -18,6 +18,7 @@ from app import schemas  # スキーマをインポート
 from app.crud.location import location
 from app.db.session import get_db
 from app.services import location_service  # location_service をインポート
+from app.services.errors import ApplicationError
 
 # ルーター定義
 router = APIRouter(prefix="/locations", tags=["Pages"])
@@ -168,7 +169,7 @@ async def create_location(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/location_modal.html",
@@ -217,7 +218,7 @@ async def update_location(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         return templates.TemplateResponse(
             "components/partials/modals/location_modal.html",
@@ -254,7 +255,7 @@ async def delete_location(
             )
 
         # 勤怠種別の削除処理
-        location.remove(db=db, id=location_id)
+        location_service.delete_location(db=db, location_id=location_id)
 
         # モーダルを閉じて画面をリロードするトリガーを返す
         modal_id = f"location-delete-modal-{location_id}"
@@ -265,7 +266,7 @@ async def delete_location(
                 "HX-Trigger": json.dumps({"closeModal": modal_id, "refreshPage": True})
             },
         )
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # エラー時は同じモーダルを表示し、エラーメッセージを表示
         modal_id = f"location-delete-modal-{location_id}"
         ctx = {
@@ -305,7 +306,7 @@ def handle_create_location_row(
             }
         )
         return response
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",
@@ -349,7 +350,7 @@ def handle_update_location_row(
             }
         )
         return response
-    except HTTPException as e:
+    except (HTTPException, ApplicationError) as e:
         # バリデーションエラー等の場合、エラーメッセージを含むフォームエラー部分を返す
         response = templates.TemplateResponse(
             "components/common/_form_error.html",

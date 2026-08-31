@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Generator
+from typing import Any, Dict, Generator
 from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -49,6 +49,15 @@ def _sqlite_is_memory_database(url: URL) -> bool:
     )
 
 
+def _enable_sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) -> None:
+    """Enable SQLite FK enforcement for every DB-API connection."""
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
+
+
 def create_database_runtime(database_url: str) -> DatabaseRuntime:
     """Create an isolated database runtime for a database URL."""
     url = make_url(database_url)
@@ -59,6 +68,7 @@ def create_database_runtime(database_url: str) -> DatabaseRuntime:
         if _sqlite_is_memory_database(url):
             engine_kwargs["poolclass"] = StaticPool
         engine = create_engine(database_url, **engine_kwargs)
+        event.listen(engine, "connect", _enable_sqlite_foreign_keys)
     else:
         engine = create_engine(database_url)
 
@@ -143,7 +153,10 @@ def sqlite_database_path(database_url: str) -> Path | None:
 
 
 def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
-    """Upgrade the supplied database runtime to the Alembic head revision."""
+    """指定したDatabaseRuntimeをAlembic headまでupgradeします。
+
+    application runtimeのconnectionをAlembicへ渡すため、in-memory SQLiteでもrequestと同じDBを更新します。
+    """
     from alembic import command
     from alembic.config import Config
 
@@ -154,12 +167,11 @@ def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
 
     logger.info("Migrating database schema: %s", runtime.database_url)
     config = Config(str(_ALEMBIC_CONFIG_PATH))
-    # Programmatic callers may run outside the repository working directory.
     config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
     config.attributes["database_url"] = runtime.database_url
 
-    # Passing the application runtime connection is required for in-memory
-    # SQLite, where a separately-created Alembic engine would see another DB.
+    # application runtimeと同じconnectionを使う。特に:memory: SQLiteでは
+    # 別connectionへmigrationするとrequest側とは別DBになってしまう。
     with runtime.engine.begin() as connection:
         config.attributes["connection"] = connection
         command.upgrade(config, "head")
@@ -195,7 +207,10 @@ def seed_database(
 
 
 def initialize_database(runtime: DatabaseRuntime | None = None) -> bool:
-    """Migrate the schema and seed a newly-created file-backed SQLite DB."""
+    """schemaをmigrateし、新規file-backed SQLiteだけ初期dataをseedします。
+
+    migrationまたはseed失敗は再送出し、callerが未更新schemaで起動を継続しないようにします。
+    """
     runtime = runtime or get_default_database_runtime()
     database_path = sqlite_database_path(runtime.database_url)
     db_missing = database_path is not None and not database_path.exists()
@@ -210,4 +225,4 @@ def initialize_database(runtime: DatabaseRuntime | None = None) -> bool:
         return True
     except Exception as exc:
         logger.error("Database initialization failed: %s", exc, exc_info=True)
-        return False
+        raise

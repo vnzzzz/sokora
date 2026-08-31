@@ -1,17 +1,16 @@
-"""
-勤怠種別関連のビジネスロジックを提供するサービス層モジュール。
-"""
+"""勤怠種別関連のvalidationとtransaction境界を提供するservice。"""
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.services.transaction import transaction
 
 
 def validate_location_creation(
     db: Session, *, location_in: schemas.location.LocationCreate
 ) -> None:
-    """勤怠種別新規作成時のバリデーション（名前の重複チェック）を行います。"""
+    """作成前に必須名と名前重複を検証し、違反時はHTTP 400を送出します。"""
     if not location_in.name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -31,14 +30,13 @@ def validate_location_update(
     location_id_to_update: int,
     location_in: schemas.location.LocationUpdate,
 ) -> None:
-    """勤怠種別更新時のバリデーション（名前の重複チェック）を行います。"""
+    """更新対象自身を除外して勤怠種別名の必須・重複条件を検証します。"""
     if not location_in.name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="勤怠種別名を入力してください",
         )
     existing_location = crud.location.get_by_name(db, name=location_in.name)
-    # 取得した勤怠種別が、更新対象の勤怠種別自身でなければ重複エラー
     if existing_location and existing_location.id != location_id_to_update:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -49,26 +47,28 @@ def validate_location_update(
 def create_location_with_validation(
     db: Session, *, location_in: schemas.location.LocationCreate
 ) -> models.Location:
-    """
-    バリデーションを実行してから勤怠種別を新規作成します。
-    """
-    validate_location_creation(db, location_in=location_in)
-    return crud.location.create(db, obj_in=location_in)
+    """勤怠種別を検証して作成し、service所有のtransactionでcommitします。"""
+    with transaction(db, integrity_detail="この勤怠種別名は既に存在します"):
+        validate_location_creation(db, location_in=location_in)
+        created = crud.location.create(db, obj_in=location_in)
+    return created
 
 
 def update_location_with_validation(
     db: Session, *, location_id: int, location_in: schemas.location.LocationUpdate
 ) -> models.Location:
-    """
-    バリデーションを実行してから勤怠種別情報を更新します。
-    """
-    # まず更新対象が存在するか確認 (なければ404)
-    db_location = crud.location.get_or_404(db, id=location_id)
+    """既存勤怠種別を検証して更新し、1 transactionでcommitします。"""
+    with transaction(db, integrity_detail="この勤怠種別名は既に使用されています"):
+        db_location = crud.location.get_or_404(db, id=location_id)
+        validate_location_update(
+            db, location_id_to_update=location_id, location_in=location_in
+        )
+        updated = crud.location.update(db, db_obj=db_location, obj_in=location_in)
+    return updated
 
-    # 更新バリデーションを実行
-    validate_location_update(
-        db, location_id_to_update=location_id, location_in=location_in
-    )
 
-    # バリデーションが通れば更新を実行
-    return crud.location.update(db, db_obj=db_location, obj_in=location_in)
+def delete_location(db: Session, *, location_id: int) -> models.Location:
+    """未使用勤怠種別を削除し、参照競合はDB制約エラーとして扱います。"""
+    with transaction(db, integrity_detail="利用中の勤怠種別は削除できません"):
+        deleted = crud.location.remove(db, id=location_id)
+    return deleted
