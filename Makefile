@@ -9,6 +9,7 @@ export
 endif
 
 SERVICE_PORT ?= 8000
+PORT ?= 8000
 IMAGE_NAME ?= sokora
 DEV_IMAGE_NAME ?= sokora-dev
 VERSION ?=
@@ -20,10 +21,11 @@ CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
-DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg proxy=$(proxy) --build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),)
-DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),)
+NO_PROXY_VALUE := $(if $(NO_PROXY),$(NO_PROXY),$(no_proxy))
+DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),) $(if $(NO_PROXY_VALUE),--build-arg no_proxy=$(NO_PROXY_VALUE) --build-arg NO_PROXY=$(NO_PROXY_VALUE),)
+DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),) $(if $(NO_PROXY_VALUE),-e no_proxy=$(NO_PROXY_VALUE) -e NO_PROXY=$(NO_PROXY_VALUE),)
 
-.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build docker-build docker-build-proxy dev-build docker-run docker-run-proxy docker-stop
+.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build docker-build dev-build docker-run docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -43,10 +45,8 @@ help:
 	@printf "  make quality         Run lint + format-check + typecheck\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
-	@printf "  make docker-build    Build production image (%s) using VERSION tag from .env\n" "$(VERSION_TAG)"
-	@printf "  make docker-build-proxy Build production image (%s) via Dockerfile.proxy with proxy args from .env\n" "$(VERSION_TAG)"
-	@printf "  make docker-run      Run production container (tag: %s) with port mapping and data volume mount\n" "$(VERSION_TAG)"
-	@printf "  make docker-run-proxy   Run production container (tag: %s) with proxy env from .env\n" "$(VERSION_TAG)"
+	@printf "  make docker-build    Build production image (%s); proxy args are applied when proxy is set\n" "$(VERSION_TAG)"
+	@printf "  make docker-run      Run production container with SERVICE_PORT -> PORT and data volume mount\n"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
 sync:
@@ -97,13 +97,10 @@ typecheck: sync
 quality: lint format-check typecheck
 
 build:
-	docker build -t $(IMAGE_NAME) .
+	docker build $(DOCKER_BUILD_PROXY_ARGS) -t $(IMAGE_NAME) .
 
 docker-build:
-	docker build -t $(VERSION_TAG) .
-
-docker-build-proxy:
-	docker build $(DOCKER_BUILD_PROXY_ARGS) -f Dockerfile.proxy -t $(VERSION_TAG) .
+	docker build $(DOCKER_BUILD_PROXY_ARGS) -t $(VERSION_TAG) .
 
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
@@ -113,24 +110,11 @@ docker-run: docker-build
 	@ENV_FILE_ARG=""; \
 	if [ -f "$(ENV_FILE_PATH)" ]; then \
 		echo "loading env from $(ENV_FILE_PATH)"; \
-		set -a; . "$(ENV_FILE_PATH)"; set +a; \
-		ENV_FILE_ARG="--env-file $(ENV_FILE_PATH)"; \
-	fi; \
-	docker run -d --name $(CONTAINER_NAME) $$ENV_FILE_ARG --rm \
-		-p $${SERVICE_PORT:-$(SERVICE_PORT)}:8000 \
-		-v $(abspath data):/app/data \
-		$(VERSION_TAG)
-
-docker-run-proxy: docker-build-proxy
-	mkdir -p data
-	@ENV_FILE_ARG=""; \
-	if [ -f "$(ENV_FILE_PATH)" ]; then \
-		echo "loading env from $(ENV_FILE_PATH)"; \
-		set -a; . "$(ENV_FILE_PATH)"; set +a; \
 		ENV_FILE_ARG="--env-file $(ENV_FILE_PATH)"; \
 	fi; \
 	docker run -d --name $(CONTAINER_NAME) $$ENV_FILE_ARG $(DOCKER_PROXY_ENV) --rm \
-		-p $${SERVICE_PORT:-$(SERVICE_PORT)}:8000 \
+		-e PORT="$(PORT)" \
+		-p "$(SERVICE_PORT):$(PORT)" \
 		-v $(abspath data):/app/data \
 		$(VERSION_TAG)
 

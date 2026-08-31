@@ -48,6 +48,11 @@ API_TAGS: List[Dict[str, str]] = [
 ]
 
 
+async def health_check() -> JSONResponse:
+    """Return process readiness after the application lifespan has completed."""
+    return JSONResponse({"status": "ok"})
+
+
 async def application_error_handler(_request: Request, exc: Exception) -> JSONResponse:
     """adapterで未処理のapplication errorをJSONへ変換します。
 
@@ -123,6 +128,12 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
+    app.add_api_route(
+        "/healthz",
+        health_check,
+        methods=["GET"],
+        include_in_schema=False,
+    )
     app.include_router(pages_router, include_in_schema=False)
     app.include_router(api_v1_router)
 

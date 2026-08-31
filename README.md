@@ -15,7 +15,7 @@
 - Backend: Python 3.13 / FastAPI / SQLAlchemy / Pydantic v2 / SQLite
 - Frontend: Jinja2 (SSR) + HTMX + Alpine.js + Tailwind CSS (daisyUI)
 - Tooling: uv, pytest + pytest-playwright, Ruff, mypy, Tailwind ビルド用 Node
-- Runtime: Docker（multi-stage build）。ポートは `SERVICE_PORT` で指定。
+- Runtime: provider非依存のproduction OCI image。container listen portは `PORT`（既定 `8000`）。
 
 ## Quick Start（ローカル/Dev Container）
 1) `.env.sample` をコピーして `.env` を用意し、少なくとも `VERSION`（任意のタグ）と `SERVICE_PORT` を埋める  
@@ -53,10 +53,32 @@ make quality       # lint + format-check + typecheck
 PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行する。
 
 ## Docker
-- プロダクションビルド: `make docker-build`（タグは `.env` の `VERSION`）  
-- 実行: `make docker-run`（`data/` をボリュームマウント、既定SQLite DBが無ければ初回にコピー）  
-- DB接続先はapplicationとentrypointの双方で `DATABASE_URL` を参照する。schema migrationはapplication startupでAlembic headまで適用する。
-- プロキシ経由は `proxy` を `.env` に設定し、`make docker-build-proxy` / `make docker-run-proxy`
+
+production imageはrootの `Dockerfile` 1本だけでbuildする。Node/uv/test/docs/agent設定はbuild/runtime artifactへ残さず、同じOCI imageを閉域/GCP/AWS/Azureのdeployment adapterから利用する。
+
+- プロダクションビルド: `make docker-build`（タグは `.env` の `VERSION`）
+- 実行: `make docker-run`
+  - host側 `SERVICE_PORT` をcontainer側 `PORT`（既定 `8000`）へpublish
+  - SQLite利用時は `data/` を `/app/data` へvolume mount
+- `DATABASE_URL` はapplication runtimeのSSoT。schema migrationはapplication startupでAlembic headまで適用する。
+- fresh file-backed SQLiteはstartup時だけseedする。DBをimage layerへ埋め込まない。
+- health check: `GET /healthz`（認証不要）
+
+### Proxy
+
+proxy有無でDockerfileやMake targetは分岐しない。常に `make docker-build` / `make docker-run` を利用する。
+
+- `proxy` 未設定: Makefileからproxy build args / runtime proxy環境変数は追加しない。
+- `proxy=http://proxy.example:8080` 設定時:
+  - buildではDocker標準の `HTTP_PROXY` / `HTTPS_PROXY`（upper/lower case）build argsとして渡す。
+  - runtimeでは同じ値を `HTTP_PROXY` / `HTTPS_PROXY`（upper/lower case）としてcontainerへ注入する。
+  - build時に利用したproxy値はproduction imageへ `ENV` として固定しない。
+- `NO_PROXY`（または `no_proxy`）を指定するとbuild/runtime双方へupper/lower caseで渡す。localhostに加え、proxyを経由させない社内OIDC/DB等があれば追加する。
+- OCI healthcheckは `127.0.0.1` へPython標準ライブラリで直接接続するため、runtime proxy設定に依存しない。
+
+Docker client側の `~/.docker/config.json` にproxyが設定されている場合は、`proxy` 未設定でもDocker自身がbuild/containerへproxy設定を自動注入する場合がある。Makefileの `proxy` はlocal `.env` から明示的にproxyを与えるための入口である。
+
+詳細なproduction runtime contractは [docs/deployment/runtime.md](docs/deployment/runtime.md) を参照。
 
 ## Authentication
 - デフォルトは `SOKORA_AUTH_ENABLED=false` でガード無効。オンにすると UI/API 両方にセッション必須。
@@ -67,9 +89,11 @@ PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行�
 ## Environment Variables
 | Name | Default | Description | Example |
 | --- | --- | --- | --- |
-| SERVICE_PORT | 8000 | アプリ公開ポート | 8000 |
+| SERVICE_PORT | 8000 | local Docker/devで利用するhost側公開ポート | 8000 |
+| PORT | 8000 | production container内のHTTP listen port | 8080 |
 | VERSION | なし (必須) | Docker イメージタグ（Makefile が必須扱い） | 1.0.0 |
-| proxy | なし | Docker ビルド/実行時のプロキシ URL | http://proxy.local:8080 |
+| proxy | なし | local build/run用proxy URL。Dockerfile自体は分岐しない | http://proxy.local:8080 |
+| NO_PROXY | localhost,127.0.0.1 | proxy除外先。必要に応じて社内endpointを追加 | localhost,127.0.0.1,keycloak.internal |
 | SOKORA_LOG_LEVEL | INFO | ログレベル | DEBUG |
 | DATABASE_URL | sqlite:///data/sokora.db | SQLAlchemy DB接続URL | sqlite:////app/data/sokora.db |
 | SOKORA_AUTH_ENABLED | false | 認証ガードの有効/無効 | true |
@@ -98,9 +122,11 @@ make test
 ```
 `scripts/testing/run_test.sh` が DB クリーンアップ → API/ユニット → E2E を順に実行し、サーバーが無ければ自動起動する（テスト中は `SOKORA_AUTH_ENABLED=false` を強制）。
 
+CIは通常のquality/non-E2E/E2Eに加えてproduction imageを実buildし、proxyなし/ありのbuild・runtime、`PORT` override、`/healthz`、development-only資産/ツールの不在をsmoke testする。
+
 ## Project Layout
 - `app/main.py` / `app/routers/`: API v1 と各ページルーター（auth/calendar/attendance/analysis など）
 - `app/templates/`: `layout/base.html` ベースのページ・コンポーネント。HTMX/Alpine.js 用の部分テンプレートは `components/partials/`。
 - `app/static/`: 開発用 JS/CSS。`assets/` は Tailwind ビルド成果物。
 - `builder/`: Tailwind + daisyUI のビルドソース、`scripts/`: アセット・シーディング・マイグレーション・テスト補助
-- `docs/`: [requirements.md](docs/requirements.md) から API/DB/UI 仕様やテンプレート構成へリンク
+- `docs/`: [requirements.md](docs/requirements.md) から API/DB/UI/runtime仕様へリンク

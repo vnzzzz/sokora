@@ -1,62 +1,40 @@
-# 1) アセットビルド用ステージ
 FROM node:22-bookworm-slim AS assets-builder
 WORKDIR /app
 COPY builder/package.json builder/package-lock.json builder/tailwind.config.js builder/postcss.config.js builder/input.css ./builder/
 COPY scripts/build_assets.sh ./scripts/build_assets.sh
 COPY app ./app
-RUN chmod +x ./scripts/build_assets.sh
-RUN ./scripts/build_assets.sh
+RUN chmod +x ./scripts/build_assets.sh && ./scripts/build_assets.sh
 
-# 2) 本番コンテナ
-FROM python:3.13-slim-bookworm
-
-# uv を固定バージョンで導入
+FROM python:3.13-slim-bookworm AS python-builder
 COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /bin/
-
-# システム依存関係インストール
-RUN apt-get update && apt-get install -y curl && \
-  apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# タイムゾーン設定
-ENV TZ=Asia/Tokyo
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
+ENV UV_PROJECT_ENVIRONMENT=/opt/sokora-venv \
+    PATH="/opt/sokora-venv/bin:$PATH"
 WORKDIR /app
-
-# 本番依存関係のみを独立したvirtualenvへ同期
-ENV UV_PROJECT_ENVIRONMENT=/opt/sokora-venv
-ENV PATH="/opt/sokora-venv/bin:$PATH"
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev
+COPY scripts/build_holiday_cache.py ./scripts/build_holiday_cache.py
+RUN python scripts/build_holiday_cache.py
 
-# アプリケーションコード
+FROM python:3.13-slim-bookworm AS runtime
+ENV TZ=Asia/Tokyo \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/sokora-venv/bin:$PATH" \
+    PORT=8000
+WORKDIR /app
+
+COPY --from=python-builder /opt/sokora-venv /opt/sokora-venv
 COPY ./app ./app
-COPY ./scripts ./scripts
-
-# データディレクトリを用意
-RUN mkdir -p /app/data
-
-# 静的ファイル用ディレクトリを作成
-RUN mkdir -p /app/assets/css /app/assets/js /app/assets/json
-
-# CSS/JS 成果物をコピー
-COPY --from=assets-builder /app/assets /app/assets
-
-# 祝日データをビルド時に取得
-RUN python3 scripts/build_holiday_cache.py
-
-# DB が無ければビルド時に初期化 + シーディング
-RUN python3 - <<'PYCODE'
-from app.db.session import initialize_database
-
-initialize_database()
-PYCODE
-
-RUN if [ -f /app/data/sokora.db ]; then mkdir -p /app/seed && cp /app/data/sokora.db /app/seed/sokora.db; fi
-
+COPY ./scripts/migration ./scripts/migration
+COPY ./scripts/seeding/data_seeder.py ./scripts/seeding/data_seeder.py
+COPY --from=assets-builder /app/assets ./assets
+COPY --from=python-builder /app/assets/json/holidays_cache.json ./assets/json/holidays_cache.json
 COPY ./docker/docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+
+RUN mkdir -p /app/data && chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c 'import http.client, os; connection = http.client.HTTPConnection("127.0.0.1", int(os.environ.get("PORT", "8000")), timeout=3); connection.request("GET", "/healthz"); response = connection.getresponse(); raise SystemExit(0 if response.status == 200 else 1)'
+
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
