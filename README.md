@@ -9,10 +9,11 @@
 - HTMX モーダルによる勤怠 CRUD とマスタ管理（ユーザー / グループ / 勤怠種別 / 社員種別）
 - CSV インポート/エクスポート、月次・年度別の集計ビュー
 - 祝日キャッシュ表示とカスタム祝日管理（DB 保存で再ビルド後も保持）
-- 任意で有効化できる認証ガード（Keycloak OIDC + 管理者向けローカルログイン）
+- 任意で有効化できる認証ガード（標準OIDC + 管理者向けlocal login）
 
 ## Stack
 - Backend: Python 3.13 / FastAPI / SQLAlchemy / Pydantic v2 / SQLite / PostgreSQL (Psycopg 3)
+- Authentication: Authlib + OpenID Connect discovery / Starlette signed session
 - Frontend: Jinja2 (SSR) + HTMX + Alpine.js + Tailwind CSS (daisyUI)
 - Tooling: uv, pytest + pytest-playwright, Ruff, mypy, Tailwind ビルド用 Node
 - Runtime: provider非依存のproduction OCI image。container listen portは `PORT`（既定 `8000`）。
@@ -104,10 +105,12 @@ Docker client側の `~/.docker/config.json` にproxyが設定されている場�
 詳細なproduction runtime contractは [docs/deployment/runtime.md](docs/deployment/runtime.md) を参照。
 
 ## Authentication
-- デフォルトは `SOKORA_AUTH_ENABLED=false` でガード無効。オンにすると UI/API 両方にセッション必須。
-- ローカル管理者ログインは `SOKORA_LOCAL_ADMIN_USERNAME/PASSWORD` が揃っていると有効。
-- OIDC は `OIDC_ISSUER/CLIENT_ID/CLIENT_SECRET/OIDC_REDIRECT_URL` などを設定して有効化し、ログイン画面で Keycloak 経路とローカル管理者を並列表示する。OIDC のオン/オフ状態は `SOKORA_AUTH_STATE_PATH`（デフォルト `data/auth_state.json`）に保存される。
-- セッション秘密鍵は `SOKORA_AUTH_SESSION_SECRET` を本番用に差し替える。
+- defaultは `SOKORA_AUTH_ENABLED=false` でguard無効。trueにするとUI/API双方でsigned sessionを要求する。
+- OIDCは `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL` が揃うと有効。Authlibがissuer discoveryを使うため、Keycloak固有endpointをapplication側で設定しない。
+- authorization flowのstate/nonceとID token validationはAuthlibへ委譲する。認証後cookieへ保存するのはmethod/subject/username等の最小identityだけで、access/refresh/ID tokenは保存しない。
+- local admin loginは `SOKORA_LOCAL_AUTH_ENABLED=true` かつusername/passwordが揃うと有効。SSO障害時の管理用fallbackであり、自動failoverはしない。
+- 認証設定はruntime environment/secretをSSoTとし、replica-local fileによるruntime toggleは持たない。`/auth/settings` はadmin向けread-only diagnostics。
+- session cookieはHttpOnly + SameSite=Lax。HTTPS productionでは `SOKORA_AUTH_SESSION_HTTPS_ONLY=true` を必須とする。`SOKORA_AUTH_SESSION_SECRET` はproduction secretへ差し替える。
 
 ## Environment Variables
 | Name | Default | Description | Example |
@@ -116,26 +119,22 @@ Docker client側の `~/.docker/config.json` にproxyが設定されている場�
 | PORT | 8000 | production container内のHTTP listen port | 8080 |
 | VERSION | なし (必須) | Docker イメージタグ（Makefile が必須扱い） | 1.0.0 |
 | proxy | なし | local build/run用proxy URL。Dockerfile自体は分岐しない | http://proxy.local:8080 |
-| NO_PROXY | localhost,127.0.0.1 | proxy除外先。必要に応じて社内endpointを追加 | localhost,127.0.0.1,keycloak.internal |
+| NO_PROXY | localhost,127.0.0.1 | proxy除外先。必要に応じて社内endpointを追加 | localhost,127.0.0.1,idp.internal |
 | SOKORA_LOG_LEVEL | INFO | ログレベル | DEBUG |
 | DATABASE_URL | sqlite:///data/sokora.db | SQLite/PostgreSQLのSQLAlchemy DB接続URL | postgresql://sokora:secret@db.example:5432/sokora?sslmode=require |
 | SOKORA_AUTH_ENABLED | false | 認証ガードの有効/無効 | true |
-| SOKORA_AUTH_SESSION_SECRET | dev-session-secret | セッション署名キー | change-me-prod-secret |
-| SOKORA_AUTH_SESSION_TTL_SECONDS | 3600 | セッション有効期限（秒） | 7200 |
-| SOKORA_LOCAL_AUTH_ENABLED | true | ローカル管理者認証の有効/無効 | false |
-| SOKORA_LOCAL_ADMIN_USERNAME | なし | ローカル管理者ユーザー名 | admin |
-| SOKORA_LOCAL_ADMIN_PASSWORD | なし | ローカル管理者パスワード | strong-password |
-| SOKORA_AUTH_STATE_PATH | data/auth_state.json | OIDC 有効/無効トグルの保存先 | /app/data/auth_state.json |
-| OIDC_ISSUER | なし | OIDC IdP issuer | https://keycloak.example.com/realms/sokora |
-| OIDC_CLIENT_ID | なし | OIDC クライアント ID | sokora-web |
-| OIDC_CLIENT_SECRET | なし | OIDC シークレット | super-secret |
-| OIDC_REDIRECT_URL | なし | OIDC リダイレクト URL | http://localhost:8000/auth/callback |
-| OIDC_SCOPES | openid profile email | 要求スコープ | openid profile email offline_access |
-| OIDC_HTTP_TIMEOUT | 3.0 | OIDC HTTP タイムアウト秒 | 5.0 |
-| OIDC_AUTHORIZATION_ENDPOINT | なし | Authorization Endpoint の上書き | https://.../protocol/openid-connect/auth |
-| OIDC_TOKEN_ENDPOINT | なし | Token Endpoint の上書き | https://.../protocol/openid-connect/token |
-| OIDC_USERINFO_ENDPOINT | なし | UserInfo Endpoint の上書き | https://.../protocol/openid-connect/userinfo |
-| OIDC_LOGOUT_ENDPOINT | なし | Logout Endpoint の上書き | https://.../protocol/openid-connect/logout |
+| SOKORA_AUTH_SESSION_SECRET | dev-session-secret | signed session cookieの署名キー。productionではsecret injection必須 | change-me-prod-secret |
+| SOKORA_AUTH_SESSION_TTL_SECONDS | 3600 | session cookie有効期限（秒） | 7200 |
+| SOKORA_AUTH_SESSION_HTTPS_ONLY | false | session cookieへSecure属性を付与。HTTPS productionではtrue必須 | true |
+| SOKORA_LOCAL_AUTH_ENABLED | true | local admin認証の有効/無効 | false |
+| SOKORA_LOCAL_ADMIN_USERNAME | なし | local admin username | admin |
+| SOKORA_LOCAL_ADMIN_PASSWORD | なし | local admin password | strong-password |
+| OIDC_ISSUER | なし | OpenID Provider issuer | https://idp.example.com/realms/sokora |
+| OIDC_CLIENT_ID | なし | OIDC client ID | sokora-web |
+| OIDC_CLIENT_SECRET | なし | OIDC client secret | super-secret |
+| OIDC_REDIRECT_URL | なし | registered authorization callback URL | https://sokora.example.com/auth/callback |
+| OIDC_SCOPES | openid profile email | 要求scope | openid profile email |
+| OIDC_HTTP_TIMEOUT | 3.0 | OIDC discovery/token通信のtimeout秒 | 5.0 |
 | SEED_DAYS_BACK | 60 | シードする過去日の日数 | 30 |
 | SEED_DAYS_FORWARD | 60 | シードする未来日の日数 | 30 |
 

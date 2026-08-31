@@ -1,41 +1,35 @@
 {% extends "layout/base.html" %}
 
 {% block content %}
-<section class="max-w-3xl mx-auto mt-8 space-y-4">
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-bold">認証設定</h1>
-      <p class="text-sm text-base-content/70">Keycloak OIDC の有効/無効を切り替えます（管理者専用）。</p>
-    </div>
-    <a href="/" class="btn btn-ghost btn-sm">戻る</a>
+<section class="max-w-2xl mx-auto space-y-4">
+  <div>
+    <h1 class="text-xl font-semibold">認証設定</h1>
+    <p class="text-sm text-base-content/70 mt-1">
+      認証設定は全instanceで共通になる環境変数/secretから読み込みます。この画面からruntime変更は行いません。
+    </p>
   </div>
 
-  {% if message %}
-  <div class="alert alert-info text-sm">
-    <span>{{ message }}</span>
-  </div>
-  {% endif %}
-
-  <div class="card bg-base-200 shadow">
-    <div class="card-body space-y-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="card-title text-base">OIDC 有効化</h2>
-          <p class="text-sm text-base-content/70">
-            無効化すると Keycloak 経路でのログインは開始できなくなります（ローカル管理者は継続）。
-          </p>
-        </div>
-        <form action="/auth/settings/oidc/toggle" method="post">
-          <input type="hidden" name="enabled" value="{{ 'false' if state.oidc_enabled else 'true' }}">
-          {% if state.oidc_enabled %}
-          <button type="submit" class="btn btn-outline btn-error">無効化する</button>
-          {% else %}
-          <button type="submit" class="btn btn-primary">有効化する</button>
-          {% endif %}
-        </form>
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body gap-3 text-sm">
+      <div class="flex justify-between gap-4">
+        <span>認証ガード</span>
+        <span class="font-medium">{{ "有効" if settings.auth_enabled else "無効" }}</span>
       </div>
-      <div class="text-sm text-base-content/70">
-        <p>現在の状態: <span class="font-semibold">{{ '有効' if state.oidc_enabled else '無効' }}</span></p>
+      <div class="flex justify-between gap-4">
+        <span>OIDC</span>
+        <span class="font-medium">{{ "設定済み" if settings.oidc_enabled else "未設定" }}</span>
+      </div>
+      <div class="flex justify-between gap-4">
+        <span>ローカル管理者</span>
+        <span class="font-medium">{{ "有効" if settings.local_admin_enabled else "無効" }}</span>
+      </div>
+      <div class="flex justify-between gap-4">
+        <span>セッション有効期限</span>
+        <span class="font-medium">{{ settings.session_ttl_seconds }} 秒</span>
+      </div>
+      <div class="flex justify-between gap-4">
+        <span>Secure cookie</span>
+        <span class="font-medium">{{ "有効" if settings.session_https_only else "無効" }}</span>
       </div>
     </div>
   </div>

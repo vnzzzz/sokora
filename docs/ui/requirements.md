@@ -12,8 +12,8 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 - Keycloak ボタンは `/auth/redirect` に遷移し、エラーがあれば画面上部にメッセージを表示する。Keycloak 障害（HTTP 5xx/タイムアウト）時はメッセージのみ表示し、ローカル管理者経路を案内する。
 - 管理者ローカルログインフォームは `SOKORA_LOCAL_ADMIN_USERNAME/PASSWORD` が設定されている場合のみ有効。認証失敗や設定不足は同ページにエラーを表示する。
 - 認証状態が無い場合のページアクセスは `/auth/login?next=元URL` へリダイレクトし、「再ログインが必要です」旨を表示する。
-- ログアウトは `/auth/logout` でセッションを破棄し、Keycloak 経路でログインしていた場合は Keycloak のログアウトエンドポイントにリダイレクトした上で `/auth/login` に戻す。
-- ローカル管理者専用の認証設定ページを用意し、OIDC 有効/無効トグルを提供する。トグル状態はログイン画面に反映され、無効時は Keycloak ボタンを押してもエラー表示となる。
+- ログアウトは `/auth/logout` でアプリセッションを破棄し、OIDC 経路でログインしていて discovery metadata に `end_session_endpoint` がある場合は IdP のログアウトへ遷移した上で `/auth/login` に戻す。IdP logoutを利用できない場合もアプリセッションは破棄する。
+- ローカル管理者専用の認証設定ページ（`/auth/settings`）はread-only diagnosticsとし、認証ガード・OIDC・ローカル管理者・session cookie設定の現在値/有効性を確認できる。OIDCのruntime toggleは持たず、有効性は共有runtime設定（`OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URL`）から決定する。
 
 ## カレンダーと勤怠登録
 - `/`（`pages/top.html`）：初期表示は空のコンテナ。`hx-get="/calendar"` で月次サマリーカレンダーを読み込み、クリックで `/calendar/day/{YYYY-MM-DD}` の勤怠詳細を表示する。

@@ -147,6 +147,8 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
         SessionMiddleware,
         secret_key=auth_settings.session_secret,
         max_age=auth_settings.session_ttl_seconds,
+        same_site="lax",
+        https_only=auth_settings.session_https_only,
     )
 
     return app

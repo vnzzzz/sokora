@@ -32,6 +32,26 @@ production imageに含めるもの:
 
 local Make targetの `SERVICE_PORT` はhost側publish portであり、applicationのlisten contractとは分離する。
 
+## Authentication runtime
+
+認証設定はenvironment/secret injectionをsingle source of truthとし、replica-local fileをruntime共有stateとして利用しない。OIDCの有効性は `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URL` の設定有無から決まり、application内のruntime toggleは持たない。
+
+OIDC clientはAuthlibを利用し、issuerの `/.well-known/openid-configuration` からauthorization/token/JWKS/end-session metadataを取得する。Keycloak固有pathやprovider SDKをapplicationへ持ち込まない。
+
+Starlette `SessionMiddleware` は署名付きclient-side cookieであり、server-side session storeではない。永続する認証sessionへ保持するのは認証方式・subject・表示username・local admin role等のidentity情報だけとし、OIDC access token / refresh token / ID tokenは保持しない。OAuth state / OIDC nonceはAuthlibがauthorization flow中だけsigned sessionへ一時保存し、callback処理で消費する。
+
+session cookie contract:
+
+- HttpOnly: 常時有効
+- SameSite: `lax`
+- Secure: `SOKORA_AUTH_SESSION_HTTPS_ONLY` で制御する。localhost等のHTTP developmentでは `false`、HTTPS productionでは `true` を必須とする
+- TTL: `SOKORA_AUTH_SESSION_TTL_SECONDS`
+- signing secret: `SOKORA_AUTH_SESSION_SECRET`。productionでは十分にランダムなsecretをdeployment secret storeから注入する
+
+RP-Initiated Logoutはdiscoveryされた `end_session_endpoint` がある場合に利用し、registered post-logout redirect URIと `client_id` を渡す。applicationはID tokenをcookieへ保持しないため `id_token_hint` に依存しない。IdP側が追加のconfirmation/policyを要求する場合はprovider設定で扱う。end-session endpointが無い、またはprovider logoutが利用できない場合でもapplication sessionは破棄する。
+
+local admin loginはSSO障害時の管理用fallbackとして明示的に選択する経路で、自動failoverではない。`SOKORA_LOCAL_AUTH_ENABLED=true` かつusername/passwordが設定された場合だけ有効にする。admin-only routeは共通authorization dependencyで保護する。
+
 ## Database backend
 
 ### SQLite
@@ -53,7 +73,7 @@ bare `postgresql://` / `postgres://` URL はproduction dependencyのPsycopg 3へ
 
 Cloud SQL for PostgreSQL、Amazon RDS/Aurora PostgreSQL、Azure Database for PostgreSQL等の差分はnetwork、DNS/socket、identity、TLS、secret injection等のdeployment adapterで吸収する。application/DB access層へprovider SDKやmetadata service依存を追加しない。
 
-PostgreSQL backendの追加はDB接続・schema lifecycleをportableにするものであり、現時点のapplication全体についてhorizontal multi-replica consistencyを保証するものではない。calendar/holiday等にprocess-local cacheがあり、認証runtime stateにも別途整理対象があるため、後続deployment adapterはmulti-replica readinessが完了するまではapplication replicaを1に固定する。
+PostgreSQL backendの追加はDB接続・schema lifecycleをportableにするものであり、現時点のapplication全体についてhorizontal multi-replica consistencyを保証するものではない。認証runtime設定のreplica-local stateは廃止したが、calendar/holiday/attendance等にprocess-local cacheが残るため、#86完了までは後続deployment adapterでapplication replicaを1に固定する。
 
 ## Persistent state / startup
 
@@ -91,6 +111,6 @@ local Make contractは以下とする。
   - 指定値をbuild/runtime双方へupper/lower caseで渡す。
   - localhostのほか、proxyを経由させない社内OIDC/DB/API endpointがあればdeployment環境ごとに追加する。
 
-sokoraのOIDC clientはHTTPXの通常clientを利用するため、runtimeで設定した標準proxy環境変数が外向きOIDC HTTP通信へ適用される。
+AuthlibのOIDC clientはHTTPX integrationを利用するため、runtimeで設定した標準proxy環境変数が外向きOIDC HTTP通信へ適用される。
 
 provider固有のregistry、network、identity、secret service、probe設定等は後続deployment adapter側で定義し、production imageを変更しない。
