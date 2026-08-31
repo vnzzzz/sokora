@@ -11,6 +11,12 @@ class ApplicationError(Exception):
         self.detail = detail
 
 
+class NotFoundError(ApplicationError):
+    """A requested application resource does not exist."""
+
+    status_code = 404
+
+
 class DataIntegrityError(ApplicationError):
     """A write violated a database-backed domain integrity rule."""
 
