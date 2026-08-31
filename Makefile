@@ -79,7 +79,7 @@ holiday-cache: sync
 	uv run python scripts/build_holiday_cache.py
 
 migrate: sync
-	PYTHONPATH=/app uv run alembic -c scripts/migration/alembic.ini upgrade head
+	PYTHONPATH=$(CURDIR) uv run alembic -c scripts/migration/alembic.ini upgrade head
 
 lint: sync
 	uv run ruff check app scripts

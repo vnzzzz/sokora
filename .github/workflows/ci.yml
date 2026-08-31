@@ -78,6 +78,100 @@ jobs:
           uv run pytest -vv app/tests/e2e/
           kill $SERVER_PID || true
 
+  postgresql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sokora
+          POSTGRES_PASSWORD: sokora
+          POSTGRES_DB: sokora
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sokora -d sokora"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      VERSION: ci
+      DATABASE_URL: postgresql://sokora:sokora@127.0.0.1:5432/sokora
+      SOKORA_TEST_POSTGRES_URL: postgresql://sokora:sokora@127.0.0.1:5432/sokora
+      SOKORA_AUTH_ENABLED: "false"
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.7"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Prepare runtime directories
+        run: mkdir -p data assets/json
+
+      - name: Verify concurrent PostgreSQL startup migrations
+        run: |
+          uv run python -c 'from app.db.session import create_database_runtime, initialize_database; runtime = create_database_runtime("postgresql://sokora:sokora@127.0.0.1:5432/sokora"); initialize_database(runtime); runtime.dispose()' &
+          MIGRATE_A=$!
+          uv run python -c 'from app.db.session import create_database_runtime, initialize_database; runtime = create_database_runtime("postgresql://sokora:sokora@127.0.0.1:5432/sokora"); initialize_database(runtime); runtime.dispose()' &
+          MIGRATE_B=$!
+          wait "$MIGRATE_A"
+          wait "$MIGRATE_B"
+
+      - name: Verify standard migration CLI is idempotent
+        run: make migrate
+
+      - name: Verify PostgreSQL startup and major CRUD
+        run: uv run pytest -vv app/tests/db/test_postgresql.py
+
+      - name: Build production image with PostgreSQL driver
+        env:
+          VERSION: ci-postgresql
+        run: make docker-build
+
+      - name: Start production image against PostgreSQL
+        run: |
+          docker run -d --name sokora-postgresql --rm \
+            --add-host host.docker.internal:host-gateway \
+            -e PORT=8082 \
+            -e SOKORA_AUTH_ENABLED=false \
+            -e DATABASE_URL=postgresql://sokora:sokora@host.docker.internal:5432/sokora \
+            -p 18082:8082 \
+            sokora:ci-postgresql
+
+          READY=0
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18082/healthz >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Production container failed to start against PostgreSQL. Logs:"
+            docker logs sokora-postgresql || true
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:18082/healthz | grep -q '"status":"ok"'
+          docker exec sokora-postgresql python -c 'import psycopg; print(psycopg.__version__)'
+
+      - name: Stop PostgreSQL production container
+        if: always()
+        run: docker stop sokora-postgresql || true
+
   production-image:
     runs-on: ubuntu-latest
     env:

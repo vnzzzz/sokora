@@ -7,7 +7,7 @@ sokora の production artifact は、閉域環境・GCP・AWS・Azureで共通�
 production imageに含めるもの:
 
 - application code (`app/`)
-- production Python dependencies
+- production Python dependencies（SQLite / PostgreSQL driver を含む）
 - Alembic migration (`scripts/migration/`)
 - fresh SQLite seedに必要な `scripts/seeding/data_seeder.py`
 - build済み static assets / holiday cache
@@ -26,23 +26,47 @@ production imageに含めるもの:
 | Input | Contract |
 | --- | --- |
 | `PORT` | container内listen port。既定値 `8000`。managed container platformから上書き可能 |
-| `DATABASE_URL` | DB接続先。既定値 `sqlite:///data/sokora.db` |
+| `DATABASE_URL` | DB接続先。既定値 `sqlite:///data/sokora.db`。SQLite / PostgreSQLを選択可能 |
 | `SOKORA_*`, `OIDC_*` | application/auth設定。secretはimageへ埋め込まずruntime injectionする |
 | proxy variables | 必要な環境だけ `HTTP_PROXY` / `HTTPS_PROXY` / lowercase variants / `NO_PROXY` 等をruntime injectionする |
 
 local Make targetの `SERVICE_PORT` はhost側publish portであり、applicationのlisten contractとは分離する。
 
-## Persistent state
+## Database backend
 
-SQLite利用時のみ `/app/data` をpersistent volumeへ置く。DBやsecretをimage layerへ埋め込まない。
+### SQLite
 
-application startupは既存のdatabase lifecycleを維持する。
+local/standalone/閉域で単一instanceから利用する場合の既定backend。`sqlite:///data/sokora.db` を利用し、container実行時は `/app/data` をpersistent volumeへ置く。
+
+SQLite固有の `check_same_thread`、memory DB pool、foreign key PRAGMA はapplicationのDB runtime factoryに閉じ込め、他backendへ適用しない。
+
+### PostgreSQL
+
+managed container等からexternal PostgreSQLを利用できる。application contractは標準的な接続URLとする。
+
+```text
+postgresql://user:password@db.example:5432/sokora
+postgresql://user:password@db.example:5432/sokora?sslmode=require
+```
+
+bare `postgresql://` / `postgres://` URL はproduction dependencyのPsycopg 3へ内部正規化する。provider名をURLやapplication codeへ追加する必要はない。明示的なSQLAlchemy PostgreSQL driver URLを指定した場合はその指定を維持する。
+
+Cloud SQL for PostgreSQL、Amazon RDS/Aurora PostgreSQL、Azure Database for PostgreSQL等の差分はnetwork、DNS/socket、identity、TLS、secret injection等のdeployment adapterで吸収する。application/DB access層へprovider SDKやmetadata service依存を追加しない。
+
+PostgreSQL backendの追加はDB接続・schema lifecycleをportableにするものであり、現時点のapplication全体についてhorizontal multi-replica consistencyを保証するものではない。calendar/holiday等にprocess-local cacheがあり、認証runtime stateにも別途整理対象があるため、後続deployment adapterはmulti-replica readinessが完了するまではapplication replicaを1に固定する。
+
+## Persistent state / startup
+
+DBやsecretをimage layerへ埋め込まない。SQLite利用時のみ `/app/data` をpersistent DB storageとして扱い、PostgreSQL利用時はcontainer filesystemをDB永続化に利用しない。
+
+application startupはbackend共通で次のdatabase lifecycleを実行する。
 
 1. Alembic migrationをheadまで適用する
 2. fresh file-backed SQLiteの場合だけinitial seedを作成する
-3. migration/seed失敗時はstartupをabortする
+3. PostgreSQL / in-memory SQLiteでは自動seedしない
+4. migration/seed失敗時はstartupをabortする
 
-PostgreSQL等の外部DBではcontainer filesystemをpersistent DBとして扱わない。
+PostgreSQLでもfresh schemaは同じAlembic revision chainで構築する。schemaをbackend別に手管理しない。PostgreSQLのonline migrationはadvisory lockでsokoraのmigration session間を直列化し、同時startupや明示的なmigration commandが同じDDLを競合実行しないようにする。
 
 ## Health check
 

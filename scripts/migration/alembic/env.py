@@ -3,13 +3,13 @@ from logging.config import fileConfig
 from alembic import context
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import engine_from_config, inspect, pool
+from sqlalchemy import engine_from_config, inspect, pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.reflection import Inspector
 
 import app.models  # noqa: F401 - register model metadata for Alembic autogenerate
 from app.core.settings import AppSettings
-from app.db.session import Base
+from app.db.session import Base, sqlalchemy_database_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,15 +31,28 @@ PRE_CUSTOM_HOLIDAYS_COLUMNS = {
     if table_name != "custom_holidays"
 }
 
+# Serialize PostgreSQL Alembic DDL across processes. Both CLI and application
+# migration paths wrap the entire Alembic run in one outer transaction, so a
+# transaction-level advisory lock covers schema inspection, legacy adoption,
+# revision execution, and version-table updates. PostgreSQL releases it on
+# commit/rollback, including failure paths.
+_POSTGRES_MIGRATION_LOCK = text(
+    "SELECT pg_advisory_xact_lock("
+    "hashtext(current_database()), hashtext('sokora:alembic'))"
+)
+
 # DATABASE_URL is the database connection source of truth for both the app and
 # migration commands. Programmatic callers can provide the application runtime's
 # exact URL so in-memory SQLite migrations use the same connection-backed DB.
 database_url = (
     config.attributes.get("database_url") or AppSettings.from_env().database_url
 )
+engine_url = sqlalchemy_database_url(str(database_url)).render_as_string(
+    hide_password=False
+)
 # ConfigParser uses percent interpolation, so literal percent signs in SQLAlchemy
 # URLs must be escaped when stored in Alembic config.
-config.set_main_option("sqlalchemy.url", str(database_url).replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", engine_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
@@ -101,12 +114,18 @@ def _adopt_legacy_history_if_needed(connection: Connection) -> None:
     migration_context.stamp(script, revision)
 
 
-def _run_migrations(connection: Connection) -> None:
+def _run_migrations_unlocked(connection: Connection) -> None:
     _adopt_legacy_history_if_needed(connection)
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
+
+
+def _run_migrations(connection: Connection) -> None:
+    if connection.dialect.name == "postgresql":
+        connection.execute(_POSTGRES_MIGRATION_LOCK)
+    _run_migrations_unlocked(connection)
 
 
 def run_migrations_offline() -> None:

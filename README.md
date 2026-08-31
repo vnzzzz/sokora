@@ -2,7 +2,7 @@
 
 ![image](docs/images/image1.png)
 
-直感的なカレンダー UI で勤怠（リモート / オフィス / 休暇など）を可視化・編集する Web アプリ。HTMX + Alpine.js で軽量に動き、FastAPI + SQLite でシンプルに運用。
+直感的なカレンダー UI で勤怠（リモート / オフィス / 休暇など）を可視化・編集する Web アプリ。HTMX + Alpine.js で軽量に動き、FastAPI + SQLAlchemy で SQLite / PostgreSQL を利用できる。
 
 ## Features
 - 月次/週次カレンダー、日別詳細、勤怠種別ごとの色分け表示
@@ -12,7 +12,7 @@
 - 任意で有効化できる認証ガード（Keycloak OIDC + 管理者向けローカルログイン）
 
 ## Stack
-- Backend: Python 3.13 / FastAPI / SQLAlchemy / Pydantic v2 / SQLite
+- Backend: Python 3.13 / FastAPI / SQLAlchemy / Pydantic v2 / SQLite / PostgreSQL (Psycopg 3)
 - Frontend: Jinja2 (SSR) + HTMX + Alpine.js + Tailwind CSS (daisyUI)
 - Tooling: uv, pytest + pytest-playwright, Ruff, mypy, Tailwind ビルド用 Node
 - Runtime: provider非依存のproduction OCI image。container listen portは `PORT`（既定 `8000`）。
@@ -29,12 +29,13 @@ make run       # http://localhost:${SERVICE_PORT}
 ```
    - Makefile は `VERSION` 未設定だとエラー。`.env` に必ず設定する。
    - DB接続先は `DATABASE_URL` で指定する。既定値は `sqlite:///data/sokora.db`。
-   - 起動時に Alembic migration を head まで適用する。既定SQLite DBが新規作成された場合だけシーディング（60日/60日分）も実施する。
+   - PostgreSQLは `postgresql://user:password@host:5432/database` 形式をそのまま指定できる。bare PostgreSQL URLはproduction dependencyのPsycopg 3へ内部正規化する。
+   - 起動時に SQLite / PostgreSQL とも Alembic migration を head まで適用する。file-backed SQLite DBが新規作成された場合だけシーディング（60日/60日分）も実施し、PostgreSQLは自動seedしない。
 4) 停止: `make docker-stop`（コンテナ実行時）またはサーバープロセスを終了
 
 Python依存関係は `pyproject.toml` と `uv.lock` で管理する。既存lockを変更せず再現する場合は `uv sync --locked` を使用する。
 
-DB migrationだけを明示実行する場合は `make migrate`（`alembic upgrade head`）を使用する。schema lifecycleの詳細は [docs/db/requirements.md](docs/db/requirements.md) を参照。
+DB migrationだけを明示実行する場合は `make migrate`（`alembic upgrade head`）を使用する。schema lifecycleとbackend contractの詳細は [docs/db/requirements.md](docs/db/requirements.md) を参照。
 
 静的スタイルを触る場合は `builder/input.css` を編集し、`make assets` で `assets/` を再生成（ビルド成果物は直接編集しない）。
 
@@ -51,6 +52,28 @@ make quality       # lint + format-check + typecheck
 ```
 
 PR前の標準的な静的検証は `make quality`。CIも同じtargetを実行する。
+
+## Database
+
+`DATABASE_URL` がDB接続のSSoTで、application startupと `make migrate` は同じAlembic revision chainを利用する。
+
+SQLite（既定）:
+
+```text
+DATABASE_URL=sqlite:///data/sokora.db
+```
+
+PostgreSQL:
+
+```text
+DATABASE_URL=postgresql://sokora:password@db.example:5432/sokora
+DATABASE_URL=postgresql://sokora:password@db.example:5432/sokora?sslmode=require
+```
+
+- SQLite固有のconnection設定・FK PRAGMAはDB runtime factoryへ閉じ込め、PostgreSQLへ適用しない。
+- PostgreSQL driverはPsycopg 3。`postgresql://` / `postgres://` は内部で `postgresql+psycopg` へ正規化する。
+- Cloud SQL for PostgreSQL / Amazon RDS・Aurora PostgreSQL / Azure Database for PostgreSQLもapplication側では標準PostgreSQL接続情報として扱う。provider固有SDKはapplication/DB access層へ追加しない。
+- PostgreSQLではcontainer filesystemをDB永続化に利用せず、startup時の自動seedも行わない。
 
 ## Docker
 
@@ -95,7 +118,7 @@ Docker client側の `~/.docker/config.json` にproxyが設定されている場�
 | proxy | なし | local build/run用proxy URL。Dockerfile自体は分岐しない | http://proxy.local:8080 |
 | NO_PROXY | localhost,127.0.0.1 | proxy除外先。必要に応じて社内endpointを追加 | localhost,127.0.0.1,keycloak.internal |
 | SOKORA_LOG_LEVEL | INFO | ログレベル | DEBUG |
-| DATABASE_URL | sqlite:///data/sokora.db | SQLAlchemy DB接続URL | sqlite:////app/data/sokora.db |
+| DATABASE_URL | sqlite:///data/sokora.db | SQLite/PostgreSQLのSQLAlchemy DB接続URL | postgresql://sokora:secret@db.example:5432/sokora?sslmode=require |
 | SOKORA_AUTH_ENABLED | false | 認証ガードの有効/無効 | true |
 | SOKORA_AUTH_SESSION_SECRET | dev-session-secret | セッション署名キー | change-me-prod-secret |
 | SOKORA_AUTH_SESSION_TTL_SECONDS | 3600 | セッション有効期限（秒） | 7200 |
@@ -122,7 +145,7 @@ make test
 ```
 `scripts/testing/run_test.sh` が DB クリーンアップ → API/ユニット → E2E を順に実行し、サーバーが無ければ自動起動する（テスト中は `SOKORA_AUTH_ENABLED=false` を強制）。
 
-CIは通常のquality/non-E2E/E2Eに加えてproduction imageを実buildし、proxyなし/ありのbuild・runtime、`PORT` override、`/healthz`、development-only資産/ツールの不在をsmoke testする。
+CIはSQLiteの通常quality/non-E2E/E2E、real PostgreSQLを使ったmigration/startup/主要CRUD integration test、production imageのproxyなし/ありbuild・runtime、`PORT` override、`/healthz`、development-only資産/ツールの不在を検証する。
 
 ## Project Layout
 - `app/main.py` / `app/routers/`: API v1 と各ページルーター（auth/calendar/attendance/analysis など）
