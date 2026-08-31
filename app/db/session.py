@@ -34,6 +34,26 @@ class DatabaseRuntime:
         self.engine.dispose()
 
 
+def sqlalchemy_database_url(database_url: str) -> URL:
+    """Return the SQLAlchemy URL used by the configured production drivers.
+
+    A bare PostgreSQL URL is the portable application contract. SQLAlchemy's
+    bare ``postgresql://`` dialect historically selects psycopg2, while sokora
+    ships Psycopg 3. Normalize only URLs without an explicit PostgreSQL driver;
+    explicit ``postgresql+...`` URLs remain caller-controlled.
+    """
+    url = make_url(database_url)
+    if url.drivername in {"postgres", "postgresql"}:
+        return url.set(drivername="postgresql+psycopg")
+    return url
+
+
+def _database_url_for_logging(database_url: str) -> str:
+    """Render a diagnostic URL without credentials or query parameters."""
+    url = sqlalchemy_database_url(database_url)
+    return url.set(query={}).render_as_string(hide_password=True)
+
+
 def _sqlite_uri_enabled(url: URL) -> bool:
     return str(url.query.get("uri", "")).lower() == "true"
 
@@ -60,17 +80,17 @@ def _enable_sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) 
 
 def create_database_runtime(database_url: str) -> DatabaseRuntime:
     """Create an isolated database runtime for a database URL."""
-    url = make_url(database_url)
+    url = sqlalchemy_database_url(database_url)
     if url.get_backend_name() == "sqlite":
         engine_kwargs: dict[str, object] = {
             "connect_args": {"check_same_thread": False}
         }
         if _sqlite_is_memory_database(url):
             engine_kwargs["poolclass"] = StaticPool
-        engine = create_engine(database_url, **engine_kwargs)
+        engine = create_engine(url, **engine_kwargs)
         event.listen(engine, "connect", _enable_sqlite_foreign_keys)
     else:
-        engine = create_engine(database_url)
+        engine = create_engine(url)
 
     session_factory = sessionmaker(
         autocommit=False,
@@ -165,7 +185,9 @@ def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
     if database_path is not None:
         database_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info("Migrating database schema: %s", runtime.database_url)
+    logger.info(
+        "Migrating database schema: %s", _database_url_for_logging(runtime.database_url)
+    )
     config = Config(str(_ALEMBIC_CONFIG_PATH))
     config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
     config.attributes["database_url"] = runtime.database_url

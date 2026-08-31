@@ -12,7 +12,8 @@ sokora の API・DB・UI・production runtimeを横断的に把握するため�
 ## 共通方針
 - FastAPI（/api プレフィックス）と Jinja2 + HTMX/Alpine.js の SSR UI を整合させる。
 - 勤怠・ユーザー・マスタ（勤怠種別/社員種別/グループ）の整合性は DB モデルを基準に、API と UI の期待値を合わせる。
-- production runtimeはprovider非依存のOCI imageとし、閉域/GCP/AWS/Azure固有差分をdeployment adapterへ閉じ込める。
+- DB接続は `DATABASE_URL` をSSoTとし、local/閉域ではSQLiteを維持しつつ、外部/managed DBとしてPostgreSQLを利用できる。schema lifecycleは両backendでAlembicへ統一する。
+- production runtimeはprovider非依存のOCI imageとし、閉域/GCP/AWS/Azure固有差分をdeployment adapterへ閉じ込める。application/DB access層はcloud provider固有SDKへ依存しない。
 - 振る舞いの詳細は分野別ドキュメントを参照し、記述が無い場合はテストや実装を一次情報として更新する。
 
 ## 認証方針
