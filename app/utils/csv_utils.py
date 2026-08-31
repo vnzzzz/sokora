@@ -58,7 +58,8 @@ def _generate_date_headers(month: Optional[str] = None) -> List[str]:
 
 
 def generate_work_entries_csv_rows(
-    db: Session, month: Optional[str] = None
+    db: Session,
+    month: Optional[str] = None,
 ) -> Generator[List[str], None, None]:
     """勤怠データのCSV行をstreaming用に生成する。"""
     date_headers = _generate_date_headers(month)
