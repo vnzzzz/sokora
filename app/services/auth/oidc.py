@@ -1,149 +1,144 @@
-import logging
-import urllib.parse
+"""Standards-based OpenID Connect client boundary."""
+
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
+from authlib.integrations.base_client.errors import (  # type: ignore[import-untyped]
+    MismatchingStateError,
+    OAuthError,
+)
+from authlib.integrations.starlette_client import OAuth  # type: ignore[import-untyped]
+from starlette.requests import Request
 
 from app.services.auth.settings import AuthSettings
 
-logger = logging.getLogger(__name__)
+
+class OIDCError(RuntimeError):
+    """OIDC discovery, token exchange, validation, or logout failure."""
 
 
-class OIDCError(Exception):
-    """OIDC フロー中のエラーを示す例外"""
+class OIDCStateError(OIDCError):
+    """OIDC state validation failure."""
 
 
-@dataclass
+@dataclass(frozen=True)
 class OIDCLoginResult:
-    """OIDC ログイン完了時の結果"""
+    """Validated identity projected from an OIDC ID token."""
 
     subject: str
     username: str
-    id_token: str
-    access_token: str
-    refresh_token: str | None = None
+
+
+def oidc_discovery_url(issuer: str) -> str:
+    """Return the OpenID Provider Configuration URL for an issuer."""
+    return f"{issuer.rstrip('/')}/.well-known/openid-configuration"
 
 
 class OIDCClient:
-    """Keycloak OIDC と対話するクライアント"""
+    """Wrap Authlib's Starlette OIDC integration behind a small application API."""
 
-    def __init__(
-        self, settings: AuthSettings, http_client: httpx.Client | None = None
-    ) -> None:
+    def __init__(self, settings: AuthSettings, client: Any | None = None) -> None:
         if not settings.oidc_enabled:
-            raise OIDCError("OIDC settings are incomplete")
+            raise OIDCError("OIDC is not configured")
         self.settings = settings
-        timeout = settings.oidc_http_timeout
-        self.http_client = http_client or httpx.Client(timeout=timeout)
+        if client is not None:
+            self._client = client
+            return
 
-    def build_authorization_url(self, state: str, nonce: str) -> str:
-        endpoint = self._authorization_endpoint()
-        query = urllib.parse.urlencode(
-            {
-                "response_type": "code",
-                "client_id": self.settings.oidc_client_id or "",
-                "redirect_uri": self.settings.oidc_redirect_uri or "",
-                "scope": self.settings.oidc_scope,
-                "state": state,
-                "nonce": nonce,
-            }
+        oauth = OAuth()
+        self._client = oauth.register(
+            name="oidc",
+            client_id=settings.oidc_client_id,
+            client_secret=settings.oidc_client_secret,
+            server_metadata_url=oidc_discovery_url(str(settings.oidc_issuer)),
+            client_kwargs={
+                "scope": settings.oidc_scope,
+                "timeout": settings.oidc_http_timeout,
+            },
         )
-        return f"{endpoint}?{query}"
 
-    def exchange_code(
+    async def build_authorization_url(
         self,
-        code: str,
-        state: str,
-        nonce: str,
+        *,
+        request: Request,
         redirect_uri: str | None = None,
-    ) -> OIDCLoginResult:
-        token_url = self._token_endpoint()
-        callback_uri = redirect_uri or self.settings.oidc_redirect_uri or ""
-        data = {
-            "grant_type": "authorization_code",
-            "client_id": self.settings.oidc_client_id or "",
-            "client_secret": self.settings.oidc_client_secret or "",
-            "code": code,
-            "redirect_uri": callback_uri,
-        }
+    ) -> str:
+        """Create an authorization URL through provider discovery.
+
+        Authlib generates and persists the OAuth state and OIDC nonce in the
+        signed Starlette session. The callback consumes that temporary state.
+        """
         try:
-            token_resp = self.http_client.post(token_url, data=data)
-            token_resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Failed to exchange code with Keycloak: %s", exc)
-            raise OIDCError("Failed to exchange authorization code") from exc
-
-        token_payload = token_resp.json()
-        access_token = token_payload.get("access_token")
-        id_token = token_payload.get("id_token")
-        refresh_token = token_payload.get("refresh_token")
-        if not access_token or not id_token:
-            raise OIDCError("Token response missing access_token or id_token")
-
-        subject, username = self._fetch_userinfo(access_token)
-        return OIDCLoginResult(
-            subject=subject,
-            username=username,
-            id_token=id_token,
-            access_token=access_token,
-            refresh_token=refresh_token,
-        )
-
-    def get_logout_url(
-        self, id_token_hint: str, post_logout_redirect_uri: str
-    ) -> str | None:
-        endpoint = self._logout_endpoint()
-        if endpoint is None:
-            return None
-        query = urllib.parse.urlencode(
-            {
-                "id_token_hint": id_token_hint,
-                "post_logout_redirect_uri": post_logout_redirect_uri,
-            }
-        )
-        return f"{endpoint}?{query}"
-
-    def _authorization_endpoint(self) -> str:
-        if self.settings.authorization_endpoint_override:
-            return self.settings.authorization_endpoint_override
-        issuer = self.settings.oidc_issuer or ""
-        return f"{issuer}/protocol/openid-connect/auth"
-
-    def _token_endpoint(self) -> str:
-        if self.settings.token_endpoint_override:
-            return self.settings.token_endpoint_override
-        issuer = self.settings.oidc_issuer or ""
-        return f"{issuer}/protocol/openid-connect/token"
-
-    def _userinfo_endpoint(self) -> str:
-        if self.settings.userinfo_endpoint_override:
-            return self.settings.userinfo_endpoint_override
-        issuer = self.settings.oidc_issuer or ""
-        return f"{issuer}/protocol/openid-connect/userinfo"
-
-    def _logout_endpoint(self) -> str | None:
-        if self.settings.logout_endpoint_override:
-            return self.settings.logout_endpoint_override
-        if not self.settings.oidc_issuer:
-            return None
-        return f"{self.settings.oidc_issuer}/protocol/openid-connect/logout"
-
-    def _fetch_userinfo(self, access_token: str) -> tuple[str, str]:
-        userinfo_url = self._userinfo_endpoint()
-        try:
-            resp = self.http_client.get(
-                userinfo_url,
-                headers={"Authorization": f"Bearer {access_token}"},
+            response = await self._client.authorize_redirect(
+                request,
+                redirect_uri or self.settings.oidc_redirect_uri,
             )
-            resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Failed to fetch userinfo: %s", exc)
-            raise OIDCError("Failed to fetch userinfo") from exc
+        except Exception as exc:
+            raise OIDCError(f"OIDC authorization discovery failed: {exc}") from exc
+        return response.headers["location"]
 
-        data: dict[str, Any] = resp.json()
-        subject = data.get("sub")
-        if not subject:
-            raise OIDCError("Userinfo response missing sub")
-        username = data.get("preferred_username") or subject
-        return subject, username
+    async def exchange_code(self, *, request: Request) -> OIDCLoginResult:
+        """Exchange a code and return identity claims validated by Authlib.
+
+        Authlib validates callback state and the ID token's nonce, issuer,
+        audience, signature, and time-based claims using discovery metadata and
+        JWKS before exposing ``userinfo``.
+        """
+        try:
+            token = await self._client.authorize_access_token(request)
+        except MismatchingStateError as exc:
+            raise OIDCStateError("OIDC state validation failed") from exc
+        except OAuthError as exc:
+            raise OIDCError(f"OIDC token exchange failed: {exc}") from exc
+        except Exception as exc:
+            raise OIDCError(f"OIDC token validation failed: {exc}") from exc
+
+        userinfo = token.get("userinfo")
+        if not isinstance(userinfo, Mapping):
+            raise OIDCError("OIDC provider did not return a validated ID token")
+        subject = userinfo.get("sub")
+        if not isinstance(subject, str) or not subject:
+            raise OIDCError("OIDC ID token is missing sub")
+        username = (
+            userinfo.get("preferred_username")
+            or userinfo.get("email")
+            or userinfo.get("name")
+            or subject
+        )
+        return OIDCLoginResult(subject=subject, username=str(username))
+
+    async def get_logout_url(
+        self,
+        *,
+        request: Request,
+        post_logout_redirect_uri: str,
+    ) -> str | None:
+        """Return an RP-Initiated Logout URL discovered from provider metadata.
+
+        The persistent application session does not retain an ID token. The
+        standards-defined ``client_id`` parameter therefore identifies the RP
+        when requesting a registered post-logout redirect URI.
+        """
+        try:
+            response = await self._client.logout_redirect(
+                request,
+                post_logout_redirect_uri=post_logout_redirect_uri,
+                client_id=self.settings.oidc_client_id,
+            )
+        except RuntimeError as exc:
+            if "end_session_endpoint" in str(exc):
+                return None
+            raise OIDCError(f"OIDC logout discovery failed: {exc}") from exc
+        except Exception as exc:
+            raise OIDCError(f"OIDC logout failed: {exc}") from exc
+        return response.headers["location"]
+
+    async def validate_logout_response(self, request: Request) -> None:
+        """Validate RP-Initiated Logout state returned by the provider."""
+        try:
+            await self._client.validate_logout_response(request)
+        except OAuthError as exc:
+            raise OIDCStateError("OIDC logout state validation failed") from exc
+        except Exception as exc:
+            raise OIDCError(f"OIDC logout callback failed: {exc}") from exc

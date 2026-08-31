@@ -1,27 +1,40 @@
 # API 要件
 
- FastAPI v1 ルーター（`app/routers/api/v1/__init__.py`）配下で `/api/v1` プレフィックスを使用します。データモデルは [DB 要件](../db/requirements.md) を基準とし、UI 側の HTMX フローは [UI 要件](../ui/requirements.md) を参照してください。
+FastAPI v1 ルーター（`app/routers/api/v1/__init__.py`）配下で `/api/v1` プレフィックスを使用します。データモデルは [DB 要件](../db/requirements.md) を基準とし、UI 側の HTMX フローは [UI 要件](../ui/requirements.md) を参照してください。
 
 ## 共通仕様
 - 応答は原則 JSON。勤怠作成/更新/削除はフォーム送信を受け、204 + `HX-Trigger` で UI 更新を指示。
 - write use case は service 層が transaction を所有し、CRUD 層は commit/rollback を行わない。事前バリデーションに加えて DB の UNIQUE / FK 制約を最終整合性保証とする。
 - 事前チェックで判定できる既存の入力不備・重複は従来どおり 400/404 等を返す。concurrent write 等で commit/flush 時に DB integrity constraint と競合した場合は application error へ変換し、409 を返す。DB 例外文字列は外部へ直接公開しない。
 - OpenAPI は `/docs` `/redoc` で公開される。
-- 認証は Keycloak OIDC を一次経路とし、管理者のみが使えるローカルログインを併置する。自動フェイルオーバーは行わず、ログイン画面で利用者が選択する。
+- 認証は標準OIDCを一次経路とし、管理者のみが使えるlocal loginを併置する。自動failoverは行わず、ログイン画面で利用者が選択する。
 
 ## 認証/セキュリティ
-- ガード: `SOKORA_AUTH_ENABLED=true` 時に UI/`/api` 双方へセッションガードを適用し、未認証アクセスは UI → `/auth/login` へリダイレクト、API → 401 JSON（`{"detail": "Unauthorized"}`）を返す。`/auth/*` と静的ファイル、`/docs`/`/redoc` は例外。
-- セッション: Starlette セッションで管理。`SOKORA_AUTH_SESSION_SECRET` で署名鍵、`SOKORA_AUTH_SESSION_TTL_SECONDS`（デフォルト 3600 秒）で有効期限を指定。
-- Keycloak OIDC:
-  - `.env` 設定: `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, `OIDC_SCOPES`（デフォルト `openid profile email`）, 任意で `OIDC_AUTHORIZATION_ENDPOINT`, `OIDC_TOKEN_ENDPOINT`, `OIDC_USERINFO_ENDPOINT`, `OIDC_LOGOUT_ENDPOINT`, `OIDC_HTTP_TIMEOUT`（デフォルト 3s）。
-- フロー: `/auth/redirect` で state/nonce を発行し Keycloak 認可エンドポイントへリダイレクト、`/auth/callback` でコードをトークンエンドポイントへ POST。`id_token` の `sub` を内部識別子、`preferred_username` を表示名としてセッションに格納する。DB の `users` テーブルとは紐付けない。
-  - ログアウト: `/auth/logout` でアプリセッションを破棄し、`SOKORA_OIDC_LOGOUT_ENDPOINT` がある場合は `id_token_hint`/`post_logout_redirect_uri` を付けて Keycloak ログアウトに誘導する。
-- OIDC 有効/無効トグル:
-  - ローカル管理者専用ページで切替可能。状態は `data/auth_state.json`（`SOKORA_AUTH_STATE_PATH` で上書き可）に保持し、`oidc_enabled=false` の場合は OIDC フローを開始せず 400 を返す。
-- ローカル管理者ログイン:
-  - 環境変数 `SOKORA_LOCAL_AUTH_ENABLED` が true かつ `SOKORA_LOCAL_ADMIN_USERNAME`, `SOKORA_LOCAL_ADMIN_PASSWORD` が揃っている場合のみ有効。入力値は `secrets.compare_digest` で照合し、成功時は `role=admin` を持つセッションを発行する。
-  - Keycloak 障害時でもログイン画面のローカル経路は常に提示する。一般ユーザー向けのローカルログインは提供しない。
-  - 設定欠落時は 400 を返し、ログイン画面にエラーを表示する。
+- ガード: `SOKORA_AUTH_ENABLED=true` 時に UI/`/api` 双方へsession guardを適用し、未認証アクセスは UI → `/auth/login` へredirect、API → 401 JSON（`{"detail": "Unauthorized"}`）を返す。`/auth/*` と静的ファイル、`/docs`/`/redoc` は例外。
+- session:
+  - Starlette `SessionMiddleware` の署名付きclient-side cookieを利用する。server-side session storeではない。
+  - `SOKORA_AUTH_SESSION_SECRET` で署名鍵、`SOKORA_AUTH_SESSION_TTL_SECONDS`（default 3600秒）で有効期限を指定する。
+  - SameSiteは`lax`、HttpOnlyは常時有効。`SOKORA_AUTH_SESSION_HTTPS_ONLY=true` でSecure cookieを有効化し、HTTPS productionではtrueを必須とする。
+  - 認証後cookieに保持するのは認証方式・subject・表示username・admin role等の最小identity情報だけで、OIDC access token / refresh token / ID tokenは保持しない。
+- OIDC:
+  - AuthlibのStarlette integrationを利用する。
+  - 設定は `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, `OIDC_SCOPES`（default `openid profile email`）, `OIDC_HTTP_TIMEOUT`（default 3s）。
+  - issuerの `/.well-known/openid-configuration` によるdiscoveryを使用し、authorization/token/JWKS/end-session endpointをapplicationで手組みしない。
+  - `/auth/redirect` からauthorization code flowを開始する。OAuth state / OIDC nonceはAuthlibがsigned sessionへ一時保存し、`/auth/callback` でstateを照合したうえでcode exchangeとID token検証を行う。
+  - ID tokenのissuer/audience/signature/expiry/nonce等はdiscovery metadata/JWKSとAuthlibのOIDC validationに委譲する。検証済み`userinfo`の`sub`を内部識別子、`preferred_username`（fallback: email/name/sub）を表示名としてsessionへ投影する。DB `users` tableとは紐付けない。
+  - `next` parameterはsame-origin absolute pathだけを許可し、absolute URL、scheme-relative URL（`//host/...`）、backslashを含む値等は `/` へfallbackする。
+- logout:
+  - `/auth/logout` でapplication認証sessionを破棄する。
+  - discovery metadataに`end_session_endpoint`がある場合はRP-Initiated Logoutへredirectし、`/auth/logout/callback` でlogout stateを検証する。
+  - persistent cookieへID tokenを保持しないためlogoutは`client_id` + registered `post_logout_redirect_uri`を利用し、`id_token_hint`へ依存しない。IdPの追加confirmation/policyはprovider設定側で扱う。
+  - end-session endpointが無い、またはprovider logoutが利用できない場合もapplication sessionは破棄する。
+- local admin login:
+  - `SOKORA_LOCAL_AUTH_ENABLED=true` かつ `SOKORA_LOCAL_ADMIN_USERNAME`, `SOKORA_LOCAL_ADMIN_PASSWORD` が揃っている場合だけ有効。入力値は`secrets.compare_digest`で照合し、成功時は`role=admin`を持つsessionを発行する。
+  - OIDC障害時でもlocal admin経路を明示的に選択できる。一般ユーザー向けlocal loginや自動failoverは提供しない。
+  - admin-only routeは共通authorization dependencyで保護する。
+- runtime設定:
+  - 認証設定はenvironment/secret injectionをSSoTとし、`auth_state.json`等のreplica-local mutable fileは利用しない。
+  - `/auth/settings` はlocal admin向けread-only diagnosticsで、runtime OIDC toggleは提供しない。
 
 ## エンドポイント一覧（v1）
 - `GET /api/v1/attendances`：全勤怠リスト（`{"records": [...]}`）。  

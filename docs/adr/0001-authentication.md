@@ -1,5 +1,7 @@
 # 0001: Keycloak OIDC + ローカル管理者フォールバックの採用
 
+**Status:** Superseded by [0002: Provider-neutral OIDC + signed client-side session](0002-authentication-runtime.md)
+
 ## 背景
 - 認証方式が未整備であり、外部 IdP 連携を追加したい。
 - Keycloak 障害時でも運用継続のため最低限のログイン経路を残す必要がある。
@@ -17,3 +19,7 @@
 - docs: requirements (API/UI) に認証要件を追記。
 - app: 認証ルーター/ガード/セッション管理を追加し、Keycloak とローカル管理者の両経路を UI 上で提供する。
 - config: OIDC とローカル管理者、セッション関連の環境変数を追加する。
+
+## Superseded
+
+Issue #59 / #60 の認証境界再設計により、Keycloak 固定、server-side session、file-backed runtime toggle の判断は廃止された。現行の認証architectureは [ADR 0002](0002-authentication-runtime.md) を参照する。
