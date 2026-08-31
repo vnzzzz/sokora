@@ -5,6 +5,7 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 ## 基本方針
 - `layout/base.html` を共通レイアウトとして、ページテンプレートは `pages/*.html`、再利用部品は `components/` 配下に置く。
 - HTMX を用いて部分更新（カレンダー/モーダル/テーブル差し替え）を行い、`HX-Trigger` によるイベントでリロードを指示する。
+- JSON APIとHTMX write adapterはURL/transportを分離し、page/HTMX routeがForm入力・HTML fragment・`HX-*` headerを担当する。business ruleは共通serviceを呼ぶ。
 - Alpine.js は軽量な UI 反応を補完する。スタイルは DaisyUI/Tailwind 生成物を前提とし、生成 CSS 直接編集は避ける。
 
 ## 認証/ログインフロー
@@ -19,8 +20,10 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 - `/`（`pages/top.html`）：初期表示は空のコンテナ。`hx-get="/calendar"` で月次サマリーカレンダーを読み込み、クリックで `/calendar/day/{YYYY-MM-DD}` の勤怠詳細を表示する。
 - `/calendar`（`routers/pages/calendar.py` → `components/top/summary_calendar.html`）：月指定 `?month=YYYY-MM` に対応。ロケーションごとの色クラスを付与し、前月/次月の HTMX ナビゲーションを提供。詳細パネルは `/calendar/day/{day}` を HTMX で差し替え。
 - `/calendar/day/{day}`（`components/top/day_detail.html`）：勤怠種別ごと、またはグループごとにユーザーを並べる。モーダル経由の編集/削除後は `refreshAttendance`/`refreshUserAttendance` トリガーでカレンダーとユーザーカレンダーを再読込する。
-- `/attendance/weekly`（`pages/attendance.html`）：週次カレンダーを SSR し、セルクリックで勤怠モーダルを開く。CRUD は `/api/v1/attendances` を呼び、成功時の `HX-Trigger`（`closeModal` `refreshAttendance`）を前提に UI を更新。
-- `/attendance/monthly`（`pages/register.html`）：ユーザー一覧（左）とユーザー別カレンダー（右）。ユーザー選択で `/attendance/monthly/users/{user_id}` を HTMX 取得し、勤怠 CRUD のトリガーは `refreshUserAttendance` でモーダル後に再描画される。API は `/api/v1/attendances` を利用。モーダルは `/attendance/modals/{user_id}/{date}` を利用し、`mode=register` クエリで月次 UI 用の文言を切り替える。
+- `/attendance/weekly`（`pages/attendance.html`）：週次カレンダーを SSR し、セルクリックで勤怠モーダルを開く。modalの作成/更新/削除は `/attendance/entries` page/HTMX adapterを呼び、成功時の `HX-Trigger`（`closeModal` `refreshAttendance` `refreshUserAttendance`）でUIを更新する。
+- `/attendance/monthly`（`pages/register.html`）：ユーザー一覧（左）とユーザー別カレンダー（右）。ユーザー選択で `/attendance/monthly/users/{user_id}` を HTMX 取得し、勤怠modalは `/attendance/modals/{user_id}/{date}`、writeは `/attendance/entries` を利用する。`mode=register` クエリで月次UI用の文言を切り替える。
+- 勤怠write後のrefresh対象月/週は変更対象の日付から導出する。`Referer`やテスト専用headerを表示状態のsourceとして使用しない。
+- page/HTMX writeのapplication errorはHTML fragmentとしてmodal内のerror領域へretargetし、JSON API errorをHTML targetへ流用しない。
 
 ## マスタ管理 UI
 - `/users`（`pages/user.html`）：グループごとに社員一覧を表示。`/users/modal` を hx-get でロードし、作成/編集/削除は API `/api/v1/users` に委譲。モーダル閉鎖後は該当テーブルセクションのみを差し替える。
