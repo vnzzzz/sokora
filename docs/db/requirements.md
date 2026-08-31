@@ -15,10 +15,17 @@ SQLAlchemy モデル（`app/models/*.py`）を基準にしたデータ設計の�
 - 設定層では SQLAlchemy が解釈できる任意の URL を受け取れる。ただし現時点で運用・CI でサポートする backend は SQLite とし、PostgreSQL の driver・backend 固有対応は #56 で扱う。
 - `sqlite:///:memory:` は test/application 単位で同一 connection-backed DB を共有できるように扱う。
 
+## Schema lifecycle
+- schema lifecycle の SSoT は Alembic とし、application runtime から `Base.metadata.create_all()` で production schema を生成しない。
+- application startup の `initialize_database()` は、application-scoped `DatabaseRuntime` の connection を使って `alembic upgrade head` 相当の migration を実行する。そのため in-memory SQLite でも request と migration が同じ connection-backed DB を利用する。
+- 管理者が migration だけを明示実行する場合は `make migrate`（`alembic upgrade head`）を使用する。
+- 既存の Alembic revision は履歴として変更しない。旧 revision は既存schemaへの差分から始まるため、#54 で追加した baseline revision が pristine DB の現行schemaを構築する。
+- pristine DB と、#54 より前の `create_all()` で生成された現行schemaの unversioned DB は、immutable な旧 migration head を adoption point として Alembic 管理へ移行する。旧schemaの unversioned DB は従来の migration chain を通常どおり適用する。
+- 新しい model/schema 変更では既存 revision を編集せず、現在の Alembic head へ revision を追加する。
+
 ## 初期化とシーディング
-- `app/db/session.initialize_database()` は `DATABASE_URL` から生成された database runtime を使って初期化する。
-- 現時点では schema 初期化に `Base.metadata.create_all()` を残している。schema lifecycle を Alembic に一本化する変更は #54 で行うため、この互換経路を DB の恒久的な管理方式とはしない。
+- `app/db/session.migrate_database()` が schema migration、`seed_database()` が初期データ投入を担当し、schema変更とdata seedを別責務として扱う。
+- `app/db/session.initialize_database()` は startup orchestration として、先に migration を完了してから必要な場合だけ seed を呼び出す。
 - file-backed SQLite では、対象 DB ファイルが存在しない場合だけ初期データをシードする。既存 DB ファイルには自動シードしない。
 - in-memory SQLite および SQLite 以外の URL では自動シードしない。必要なデータ投入は呼び出し側または専用の seed 手順で明示的に行う。
 - シード処理は `scripts/seeding/` を使用し、デフォルトで 60 日前/後まで勤怠データを投入する。グループ/社員種別/勤務地/ユーザーの初期データが API と UI の前提になる。
-- Alembic migration も `DATABASE_URL` を参照する。既存の Alembic revision は履歴として変更せず、モデル変更時は新しい migration を追加する。

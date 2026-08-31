@@ -14,7 +14,7 @@ def test_fresh_database_initialization_creates_seeded_sqlite(tmp_path: Path) -> 
 import json
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app import models
 from app.db.session import SessionLocal, initialize_database
@@ -28,6 +28,7 @@ created_db_files = [
 assert created_db_files
 
 with SessionLocal() as db:
+    schema_revision = db.scalar(text("select version_num from alembic_version"))
     first_counts = {
         "groups": db.scalar(select(func.count()).select_from(models.Group)),
         "user_types": db.scalar(select(func.count()).select_from(models.UserType)),
@@ -48,6 +49,7 @@ print(
     + json.dumps(
         {
             "created_db_files": created_db_files,
+            "schema_revision": schema_revision,
             "first_counts": first_counts,
             "second_attendance_count": second_attendance_count,
         }
@@ -75,6 +77,7 @@ print(
     first_counts = observed["first_counts"]
 
     assert observed["created_db_files"]
+    assert observed["schema_revision"]
     assert first_counts["groups"] == 3
     assert first_counts["user_types"] == 3
     assert first_counts["locations"] == 4
