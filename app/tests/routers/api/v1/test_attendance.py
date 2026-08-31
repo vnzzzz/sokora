@@ -52,7 +52,8 @@ async def create_test_user_via_api(
 
 
 async def _attendance_references(
-    async_client: AsyncClient, suffix: str
+    async_client: AsyncClient,
+    suffix: str,
 ) -> tuple[str, int]:
     group_id = await create_test_group_via_api(async_client, f"Group {suffix}")
     user_type_id = await create_test_user_type_via_api(
@@ -65,9 +66,7 @@ async def _attendance_references(
         group_id,
         user_type_id,
     )
-    location_id = await create_test_location_via_api(
-        async_client, f"Location {suffix}"
-    )
+    location_id = await create_test_location_via_api(async_client, f"Location {suffix}")
     return user_id, location_id
 
 
