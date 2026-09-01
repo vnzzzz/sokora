@@ -1,8 +1,9 @@
-{% import "components/macros/ui.html" as ui %}
+{% import "components/macros/modal.html" as modal_ui %}
+{% import "components/macros/forms.html" as form_ui %}
 
 {% set is_edit = holiday and holiday.id %}
 
-{% call ui.modal_form(
+{% call modal_ui.modal_form(
   id          = modal_id,
   title       = is_edit and "祝日を編集" or "祝日を追加",
   action      = is_edit and ("/holidays/" ~ holiday.id) or "/holidays",
@@ -11,7 +12,7 @@
   size="sm"
 ) %}
 
-  {{ ui.form_errors(errors) if errors else "" }}
+  {{ form_ui.form_errors(errors) if errors else "" }}
 
   <label class="label"><span class="label-text">日付</span></label>
   <input
