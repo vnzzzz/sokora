@@ -10,10 +10,8 @@
   </head>
 
   <body class="min-h-screen bg-base-100">
-    <!-- テーマ切替ボタン -->
     {% include "components/common/theme_switcher.html" %}
 
-    <!-- レイアウト -->
     {% set current_path = request.url.path if request else "" %}
     {% set auth_enabled = request.app.state.auth_enabled if request and request.app else True %}
     {% set auth_session = request.session.get("auth") if request and request.session else None %}
@@ -31,15 +29,13 @@
         x-init="$watch('isSidebarOpen', value => localStorage.setItem('sidebarOpen', value))"
         x-cloak
       >
-        <!-- サイドバー -->
         {% include "components/common/sidebar.html" with context %}
 
-        <!-- メインコンテンツ -->
         <main
           class="relative flex-1 py-2 px-3 pt-14 transition-all duration-300 ease-in-out"
           :class="{
-            'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen, {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
-            'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen       {# 左右padding 0.75rem*2 = 1.5rem を考慮 #}
+            'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen,
+            'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen
           }"
         >
           {% if show_user_menu %}
@@ -95,76 +91,13 @@
       </main>
     {% endif %}
 
-    <!-- Modal container -->
     <div id="modal-container"></div>
+    <div id="ui-message-container" class="toast toast-top toast-end z-[100]"></div>
 
-    <!-- JavaScript -->
-    <!-- 共通スクリプト -->
-    <script src="{{ url_for('static', path='js/modal.js') }}"></script>
+    <script src="{{ url_for('static', path='js/ui-events.js') }}" defer></script>
+    <script src="{{ url_for('static', path='js/attendance-interactions.js') }}" defer></script>
 
     {% block extra_scripts %}
-    <!-- ページ固有のスクリプトはここに挿入されます -->
     {% endblock %}
-
-    <script>
-      // HTMXイベントリスナー (モーダルクローズ用)
-      document.body.addEventListener('htmx:beforeSwap', function (event) {
-        // ステータスコードで成功判定 (2xx)
-        if (event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) {
-          const triggerHeader = event.detail.xhr.getResponseHeader('HX-Trigger')
-          if (triggerHeader) {
-            // まずJSONとして解析を試みる
-            try {
-              const triggers = JSON.parse(triggerHeader)
-
-              // closeModal イベントを探す
-              if (triggers && triggers.closeModal) {
-                const modalId = triggers.closeModal
-                const modalElement = document.getElementById(modalId)
-
-                if (modalElement) {
-                  // HTMXにDOMの変更をさせないように指示
-                  event.detail.shouldSwap = false
-                  // モーダル要素を削除
-                  modalElement.remove()
-
-                  // ページリフレッシュイベントがあれば実行
-                  if (triggers.refreshPage) {
-                    setTimeout(() => {
-                      window.location.reload()
-                    }, 100)
-                  }
-                } else if (triggers && triggers.removeRow) {
-                  const row = document.getElementById(triggers.removeRow)
-                  if (row) {
-                    row.remove()
-                  }
-                } else {
-                  console.warn('[htmx:beforeSwap] Modal element not found for ID:', modalId)
-                }
-              }
-            } catch (e) {
-              // openModal: 処理
-              if (triggerHeader.startsWith('openModal:')) {
-                const modalId = triggerHeader.split(':')[1]
-                // モーダルを開くのはmodal.jsで処理するので何もしない
-              }
-              // closeModal: 処理
-              else if (triggerHeader.startsWith('closeModal:')) {
-                const modalId = triggerHeader.split(':')[1]
-                const modalElement = document.getElementById(modalId)
-
-                if (modalElement) {
-                  // HTMXにDOMの変更をさせないように指示
-                  event.detail.shouldSwap = false
-                  // モーダル要素を削除
-                  modalElement.remove()
-                } 
-              }
-            }
-          }
-        }
-      })
-    </script>
   </body>
 </html>
