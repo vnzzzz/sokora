@@ -64,33 +64,37 @@ def generate_work_entries_csv_rows(
     date_headers = _generate_date_headers(month)
     yield ["user_name", "user_id", "group_name", "user_type", *date_headers]
 
-    users_data = crud_user.get_all_users_with_details(db)
-    if not users_data:
-        logger.info("CSV生成: 対象ユーザーが見つかりませんでした。")
-        return
+    try:
+        users_data = crud_user.get_all_users_with_details(db)
+        if not users_data:
+            logger.info("CSV生成: 対象ユーザーが見つかりませんでした。")
+            return
 
-    date_range_start: Optional[date] = None
-    date_range_end: Optional[date] = None
-    if date_headers:
-        date_range_start = datetime.strptime(date_headers[0], "%Y/%m/%d").date()
-        date_range_end = datetime.strptime(date_headers[-1], "%Y/%m/%d").date()
+        date_range_start: Optional[date] = None
+        date_range_end: Optional[date] = None
+        if date_headers:
+            date_range_start = datetime.strptime(date_headers[0], "%Y/%m/%d").date()
+            date_range_end = datetime.strptime(date_headers[-1], "%Y/%m/%d").date()
 
-    attendance_data = attendance_read_service.get_attendance_data_for_csv(
-        db,
-        start_date=date_range_start,
-        end_date=date_range_end,
-    )
+        attendance_data = attendance_read_service.get_attendance_data_for_csv(
+            db,
+            start_date=date_range_start,
+            end_date=date_range_end,
+        )
 
-    for user_name, user_id, group_name, user_type_name in users_data:
-        row_data = [
-            user_name or "",
-            user_id or "",
-            group_name or "",
-            user_type_name or "",
-        ]
-        for date_str_header in date_headers:
-            db_date_str = datetime.strptime(date_str_header, "%Y/%m/%d").strftime(
-                "%Y-%m-%d"
-            )
-            row_data.append(attendance_data.get(f"{user_id}_{db_date_str}", ""))
-        yield row_data
+        for user_name, user_id, group_name, user_type_name in users_data:
+            row_data = [
+                user_name or "",
+                user_id or "",
+                group_name or "",
+                user_type_name or "",
+            ]
+            for date_str_header in date_headers:
+                db_date_str = datetime.strptime(date_str_header, "%Y/%m/%d").strftime(
+                    "%Y-%m-%d"
+                )
+                row_data.append(attendance_data.get(f"{user_id}_{db_date_str}", ""))
+            yield row_data
+    except Exception as exc:
+        logger.error("CSV行生成中にエラー: %s", exc, exc_info=True)
+        yield ["Error generating CSV data"]

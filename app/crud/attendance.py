@@ -18,6 +18,10 @@ from .base import CRUDBase
 class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
     """Attendance rowのCRUDとread queryだけを担当する。"""
 
+    def list_all(self, db: Session) -> List[Attendance]:
+        """全勤怠recordをpaginationなしで取得する。"""
+        return list(db.query(Attendance).all())
+
     def get_by_user_and_date(
         self, db: Session, *, user_id: str, date: date
     ) -> Optional[Attendance]:

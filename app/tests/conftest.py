@@ -25,13 +25,6 @@ from app.main import app as main_app
 @pytest.fixture(scope="function")
 def db() -> Generator[Session, None, None]:
     """テスト関数ごとにインメモリDBとセッションを作成・提供するフィクスチャ"""
-    from app.crud.attendance import attendance as crud_attendance
-
-    # 日次キャッシュはCRUDインスタンスで共有されるため、独立したin-memory DBを
-    # 作るタイミングで前のテストのキャッシュを持ち越さないようにする。
-    crud_attendance._day_data_cache.clear()
-    crud_attendance._cache_timestamp.clear()
-
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -56,8 +49,6 @@ def db() -> Generator[Session, None, None]:
     try:
         yield db_session  # テスト関数にセッションを提供
     finally:
-        crud_attendance._day_data_cache.clear()
-        crud_attendance._cache_timestamp.clear()
         Base.metadata.drop_all(bind=engine)  # テーブル削除
         db_session.close()
 

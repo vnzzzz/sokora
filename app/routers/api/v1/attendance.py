@@ -22,7 +22,7 @@ router = APIRouter(tags=["Attendance"])
 @router.get("", response_model=AttendanceList)
 def get_attendances(db: Session = Depends(get_db)) -> Any:
     """全勤怠レコードをJSON APIのrecords形式で返す。"""
-    return {"records": crud.attendance.get_multi(db, limit=100_000)}
+    return {"records": crud.attendance.list_all(db)}
 
 
 @router.get("/day/{day}")

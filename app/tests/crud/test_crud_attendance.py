@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -28,6 +28,27 @@ def _user(db: Session, *, user_id: str) -> models.User:
     )
     db.commit()
     return created
+
+
+def test_list_all_is_not_capped_by_base_default_limit(db_with_data: Session) -> None:
+    db = db_with_data
+    _, _, location = _references(db)
+    user = _user(db, user_id="list-all-user")
+    start_date = date(2030, 1, 1)
+
+    for offset in range(101):
+        crud.attendance.create(
+            db,
+            obj_in=schemas.AttendanceCreate(
+                user_id=str(user.id),
+                date=start_date + timedelta(days=offset),
+                location_id=int(location.id),
+            ),
+        )
+    db.commit()
+
+    rows = crud.attendance.list_all(db)
+    assert len(rows) == 101
 
 
 def test_get_by_user_and_date_and_user_projection(db_with_data: Session) -> None:
