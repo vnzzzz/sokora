@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.crud import custom_holiday as crud_custom_holiday
 from app.db.session import get_db
+from app.models import CustomHoliday
 from app.routers.pages.master_crud import MasterCrudResponder
 from app.services import custom_holiday_service
 from app.services.errors import ApplicationError
@@ -24,7 +25,7 @@ responder = MasterCrudResponder(
 )
 
 
-def _get_holiday_or_404(db: Session, holiday_id: int):
+def _get_holiday_or_404(db: Session, holiday_id: int) -> CustomHoliday:
     holiday = crud_custom_holiday.get(db, id=holiday_id)
     if holiday is None:
         raise HTTPException(
