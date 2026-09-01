@@ -48,7 +48,9 @@ def get_user_master_page_view_model(db: Session) -> UserMasterPageViewModel:
                 else 0
             )
             group_id = (
-                int(group.id) if group is not None and group.id is not None else 0
+                int(group.id)
+                if group is not None and group.id is not None
+                else 0
             )
             group_sort_keys[group_name] = (
                 group is None or group.order is None,
