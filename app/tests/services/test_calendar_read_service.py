@@ -6,6 +6,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.schemas.user_type import UserTypeCreate
 from app.services import calendar_read_service
 
 
@@ -112,11 +113,11 @@ def test_day_detail_uses_one_select_and_orders_view_model(
     )
     later_type = crud.user_type.create(
         db,
-        obj_in=schemas.UserTypeCreate(name="Calendar Type Later", order=20),
+        obj_in=UserTypeCreate(name="Calendar Type Later", order=20),
     )
     first_type = crud.user_type.create(
         db,
-        obj_in=schemas.UserTypeCreate(name="Calendar Type First", order=10),
+        obj_in=UserTypeCreate(name="Calendar Type First", order=10),
     )
     assert first_group.id is not None and second_group.id is not None
     assert later_type.id is not None and first_type.id is not None
