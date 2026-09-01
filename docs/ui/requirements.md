@@ -34,7 +34,7 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 
 ## CSV と分析
 - `/csv`（`pages/csv.html`）：月選択とエンコーディング選択 UI。ダウンロードボタンが `/api/v1/csv/download` にクエリを付けてリダイレクトする。UI 側では単純なフォームで、バリデーションは API に委譲。
-- `/analysis`（`pages/analysis.html`）：勤怠集計ビュー。月/年モードの切替、グループ・勤怠種別の複数選択に対応し、テーブルは勤怠種別ごとの件数を表示する。表示順はロケーション `order` やグループ/社員種別の並び順を尊重する。詳細モードでは特定勤怠種別のユーザー別内訳を表示する。
+- `/analysis`（`pages/analysis.html`）：勤怠集計ビュー。routerは月/年度のHTTP入力とrenderのみを担当し、期間決定・集計・location category・group/user-type sorting・ユーザー行/date detailのview model生成はanalysis service/read serviceへ委譲する。月/年モード切替と勤怠種別の複数選択に対応し、選択した勤怠種別の件数・登録日付内訳を既存`analysis.js` interactionで更新する。
 
 ## 相互参照
 - API 呼び出しの前提やレスポンス構造は [API 要件](../api/requirements.md) を参照。

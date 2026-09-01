@@ -1,0 +1,51 @@
+<div class="mb-4 p-3 bg-base-100 border border-base-300 rounded-lg">
+  <div class="flex flex-wrap items-center gap-4">
+    <div class="flex items-center space-x-4">
+      <span class="text-sm font-medium">対象期間:</span>
+      <label class="flex items-center space-x-1 cursor-pointer" for="period-month">
+        <input
+          type="radio"
+          id="period-month"
+          name="period-type"
+          value="month"
+          class="radio radio-sm"
+          {% if not is_year_mode %}checked{% endif %}
+        />
+        <span class="text-sm">月別</span>
+      </label>
+      <label class="flex items-center space-x-1 cursor-pointer" for="period-year">
+        <input
+          type="radio"
+          id="period-year"
+          name="period-type"
+          value="year"
+          class="radio radio-sm"
+          {% if is_year_mode %}checked{% endif %}
+        />
+        <span class="text-sm">年度別</span>
+      </label>
+    </div>
+
+    <div id="month-selection" class="{% if is_year_mode %}hidden{% endif %}">
+      <input
+        type="month"
+        id="month-input"
+        class="input input-bordered input-sm w-48"
+        value="{{ current_month or '' }}"
+      />
+    </div>
+
+    <div id="year-selection" class="{% if not is_year_mode %}hidden{% endif %}">
+      <div class="flex items-center gap-2">
+        <select id="year-select" class="select select-bordered select-sm w-32">
+          {% for year_option in year_options %}
+          <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
+            {{ year_option }}年度
+          </option>
+          {% endfor %}
+        </select>
+        <span class="text-xs text-base-content/70">4月〜翌3月</span>
+      </div>
+    </div>
+  </div>
+</div>

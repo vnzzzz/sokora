@@ -1,0 +1,25 @@
+<div class="mb-4 p-3 bg-base-200 rounded-lg">
+  <h4 class="text-sm font-medium mb-3">勤怠種別</h4>
+
+  {% for category in location_categories %}
+  <div class="mb-3">
+    <h5 class="font-medium text-base-content mb-2 border-b pb-1 text-xs">{{ category.name }}</h5>
+    <div class="flex flex-wrap gap-3">
+      {% for location in category.locations %}
+      <label class="flex items-center space-x-2 cursor-pointer" for="location-{{ location.id }}">
+        <input
+          type="checkbox"
+          id="location-{{ location.id }}"
+          name="selected_locations"
+          value="{{ location.id }}"
+          class="checkbox checkbox-sm location-checkbox"
+          data-location-id="{{ location.id }}"
+          data-location-name="{{ location.name }}"
+        />
+        <span class="text-sm">{{ location.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>

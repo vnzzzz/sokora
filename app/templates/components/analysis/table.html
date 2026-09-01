@@ -1,0 +1,173 @@
+{% if group_sections %}
+  {% if is_year_mode %}
+  <div class="mb-6 p-4 bg-info/10 rounded-lg">
+    <div class="flex flex-wrap gap-6 text-sm">
+      <div>
+        <span class="text-base-content/70">{{ current_year }}年度 全体集計</span>
+      </div>
+      <div>
+        <span class="text-base-content/70">対象ユーザー数：</span>
+        <span class="font-bold text-info">{{ analysis_data.users|length }}人</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="mb-6">
+    <div class="overflow-x-auto w-full">
+      <table
+        class="table table-xs border-collapse"
+        style="min-width: max-content; table-layout: fixed"
+        data-testid="analysis-table"
+      >
+        <thead>
+          <tr>
+            <th
+              class="bg-base-300 text-left sticky left-0 z-20"
+              style="width: 50px; min-width: 50px; max-width: 50px"
+            ></th>
+            <th
+              class="bg-base-300 text-left sticky left-[50px] z-10 whitespace-nowrap"
+              style="width: 200px; min-width: 200px; max-width: 200px"
+            >
+              社員名
+            </th>
+            {% for location in analysis_data.locations %}
+            <th
+              class="bg-base-300 text-center p-0.5 whitespace-nowrap location-header"
+              data-location-id="{{ location.id }}"
+              style="min-width: 70px; width: 70px; display: none"
+            >
+              {{ location.name }}
+            </th>
+            {% endfor %}
+            <th
+              class="bg-base-300 text-center p-0.5 whitespace-nowrap"
+              style="min-width: 80px; width: 80px"
+            >
+              登録日数
+            </th>
+            <th
+              class="bg-base-300 text-left p-0.5 whitespace-nowrap"
+              style="min-width: 400px"
+            >
+              登録日付一覧
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for group in group_sections %}
+            {% for user_type in group.user_types %}
+            <tr class="bg-base-200/80 group-row group-header" data-group-name="{{ group.name }}">
+              <td
+                class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top"
+                style="width: 50px; min-width: 50px; max-width: 50px"
+              >
+                {% if loop.first %}{{ group.name }}{% endif %}
+              </td>
+              <td
+                class="font-medium text-xs py-1 px-2 text-base-content/70 sticky left-[50px] z-10 bg-base-200/80"
+                style="width: 200px; min-width: 200px; max-width: 200px"
+              >
+                {{ user_type.name }}
+              </td>
+              {% for location in analysis_data.locations %}
+              <td
+                class="bg-base-200/80 location-cell"
+                data-location-id="{{ location.id }}"
+                style="min-width: 70px; width: 70px; display: none"
+              ></td>
+              {% endfor %}
+              <td class="bg-base-200/80" style="min-width: 80px; width: 80px"></td>
+              <td class="bg-base-200/80" style="min-width: 400px"></td>
+            </tr>
+
+              {% for user in user_type.users %}
+              <tr
+                class="hover:bg-base-300/30 group-row user-row"
+                data-group-name="{{ group.name }}"
+                data-user-name="{{ user.user_name|lower }}"
+              >
+                <td
+                  class="sticky left-0 z-20 bg-base-100"
+                  style="width: 50px; min-width: 50px; max-width: 50px"
+                ></td>
+                <td
+                  class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1"
+                  style="width: 200px; min-width: 200px; max-width: 200px"
+                >
+                  {{ user.user_name }}
+                </td>
+
+                {% for cell in user.location_cells %}
+                <td
+                  class="text-center p-0.5 location-cell"
+                  data-location-id="{{ cell.location_id }}"
+                  style="min-width: 70px; width: 70px; display: none"
+                >
+                  {% if cell.count > 0 %}
+                  <span class="text-base font-medium text-base-content">{{ cell.count }}</span>
+                  {% else %}
+                  <span class="text-base-content/30">-</span>
+                  {% endif %}
+                </td>
+                {% endfor %}
+
+                <td
+                  class="text-center p-0.5 detail-count-cell"
+                  style="min-width: 80px; width: 80px"
+                >
+                  <span class="{{ 'badge badge-primary badge-sm' if user.total_days else 'text-base-content/30' }}">
+                    {{ user.total_days if user.total_days else '-' }}
+                  </span>
+                </td>
+                <td
+                  class="text-left p-0.5 detail-dates-cell"
+                  style="min-width: 400px"
+                  data-user-id="{{ user.user_id }}"
+                >
+                  <div class="grid grid-cols-[140px,1fr] gap-x-2 gap-y-1 text-sm">
+                    {% if user.date_groups %}
+                      {% for date_group in user.date_groups %}
+                      <div class="font-medium text-base-content whitespace-nowrap">
+                        {{ date_group.location_name }}
+                      </div>
+                      <div class="flex flex-wrap gap-1">
+                        {% for date_info in date_group.dates %}
+                        <span class="badge badge-ghost badge-sm" title="{{ date_info.date_str }}">
+                          {{ date_info.date_simple }}
+                        </span>
+                        {% endfor %}
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                    <span class="text-base-content/30">-</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+<div class="alert alert-info shadow-sm">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    class="stroke-current shrink-0 w-6 h-6"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    ></path>
+  </svg>
+  <span>{{ empty_message }}</span>
+</div>
+{% endif %}
