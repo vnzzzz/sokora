@@ -13,10 +13,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import logger
-from app.crud.attendance import attendance
 from app.db.session import get_db
+from app.services import attendance_analysis_service
 
-# ルーター定義
 router = APIRouter(prefix="/analysis", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
@@ -29,25 +28,11 @@ def get_analysis_page(
     detail_location_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """勤怠集計ページを表示します
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        month: 月（YYYY-MM形式、指定がない場合は現在の月）
-        year: 年（指定がある場合は年ベースの集計表示）
-        detail_location_id: 詳細表示する勤怠種別ID（従来の詳細表示用、現在は使用されない）
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされた勤怠集計HTML
-    """
+    """勤怠集計ページを表示します。"""
     try:
-        # 現在日付を取得
         from datetime import datetime
 
         current_date = datetime.now()
-
-        # モード判定: year クエリパラメータ、または mode=year があれば年度集計
         query_params = dict(request.query_params)
         mode_param = query_params.get("mode")
         fiscal_default = (
@@ -58,16 +43,15 @@ def get_analysis_page(
         target_fiscal_year = year if year is not None else fiscal_default
 
         if is_year_mode:
-            analysis_data = attendance.get_attendance_analysis_data(
+            analysis_data = attendance_analysis_service.get_attendance_analysis_data(
                 db, fiscal_year=target_fiscal_year
             )
         else:
             month_value = month or f"{current_date.year}-{current_date.month:02d}"
-            analysis_data = attendance.get_attendance_analysis_data(
+            analysis_data = attendance_analysis_service.get_attendance_analysis_data(
                 db, month=month_value
             )
 
-        # ナビゲーション用に前月・次月を計算（月次モードのみ）
         prev_month = next_month = None
         if analysis_data["period"]["month"]:
             from dateutil.relativedelta import relativedelta
@@ -75,13 +59,11 @@ def get_analysis_page(
             current_month = analysis_data["period"]["month"]
             year_num, month_num = map(int, current_month.split("-"))
             current_date_for_nav = datetime(year_num, month_num, 1)
-
             prev_month_date = current_date_for_nav - relativedelta(months=1)
             next_month_date = current_date_for_nav + relativedelta(months=1)
             prev_month = f"{prev_month_date.year}-{prev_month_date.month:02d}"
             next_month = f"{next_month_date.year}-{next_month_date.month:02d}"
 
-        # グループと社員種別の情報を取得してソート用の情報を準備
         from app.crud.group import group as group_crud
         from app.crud.user_type import user_type as user_type_crud
 
@@ -99,7 +81,6 @@ def get_analysis_page(
                 int(user_type.id),
             )
 
-        # グループ別にユーザーを整理
         grouped_users: Dict[str, List[Tuple[str, Dict[str, Any]]]] = {}
         group_user_types: Dict[str, List[str]] = {}
 
@@ -110,15 +91,12 @@ def get_analysis_page(
                 group_user_types[group_name] = []
             grouped_users[group_name].append((user_id, user_info))
 
-        # 各グループ内でユーザーを社員種別順にソート
         for group_name in grouped_users:
             grouped_users[group_name].sort(
-                key=lambda x: user_type_sort_info.get(
-                    str(x[1]["user_type_name"] or ""), (999, 999)
+                key=lambda item: user_type_sort_info.get(
+                    str(item[1]["user_type_name"] or ""), (999, 999)
                 )
             )
-
-            # このグループの社員種別リストを作成（順序付き、重複なし）
             user_types_in_group: List[str] = []
             seen_types = set()
             for _, user_info in grouped_users[group_name]:
@@ -128,13 +106,12 @@ def get_analysis_page(
                     seen_types.add(user_type_name)
             group_user_types[group_name] = user_types_in_group
 
-        # グループ名をorder順にソート
         sorted_group_names = sorted(
-            grouped_users.keys(), key=lambda x: group_sort_info.get(str(x), (999, 999))
+            grouped_users.keys(),
+            key=lambda item: group_sort_info.get(str(item), (999, 999)),
         )
 
-        # 選択肢
-        month_options = [f"{m:02d}" for m in range(1, 13)]
+        month_options = [f"{month_num:02d}" for month_num in range(1, 13)]
         year_options = list(range(fiscal_default - 3, fiscal_default + 4))
         current_month_value = (
             analysis_data["period"]["month"]
@@ -159,14 +136,11 @@ def get_analysis_page(
             "location_details": analysis_data.get("location_details", {}),
             "group_summary": analysis_data.get("group_summary", {}),
         }
-
         return templates.TemplateResponse("pages/analysis.html", context)
-
-    except Exception as e:
+    except Exception as exc:
         logger.error(
-            f"勤怠集計ページ表示中にエラーが発生しました: {str(e)}", exc_info=True
+            "勤怠集計ページ表示中にエラーが発生しました: %s", exc, exc_info=True
         )
-        # エラー時は空のデータで表示
         error_context: Dict[str, Any] = {
             "request": request,
             "analysis_data": {

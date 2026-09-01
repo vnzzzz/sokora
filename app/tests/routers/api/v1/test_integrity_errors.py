@@ -19,10 +19,10 @@ async def test_integrity_conflict_is_returned_as_409_without_db_error_details(
 
     response = await async_client.post(
         "/api/v1/attendances",
-        data={
+        json={
             "user_id": "race-user",
             "date": "2030-01-01",
-            "location_id": "1",
+            "location_id": 1,
         },
     )
 

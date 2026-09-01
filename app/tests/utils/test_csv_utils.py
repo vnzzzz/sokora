@@ -142,9 +142,9 @@ class TestGenerateWorkEntriesCsvRows:
         self.mock_db = MagicMock(spec=Session)
 
     @patch("app.utils.csv_utils.crud_user")
-    @patch("app.utils.csv_utils.crud_attendance")
+    @patch("app.utils.csv_utils.attendance_read_service")
     def test_generate_work_entries_csv_rows_with_data(
-        self, mock_crud_attendance: Any, mock_crud_user: Any
+        self, mock_attendance_read_service: Any, mock_crud_user: Any
     ) -> None:
         """generate_work_entries_csv_rows関数のテスト（データあり）"""
         # モックデータの準備
@@ -153,7 +153,7 @@ class TestGenerateWorkEntriesCsvRows:
             ("佐藤花子", "user002", "開発部", "契約社員"),
         ]
 
-        mock_crud_attendance.get_attendance_data_for_csv.return_value = {
+        mock_attendance_read_service.get_attendance_data_for_csv.return_value = {
             "user001_2024-02-01": "オフィス",
             "user001_2024-02-02": "リモート",
             "user002_2024-02-01": "リモート",
@@ -188,9 +188,9 @@ class TestGenerateWorkEntriesCsvRows:
         assert rows[2][5] == ""  # 2024/02/02
 
     @patch("app.utils.csv_utils.crud_user")
-    @patch("app.utils.csv_utils.crud_attendance")
+    @patch("app.utils.csv_utils.attendance_read_service")
     def test_generate_work_entries_csv_rows_no_users(
-        self, mock_crud_attendance: Any, mock_crud_user: Any
+        self, mock_attendance_read_service: Any, mock_crud_user: Any
     ) -> None:
         """generate_work_entries_csv_rows関数のテスト（ユーザーなし）"""
         mock_crud_user.get_all_users_with_details.return_value = []
@@ -202,15 +202,15 @@ class TestGenerateWorkEntriesCsvRows:
         assert rows[0][0] == "user_name"
 
     @patch("app.utils.csv_utils.crud_user")
-    @patch("app.utils.csv_utils.crud_attendance")
+    @patch("app.utils.csv_utils.attendance_read_service")
     def test_generate_work_entries_csv_rows_no_month(
-        self, mock_crud_attendance: Any, mock_crud_user: Any
+        self, mock_attendance_read_service: Any, mock_crud_user: Any
     ) -> None:
         """generate_work_entries_csv_rows関数のテスト（月指定なし）"""
         mock_crud_user.get_all_users_with_details.return_value = [
             ("テストユーザー", "test001", "テスト部", "テスト")
         ]
-        mock_crud_attendance.get_attendance_data_for_csv.return_value = {}
+        mock_attendance_read_service.get_attendance_data_for_csv.return_value = {}
 
         with patch("app.utils.csv_utils.date") as mock_date:
             mock_date.today.return_value = datetime.date(2024, 3, 15)
@@ -238,9 +238,9 @@ class TestGenerateWorkEntriesCsvRows:
         assert rows[1][0] == "Error generating CSV data"  # エラー行
 
     @patch("app.utils.csv_utils.crud_user")
-    @patch("app.utils.csv_utils.crud_attendance")
+    @patch("app.utils.csv_utils.attendance_read_service")
     def test_generate_work_entries_csv_rows_none_values(
-        self, mock_crud_attendance: Any, mock_crud_user: Any
+        self, mock_attendance_read_service: Any, mock_crud_user: Any
     ) -> None:
         """generate_work_entries_csv_rows関数のテスト（None値処理）"""
         # None値を含むデータ
@@ -248,7 +248,7 @@ class TestGenerateWorkEntriesCsvRows:
             (None, None, None, None),
             ("田中太郎", "user001", None, "正社員"),
         ]
-        mock_crud_attendance.get_attendance_data_for_csv.return_value = {}
+        mock_attendance_read_service.get_attendance_data_for_csv.return_value = {}
 
         rows = list(generate_work_entries_csv_rows(self.mock_db, "2024-01"))
 
