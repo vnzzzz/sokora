@@ -1,6 +1,7 @@
-{% import "components/macros/ui.html" as ui %}
+{% import "components/macros/modal.html" as modal_ui %}
+{% import "components/macros/forms.html" as form_ui %}
 
-{% call ui.modal_form(
+{% call modal_ui.modal_form(
   id          = modal_id,
   title       = group.id and "グループ編集" or "グループ追加",
   action      = group.id and ("/groups/" ~ group.id) or "/groups",
@@ -9,7 +10,7 @@
   size="sm"
 ) %}
 
-  {{ ui.form_errors(errors) if errors else "" }}
+  {{ form_ui.form_errors(errors) if errors else "" }}
 
   <label class="label"><span class="label-text">グループ名</span></label>
   <input
