@@ -48,6 +48,8 @@ session cookie contract:
 - TTL: `SOKORA_AUTH_SESSION_TTL_SECONDS`
 - signing secret: `SOKORA_AUTH_SESSION_SECRET`。productionでは十分にランダムなsecretをdeployment secret storeから注入する
 
+multi-replica構成では `SOKORA_AUTH_SESSION_SECRET` と認証/OIDC設定を全replicaへ同一値で注入する。replicaごとに異なるsession secretを設定すると、別replicaへrouteされたrequestで署名済みcookieを検証できない。
+
 RP-Initiated Logoutはdiscoveryされた `end_session_endpoint` がある場合に利用し、registered post-logout redirect URIと `client_id` を渡す。applicationはID tokenをcookieへ保持しないため `id_token_hint` に依存しない。IdP側が追加のconfirmation/policyを要求する場合はprovider設定で扱う。end-session endpointが無い、またはprovider logoutが利用できない場合でもapplication sessionは破棄する。
 
 local admin loginはSSO障害時の管理用fallbackとして明示的に選択する経路で、自動failoverではない。`SOKORA_LOCAL_AUTH_ENABLED=true` かつusername/passwordが設定された場合だけ有効にする。admin-only routeは共通authorization dependencyで保護する。
@@ -59,6 +61,8 @@ local admin loginはSSO障害時の管理用fallbackとして明示的に選択�
 local/standalone/閉域で単一instanceから利用する場合の既定backend。`sqlite:///data/sokora.db` を利用し、container実行時は `/app/data` をpersistent volumeへ置く。
 
 SQLite固有の `check_same_thread`、memory DB pool、foreign key PRAGMA はapplicationのDB runtime factoryに閉じ込め、他backendへ適用しない。
+
+SQLiteはsingle-instance contractとする。複数application replicaから同じSQLite fileを共有する構成はサポートしない。
 
 ### PostgreSQL
 
@@ -73,7 +77,22 @@ bare `postgresql://` / `postgres://` URL はproduction dependencyのPsycopg 3へ
 
 Cloud SQL for PostgreSQL、Amazon RDS/Aurora PostgreSQL、Azure Database for PostgreSQL等の差分はnetwork、DNS/socket、identity、TLS、secret injection等のdeployment adapterで吸収する。application/DB access層へprovider SDKやmetadata service依存を追加しない。
 
-PostgreSQL backendの追加はDB接続・schema lifecycleをportableにするものであり、現時点のapplication全体についてhorizontal multi-replica consistencyを保証するものではない。認証runtime設定のreplica-local stateは廃止したが、calendar/holiday/attendance等にprocess-local cacheが残るため、#86完了までは後続deployment adapterでapplication replicaを1に固定する。
+### Horizontal multi-replica consistency
+
+external PostgreSQLを全replicaで共有する場合、sokora applicationはhorizontal multi-replica runtimeを許可する。共有状態のcontractは [ADR 0003](../adr/0003-multi-replica-runtime.md) を参照する。
+
+- attendance/calendarのDB由来read resultはprocess-global cacheへ保持しない。write commit後に開始したreadは共有DBから現在値を読む。
+- build-timeの標準祝日cacheは同一OCI imageに含まれるimmutable assetであり、replica-local保持を許容する。
+- DBで更新可能なcustom holidayはmodule-global cacheへ保持しない。holidayを描画するrequest開始時に共有DBから読み、request-local `ContextVar` snapshotとして利用する。
+- custom holiday writeは共有DBへのcommitだけで成立し、writeを処理したreplica固有のcache invalidationを必要としない。
+- auth/runtime設定はenvironment/secret injectionをSSoTとし、`auth_state.json`等のreplica-local mutable fileを共有stateに利用しない。
+- migrationの同時startupはPostgreSQL advisory lockで直列化する。
+
+consistency contractは「write transactionのcommit完了後に開始したread requestは、どのreplicaへrouteされてもcommitted stateを観測する」とする。commit前から進行中のrequestは、そのrequestが取得したsnapshotを返し得る。全requestをlinearizableに直列化することまでは要求しない。
+
+CIではreal PostgreSQLを共有する2つのlive Uvicorn processを起動し、replica Aでcustom holiday/attendanceを書き込んだ後、replica Bのcalendar readへ反映されることを検証する。
+
+GCP/AWS/Azureのdeployment adapterは、external PostgreSQL、同一runtime auth/config、同一production imageを利用する場合にreplica数を1より大きくできる。SQLite deploymentは引き続きreplica数1とする。
 
 ## Persistent state / startup
 

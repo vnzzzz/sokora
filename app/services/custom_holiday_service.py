@@ -1,4 +1,4 @@
-"""カスタム祝日のvalidation、transaction、cache更新を扱うservice。"""
+"""カスタム祝日のvalidationとtransactionを扱うservice。"""
 
 import datetime
 from typing import Optional, cast
@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.services.transaction import transaction
-from app.utils.holiday_cache import refresh_holiday_cache
 
 
 def _validate_name(name: Optional[str]) -> None:
@@ -32,19 +31,14 @@ def _validate_date_unique(
         )
 
 
-# 祝日cacheはDBから派生するため、write transactionがcommitした後だけ再構築する。
-# 先にcacheを更新すると、rollback時にDBとcacheが異なる状態になり得る。
-
-
 def create_custom_holiday_with_validation(
     db: Session, *, custom_holiday_in: schemas.custom_holiday.CustomHolidayCreate
 ) -> models.CustomHoliday:
-    """祝日名と日付を検証して作成し、commit後に祝日cacheを更新します。"""
+    """祝日名と日付を検証して共有DBへ作成する。"""
     with transaction(db, integrity_detail="この日付は既に登録されています"):
         _validate_name(custom_holiday_in.name)
         _validate_date_unique(db, date=custom_holiday_in.date)
         created = crud.custom_holiday.create(db, obj_in=custom_holiday_in)
-    refresh_holiday_cache(db)
     return created
 
 
@@ -54,7 +48,7 @@ def update_custom_holiday_with_validation(
     custom_holiday_id: int,
     custom_holiday_in: schemas.custom_holiday.CustomHolidayUpdate,
 ) -> models.CustomHoliday:
-    """未指定項目を維持して祝日を更新し、commit後に祝日cacheを更新します。"""
+    """未指定項目を維持して共有DB上の祝日を更新する。"""
     with transaction(db, integrity_detail="この日付は既に登録されています"):
         db_obj = crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
         new_name_raw = (
@@ -81,16 +75,14 @@ def update_custom_holiday_with_validation(
             db_obj=db_obj,
             obj_in={"name": new_name, "date": new_date},
         )
-    refresh_holiday_cache(db)
     return updated
 
 
 def delete_custom_holiday(
     db: Session, *, custom_holiday_id: int
 ) -> models.CustomHoliday:
-    """カスタム祝日を削除し、commit後に祝日cacheを更新します。"""
+    """共有DBからカスタム祝日を削除する。"""
     with transaction(db):
         crud.custom_holiday.get_or_404(db, id=custom_holiday_id)
         deleted = crud.custom_holiday.remove(db, id=custom_holiday_id)
-    refresh_holiday_cache(db)
     return deleted

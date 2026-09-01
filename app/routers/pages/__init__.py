@@ -5,7 +5,7 @@
 HTMLページ表示に関連するルートハンドラーをまとめたパッケージ
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.routers.pages.analysis import router as analysis_router
 from app.routers.pages.attendance import router as attendance_router
@@ -13,6 +13,7 @@ from app.routers.pages.attendance_mutation import router as attendance_mutation_
 from app.routers.pages.auth import router as auth_router
 from app.routers.pages.calendar import router as calendar_router
 from app.routers.pages.csv import router as csv_router
+from app.routers.pages.dependencies import bind_custom_holiday_read_snapshot
 from app.routers.pages.group import router as group_router
 from app.routers.pages.holiday import router as holiday_router
 from app.routers.pages.location import router as location_router
@@ -22,17 +23,18 @@ from app.routers.pages.user import router as user_router
 from app.routers.pages.user_type import router as user_type_router
 
 router = APIRouter(include_in_schema=False)
+holiday_read_dependencies = [Depends(bind_custom_holiday_read_snapshot)]
 
 router.include_router(auth_router)
 router.include_router(top_router)
 router.include_router(user_router)
-router.include_router(attendance_router)
+router.include_router(attendance_router, dependencies=holiday_read_dependencies)
 router.include_router(attendance_mutation_router)
-router.include_router(calendar_router)
+router.include_router(calendar_router, dependencies=holiday_read_dependencies)
 router.include_router(location_router)
 router.include_router(group_router)
 router.include_router(user_type_router)
 router.include_router(csv_router)
-router.include_router(register_router)
+router.include_router(register_router, dependencies=holiday_read_dependencies)
 router.include_router(analysis_router)
 router.include_router(holiday_router)
