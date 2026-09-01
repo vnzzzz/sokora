@@ -16,6 +16,7 @@ from .custom_holiday import CustomHoliday, CustomHolidayCreate, CustomHolidayUpd
 from .group import Group, GroupCreate, GroupList, GroupUpdate
 from .location import Location, LocationCreate, LocationList, LocationUpdate
 from .user import User, UserCreate, UserList, UserUpdate
+from .user_type import UserType, UserTypeCreate, UserTypeList, UserTypeUpdate
 
 __all__ = [
     "User",
@@ -35,6 +36,10 @@ __all__ = [
     "GroupCreate",
     "GroupUpdate",
     "GroupList",
+    "UserType",
+    "UserTypeCreate",
+    "UserTypeUpdate",
+    "UserTypeList",
     "CustomHoliday",
     "CustomHolidayCreate",
     "CustomHolidayUpdate",

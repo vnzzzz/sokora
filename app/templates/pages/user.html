@@ -1,5 +1,4 @@
-{% extends "layout/base.html" %} {% set title_text = "社員管理" %} {% import "components/macros/ui.html" as ui %} {%
-block content %}
+{% extends "layout/base.html" %} {% set title_text = "社員管理" %} {% block content %}
 <div class="p-4">
   <div class="flex justify-between items-center max-w-4xl mb-4">
     <div>
@@ -60,9 +59,9 @@ block content %}
             </tr>
           </thead>
           <tbody id="user-table-body-{{ group_name|urlencode }}">
-            {% for user_name, user_id, user_type_id, user_obj in grouped_users[group_name] %} {% with user=user_obj,
-            groups=groups, user_types=user_types %} {% include "components/user/_user_row.html" %} {% endwith %} {%
-            endfor %}
+            {% for user in grouped_users[group_name] %}
+              {% include "components/user/_user_row.html" %}
+            {% endfor %}
           </tbody>
         </table>
       </div>
