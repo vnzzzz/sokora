@@ -8,4 +8,7 @@
   submit_text = "削除"
 ) %}
   <div class="text-sm text-base-content/70">この祝日はカレンダー表示から除外されます。</div>
+  {% if warning_message %}
+    <div class="text-warning text-sm mt-2">{{ warning_message }}</div>
+  {% endif %}
 {% endcall %}
