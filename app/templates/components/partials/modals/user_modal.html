@@ -1,6 +1,7 @@
-{% import "components/macros/ui.html" as ui %}
+{% import "components/macros/modal.html" as modal_ui %}
+{% import "components/macros/forms.html" as form_ui %}
 
-{% call ui.modal_form(
+{% call modal_ui.modal_form(
   id          = modal_id,
   title       = user and "社員編集" or "社員追加",
   action      = user and ("/users/" ~ user.id) or "/users",
@@ -9,13 +10,11 @@
   size        = "lg"
 ) %}
 
-  {{ ui.form_errors(errors) if errors }}
+  {{ form_ui.form_errors(errors) if errors }}
 
   {% if user %}
     <div class="mb-4">
-      <label class="label">
-        <span class="label-text">社員ID</span>
-      </label>
+      <label class="label"><span class="label-text">社員ID</span></label>
       <input
         type="text"
         name="user_id_display"
@@ -27,9 +26,7 @@
     </div>
   {% else %}
     <div class="mb-4">
-      <label class="label">
-        <span class="label-text">社員ID</span>
-      </label>
+      <label class="label"><span class="label-text">社員ID</span></label>
       <input
         type="text"
         name="id"
@@ -41,9 +38,7 @@
   {% endif %}
 
   <div class="mb-4">
-    <label class="label">
-      <span class="label-text">社員名</span>
-    </label>
+    <label class="label"><span class="label-text">社員名</span></label>
     <input
       type="text"
       name="username"
@@ -54,9 +49,7 @@
   </div>
 
   <div class="mb-4">
-    <label class="label">
-      <span class="label-text">社員種別</span>
-    </label>
+    <label class="label"><span class="label-text">社員種別</span></label>
     <select name="user_type_id" class="select select-bordered w-full" required>
       <option value="">選択してください</option>
       {% for ut in user_types %}
@@ -68,9 +61,7 @@
   </div>
 
   <div class="mb-4">
-    <label class="label">
-      <span class="label-text">所属グループ</span>
-    </label>
+    <label class="label"><span class="label-text">所属グループ</span></label>
     <select name="group_id" class="select select-bordered w-full" required>
       <option value="">選択してください</option>
       {% for g in groups %}
