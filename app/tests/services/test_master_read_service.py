@@ -3,7 +3,7 @@
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-from app import crud, models, schemas
+from app import crud, schemas
 from app.services import master_read_service
 
 
