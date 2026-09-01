@@ -1,0 +1,22 @@
+{% macro form_errors(errors, field=None) -%}
+{%- if errors %}
+  {%- if field %}
+    {%- set messages = errors.get(field, []) %}
+    {%- for message in messages %}
+<p class="text-error text-sm">{{ message }}</p>
+    {%- endfor %}
+  {%- else %}
+    {%- for field_name, messages in errors.items() %}
+      {%- for message in messages %}
+<p class="text-error text-sm">{{ field_name }}: {{ message }}</p>
+      {%- endfor %}
+    {%- endfor %}
+  {%- endif %}
+{%- endif %}
+{%- endmacro %}
+
+{% macro simple_error(error_message) -%}
+{% if error_message %}
+<div id="form-error" class="text-error text-sm mt-2">{{ error_message }}</div>
+{% endif %}
+{%- endmacro %}
