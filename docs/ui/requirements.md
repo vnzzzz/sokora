@@ -26,11 +26,13 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 - page/HTMX writeのapplication errorはHTML fragmentとしてmodal内のerror領域へretargetし、JSON API errorをHTML targetへ流用しない。
 
 ## マスタ管理 UI
-- `/users`（`pages/user.html`）：グループごとに社員一覧を表示。`/users/modal` で追加/編集モーダルを取得し、作成/編集/削除は API `/api/v1/users` に委譲。モーダル閉鎖後は該当テーブルセクションのみを差し替える。
-- `/locations`（`pages/location.html`）：カテゴリー単位のテーブル表示。`/locations/modal` から追加/編集モーダルを取得し、API `/api/v1/locations` と連動。削除もモーダル内の確認経由。
-- `/groups`（`pages/group.html`）：グループ一覧テーブル。`/groups/modal` で追加/編集モーダルを取得し、CRUD は `/api/v1/groups` と整合させる。
-- `/user-types`（`pages/user_type.html`）：社員種別一覧。`/user-types/modal` でモーダルを表示し、CRUD は `/api/v1/user_types` に委譲。
-- これらのモーダルは `hx-target="body"` `hx-swap="beforeend"` で読み込み、共通の `components/macros/ui.html` / `components/common/modal.html` を利用する。テンプレートは `components/partials/modals/` に集約する。
+- `/users`、`/groups`、`/locations`、`/user-types`、`/holidays` は同じ modal CRUD interaction contract を利用する。page/HTMX adapterがForm入力・HTML fragment・`HX-*` headerを担当し、validation/transactionは各application serviceへ委譲する。JSON APIへ内部委譲はしない。
+- 一覧ページの追加ボタンは `/{master}/modal` を `hx-target="body"` / `hx-swap="beforeend"` で取得し、`openModal` triggerでdialogを開く。編集は `/{master}/modal/{id}`、削除確認は `/{master}/delete-modal/{id}` を同じ方式で取得する。
+- create/updateはmaster page routeへの `POST` / `PUT` を `components/macros/ui.html` の `modal_form` から送る。成功時は `closeModal`、`refreshPage`、`showMessage` を同じ `HX-Trigger` に返し、一覧は共有DBから再取得する。個別row mutation endpointやprocess-localなtable stateは持たない。
+- validation/application errorはHTTP 200の同一modal fragmentとして返し、成功triggerは付けない。これにより `hx-target="closest dialog"` / `hx-swap="outerHTML"` のまま入力エラーを表示する。
+- deleteは `delete_modal_form` からpage routeへ `DELETE` し、成功時は空fragmentと `closeModal` / `refreshPage` / `showMessage` を返す。参照整合性等で削除できない場合は同じ削除確認modalへwarningを表示する。
+- 社員一覧のrelationship取得・グループ編成/並び順、および勤怠種別のcategory編成はmaster read serviceがview modelを生成する。router内でper-row lookupや表示用groupingを行わない。
+- master page間で共通するdialog shell/form/delete interactionは `components/macros/ui.html` の `modal_form` / `delete_modal_form` と `routers/pages/master_crud.py` のresponse contractを再利用する。各master固有templateは入力項目と表示列だけを所有する。
 
 ## CSV と分析
 - `/csv`（`pages/csv.html`）：月選択とエンコーディング選択 UI。ダウンロードボタンが `/api/v1/csv/download` にクエリを付けてリダイレクトする。UI 側では単純なフォームで、バリデーションは API に委譲。
