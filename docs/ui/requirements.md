@@ -18,15 +18,15 @@ Jinja2 + HTMX/Alpine.js による SSR UI の要件です。テンプレートの
 
 ## カレンダーと勤怠登録
 - `/`（`pages/top.html`）：初期表示は空のコンテナ。`hx-get="/calendar"` で月次サマリーカレンダーを読み込み、クリックで `/calendar/day/{YYYY-MM-DD}` の勤怠詳細を表示する。
-- `/calendar`（`routers/pages/calendar.py` → `components/top/summary_calendar.html`）：月指定 `?month=YYYY-MM` に対応。ロケーションごとの色クラスを付与し、前月/次月の HTMX ナビゲーションを提供。詳細パネルは `/calendar/day/{day}` を HTMX で差し替え。
-- `/calendar/day/{day}`（`components/top/day_detail.html`）：勤怠種別ごと、またはグループごとにユーザーを並べる。モーダル経由の編集/削除後は `refreshAttendance`/`refreshUserAttendance` トリガーでカレンダーとユーザーカレンダーを再読込する。
+- `/calendar`（`routers/pages/calendar.py` → `components/top/summary_calendar.html`）：月指定 `?month=YYYY-MM` に対応。routerはHTTP入力とrenderのみを担当し、DB取得・月次view model生成・ロケーション色付けはcalendar read serviceへ委譲する。DB由来の月次表示にprocess-local cacheは持たず、各readで共有DBの最新状態から構築する。
+- `/calendar/day/{day}`（`components/top/day_detail.html`）：日別read queryで勤怠・社員・グループ・社員種別・勤怠種別を一括取得し、calendar read serviceがグループ/社員種別単位へ編成する。モーダル経由の編集/削除後は `refreshAttendance`/`refreshUserAttendance` トリガーでカレンダーとユーザーカレンダーを再読込する。
 - `/attendance/weekly`（`pages/attendance.html`）：週次カレンダーを SSR し、セルクリックで勤怠モーダルを開く。modalの作成/更新/削除は `/attendance/entries` page/HTMX adapterを呼び、成功時の `HX-Trigger`（`closeModal` `refreshAttendance` `refreshUserAttendance`）でUIを更新する。
 - `/attendance/monthly`（`pages/register.html`）：ユーザー一覧（左）とユーザー別カレンダー（右）。ユーザー選択で `/attendance/monthly/users/{user_id}` を HTMX 取得し、勤怠modalは `/attendance/modals/{user_id}/{date}`、writeは `/attendance/entries` を利用する。`mode=register` クエリで月次UI用の文言を切り替える。
 - 勤怠write後のrefresh対象月/週は変更対象の日付から導出する。`Referer`やテスト専用headerを表示状態のsourceとして使用しない。
 - page/HTMX writeのapplication errorはHTML fragmentとしてmodal内のerror領域へretargetし、JSON API errorをHTML targetへ流用しない。
 
 ## マスタ管理 UI
-- `/users`（`pages/user.html`）：グループごとに社員一覧を表示。`/users/modal` を hx-get でロードし、作成/編集/削除は API `/api/v1/users` に委譲。モーダル閉鎖後は該当テーブルセクションのみを差し替える。
+- `/users`（`pages/user.html`）：グループごとに社員一覧を表示。`/users/modal` で追加/編集モーダルを取得し、作成/編集/削除は API `/api/v1/users` に委譲。モーダル閉鎖後は該当テーブルセクションのみを差し替える。
 - `/locations`（`pages/location.html`）：カテゴリー単位のテーブル表示。`/locations/modal` から追加/編集モーダルを取得し、API `/api/v1/locations` と連動。削除もモーダル内の確認経由。
 - `/groups`（`pages/group.html`）：グループ一覧テーブル。`/groups/modal` で追加/編集モーダルを取得し、CRUD は `/api/v1/groups` と整合させる。
 - `/user-types`（`pages/user_type.html`）：社員種別一覧。`/user-types/modal` でモーダルを表示し、CRUD は `/api/v1/user_types` に委譲。
