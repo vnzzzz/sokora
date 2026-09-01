@@ -42,8 +42,14 @@ def get_user_master_page_view_model(db: Session) -> UserMasterPageViewModel:
         grouped_users.setdefault(group_name, []).append(user)
 
         if group_name not in group_sort_keys:
-            group_order = int(group.order) if group is not None and group.order is not None else 0
-            group_id = int(group.id) if group is not None and group.id is not None else 0
+            group_order = (
+                int(group.order)
+                if group is not None and group.order is not None
+                else 0
+            )
+            group_id = (
+                int(group.id) if group is not None and group.id is not None else 0
+            )
             group_sort_keys[group_name] = (
                 group is None or group.order is None,
                 group_order,
