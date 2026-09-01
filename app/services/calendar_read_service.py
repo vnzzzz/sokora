@@ -63,11 +63,7 @@ def get_month_view_model(
     current_month = normalize_month(month)
     year, month_num = parse_month(current_month)
     first_day = date(year, month_num, 1)
-    last_day = date(
-        year,
-        month_num,
-        calendar_module.monthrange(year, month_num)[1],
-    )
+    last_day = date(year, month_num, calendar_module.monthrange(year, month_num)[1])
 
     attendances = calendar_crud.get_month_attendances(
         db,
@@ -141,9 +137,7 @@ def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
         user_type_name = str(row.user_type_name or "未分類")
         group_id = int(row.group_id) if row.group_id is not None else 9999
         group_order = int(row.group_order) if row.group_order is not None else 9999
-        user_type_id = (
-            int(row.user_type_id) if row.user_type_id is not None else 9999
-        )
+        user_type_id = int(row.user_type_id) if row.user_type_id is not None else 9999
         user_type_order = (
             int(row.user_type_order) if row.user_type_order is not None else 9999
         )

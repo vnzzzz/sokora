@@ -76,9 +76,7 @@ class CRUDCalendar:
         """全勤怠種別をID順で取得する。"""
         return list(db.query(Location).order_by(Location.id).all())
 
-    def get_day_attendance_rows(
-        self, db: Session, *, target_date: date
-    ) -> List[Any]:
+    def get_day_attendance_rows(self, db: Session, *, target_date: date) -> List[Any]:
         """日別表示に必要な関連情報を1 queryで取得する。"""
         return list(
             db.query(
@@ -104,4 +102,5 @@ class CRUDCalendar:
         )
 
 
-calendar_crud = CRUDCalendar()
+calendar = CRUDCalendar()
+calendar_crud = calendar
