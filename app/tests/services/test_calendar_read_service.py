@@ -111,6 +111,10 @@ def test_day_detail_uses_one_select_and_orders_view_model(
         db,
         obj_in=schemas.GroupCreate(name="Calendar Group First", order=10),
     )
+    unordered_group = crud.group.create(
+        db,
+        obj_in=schemas.GroupCreate(name="Calendar Group Unordered", order=None),
+    )
     later_type = crud.user_type.create(
         db,
         obj_in=UserTypeCreate(name="Calendar Type Later", order=20),
@@ -120,6 +124,7 @@ def test_day_detail_uses_one_select_and_orders_view_model(
         obj_in=UserTypeCreate(name="Calendar Type First", order=10),
     )
     assert first_group.id is not None and second_group.id is not None
+    assert unordered_group.id is not None
     assert later_type.id is not None and first_type.id is not None
 
     _create_user(
@@ -143,8 +148,20 @@ def test_day_detail_uses_one_select_and_orders_view_model(
         group_id=int(second_group.id),
         user_type_id=int(first_type.id),
     )
+    _create_user(
+        db,
+        user_id="calendar-user-c",
+        username="Gamma",
+        group_id=int(unordered_group.id),
+        user_type_id=int(first_type.id),
+    )
     target_date = date(2031, 6, 2)
-    for user_id in ("calendar-user-z", "calendar-user-a", "calendar-user-b"):
+    for user_id in (
+        "calendar-user-z",
+        "calendar-user-a",
+        "calendar-user-b",
+        "calendar-user-c",
+    ):
         crud.attendance.create(
             db,
             obj_in=schemas.AttendanceCreate(
@@ -184,6 +201,7 @@ def test_day_detail_uses_one_select_and_orders_view_model(
     assert list(view_model["organized_by_group"]) == [
         "Calendar Group First",
         "Calendar Group Later",
+        "Calendar Group Unordered",
     ]
     later_group = view_model["organized_by_group"]["Calendar Group Later"]
     assert later_group["user_types"] == [
@@ -193,6 +211,58 @@ def test_day_detail_uses_one_select_and_orders_view_model(
     assert later_group["user_types_data"]["Calendar Type First"][0]["user_name"] == (
         "Alpha"
     )
+
+
+def test_day_detail_null_group_order_is_after_large_explicit_order(
+    db_with_data: Session,
+) -> None:
+    db = db_with_data
+    _, user_type_id, location_id = _base_ids(db)
+    explicit_group = crud.group.create(
+        db,
+        obj_in=schemas.GroupCreate(name="Calendar Group 10000", order=10000),
+    )
+    unordered_group = crud.group.create(
+        db,
+        obj_in=schemas.GroupCreate(name="Calendar Group Null", order=None),
+    )
+    assert explicit_group.id is not None and unordered_group.id is not None
+
+    _create_user(
+        db,
+        user_id="calendar-user-explicit",
+        username="Explicit",
+        group_id=int(explicit_group.id),
+        user_type_id=user_type_id,
+    )
+    _create_user(
+        db,
+        user_id="calendar-user-null",
+        username="Unordered",
+        group_id=int(unordered_group.id),
+        user_type_id=user_type_id,
+    )
+    target_date = date(2031, 7, 3)
+    for user_id in ("calendar-user-explicit", "calendar-user-null"):
+        crud.attendance.create(
+            db,
+            obj_in=schemas.AttendanceCreate(
+                user_id=user_id,
+                date=target_date,
+                location_id=location_id,
+            ),
+        )
+    db.commit()
+
+    view_model = calendar_read_service.get_day_detail_view_model(
+        db,
+        day=target_date.isoformat(),
+    )
+
+    assert list(view_model["organized_by_group"]) == [
+        "Calendar Group 10000",
+        "Calendar Group Null",
+    ]
 
 
 def test_invalid_day_returns_empty_view_model(db_with_data: Session) -> None:

@@ -136,7 +136,7 @@ def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
         group_name = str(row.group_name or "未分類")
         user_type_name = str(row.user_type_name or "未分類")
         group_id = int(row.group_id) if row.group_id is not None else 9999
-        group_order = int(row.group_order) if row.group_order is not None else 9999
+        group_order = int(row.group_order) if row.group_order is not None else None
         user_type_id = int(row.user_type_id) if row.user_type_id is not None else 9999
         user_type_order = (
             int(row.user_type_order) if row.user_type_order is not None else 9999
@@ -191,7 +191,10 @@ def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
         sorted(
             organized_by_group.items(),
             key=lambda item: (
-                int(item[1]["group_order"]),
+                item[1]["group_order"] is None,
+                int(item[1]["group_order"])
+                if item[1]["group_order"] is not None
+                else 0,
                 int(item[1]["group_id"]),
                 item[0],
             ),
