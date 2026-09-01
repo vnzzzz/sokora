@@ -2,143 +2,121 @@
 祝日データキャッシュ管理
 ======================
 
-ビルド時に取得した祝日データをローカルファイルから読み込み、DBのカスタム祝日とマージします。
-運用時にはAPIアクセスを行いません。
+ビルド時に取得した標準祝日データをローカルファイルから読み込みます。
+標準祝日はproduction imageに含まれるimmutable assetとしてprocess-localに保持し、
+DB由来のカスタム祝日はrequest-local snapshotで上書きします。
 """
 
 import datetime
 import json
+from contextvars import ContextVar, Token
 from pathlib import Path
-from typing import Any, Dict
+from types import MappingProxyType
+from typing import Any, Dict, Mapping
 
-from sqlalchemy.orm import Session
-
-from app import crud
 from app.core.config import logger
 
 # キャッシュファイルのパス
 ASSETS_JSON_DIR = Path(__file__).parent.parent.parent / "assets" / "json"
 CACHE_FILE = ASSETS_JSON_DIR / "holidays_cache.json"
 
+_EMPTY_CUSTOM_HOLIDAYS: Mapping[str, str] = MappingProxyType({})
+_custom_holiday_snapshot: ContextVar[Mapping[str, str]] = ContextVar(
+    "custom_holiday_snapshot",
+    default=_EMPTY_CUSTOM_HOLIDAYS,
+)
+
 
 class HolidayCache:
-    """祝日データのキャッシュ管理クラス（読み取り専用）"""
+    """production imageに含まれる標準祝日データの読み取り専用cache。"""
 
     def __init__(self) -> None:
-        self._file_cache: Dict[str, str] = {}
-        self._custom_cache: Dict[str, str] = {}
         self._cache: Dict[str, str] = {}
         self._build_time_cache: bool = False
         self._load_cache()
 
-    def _merge_cache(self) -> None:
-        """ビルド時キャッシュとカスタム祝日をマージする"""
-        self._cache = {**self._file_cache, **self._custom_cache}
-
     def _load_cache(self) -> None:
-        """ビルド時キャッシュファイルからデータを読み込む"""
+        """ビルド時キャッシュファイルから標準祝日データを読み込む。"""
         try:
             if CACHE_FILE.exists():
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self._file_cache = data.get("holidays", {})
+                    self._cache = data.get("holidays", {})
                     self._build_time_cache = data.get("build_time", False)
 
                     if self._build_time_cache:
                         logger.info(
-                            f"ビルド時祝日キャッシュを読み込みました: {len(self._file_cache)}件"
+                            "ビルド時祝日キャッシュを読み込みました: %s件",
+                            len(self._cache),
                         )
                     else:
                         logger.warning(
-                            "レガシーキャッシュファイルを読み込みました。ビルド時キャッシュの作成を推奨します。"
+                            "レガシーキャッシュファイルを読み込みました。"
+                            "ビルド時キャッシュの作成を推奨します。"
                         )
             else:
-                logger.error(f"祝日キャッシュファイルが見つかりません: {CACHE_FILE}")
+                logger.error("祝日キャッシュファイルが見つかりません: %s", CACHE_FILE)
                 logger.error(
                     "コンテナビルド時に祝日データの取得が失敗した可能性があります。"
                 )
-                self._file_cache = {}
-        except Exception as e:
-            logger.error(f"祝日キャッシュの読み込みに失敗しました: {e}")
-            self._file_cache = {}
-        finally:
-            self._merge_cache()
-
-    def refresh_from_db(self, db: Session) -> None:
-        """DB上のカスタム祝日を読み込み、キャッシュを更新する"""
-        try:
-            custom_holidays = crud.custom_holiday.get_all(db)
-            self._custom_cache = {
-                holiday.date.strftime("%Y-%m-%d"): str(holiday.name)
-                for holiday in custom_holidays
-            }
-            logger.info(f"カスタム祝日を読み込みました: {len(self._custom_cache)}件")
-        except Exception as e:
-            logger.error(f"カスタム祝日の読み込みに失敗しました: {e}", exc_info=True)
-            self._custom_cache = {}
-        finally:
-            self._merge_cache()
+                self._cache = {}
+        except Exception as exc:
+            logger.error("祝日キャッシュの読み込みに失敗しました: %s", exc)
+            self._cache = {}
 
     def is_holiday(self, date_obj: datetime.date) -> bool:
-        """指定日が祝日かどうかを判定する"""
-        date_str = date_obj.strftime("%Y-%m-%d")
-        return date_str in self._cache
+        """標準祝日データだけを使って指定日が祝日か判定する。"""
+        return self.get_holiday_name(date_obj) != ""
 
     def get_holiday_name(self, date_obj: datetime.date) -> str:
-        """指定日の祝日名を取得する"""
+        """標準祝日データから指定日の名称を取得する。"""
         date_str = date_obj.strftime("%Y-%m-%d")
         return self._cache.get(date_str, "")
 
     def get_cache_info(self) -> Dict[str, Any]:
-        """キャッシュの情報を取得する（デバッグ用）"""
+        """immutableな標準祝日cacheの診断情報を返す。"""
         return {
             "total_holidays": len(self._cache),
             "build_time_cache": self._build_time_cache,
             "cache_file_exists": CACHE_FILE.exists(),
-            "years_covered": sorted(list(set(date[:4] for date in self._cache.keys())))
+            "years_covered": sorted({date[:4] for date in self._cache})
             if self._cache
             else [],
-            "custom_total": len(self._custom_cache),
+            # 互換用。DB由来custom holidayはこのprocess cacheには保持しない。
+            "custom_total": 0,
         }
 
 
-# グローバルインスタンス
+# 標準祝日は同一production imageなら全replicaで同一内容になるimmutable data。
 _holiday_cache = HolidayCache()
 
 
-def is_holiday(date_obj: datetime.date) -> bool:
-    """指定日が祝日かどうかを判定する
+def bind_custom_holiday_snapshot(
+    holidays: Mapping[str, str],
+) -> Token[Mapping[str, str]]:
+    """共有DBから読んだcustom holidayを現在requestのcontextへ束縛する。"""
+    return _custom_holiday_snapshot.set(MappingProxyType(dict(holidays)))
 
-    Args:
-        date_obj: 判定する日付
 
-    Returns:
-        bool: 祝日の場合はTrue、そうでない場合はFalse
-    """
-    return _holiday_cache.is_holiday(date_obj)
+def reset_custom_holiday_snapshot(token: Token[Mapping[str, str]]) -> None:
+    """request終了時にcustom holiday snapshotを破棄する。"""
+    _custom_holiday_snapshot.reset(token)
 
 
 def get_holiday_name(date_obj: datetime.date) -> str:
-    """指定日の祝日名を取得する
-
-    Args:
-        date_obj: 判定する日付
-
-    Returns:
-        str: 祝日名（祝日でない場合は空文字列）
-    """
+    """request-local custom holidayを優先して祝日名を返す。"""
+    date_str = date_obj.strftime("%Y-%m-%d")
+    custom_name = _custom_holiday_snapshot.get().get(date_str)
+    if custom_name is not None:
+        return custom_name
     return _holiday_cache.get_holiday_name(date_obj)
 
 
+def is_holiday(date_obj: datetime.date) -> bool:
+    """request-local custom holidayを含めて指定日が祝日か判定する。"""
+    return get_holiday_name(date_obj) != ""
+
+
 def get_cache_info() -> Dict[str, Any]:
-    """キャッシュの情報を取得する（デバッグ用）
-
-    Returns:
-        Dict[str, Any]: キャッシュ情報
-    """
+    """標準祝日cacheの診断情報を取得する。"""
     return _holiday_cache.get_cache_info()
-
-
-def refresh_holiday_cache(db: Session) -> None:
-    """DBのカスタム祝日を反映してキャッシュを更新する"""
-    _holiday_cache.refresh_from_db(db)

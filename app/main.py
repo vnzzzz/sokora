@@ -18,7 +18,6 @@ from app.routers.api.v1 import router as api_v1_router
 from app.routers.pages import router as pages_router
 from app.services.auth.settings import AuthSettings
 from app.services.errors import ApplicationError
-from app.utils.holiday_cache import refresh_holiday_cache
 
 API_TAGS: List[Dict[str, str]] = [
     {
@@ -81,13 +80,6 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         # schema headは起動前提。失敗を握り潰さずlifespanを失敗させる。
         initialize_database(runtime)
-
-        db = runtime.session_factory()
-        try:
-            refresh_holiday_cache(db)
-        finally:
-            db.close()
-
         yield
     finally:
         runtime.dispose()

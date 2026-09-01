@@ -136,6 +136,40 @@ jobs:
       - name: Verify PostgreSQL startup and major CRUD
         run: uv run pytest -vv app/tests/db/test_postgresql.py
 
+      - name: Verify multi-replica runtime consistency
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 18083 --log-level warning > /tmp/replica_a.log 2>&1 &
+          REPLICA_A_PID=$!
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 18084 --log-level warning > /tmp/replica_b.log 2>&1 &
+          REPLICA_B_PID=$!
+
+          cleanup() {
+            kill "$REPLICA_A_PID" "$REPLICA_B_PID" 2>/dev/null || true
+            wait "$REPLICA_A_PID" "$REPLICA_B_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for port in 18083 18084; do
+            READY=0
+            for i in {1..30}; do
+              if curl -fsS "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1; then
+                READY=1
+                break
+              fi
+              sleep 1
+            done
+            if [ "$READY" -ne 1 ]; then
+              echo "Replica on port ${port} failed to start."
+              cat /tmp/replica_a.log || true
+              cat /tmp/replica_b.log || true
+              exit 1
+            fi
+          done
+
+          SOKORA_REPLICA_A_URL=http://127.0.0.1:18083 \
+          SOKORA_REPLICA_B_URL=http://127.0.0.1:18084 \
+            uv run pytest -vv app/tests/integration/test_multi_replica_runtime.py
+
       - name: Build production image with PostgreSQL driver
         env:
           VERSION: ci-postgresql
