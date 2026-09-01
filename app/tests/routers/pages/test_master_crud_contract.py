@@ -46,8 +46,11 @@ async def test_group_master_crud_uses_standard_modal_contract(
     )
     _assert_mutation_success(created_response, "add-group")
     created = (
-        db.query(models.Group).filter(models.Group.name == "master-contract-group").one()
+        db.query(models.Group)
+        .filter(models.Group.name == "master-contract-group")
+        .one()
     )
+    created_id = int(created.id)
 
     duplicate_response = await async_client.post(
         "/groups",
@@ -56,22 +59,22 @@ async def test_group_master_crud_uses_standard_modal_contract(
     _assert_inline_error(duplicate_response)
 
     _assert_open_modal(
-        await async_client.get(f"/groups/modal/{created.id}"),
-        f"edit-group-{created.id}",
+        await async_client.get(f"/groups/modal/{created_id}"),
+        f"edit-group-{created_id}",
     )
     updated_response = await async_client.put(
-        f"/groups/{created.id}",
+        f"/groups/{created_id}",
         data={"name": "master-contract-group-updated", "order": "11"},
     )
-    _assert_mutation_success(updated_response, f"edit-group-{created.id}")
+    _assert_mutation_success(updated_response, f"edit-group-{created_id}")
 
     _assert_open_modal(
-        await async_client.get(f"/groups/delete-modal/{created.id}"),
-        f"group-delete-modal-{created.id}",
+        await async_client.get(f"/groups/delete-modal/{created_id}"),
+        f"group-delete-modal-{created_id}",
     )
-    deleted_response = await async_client.delete(f"/groups/{created.id}")
-    _assert_mutation_success(deleted_response, f"group-delete-modal-{created.id}")
-    assert db.get(models.Group, created.id) is None
+    deleted_response = await async_client.delete(f"/groups/{created_id}")
+    _assert_mutation_success(deleted_response, f"group-delete-modal-{created_id}")
+    assert db.get(models.Group, created_id) is None
 
 
 async def test_location_master_crud_uses_standard_modal_contract(
@@ -82,7 +85,11 @@ async def test_location_master_crud_uses_standard_modal_contract(
 
     created_response = await async_client.post(
         "/locations",
-        data={"name": "master-contract-location", "category": "test", "order": "10"},
+        data={
+            "name": "master-contract-location",
+            "category": "test",
+            "order": "10",
+        },
     )
     _assert_mutation_success(created_response, "add-location")
     created = (
@@ -90,34 +97,39 @@ async def test_location_master_crud_uses_standard_modal_contract(
         .filter(models.Location.name == "master-contract-location")
         .one()
     )
+    created_id = int(created.id)
 
     duplicate_response = await async_client.post(
         "/locations",
-        data={"name": "master-contract-location", "category": "test", "order": "20"},
+        data={
+            "name": "master-contract-location",
+            "category": "test",
+            "order": "20",
+        },
     )
     _assert_inline_error(duplicate_response)
 
     _assert_open_modal(
-        await async_client.get(f"/locations/modal/{created.id}"),
-        f"edit-location-{created.id}",
+        await async_client.get(f"/locations/modal/{created_id}"),
+        f"edit-location-{created_id}",
     )
     updated_response = await async_client.put(
-        f"/locations/{created.id}",
+        f"/locations/{created_id}",
         data={
             "name": "master-contract-location-updated",
             "category": "updated",
             "order": "11",
         },
     )
-    _assert_mutation_success(updated_response, f"edit-location-{created.id}")
+    _assert_mutation_success(updated_response, f"edit-location-{created_id}")
 
     _assert_open_modal(
-        await async_client.get(f"/locations/delete-modal/{created.id}"),
-        f"location-delete-modal-{created.id}",
+        await async_client.get(f"/locations/delete-modal/{created_id}"),
+        f"location-delete-modal-{created_id}",
     )
-    deleted_response = await async_client.delete(f"/locations/{created.id}")
-    _assert_mutation_success(deleted_response, f"location-delete-modal-{created.id}")
-    assert db.get(models.Location, created.id) is None
+    deleted_response = await async_client.delete(f"/locations/{created_id}")
+    _assert_mutation_success(deleted_response, f"location-delete-modal-{created_id}")
+    assert db.get(models.Location, created_id) is None
 
 
 async def test_user_type_master_crud_uses_standard_modal_contract(
@@ -136,6 +148,7 @@ async def test_user_type_master_crud_uses_standard_modal_contract(
         .filter(models.UserType.name == "master-contract-user-type")
         .one()
     )
+    created_id = int(created.id)
 
     duplicate_response = await async_client.post(
         "/user-types",
@@ -144,22 +157,22 @@ async def test_user_type_master_crud_uses_standard_modal_contract(
     _assert_inline_error(duplicate_response)
 
     _assert_open_modal(
-        await async_client.get(f"/user-types/modal/{created.id}"),
-        f"edit-user-type-{created.id}",
+        await async_client.get(f"/user-types/modal/{created_id}"),
+        f"edit-user-type-{created_id}",
     )
     updated_response = await async_client.put(
-        f"/user-types/{created.id}",
+        f"/user-types/{created_id}",
         data={"name": "master-contract-user-type-updated", "order": "11"},
     )
-    _assert_mutation_success(updated_response, f"edit-user-type-{created.id}")
+    _assert_mutation_success(updated_response, f"edit-user-type-{created_id}")
 
     _assert_open_modal(
-        await async_client.get(f"/user-types/delete-modal/{created.id}"),
-        f"user-type-delete-modal-{created.id}",
+        await async_client.get(f"/user-types/delete-modal/{created_id}"),
+        f"user-type-delete-modal-{created_id}",
     )
-    deleted_response = await async_client.delete(f"/user-types/{created.id}")
-    _assert_mutation_success(deleted_response, f"user-type-delete-modal-{created.id}")
-    assert db.get(models.UserType, created.id) is None
+    deleted_response = await async_client.delete(f"/user-types/{created_id}")
+    _assert_mutation_success(deleted_response, f"user-type-delete-modal-{created_id}")
+    assert db.get(models.UserType, created_id) is None
 
 
 async def test_holiday_master_crud_uses_standard_modal_contract(
@@ -181,6 +194,7 @@ async def test_holiday_master_crud_uses_standard_modal_contract(
         .filter(models.CustomHoliday.name == "master-contract-holiday")
         .one()
     )
+    created_id = int(created.id)
 
     duplicate_response = await async_client.post(
         "/holidays",
@@ -189,25 +203,25 @@ async def test_holiday_master_crud_uses_standard_modal_contract(
     _assert_inline_error(duplicate_response)
 
     _assert_open_modal(
-        await async_client.get(f"/holidays/modal/{created.id}"),
-        f"edit-custom-holiday-{created.id}",
+        await async_client.get(f"/holidays/modal/{created_id}"),
+        f"edit-custom-holiday-{created_id}",
     )
     updated_response = await async_client.put(
-        f"/holidays/{created.id}",
+        f"/holidays/{created_id}",
         data={"date": "2034-06-13", "name": "master-contract-holiday-updated"},
     )
-    _assert_mutation_success(updated_response, f"edit-custom-holiday-{created.id}")
+    _assert_mutation_success(updated_response, f"edit-custom-holiday-{created_id}")
 
     _assert_open_modal(
-        await async_client.get(f"/holidays/delete-modal/{created.id}"),
-        f"custom-holiday-delete-modal-{created.id}",
+        await async_client.get(f"/holidays/delete-modal/{created_id}"),
+        f"custom-holiday-delete-modal-{created_id}",
     )
-    deleted_response = await async_client.delete(f"/holidays/{created.id}")
+    deleted_response = await async_client.delete(f"/holidays/{created_id}")
     _assert_mutation_success(
         deleted_response,
-        f"custom-holiday-delete-modal-{created.id}",
+        f"custom-holiday-delete-modal-{created_id}",
     )
-    assert db.get(models.CustomHoliday, created.id) is None
+    assert db.get(models.CustomHoliday, created_id) is None
 
 
 async def test_user_master_crud_uses_standard_modal_contract(
@@ -280,7 +294,10 @@ async def test_user_master_crud_uses_standard_modal_contract(
     assert db.get(models.User, "master-contract-user") is None
 
 
-@pytest.mark.parametrize("path", ["/users/rows", "/locations/rows", "/user-types/rows"])
+@pytest.mark.parametrize(
+    "path",
+    ["/users/rows", "/locations/rows", "/user-types/rows"],
+)
 async def test_legacy_row_mutation_endpoints_are_removed(
     async_client: AsyncClient,
     path: str,
