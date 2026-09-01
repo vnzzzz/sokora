@@ -43,4 +43,4 @@ async def test_holiday_delete_error_keeps_modal_and_renders_warning(
     assert response.status_code == 200
     assert "HX-Trigger" not in response.headers
     assert "削除できません" in response.text
-    assert f'custom-holiday-delete-modal-{holiday_id}' in response.text
+    assert f"custom-holiday-delete-modal-{holiday_id}" in response.text
