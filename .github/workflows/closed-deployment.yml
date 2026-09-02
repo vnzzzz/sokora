@@ -1,0 +1,116 @@
+name: Closed deployment
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  closed-deployment:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ci-closed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production image
+        run: make docker-build
+
+      - name: Package closed-network deployment bundle
+        run: make package-closed-bundle
+
+      - name: Verify bundle boundary and image transport
+        run: |
+          BUNDLE="dist/sokora-${VERSION}-closed"
+          test -f "$BUNDLE/image.tar"
+          test -f "$BUNDLE/image.tar.sha256"
+          test -f "$BUNDLE/manifest.env"
+          test -f "$BUNDLE/load-image.sh"
+          test -f "$BUNDLE/compose.sqlite.yaml"
+          test -f "$BUNDLE/compose.postgresql.yaml"
+          test -f "$BUNDLE/compose.env.example"
+          test -f "$BUNDLE/runtime.env.example"
+          test -f "$BUNDLE/README.md"
+          test "$(find "$BUNDLE" -maxdepth 1 -type f | wc -l)" -eq 9
+
+          grep -Fx "IMAGE_REF=sokora:${VERSION}" "$BUNDLE/manifest.env"
+          grep -Eq '^IMAGE_ID=sha256:[0-9a-f]{64}$' "$BUNDLE/manifest.env"
+          grep -Eq '^SOURCE_REVISION=[0-9a-f]{40}$' "$BUNDLE/manifest.env"
+          grep -Fx "SOKORA_IMAGE=sokora:${VERSION}" "$BUNDLE/compose.env.example"
+
+          for forbidden in app docs tests .git .github .devcontainer AGENTS.md CLAUDE.md; do
+            test ! -e "$BUNDLE/$forbidden"
+          done
+
+          packaged_id="$(sed -n 's/^IMAGE_ID=//p' "$BUNDLE/manifest.env")"
+          docker image rm "sokora:${VERSION}"
+          "$BUNDLE/load-image.sh"
+          loaded_id="$(docker image inspect --format '{{.Id}}' "sokora:${VERSION}")"
+          test "$loaded_id" = "$packaged_id"
+
+      - name: Smoke SQLite deployment from bundle only
+        run: |
+          BUNDLE="${GITHUB_WORKSPACE}/dist/sokora-${VERSION}-closed"
+          cp "$BUNDLE/runtime.env.example" /tmp/sokora-ci-runtime.env
+          cp "$BUNDLE/compose.env.example" /tmp/sokora-ci-deployment.env
+          sed -i 's|^SERVICE_PORT=.*|SERVICE_PORT=18086|' /tmp/sokora-ci-deployment.env
+          sed -i 's|^SOKORA_DATA_DIR=.*|SOKORA_DATA_DIR=/tmp/sokora-ci-data|' /tmp/sokora-ci-deployment.env
+          sed -i 's|^SOKORA_RUNTIME_ENV_FILE=.*|SOKORA_RUNTIME_ENV_FILE=/tmp/sokora-ci-runtime.env|' /tmp/sokora-ci-deployment.env
+          mkdir -p /tmp/sokora-ci-data
+
+          cd "$BUNDLE"
+          docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.sqlite.yaml \
+            -p sokora-closed-ci \
+            config > /tmp/sokora-sqlite-compose.txt
+          grep -q '/app/data' /tmp/sokora-sqlite-compose.txt
+
+          docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.postgresql.yaml \
+            -p sokora-closed-ci-postgresql \
+            config > /tmp/sokora-postgresql-compose.txt
+          ! grep -q '/app/data' /tmp/sokora-postgresql-compose.txt
+
+          docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.sqlite.yaml \
+            -p sokora-closed-ci \
+            up -d --pull never
+
+          READY=0
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18086/healthz >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Closed-network SQLite deployment failed to become healthy. Logs:"
+            docker compose \
+              --env-file /tmp/sokora-ci-deployment.env \
+              -f compose.sqlite.yaml \
+              -p sokora-closed-ci \
+              logs || true
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:18086/healthz | grep -q '"status":"ok"'
+          test -f /tmp/sokora-ci-data/sokora.db
+
+      - name: Stop closed-network deployment
+        if: always()
+        run: |
+          BUNDLE="${GITHUB_WORKSPACE}/dist/sokora-${VERSION}-closed"
+          if [ -f "$BUNDLE/compose.sqlite.yaml" ] && [ -f /tmp/sokora-ci-deployment.env ]; then
+            docker compose \
+              --env-file /tmp/sokora-ci-deployment.env \
+              -f "$BUNDLE/compose.sqlite.yaml" \
+              -p sokora-closed-ci \
+              down || true
+          fi
+          rm -rf /tmp/sokora-ci-data /tmp/sokora-ci-runtime.env /tmp/sokora-ci-deployment.env
