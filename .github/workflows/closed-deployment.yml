@@ -19,7 +19,14 @@ jobs:
         run: make docker-build
 
       - name: Package closed-network deployment bundle
-        run: SOURCE_REVISION="$GITHUB_SHA" make package-closed-bundle
+        run: |
+          if make package-closed-bundle > /tmp/package-without-revision.log 2>&1; then
+            echo "prebuilt image packaging unexpectedly accepted missing SOURCE_REVISION" >&2
+            cat /tmp/package-without-revision.log >&2
+            exit 1
+          fi
+          grep -q 'SOURCE_REVISION is required' /tmp/package-without-revision.log
+          SOURCE_REVISION="$GITHUB_SHA" make package-closed-bundle
 
       - name: Verify bundle boundary and image transport
         run: |
