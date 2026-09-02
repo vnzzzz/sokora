@@ -1,0 +1,10 @@
+services:
+  sokora:
+    image: ${SOKORA_IMAGE:?SOKORA_IMAGE must be set to a loaded immutable image tag}
+    restart: unless-stopped
+    env_file:
+      - ${SOKORA_RUNTIME_ENV_FILE:?SOKORA_RUNTIME_ENV_FILE must point to the persistent runtime env file}
+    environment:
+      PORT: ${PORT:-8000}
+    ports:
+      - "${SERVICE_PORT:-8000}:${PORT:-8000}"
