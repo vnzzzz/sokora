@@ -1,0 +1,118 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto space-y-5">
+  <div>
+    <h1 class="text-xl font-semibold">データベース管理</h1>
+    <p class="text-sm text-base-content/70 mt-1">
+      SQLite運用時のバックアップ取得と、同じsokora schemaのDBリストアを管理者だけが実行できます。
+    </p>
+  </div>
+
+  {% if restored %}
+  <div class="alert alert-success text-sm">
+    <span>データベースをリストアし、DB接続を再初期化しました。</span>
+  </div>
+  {% endif %}
+
+  {% if error_message %}
+  <div class="alert alert-error text-sm">
+    <span>{{ error_message }}</span>
+  </div>
+  {% endif %}
+
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body gap-3 text-sm">
+      <div class="flex justify-between gap-4">
+        <span>DB backend</span>
+        <span class="font-medium">{{ backend }}</span>
+      </div>
+      <div class="flex justify-between gap-4">
+        <span>GUI管理</span>
+        <span class="font-medium">{{ "有効" if sqlite_available else "無効" }}</span>
+      </div>
+      {% if database_filename %}
+      <div class="flex justify-between gap-4">
+        <span>DBファイル</span>
+        <span class="font-mono text-xs">{{ database_filename }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if sqlite_available %}
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body gap-4">
+      <div>
+        <h2 class="font-semibold">バックアップ</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          稼働中DBを単純コピーせず、SQLite backup APIでconsistent snapshotを作成してダウンロードします。
+        </p>
+      </div>
+      <div>
+        <a href="/admin/database/backup" class="btn btn-primary btn-sm">
+          バックアップをダウンロード
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-200 shadow-sm border border-error/30">
+    <div class="card-body gap-4">
+      <div>
+        <h2 class="font-semibold text-error">リストア</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          SQLite形式・integrity・外部キー・Alembic revision・schemaを検証し、すべて一致したDBだけを適用します。
+          適用時は既存DB sessionをdrainし、接続poolを再初期化します。
+        </p>
+      </div>
+
+      <div class="alert alert-warning text-sm">
+        <span>
+          リストアは現在のデータを置き換えます。処理中に失敗した場合は、適用直前に作成したrollback backupから自動復旧を試みます。
+        </span>
+      </div>
+
+      <form
+        action="/admin/database/restore"
+        method="post"
+        enctype="multipart/form-data"
+        class="space-y-4"
+      >
+        <label class="form-control w-full">
+          <span class="label-text text-sm mb-1">SQLite DBファイル</span>
+          <input
+            type="file"
+            name="database"
+            accept=".db,application/vnd.sqlite3,application/x-sqlite3"
+            class="file-input file-input-bordered file-input-sm w-full"
+            required
+          />
+        </label>
+
+        <label class="label cursor-pointer justify-start gap-3">
+          <input
+            type="checkbox"
+            name="confirm_restore"
+            value="yes"
+            class="checkbox checkbox-error checkbox-sm"
+            required
+          />
+          <span class="label-text text-sm">現在のDBデータが置き換わることを確認しました</span>
+        </label>
+
+        <button type="submit" class="btn btn-error btn-sm">
+          検証してリストア
+        </button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info text-sm">
+    <span>
+      この画面のbackup/restore機能はファイルベースSQLite専用です。PostgreSQLではprovider/DBサービス側のbackup機能を利用してください。
+    </span>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

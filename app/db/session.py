@@ -1,8 +1,11 @@
 """Database engine and session lifecycle helpers."""
 
-from dataclasses import dataclass
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Generator
+from threading import Condition
+from typing import Any, Dict
 from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
@@ -29,6 +32,63 @@ class DatabaseRuntime:
     database_url: str
     engine: Engine
     session_factory: sessionmaker[Session]
+    _condition: Condition = field(default_factory=Condition, init=False, repr=False)
+    _active_sessions: int = field(default=0, init=False, repr=False)
+    _maintenance_active: bool = field(default=False, init=False, repr=False)
+
+    @contextmanager
+    def managed_session(self) -> Iterator[Session]:
+        """Yield a request session that participates in maintenance draining."""
+
+        with self._condition:
+            while self._maintenance_active:
+                self._condition.wait()
+            factory = self.session_factory
+            self._active_sessions += 1
+
+        try:
+            db = factory()
+        except Exception:
+            with self._condition:
+                self._active_sessions -= 1
+                if self._active_sessions == 0:
+                    self._condition.notify_all()
+            raise
+
+        try:
+            yield db
+        finally:
+            db.close()
+            with self._condition:
+                self._active_sessions -= 1
+                if self._active_sessions == 0:
+                    self._condition.notify_all()
+
+    @contextmanager
+    def exclusive_maintenance(self) -> Iterator[None]:
+        """Block new request sessions and wait until existing ones are closed."""
+
+        with self._condition:
+            while self._maintenance_active:
+                self._condition.wait()
+            self._maintenance_active = True
+            while self._active_sessions:
+                self._condition.wait()
+
+        try:
+            yield
+        finally:
+            with self._condition:
+                self._maintenance_active = False
+                self._condition.notify_all()
+
+    def recreate_connections(self) -> None:
+        """Dispose the current pool and recreate engine/session bindings."""
+
+        self.engine.dispose()
+        engine, session_factory = _create_engine_and_session_factory(self.database_url)
+        self.engine = engine
+        self.session_factory = session_factory
 
     def dispose(self) -> None:
         self.engine.dispose()
@@ -78,8 +138,9 @@ def _enable_sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) 
         cursor.close()
 
 
-def create_database_runtime(database_url: str) -> DatabaseRuntime:
-    """Create an isolated database runtime for a database URL."""
+def _create_engine_and_session_factory(
+    database_url: str,
+) -> tuple[Engine, sessionmaker[Session]]:
     url = sqlalchemy_database_url(database_url)
     if url.get_backend_name() == "sqlite":
         engine_kwargs: dict[str, object] = {
@@ -97,6 +158,12 @@ def create_database_runtime(database_url: str) -> DatabaseRuntime:
         autoflush=False,
         bind=engine,
     )
+    return engine, session_factory
+
+
+def create_database_runtime(database_url: str) -> DatabaseRuntime:
+    """Create an isolated database runtime for a database URL."""
+    engine, session_factory = _create_engine_and_session_factory(database_url)
     return DatabaseRuntime(
         database_url=database_url,
         engine=engine,
@@ -144,11 +211,8 @@ def get_app_database_runtime(app: Starlette) -> DatabaseRuntime:
 def get_db(request: Request) -> Generator[Session, None, None]:
     """Yield a request-scoped SQLAlchemy session."""
     runtime = get_app_database_runtime(request.app)
-    db = runtime.session_factory()
-    try:
+    with runtime.managed_session() as db:
         yield db
-    finally:
-        db.close()
 
 
 def sqlite_database_path(database_url: str) -> Path | None:
@@ -170,6 +234,17 @@ def sqlite_database_path(database_url: str) -> Path | None:
 
     path = Path(database)
     return path if path.is_absolute() else Path.cwd() / path
+
+
+def alembic_heads() -> tuple[str, ...]:
+    """Return the migration heads accepted by database restore validation."""
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config(str(_ALEMBIC_CONFIG_PATH))
+    config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
+    return tuple(ScriptDirectory.from_config(config).get_heads())
 
 
 def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
