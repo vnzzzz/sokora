@@ -123,7 +123,7 @@ jobs:
 
           # The generic runtime template leaves DATABASE_URL blank. PostgreSQL
           # must fail before app startup instead of silently creating SQLite.
-          if docker compose \
+          if timeout 15s docker compose \
             --env-file /tmp/sokora-ci-deployment.env \
             -f compose.postgresql.yaml \
             -p sokora-closed-ci-postgresql \
@@ -133,6 +133,20 @@ jobs:
           fi
           grep -q 'DATABASE_URL must be an explicit PostgreSQL URL' /tmp/sokora-postgresql-fail-closed.log
           test ! -f /tmp/sokora-ci-data/sokora.db
+
+          # Authentication must not start with a blank/public session signing key.
+          sed -i 's|^SOKORA_AUTH_ENABLED=.*|SOKORA_AUTH_ENABLED=true|' /tmp/sokora-ci-runtime.env
+          sed -i 's|^SOKORA_AUTH_SESSION_SECRET=.*|SOKORA_AUTH_SESSION_SECRET=|' /tmp/sokora-ci-runtime.env
+          if timeout 15s docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.sqlite.yaml \
+            -p sokora-closed-ci-auth \
+            run --rm --no-deps sokora > /tmp/sokora-auth-fail-closed.log 2>&1; then
+            echo "application unexpectedly accepted auth with a blank session secret" >&2
+            exit 1
+          fi
+          grep -q 'SOKORA_AUTH_SESSION_SECRET must be explicitly configured' /tmp/sokora-auth-fail-closed.log
+          sed -i 's|^SOKORA_AUTH_ENABLED=.*|SOKORA_AUTH_ENABLED=false|' /tmp/sokora-ci-runtime.env
 
           docker compose \
             --env-file /tmp/sokora-ci-deployment.env \
@@ -170,6 +184,11 @@ jobs:
               --env-file /tmp/sokora-ci-deployment.env \
               -f "$BUNDLE/compose.sqlite.yaml" \
               -p sokora-closed-ci \
+              down || true
+            docker compose \
+              --env-file /tmp/sokora-ci-deployment.env \
+              -f "$BUNDLE/compose.sqlite.yaml" \
+              -p sokora-closed-ci-auth \
               down || true
           fi
           rm -rf /tmp/sokora-ci-data /tmp/sokora-ci-runtime.env /tmp/sokora-ci-deployment.env /tmp/sokora-failing-docker
