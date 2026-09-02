@@ -251,7 +251,10 @@ def create_sqlite_backup(runtime: DatabaseRuntime) -> Path:
         backup_path = Path(temporary.name)
 
     try:
-        _backup_database(source_path, backup_path)
+        # Participate in the runtime's shared-access count so an exclusive
+        # restore cannot replace the file while a backup snapshot is running.
+        with runtime.managed_session():
+            _backup_database(source_path, backup_path)
         with _readonly_connection(backup_path) as backup:
             _integrity_check(backup)
         return backup_path
@@ -356,14 +359,17 @@ def restore_sqlite_database(
 
             _backup_database(live_path, rollback_path)
             live_mode = stat.S_IMODE(live_path.stat().st_mode)
+            os.chmod(staged_path, live_mode)
 
             runtime.engine.dispose()
             engine_disposed = True
-            _remove_sqlite_sidecars(live_path)
-
-            os.chmod(staged_path, live_mode)
             os.replace(staged_path, live_path)
             replaced = True
+
+            # Old WAL/SHM files belong to the database that was just replaced.
+            # Remove them only after os.replace succeeds, while maintenance
+            # mode still prevents any new SQLite connection from opening.
+            _remove_sqlite_sidecars(live_path)
             _sync_directory(live_path.parent)
 
             runtime.recreate_connections()
