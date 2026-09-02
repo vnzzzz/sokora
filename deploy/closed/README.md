@@ -6,8 +6,8 @@ This directory is the runtime deployment unit for an isolated/closed network. It
 
 - `image.tar`: production image exported by `docker save`
 - `image.tar.sha256`: transport-integrity checksum
-- `manifest.env`: packaged image reference, image ID, and source revision
-- `load-image.sh`: checksum verification + `docker load`
+- `manifest.env`: packaged image reference, image ID, and the explicitly supplied source revision of that image
+- `load-image.sh`: checksum verification + `docker load` + image ID verification
 - `compose.sqlite.yaml`: single-instance SQLite runtime
 - `compose.postgresql.yaml`: external PostgreSQL runtime
 - `compose.env.example`: non-secret deployment values
@@ -27,14 +27,17 @@ Do not retag the image to `latest` for normal operations. Keep the immutable ver
 
 Keep configuration and mutable data outside this bundle so replacing/removing a bundle cannot remove runtime state.
 
+The reference procedure assumes the same non-root operator that runs `docker compose` owns the two deployment files. This lets Compose read the secret-bearing runtime env while keeping it private from other users.
+
 ```bash
-sudo install -d -m 0750 /etc/sokora
-sudo cp runtime.env.example /etc/sokora/runtime.env
-sudo cp compose.env.example /etc/sokora/deployment.env
-sudo chmod 0600 /etc/sokora/runtime.env
+operator_user="$(id -un)"
+operator_group="$(id -gn)"
+sudo install -d -m 0750 -o "$operator_user" -g "$operator_group" /etc/sokora
+sudo install -m 0600 -o "$operator_user" -g "$operator_group" runtime.env.example /etc/sokora/runtime.env
+sudo install -m 0640 -o "$operator_user" -g "$operator_group" compose.env.example /etc/sokora/deployment.env
 ```
 
-Edit `/etc/sokora/runtime.env` and set the required authentication/OIDC/database/proxy values. `SOKORA_AUTH_SESSION_SECRET` must be a strong shared secret when authentication is enabled.
+Edit `/etc/sokora/runtime.env` and set the required authentication/OIDC/database/proxy values. `SOKORA_AUTH_SESSION_SECRET` must be a strong shared secret when authentication is enabled. If operations are intentionally performed as root or by a dedicated service account instead, give that operator equivalent read access and run all Compose commands consistently as that identity.
 
 For SQLite, also create persistent host storage:
 
