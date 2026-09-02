@@ -48,8 +48,8 @@ help:
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make docker-build    Build production image (%s); proxy args are applied when proxy is set\n" "$(VERSION_TAG)"
-	@printf "  make closed-bundle   Build %s and package a repository-free closed-network bundle\n" "$(VERSION_TAG)"
-	@printf "  make package-closed-bundle  Package an already-built %s into %s\n" "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
+	@printf "  make closed-bundle   Build %s and package it with the current source revision\n" "$(VERSION_TAG)"
+	@printf "  make package-closed-bundle SOURCE_REVISION=<sha>  Package an already-built %s into %s\n" "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
 	@printf "  make docker-run      Run production container with SERVICE_PORT -> PORT and data volume mount\n"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
@@ -107,10 +107,14 @@ docker-build:
 	docker build $(DOCKER_BUILD_PROXY_ARGS) -t $(VERSION_TAG) .
 
 closed-bundle: docker-build
-	bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
+	SOURCE_REVISION="$$(git rev-parse HEAD)" bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
 
 package-closed-bundle:
-	bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
+	@if [ -z "$(SOURCE_REVISION)" ]; then \
+		echo "SOURCE_REVISION is required for an already-built image; set it to the commit used to build $(VERSION_TAG)" >&2; \
+		exit 2; \
+	fi
+	SOURCE_REVISION="$(SOURCE_REVISION)" bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
 
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
