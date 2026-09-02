@@ -1,9 +1,8 @@
 {#
   Compatibility facade for templates not yet migrated to responsibility-specific imports.
-  New code should import forms.html / modal.html / navigation.html / attendance.html directly.
+  New code should import forms.html / navigation.html / attendance.html directly.
 #}
 {% import "components/macros/forms.html" as form_ui %}
-{% import "components/macros/modal.html" as modal_ui %}
 {% import "components/macros/navigation.html" as navigation_ui %}
 {% import "components/macros/attendance.html" as attendance_ui %}
 
@@ -13,35 +12,6 @@
 
 {% macro simple_error(error_message) -%}
 {{ form_ui.simple_error(error_message) }}
-{%- endmacro %}
-
-{% macro modal_form(id, title, action, method="POST", submit_text="保存", size="md", extra_cls="", extra_buttons="") -%}
-{% call modal_ui.modal_form(
-  id=id,
-  title=title,
-  action=action,
-  method=method,
-  submit_text=submit_text,
-  size=size,
-  extra_cls=extra_cls,
-  extra_buttons=extra_buttons
-) %}
-{{ caller() }}
-{% endcall %}
-{%- endmacro %}
-
-{% macro delete_modal_form(id, title, action, item_name, submit_text="削除", size="sm", extra_cls="") -%}
-{% call modal_ui.delete_modal_form(
-  id=id,
-  title=title,
-  action=action,
-  item_name=item_name,
-  submit_text=submit_text,
-  size=size,
-  extra_cls=extra_cls
-) %}
-{{ caller() }}
-{% endcall %}
 {%- endmacro %}
 
 {% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
