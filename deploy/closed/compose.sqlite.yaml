@@ -1,0 +1,13 @@
+services:
+  sokora:
+    image: ${SOKORA_IMAGE:?SOKORA_IMAGE must be set to a loaded immutable image tag}
+    restart: unless-stopped
+    env_file:
+      - ${SOKORA_RUNTIME_ENV_FILE:?SOKORA_RUNTIME_ENV_FILE must point to the persistent runtime env file}
+    environment:
+      PORT: ${PORT:-8000}
+      DATABASE_URL: sqlite:///data/sokora.db
+    ports:
+      - "${SERVICE_PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - "${SOKORA_DATA_DIR:?SOKORA_DATA_DIR must point to persistent host storage}:/app/data"
