@@ -15,7 +15,7 @@ bundleには以下だけを含める。
 - production imageの `docker save` archive
 - archiveのSHA-256 checksum
 - image reference / image ID / **そのimageをbuildしたsource revision** を記録したmanifest
-- checksum検証後に `docker load` し、manifestのimage IDと一致することまで確認するloader
+- mandatory manifestとchecksumを検証後に `docker load` し、manifestのimage IDと一致することまで確認するloader
 - SQLite / PostgreSQL用の薄いDocker Compose定義
 - deployment/runtime env template
 - runtime host向けoperator guide
@@ -23,6 +23,8 @@ bundleには以下だけを含める。
 開発repo、tests、docs全体、devcontainer、agent設定、Node/uv等のbuild toolingはruntime deployment unitへ含めない。production image自体のartifact boundaryもこの方針と一致する。
 
 `SOURCE_REVISION` はpackagingを行ったcheckoutから暗黙推測しない。prebuilt imageをbundle化するときは、そのimageをbuildした40文字Git commitをcallerが明示する。これにより「古い/外部build image + 現在のpackaging checkout」の組合せでも誤ったprovenanceをmanifestへ記録しない。
+
+bundle再生成は既存directoryを先に削除しない。同一filesystem上のsibling temporary directoryへ全artifactを生成し、manifestを最後に書いた後だけ完成済みbundleへ切り替える。途中で `docker save`、checksum、copy等が失敗した場合はprevious known-good bundleを保持し、partial bundleを正式な出力先へ残さない。
 
 ## Build location
 
@@ -76,7 +78,7 @@ bundle内のexample env fileをそのままsecret storeとして扱わない。r
 
 ## SQLite
 
-SQLiteはsingle-instance runtimeだけをsupportする。`deploy/closed/compose.sqlite.yaml` はpersistent host directoryを `/app/data` へbind mountし、`DATABASE_URL=sqlite:///data/sokora.db` を固定する。
+SQLiteはsingle-instance runtimeだけをsupportする。`deploy/closed/compose.sqlite.yaml` はpersistent host directoryを `/app/data` へbind mountし、`DATABASE_URL=sqlite:///data/sokora.db` を固定する。generic `runtime.env.example` の `DATABASE_URL` は意図的にblankであり、SQLite adapterが明示的にoverrideする。
 
 upgrade前は稼働中DBの単純なfile copyではなくSQLite backup APIを利用する。bundle付属READMEに、production image内のPython標準`sqlite3`からconsistent backupを作成する手順を記載する。
 
@@ -84,7 +86,9 @@ startupでAlembic migrationが適用されるため、schema-changing upgrade後
 
 ## PostgreSQL
 
-`deploy/closed/compose.postgresql.yaml` はapplication側のpersistent data volumeを持たず、`runtime.env` の `DATABASE_URL` でexternal PostgreSQLへ接続する。
+`deploy/closed/compose.postgresql.yaml` はapplication側のpersistent data volumeを持たず、`runtime.env` の `DATABASE_URL` でexternal PostgreSQLへ接続する。template値はblankのままとし、operatorが実URLを設定する。
+
+PostgreSQL adapterはapplication startup前に `DATABASE_URL` を検証し、未設定またはPostgreSQL scheme以外ならexitする。これにより設定漏れ時にdefault SQLiteへfallbackしてunmounted container filesystemへDBを作ることを禁止する。
 
 DB backup/restoreはPostgreSQL運用基盤側の標準手段を利用する。application imageに`pg_dump`やvendor固有backup clientを追加しない。
 
@@ -121,8 +125,11 @@ internal PostgreSQL/OIDC endpoint等、proxyを経由させない宛先はdeploy
 
 - 同じproduction imageからrepository-free bundleを生成できる
 - callerが明示したbuild revisionがmanifestへそのまま記録される
+- packaging途中失敗時にprevious known-good bundleを失わない
+- manifest欠落を`docker load`前に拒否する
 - image archive checksumを検証して`docker load`でき、loaded image IDがmanifestと一致する
 - bundle内にrepo/test/dev toolingを含めない
+- PostgreSQL adapterはblank/non-PostgreSQL `DATABASE_URL` をfail-closedで拒否する
 - bundleのSQLite Compose adapterだけでimageを再起動し `/healthz` が成功する
 - PostgreSQL自体のproduction image接続contractは既存PostgreSQL jobで継続検証する
 
