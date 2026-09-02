@@ -184,7 +184,9 @@ def validate_sqlite_restore_candidate(
 
     live_path = require_sqlite_database_path(runtime)
     if not candidate_path.is_file():
-        raise InvalidDatabaseBackupError("アップロードされたDBファイルを確認できません。")
+        raise InvalidDatabaseBackupError(
+            "アップロードされたDBファイルを確認できません。"
+        )
 
     try:
         with candidate_path.open("rb") as candidate_file:
@@ -225,15 +227,14 @@ def validate_sqlite_restore_candidate(
 
 def _backup_database(source_path: Path, target_path: Path) -> None:
     try:
-        with _readonly_connection(source_path) as source, sqlite3.connect(
-            target_path
-        ) as target:
+        with (
+            _readonly_connection(source_path) as source,
+            sqlite3.connect(target_path) as target,
+        ):
             source.backup(target)
             target.commit()
     except sqlite3.DatabaseError as exc:
-        raise DatabaseManagementError(
-            "SQLite backupの作成に失敗しました。"
-        ) from exc
+        raise DatabaseManagementError("SQLite backupの作成に失敗しました。") from exc
 
 
 def create_sqlite_backup(runtime: DatabaseRuntime) -> Path:
@@ -286,9 +287,7 @@ def stage_sqlite_restore_upload(
             os.fsync(staged.fileno())
 
         if staged_path.stat().st_size == 0:
-            raise InvalidDatabaseBackupError(
-                "空のファイルはリストアできません。"
-            )
+            raise InvalidDatabaseBackupError("空のファイルはリストアできません。")
         return staged_path
     except Exception:
         if staged_path is not None:
@@ -335,10 +334,10 @@ def restore_sqlite_database(
 
     The candidate is validated before entering maintenance mode. During the
     exclusive section existing request sessions are drained, a rollback backup
-    is created, SQLAlchemy connections are disposed, SQLite sidecars are
-    removed, and the staged file is atomically moved into place. Any failure
-    after replacement attempts to restore the pre-operation backup before
-    requests are admitted again.
+    is created, SQLAlchemy connections are disposed, the staged database is
+    atomically moved into place, and stale SQLite sidecars are removed. Any
+    failure after replacement attempts to restore the pre-operation backup
+    before requests are admitted again.
     """
 
     live_path = require_sqlite_database_path(runtime)

@@ -40,9 +40,7 @@ def test_sqlite_backup_contains_consistent_schema_and_data(tmp_path: Path) -> No
             assert backup.execute("select count(*) from groups").fetchone() == (
                 expected_groups,
             )
-            assert backup.execute(
-                "select version_num from alembic_version"
-            ).fetchone()
+            assert backup.execute("select version_num from alembic_version").fetchone()
     finally:
         runtime.dispose()
         if backup_path is not None:
