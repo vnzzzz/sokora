@@ -19,7 +19,7 @@ jobs:
         run: make docker-build
 
       - name: Package closed-network deployment bundle
-        run: make package-closed-bundle
+        run: SOURCE_REVISION="$GITHUB_SHA" make package-closed-bundle
 
       - name: Verify bundle boundary and image transport
         run: |
@@ -37,7 +37,7 @@ jobs:
 
           grep -Fx "IMAGE_REF=sokora:${VERSION}" "$BUNDLE/manifest.env"
           grep -Eq '^IMAGE_ID=sha256:[0-9a-f]{64}$' "$BUNDLE/manifest.env"
-          grep -Eq '^SOURCE_REVISION=[0-9a-f]{40}$' "$BUNDLE/manifest.env"
+          grep -Fx "SOURCE_REVISION=${GITHUB_SHA}" "$BUNDLE/manifest.env"
           grep -Fx "SOKORA_IMAGE=sokora:${VERSION}" "$BUNDLE/compose.env.example"
 
           for forbidden in app docs tests .git .github .devcontainer AGENTS.md CLAUDE.md; do
