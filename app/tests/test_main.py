@@ -4,10 +4,11 @@ main.py のテストケース
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.core.settings import AppSettings
+from app.core.settings import DEFAULT_SESSION_SECRET, AppSettings
 from app.main import API_TAGS, app, create_application, create_openapi_schema
 
 
@@ -34,6 +35,18 @@ class TestCreateApplication:
 
         assert app_instance.state.settings_provider() is settings
         assert app_instance.version == settings.app_version
+
+    @pytest.mark.parametrize("session_secret", ["", "   ", DEFAULT_SESSION_SECRET])
+    def test_create_application_rejects_insecure_session_secret_when_auth_enabled(
+        self, session_secret: str
+    ) -> None:
+        settings = AppSettings(
+            auth_enabled=True,
+            session_secret=session_secret,
+        )
+
+        with pytest.raises(ValueError, match="SOKORA_AUTH_SESSION_SECRET"):
+            create_application(settings)
 
     def test_create_application_includes_routers(self) -> None:
         """create_application関数がルーターを含むことを確認"""
