@@ -6,5 +6,17 @@ services:
       - ${SOKORA_RUNTIME_ENV_FILE:?SOKORA_RUNTIME_ENV_FILE must point to the persistent runtime env file}
     environment:
       PORT: ${PORT:-8000}
+    command:
+      - /bin/sh
+      - -ceu
+      - |
+        case "$${DATABASE_URL:-}" in
+          postgresql://*|postgres://*|postgresql+*) ;;
+          *)
+            echo "DATABASE_URL must be an explicit PostgreSQL URL for compose.postgresql.yaml" >&2
+            exit 2
+            ;;
+        esac
+        exec uvicorn app.main:app --host 0.0.0.0 --port "$${PORT:-8000}"
     ports:
       - "${SERVICE_PORT:-8000}:${PORT:-8000}"
