@@ -3,11 +3,11 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: package_closed_bundle.sh IMAGE_REF OUTPUT_DIR
+usage: SOURCE_REVISION=<40-char git commit> package_closed_bundle.sh IMAGE_REF OUTPUT_DIR
 
 Create a repository-free closed-network deployment bundle from an existing
-production image. The bundle contains the Docker image archive, checksum,
-Compose adapters, runtime templates, and operator instructions.
+production image. SOURCE_REVISION must identify the source commit used to
+build that image; it is never inferred from the packaging checkout.
 EOF
 }
 
@@ -19,6 +19,12 @@ fi
 image_ref="$1"
 output_dir="$2"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source_revision="${SOURCE_REVISION:-}"
+
+if [[ ! "$source_revision" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "SOURCE_REVISION must be the 40-character git commit used to build the packaged image" >&2
+  exit 2
+fi
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required to package the production image" >&2
@@ -62,11 +68,7 @@ compose_env_template="$(<"$repo_root/deploy/closed/compose.env.example")"
 printf '%s\n' "${compose_env_template//__SOKORA_IMAGE__/$image_ref}" > "$output_dir/compose.env.example"
 
 image_id="$(docker image inspect --format '{{.Id}}' "$image_ref")"
-source_revision="${SOURCE_REVISION:-}"
-if [[ -z "$source_revision" ]] && command -v git >/dev/null 2>&1; then
-  source_revision="$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || true)"
-fi
-source_revision="${source_revision:-unknown}"
+source_revision="${source_revision,,}"
 
 cat > "$output_dir/manifest.env" <<EOF
 BUNDLE_FORMAT=1
@@ -76,4 +78,4 @@ SOURCE_REVISION=$source_revision
 EOF
 
 printf 'closed deployment bundle created: %s\n' "$output_dir"
-printf 'image: %s (%s)\n' "$image_ref" "$image_id"
+printf 'image: %s (%s), source revision: %s\n' "$image_ref" "$image_id" "$source_revision"
