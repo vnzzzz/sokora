@@ -24,7 +24,16 @@ docker load --input image.tar
 
 if [[ -f manifest.env ]]; then
   image_ref="$(sed -n 's/^IMAGE_REF=//p' manifest.env | head -n 1)"
-  image_id="$(sed -n 's/^IMAGE_ID=//p' manifest.env | head -n 1)"
-  [[ -n "$image_ref" ]] && echo "loaded image: $image_ref"
-  [[ -n "$image_id" ]] && echo "expected image id: $image_id"
+  expected_image_id="$(sed -n 's/^IMAGE_ID=//p' manifest.env | head -n 1)"
+
+  if [[ -n "$image_ref" && -n "$expected_image_id" ]]; then
+    actual_image_id="$(docker image inspect --format '{{.Id}}' "$image_ref")"
+    if [[ "$actual_image_id" != "$expected_image_id" ]]; then
+      echo "loaded image ID does not match manifest: expected $expected_image_id, got $actual_image_id" >&2
+      exit 1
+    fi
+    echo "loaded image: $image_ref ($actual_image_id)"
+  elif [[ -n "$image_ref" ]]; then
+    echo "loaded image: $image_ref"
+  fi
 fi
