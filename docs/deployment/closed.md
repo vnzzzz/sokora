@@ -14,22 +14,32 @@ bundleには以下だけを含める。
 
 - production imageの `docker save` archive
 - archiveのSHA-256 checksum
-- image reference / image ID / source revisionを記録したmanifest
-- checksum検証後に `docker load` するloader
+- image reference / image ID / **そのimageをbuildしたsource revision** を記録したmanifest
+- checksum検証後に `docker load` し、manifestのimage IDと一致することまで確認するloader
 - SQLite / PostgreSQL用の薄いDocker Compose定義
 - deployment/runtime env template
 - runtime host向けoperator guide
 
 開発repo、tests、docs全体、devcontainer、agent設定、Node/uv等のbuild toolingはruntime deployment unitへ含めない。production image自体のartifact boundaryもこの方針と一致する。
 
+`SOURCE_REVISION` はpackagingを行ったcheckoutから暗黙推測しない。prebuilt imageをbundle化するときは、そのimageをbuildした40文字Git commitをcallerが明示する。これにより「古い/外部build image + 現在のpackaging checkout」の組合せでも誤ったprovenanceをmanifestへ記録しない。
+
 ## Build location
 
 ### 外部でbuildして搬入する場合
 
-推奨経路。CIまたは外部build hostでversion付きimageをbuildし、そのimageからbundleを生成する。
+推奨経路。source checkoutからversion付きimageをbuildしてそのままbundle化する場合は、`closed-bundle` がbuild対象checkoutのrevisionを自動でmanifestへ渡す。
 
 ```bash
 VERSION=2026.09.02 make closed-bundle
+```
+
+すでに別工程でbuild済みのimageをbundle化する場合は、そのimageのsource revisionを明示する。
+
+```bash
+VERSION=2026.09.02 \
+SOURCE_REVISION=<40-character-build-commit> \
+make package-closed-bundle
 ```
 
 生成先は既定で `dist/sokora-2026.09.02-closed/`。このdirectoryだけを承認済み媒体等でruntime側へ搬入する。
@@ -57,12 +67,12 @@ image/bundle lifecycleとmutable stateを分離する。
 | State | Location/contract |
 | --- | --- |
 | deployment values | `/etc/sokora/deployment.env` 等。image tag、publish port、data/env path |
-| application secret/config | `/etc/sokora/runtime.env` 等。bundle外で権限制御 |
+| application secret/config | `/etc/sokora/runtime.env` 等。bundle外で権限制御し、Compose operatorがread可能なownership/modeにする |
 | SQLite DB | `/var/lib/sokora` 等のpersistent host storageを `/app/data` へmount |
 | PostgreSQL data | external PostgreSQL。application container filesystemへ保持しない |
 | image | immutable version tag。old versionをrollback期間中保持 |
 
-bundle内のexample env fileをそのままsecret storeとして扱わない。
+bundle内のexample env fileをそのままsecret storeとして扱わない。referenceのnon-root Docker operator運用では `/etc/sokora/runtime.env` をoperator owner・`0600`、deployment envをoperator owner・`0640` とし、Composeが`env_file`を読めることを保証する。rootや専用service accountで運用する場合は、そのidentityへ同等のread権限を与え、Compose実行identityも統一する。
 
 ## SQLite
 
@@ -107,10 +117,11 @@ internal PostgreSQL/OIDC endpoint等、proxyを経由させない宛先はdeploy
 
 ## Validation
 
-CIのproduction-image jobでは、通常のproduction image smokeに加えて以下を保証する。
+`Closed deployment` CIでは以下を保証する。
 
-- 既存production imageからrepository-free bundleを生成できる
-- image archive checksumを検証して`docker load`できる
+- 同じproduction imageからrepository-free bundleを生成できる
+- callerが明示したbuild revisionがmanifestへそのまま記録される
+- image archive checksumを検証して`docker load`でき、loaded image IDがmanifestと一致する
 - bundle内にrepo/test/dev toolingを含めない
 - bundleのSQLite Compose adapterだけでimageを再起動し `/healthz` が成功する
 - PostgreSQL自体のproduction image接続contractは既存PostgreSQL jobで継続検証する
