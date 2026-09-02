@@ -7,7 +7,7 @@ This directory is the runtime deployment unit for an isolated/closed network. It
 - `image.tar`: production image exported by `docker save`
 - `image.tar.sha256`: transport-integrity checksum
 - `manifest.env`: packaged image reference, image ID, and the explicitly supplied source revision of that image
-- `load-image.sh`: checksum verification + `docker load` + image ID verification
+- `load-image.sh`: manifest/checksum verification + `docker load` + image ID verification
 - `compose.sqlite.yaml`: single-instance SQLite runtime
 - `compose.postgresql.yaml`: external PostgreSQL runtime
 - `compose.env.example`: non-secret deployment values
@@ -20,6 +20,8 @@ Docker Engine and Docker Compose v2 are the reference runtime. The application i
 ```bash
 ./load-image.sh
 ```
+
+`manifest.env` is mandatory. The loader rejects an incomplete/unsupported manifest before loading the archive, verifies `image.tar.sha256`, loads the image, and then verifies that the loaded immutable image ID matches the manifest.
 
 Do not retag the image to `latest` for normal operations. Keep the immutable version tag shown by `manifest.env`; upgrade and rollback select that tag explicitly.
 
@@ -49,7 +51,7 @@ sudo install -d -m 0750 /var/lib/sokora
 
 ## 3A. Start SQLite
 
-SQLite is supported only for one application instance. `compose.sqlite.yaml` fixes `DATABASE_URL` to `sqlite:///data/sokora.db` and mounts `SOKORA_DATA_DIR` at `/app/data`.
+SQLite is supported only for one application instance. `compose.sqlite.yaml` fixes `DATABASE_URL` to `sqlite:///data/sokora.db` and mounts `SOKORA_DATA_DIR` at `/app/data`; the blank `DATABASE_URL` in `runtime.env.example` is intentionally overridden in this mode.
 
 ```bash
 docker compose \
@@ -61,7 +63,9 @@ docker compose \
 
 ## 3B. Start PostgreSQL
 
-Set `DATABASE_URL` in `/etc/sokora/runtime.env` to the shared PostgreSQL URL before starting. The application data directory is not mounted in this mode.
+Set `DATABASE_URL` in `/etc/sokora/runtime.env` to the actual shared PostgreSQL URL before starting. The template intentionally leaves this value blank. `compose.postgresql.yaml` validates the container runtime value and exits before application startup unless it begins with a PostgreSQL scheme (`postgresql://`, `postgres://`, or an explicit `postgresql+...` SQLAlchemy driver URL). It never falls back to an unmounted SQLite database.
+
+The application data directory is not mounted in this mode.
 
 ```bash
 docker compose \
