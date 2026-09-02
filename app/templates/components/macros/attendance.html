@@ -1,0 +1,83 @@
+{% import "components/macros/modal.html" as modal_ui %}
+
+{% macro attendance_delete_button(attendance_id) -%}
+<button
+  type="button"
+  class="btn btn-error"
+  hx-delete="/attendance/entries/{{ attendance_id }}"
+  hx-target="closest dialog"
+  hx-swap="outerHTML"
+>
+  削除
+</button>
+{%- endmacro %}
+
+{% macro attendance_modal(user_id, date, user_name, formatted_date, attendance_id, current_location_id, locations, mode=None, note=None) -%}
+{% set delete_button = attendance_delete_button(attendance_id) if attendance_id else "" %}
+{% set modal_id = "attendance-modal-" ~ user_id ~ "-" ~ date %}
+
+{% call modal_ui.modal_form(
+  id = modal_id,
+  title = "勤怠編集: " ~ user_name ~ " (" ~ formatted_date ~ ")",
+  action = attendance_id and ("/attendance/entries/" ~ attendance_id) or "/attendance/entries",
+  method = attendance_id and "PUT" or "POST",
+  submit_text = attendance_id and "更新" or "登録",
+  size = "lg",
+  extra_buttons = delete_button,
+  dialog_attrs = 'data-attendance-modal-date="' ~ date ~ '"'
+) %}
+
+<div id="attendance-form-error" class="text-error text-sm" role="alert"></div>
+<input type="hidden" name="user_id" value="{{ user_id }}">
+<input type="hidden" name="date" value="{{ date }}">
+<input type="hidden" name="location_id" value="{{ current_location_id }}">
+
+<div class="space-y-6">
+  <div>
+    <label class="label"><span class="label-text font-medium text-base">勤怠種別選択</span></label>
+    {% set categories = {} %}
+    {% for location in locations %}
+      {% set category = location.category or '未分類' %}
+      {% if category not in categories %}
+        {% set _ = categories.update({category: []}) %}
+      {% endif %}
+      {% set _ = categories[category].append(location) %}
+    {% endfor %}
+
+    {% set sorted_categories = categories.keys()|list|sort %}
+    {% if '未分類' in sorted_categories %}
+      {% set _ = sorted_categories.remove('未分類') %}
+      {% set _ = sorted_categories.append('未分類') %}
+    {% endif %}
+
+    {% for category in sorted_categories %}
+      <div class="mt-4">
+        <h4 class="font-medium text-base-content mb-2 border-b pb-1 text-sm">{{ category }}</h4>
+        <div class="grid grid-cols-3 gap-x-2 gap-y-1">
+          {% for location in categories[category]|sort(attribute='order') %}
+            <button
+              type="button"
+              class="btn btn-outline btn-sm location-select-btn {{ location.id == current_location_id and 'btn-active' or '' }} whitespace-normal h-auto py-1 text-xs"
+              data-location-id="{{ location.id }}"
+            >
+              {{ location.name }}
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div>
+    <label class="label"><span class="label-text font-medium text-base">備考（任意）</span></label>
+    <textarea
+      name="note"
+      class="textarea textarea-bordered w-full"
+      placeholder="備考を入力してください（任意）"
+      rows="3"
+    >{{ note or '' }}</textarea>
+  </div>
+</div>
+
+{% endcall %}
+{%- endmacro %}

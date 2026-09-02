@@ -1,0 +1,61 @@
+{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', user_id=None, class='') -%}
+<div class="btn-group shadow-sm {{ class }}">
+  <button
+    class="btn btn-sm btn-outline"
+    hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}?month={{ prev_month }}"
+    hx-target="#{{ target_id }}"
+    hx-swap="outerHTML"
+  >
+    ◀︎
+  </button>
+
+  <button
+    class="btn btn-sm btn-neutral"
+    hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}"
+    hx-target="#{{ target_id }}"
+    hx-swap="outerHTML"
+  >
+    今月
+  </button>
+
+  <button
+    class="btn btn-sm btn-outline"
+    hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}?month={{ next_month }}"
+    hx-target="#{{ target_id }}"
+    hx-swap="outerHTML"
+  >
+    ▶︎
+  </button>
+</div>
+{%- endmacro %}
+
+{% macro week_switcher(prev_week, next_week, current_week, url_base='/attendance/weekly', target_id='calendar', user_id=None, class='') -%}
+<div class="btn-group shadow-sm {{ class }}">
+  <button
+    class="btn btn-sm btn-outline"
+    hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}?week={{ prev_week }}"
+    hx-target="#{{ target_id }}"
+    hx-swap="outerHTML"
+  >
+    ◀︎
+  </button>
+
+  <button
+    class="btn btn-sm btn-neutral"
+    hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}"
+    hx-target="#{{ target_id }}"
+    hx-swap="outerHTML"
+  >
+    今週
+  </button>
+
+  <button
+    class="btn btn-sm btn-outline"
+    hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}?week={{ next_week }}"
+    hx-target="#{{ target_id }}"
+    hx-swap="outerHTML"
+  >
+    ▶︎
+  </button>
+</div>
+{%- endmacro %}

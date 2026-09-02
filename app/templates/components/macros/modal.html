@@ -1,0 +1,54 @@
+{% macro modal_form(id, title, action, method="POST", submit_text="保存", size="md", extra_cls="", extra_buttons="", dialog_attrs="") -%}
+<dialog id="{{ id }}" class="modal modal-{{ size }} {{ extra_cls }}" {{ dialog_attrs | safe }}>
+  <div class="modal-box">
+    <h3 class="font-bold text-lg">{{ title }}</h3>
+    <div class="py-4">
+      <form
+        id="{{ id }}-form"
+        hx-{{ method|lower }}="{{ action }}"
+        hx-target="closest dialog"
+        hx-swap="outerHTML"
+        class="space-y-4"
+      >
+        {{ caller() }}
+      </form>
+    </div>
+
+    <div class="modal-action space-x-3">
+      {% if extra_buttons %}{{ extra_buttons | safe }}{% endif %}
+      <button form="{{ id }}-form" class="btn btn-neutral">{{ submit_text }}</button>
+    </div>
+  </div>
+  <button type="button" class="modal-backdrop" onclick="this.closest('dialog').close()"></button>
+</dialog>
+{%- endmacro %}
+
+{% macro delete_modal_form(id, title, action, item_name, submit_text="削除", size="sm", extra_cls="") -%}
+<dialog id="{{ id }}" class="modal modal-{{ size }} {{ extra_cls }}">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg text-error">{{ title }}</h3>
+    <div class="py-4">
+      <p class="mb-5 text-left">
+        「{{ item_name }}」を削除してもよろしいですか？<br />
+        この操作は元に戻せません。<br />
+        {{ caller() }}
+      </p>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-outline mr-2">キャンセル</button>
+      </form>
+      <button
+        class="btn btn-error"
+        hx-delete="{{ action }}"
+        hx-target="closest dialog"
+        hx-swap="outerHTML"
+      >
+        {{ submit_text }}
+      </button>
+    </div>
+  </div>
+  <button type="button" class="modal-backdrop" onclick="this.closest('dialog').close()"></button>
+</dialog>
+{%- endmacro %}

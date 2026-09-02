@@ -1,6 +1,6 @@
-{% import "components/macros/ui.html" as ui %}
+{% import "components/macros/modal.html" as modal_ui %}
 
-{% call ui.delete_modal_form(
+{% call modal_ui.delete_modal_form(
   id = modal_id,
   title = "社員の削除",
   action = "/users/" ~ user.id,
