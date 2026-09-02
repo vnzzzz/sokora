@@ -23,7 +23,7 @@
                   <th class="rounded-tr-lg">操作</th>
                 </tr>
               </thead>
-              <tbody id="location-table-body-{{ category|urlencode }}">
+              <tbody id="location-table-body-{{ loop.index }}">
                 {% for location in grouped_locations[category] %}
                   {% include "components/location/_location_row.html" %}
                 {% endfor %}
