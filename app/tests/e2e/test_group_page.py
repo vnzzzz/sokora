@@ -17,7 +17,7 @@ def test_group_page_display(page: Page) -> None:
 
 
 def test_create_group(page: Page) -> None:
-    """新しいグループを作成するテスト"""
+    """新しいグループを作成し、成功通知が更新後も表示されることをテスト"""
     timestamp = int(time.time())
     group_name = f"テストグループ_{timestamp}"
 
@@ -30,14 +30,15 @@ def test_create_group(page: Page) -> None:
     add_modal.locator("#add-group-order").fill("1")
     add_modal.locator('button[form="add-group-form"]').click()
 
-    # 追加完了を待機
-    page.wait_for_timeout(1000)
+    # reload後の一覧更新を待ち、成功通知も同じ画面で読めることを確認する。
+    expect(page.locator("table")).to_contain_text(group_name, timeout=5000)
+    expect(page.locator('#ui-message-container [role="status"]')).to_contain_text(
+        f"グループ {group_name} を追加しました。",
+        timeout=3000,
+    )
 
     # モーダルが閉じることを確認
     expect(add_modal).to_be_hidden(timeout=3000)
-
-    # テーブル内に新しいグループが表示されることを確認
-    expect(page.locator("table")).to_contain_text(group_name)
 
 
 def test_edit_group(page: Page) -> None:
