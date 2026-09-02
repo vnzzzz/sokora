@@ -84,9 +84,15 @@ production imageはrootの `Dockerfile` 1本だけでbuildする。Node/uv/test/
 - 実行: `make docker-run`
   - host側 `SERVICE_PORT` をcontainer側 `PORT`（既定 `8000`）へpublish
   - SQLite利用時は `data/` を `/app/data` へvolume mount
+- 閉域向けbundle: `make closed-bundle`
+  - `dist/sokora-${VERSION}-closed/` にimage archive/checksum、SQLite/PostgreSQL Compose adapter、runtime template、operator guideを生成
+  - runtime hostにはこのbundleだけを搬入でき、開発repoは不要
+  - config/secretとSQLite dataはbundle外のpersistent pathへ分離する
 - `DATABASE_URL` はapplication runtimeのSSoT。schema migrationはapplication startupでAlembic headまで適用する。
 - fresh file-backed SQLiteはstartup時だけseedする。DBをimage layerへ埋め込まない。
 - health check: `GET /healthz`（認証不要）
+
+閉域環境のbuild/搬入、新規導入、upgrade/rollback、SQLite backup、PostgreSQL運用境界は [docs/deployment/closed.md](docs/deployment/closed.md) を参照する。
 
 ### Proxy
 
@@ -144,11 +150,13 @@ make test
 ```
 `scripts/testing/run_test.sh` が DB クリーンアップ → API/ユニット → E2E を順に実行し、サーバーが無ければ自動起動する（テスト中は `SOKORA_AUTH_ENABLED=false` を強制）。
 
-CIはSQLiteの通常quality/non-E2E/E2E、real PostgreSQLを使ったmigration/startup/主要CRUD integration test、production imageのproxyなし/ありbuild・runtime、`PORT` override、`/healthz`、development-only資産/ツールの不在を検証する。
+CIはSQLiteの通常quality/non-E2E/E2E、real PostgreSQLを使ったmigration/startup/主要CRUD integration test、production imageのproxyなし/ありbuild・runtime、`PORT` override、`/healthz`、development-only資産/ツールの不在を検証する。`Closed deployment` workflowでは、同じproduction imageからrepository-free bundleを生成し、checksum検証→`docker load`→SQLite Compose起動までを実際に通す。
 
 ## Project Layout
 - `app/main.py` / `app/routers/`: API v1 と各ページルーター（auth/calendar/attendance/analysis など）
 - `app/templates/`: `layout/base.html` ベースのページ・コンポーネント。HTMX/Alpine.js 用の部分テンプレートは `components/partials/`。
 - `app/static/`: 開発用 JS/CSS。`assets/` は Tailwind ビルド成果物。
-- `builder/`: Tailwind + daisyUI のビルドソース、`scripts/`: アセット・シーディング・マイグレーション・テスト補助
-- `docs/`: [requirements.md](docs/requirements.md) から API/DB/UI/runtime仕様へリンク
+- `builder/`: Tailwind + daisyUI のビルドソース
+- `scripts/`: アセット・シーディング・マイグレーション・テスト・deployment packaging補助
+- `deploy/closed/`: 閉域runtimeへbundleするprovider非依存のCompose/template/operator assets
+- `docs/`: [requirements.md](docs/requirements.md) から API/DB/UI/runtime/deployment仕様へリンク

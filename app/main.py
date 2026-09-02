@@ -72,6 +72,7 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
     migration失敗はlifespanから伝播させ、Alembic headでない状態ではrequestを受け付けません。
     """
     settings: AppSettings = app.state.settings_provider()
+    settings.validate_runtime()
     app.state.settings = settings
     configure_logging(settings.log_level)
 
@@ -104,6 +105,8 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
             return initial_settings
 
         settings_provider = explicit_settings_provider
+
+    initial_settings.validate_runtime()
 
     app = FastAPI(
         title="Sokora API",

@@ -9,6 +9,7 @@ def test_healthz_is_available_without_authentication() -> None:
     settings = AppSettings(
         database_url="sqlite:///:memory:",
         auth_enabled=True,
+        session_secret="test-session-secret",
     )
 
     with TestClient(create_application(settings)) as client:

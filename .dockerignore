@@ -7,9 +7,12 @@ AGENTS.md
 CLAUDE.md
 README.md
 docs
+deploy
 app/tests
 scripts/testing
+scripts/deployment
 data
+dist
 assets
 builder/node_modules
 .venv

@@ -1,0 +1,194 @@
+name: Closed deployment
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  closed-deployment:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ci-closed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production image
+        run: make docker-build
+
+      - name: Package closed-network deployment bundle
+        run: |
+          if make package-closed-bundle > /tmp/package-without-revision.log 2>&1; then
+            echo "prebuilt image packaging unexpectedly accepted missing SOURCE_REVISION" >&2
+            cat /tmp/package-without-revision.log >&2
+            exit 1
+          fi
+          grep -q 'SOURCE_REVISION is required' /tmp/package-without-revision.log
+          SOURCE_REVISION="$GITHUB_SHA" make package-closed-bundle
+
+      - name: Verify transactional bundle replacement
+        run: |
+          BUNDLE="dist/sokora-${VERSION}-closed"
+          manifest_before="$(sha256sum "$BUNDLE/manifest.env")"
+          image_checksum_before="$(sha256sum "$BUNDLE/image.tar.sha256")"
+          real_docker="$(command -v docker)"
+          mkdir -p /tmp/sokora-failing-docker
+          cat > /tmp/sokora-failing-docker/docker <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [[ "${1:-}" == "save" ]]; then
+            echo "injected docker save failure" >&2
+            exit 86
+          fi
+          exec "${REAL_DOCKER:?}" "$@"
+          EOF
+          chmod +x /tmp/sokora-failing-docker/docker
+
+          if PATH="/tmp/sokora-failing-docker:$PATH" REAL_DOCKER="$real_docker" SOURCE_REVISION="$GITHUB_SHA" \
+            bash ./scripts/deployment/package_closed_bundle.sh "sokora:${VERSION}" "$BUNDLE"; then
+            echo "packaging unexpectedly succeeded through injected docker save failure" >&2
+            exit 1
+          fi
+
+          test "$(sha256sum "$BUNDLE/manifest.env")" = "$manifest_before"
+          test "$(sha256sum "$BUNDLE/image.tar.sha256")" = "$image_checksum_before"
+          test -f "$BUNDLE/image.tar"
+          ! find dist -maxdepth 1 -type d -name ".sokora-${VERSION}-closed.tmp.*" -print -quit | grep -q .
+
+      - name: Verify bundle boundary and image transport
+        run: |
+          BUNDLE="dist/sokora-${VERSION}-closed"
+          test -f "$BUNDLE/image.tar"
+          test -f "$BUNDLE/image.tar.sha256"
+          test -f "$BUNDLE/manifest.env"
+          test -f "$BUNDLE/load-image.sh"
+          test -f "$BUNDLE/compose.sqlite.yaml"
+          test -f "$BUNDLE/compose.postgresql.yaml"
+          test -f "$BUNDLE/compose.env.example"
+          test -f "$BUNDLE/runtime.env.example"
+          test -f "$BUNDLE/README.md"
+          test "$(find "$BUNDLE" -maxdepth 1 -type f | wc -l)" -eq 9
+
+          grep -Fx "IMAGE_REF=sokora:${VERSION}" "$BUNDLE/manifest.env"
+          grep -Eq '^IMAGE_ID=sha256:[0-9a-f]{64}$' "$BUNDLE/manifest.env"
+          grep -Fx "SOURCE_REVISION=${GITHUB_SHA}" "$BUNDLE/manifest.env"
+          grep -Fx "SOKORA_IMAGE=sokora:${VERSION}" "$BUNDLE/compose.env.example"
+          grep -Fx 'DATABASE_URL=' "$BUNDLE/runtime.env.example"
+
+          for forbidden in app docs tests .git .github .devcontainer AGENTS.md CLAUDE.md; do
+            test ! -e "$BUNDLE/$forbidden"
+          done
+
+          # Identity metadata is mandatory and must be checked before docker load.
+          mv "$BUNDLE/manifest.env" "$BUNDLE/manifest.env.saved"
+          if "$BUNDLE/load-image.sh" > /tmp/load-without-manifest.log 2>&1; then
+            echo "loader unexpectedly accepted a bundle without manifest.env" >&2
+            exit 1
+          fi
+          grep -q 'bundle is incomplete' /tmp/load-without-manifest.log
+          mv "$BUNDLE/manifest.env.saved" "$BUNDLE/manifest.env"
+
+          packaged_id="$(sed -n 's/^IMAGE_ID=//p' "$BUNDLE/manifest.env")"
+          docker image rm "sokora:${VERSION}"
+          "$BUNDLE/load-image.sh"
+          loaded_id="$(docker image inspect --format '{{.Id}}' "sokora:${VERSION}")"
+          test "$loaded_id" = "$packaged_id"
+
+      - name: Smoke closed-network Compose contracts
+        run: |
+          BUNDLE="${GITHUB_WORKSPACE}/dist/sokora-${VERSION}-closed"
+          cp "$BUNDLE/runtime.env.example" /tmp/sokora-ci-runtime.env
+          cp "$BUNDLE/compose.env.example" /tmp/sokora-ci-deployment.env
+          sed -i 's|^SERVICE_PORT=.*|SERVICE_PORT=18086|' /tmp/sokora-ci-deployment.env
+          sed -i 's|^SOKORA_DATA_DIR=.*|SOKORA_DATA_DIR=/tmp/sokora-ci-data|' /tmp/sokora-ci-deployment.env
+          sed -i 's|^SOKORA_RUNTIME_ENV_FILE=.*|SOKORA_RUNTIME_ENV_FILE=/tmp/sokora-ci-runtime.env|' /tmp/sokora-ci-deployment.env
+          mkdir -p /tmp/sokora-ci-data
+
+          cd "$BUNDLE"
+          docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.sqlite.yaml \
+            -p sokora-closed-ci \
+            config > /tmp/sokora-sqlite-compose.txt
+          grep -q '/app/data' /tmp/sokora-sqlite-compose.txt
+
+          docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.postgresql.yaml \
+            -p sokora-closed-ci-postgresql \
+            config > /tmp/sokora-postgresql-compose.txt
+          ! grep -q '/app/data' /tmp/sokora-postgresql-compose.txt
+
+          # The generic runtime template leaves DATABASE_URL blank. PostgreSQL
+          # must fail before app startup instead of silently creating SQLite.
+          if timeout 15s docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.postgresql.yaml \
+            -p sokora-closed-ci-postgresql \
+            run --rm --no-deps sokora > /tmp/sokora-postgresql-fail-closed.log 2>&1; then
+            echo "PostgreSQL adapter unexpectedly accepted a missing DATABASE_URL" >&2
+            exit 1
+          fi
+          grep -q 'DATABASE_URL must be an explicit PostgreSQL URL' /tmp/sokora-postgresql-fail-closed.log
+          test ! -f /tmp/sokora-ci-data/sokora.db
+
+          # Authentication must not start with a blank/public session signing key.
+          sed -i 's|^SOKORA_AUTH_ENABLED=.*|SOKORA_AUTH_ENABLED=true|' /tmp/sokora-ci-runtime.env
+          sed -i 's|^SOKORA_AUTH_SESSION_SECRET=.*|SOKORA_AUTH_SESSION_SECRET=|' /tmp/sokora-ci-runtime.env
+          if timeout 15s docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.sqlite.yaml \
+            -p sokora-closed-ci-auth \
+            run --rm --no-deps sokora > /tmp/sokora-auth-fail-closed.log 2>&1; then
+            echo "application unexpectedly accepted auth with a blank session secret" >&2
+            exit 1
+          fi
+          grep -q 'SOKORA_AUTH_SESSION_SECRET must be explicitly configured' /tmp/sokora-auth-fail-closed.log
+          sed -i 's|^SOKORA_AUTH_ENABLED=.*|SOKORA_AUTH_ENABLED=false|' /tmp/sokora-ci-runtime.env
+
+          docker compose \
+            --env-file /tmp/sokora-ci-deployment.env \
+            -f compose.sqlite.yaml \
+            -p sokora-closed-ci \
+            up -d --pull never
+
+          READY=0
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18086/healthz >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Closed-network SQLite deployment failed to become healthy. Logs:"
+            docker compose \
+              --env-file /tmp/sokora-ci-deployment.env \
+              -f compose.sqlite.yaml \
+              -p sokora-closed-ci \
+              logs || true
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:18086/healthz | grep -q '"status":"ok"'
+          test -f /tmp/sokora-ci-data/sokora.db
+
+      - name: Stop closed-network deployment
+        if: always()
+        run: |
+          BUNDLE="${GITHUB_WORKSPACE}/dist/sokora-${VERSION}-closed"
+          if [ -f "$BUNDLE/compose.sqlite.yaml" ] && [ -f /tmp/sokora-ci-deployment.env ]; then
+            docker compose \
+              --env-file /tmp/sokora-ci-deployment.env \
+              -f "$BUNDLE/compose.sqlite.yaml" \
+              -p sokora-closed-ci \
+              down || true
+            docker compose \
+              --env-file /tmp/sokora-ci-deployment.env \
+              -f "$BUNDLE/compose.sqlite.yaml" \
+              -p sokora-closed-ci-auth \
+              down || true
+          fi
+          rm -rf /tmp/sokora-ci-data /tmp/sokora-ci-runtime.env /tmp/sokora-ci-deployment.env /tmp/sokora-failing-docker

@@ -19,13 +19,15 @@ endif
 VERSION_TAG := $(IMAGE_NAME):$(VERSION)
 CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
+DIST_DIR ?= dist
+CLOSED_BUNDLE_DIR ?= $(DIST_DIR)/sokora-$(VERSION)-closed
 SEED_DAYS_BACK ?= 60
 SEED_DAYS_FORWARD ?= 60
 NO_PROXY_VALUE := $(if $(NO_PROXY),$(NO_PROXY),$(no_proxy))
 DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),) $(if $(NO_PROXY_VALUE),--build-arg no_proxy=$(NO_PROXY_VALUE) --build-arg NO_PROXY=$(NO_PROXY_VALUE),)
 DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),) $(if $(NO_PROXY_VALUE),-e no_proxy=$(NO_PROXY_VALUE) -e NO_PROXY=$(NO_PROXY_VALUE),)
 
-.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build docker-build dev-build docker-run docker-stop
+.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build docker-build closed-bundle package-closed-bundle dev-build docker-run docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -46,6 +48,8 @@ help:
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make docker-build    Build production image (%s); proxy args are applied when proxy is set\n" "$(VERSION_TAG)"
+	@printf "  make closed-bundle   Build %s and package it with the current source revision\n" "$(VERSION_TAG)"
+	@printf "  make package-closed-bundle SOURCE_REVISION=<sha>  Package an already-built %s into %s\n" "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
 	@printf "  make docker-run      Run production container with SERVICE_PORT -> PORT and data volume mount\n"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
@@ -101,6 +105,16 @@ build:
 
 docker-build:
 	docker build $(DOCKER_BUILD_PROXY_ARGS) -t $(VERSION_TAG) .
+
+closed-bundle: docker-build
+	SOURCE_REVISION="$$(git rev-parse HEAD)" bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
+
+package-closed-bundle:
+	@if [ -z "$(SOURCE_REVISION)" ]; then \
+		echo "SOURCE_REVISION is required for an already-built image; set it to the commit used to build $(VERSION_TAG)" >&2; \
+		exit 2; \
+	fi
+	SOURCE_REVISION="$(SOURCE_REVISION)" bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
 
 dev-build:
 	docker build -f .devcontainer/Dockerfile -t $(DEV_IMAGE_NAME) ..
