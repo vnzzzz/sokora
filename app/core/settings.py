@@ -9,6 +9,7 @@ from os import environ
 from typing import Mapping
 
 DEFAULT_DATABASE_URL = "sqlite:///data/sokora.db"
+DEFAULT_SESSION_SECRET = "dev-session-secret"
 
 
 def _get_bool(values: Mapping[str, str], name: str, default: bool) -> bool:
@@ -47,7 +48,7 @@ class AppSettings:
     database_url: str = DEFAULT_DATABASE_URL
 
     auth_enabled: bool = False
-    session_secret: str = "dev-session-secret"
+    session_secret: str = DEFAULT_SESSION_SECRET
     session_ttl_seconds: int = 3600
     session_https_only: bool = False
     local_auth_enabled: bool = True
@@ -62,6 +63,17 @@ class AppSettings:
     local_admin_username: str | None = None
     local_admin_password: str | None = None
 
+    def validate_runtime(self) -> None:
+        """Reject runtime combinations that would weaken security contracts."""
+        normalized_secret = self.session_secret.strip()
+        if self.auth_enabled and (
+            not normalized_secret or normalized_secret == DEFAULT_SESSION_SECRET
+        ):
+            raise ValueError(
+                "SOKORA_AUTH_SESSION_SECRET must be explicitly configured "
+                "when SOKORA_AUTH_ENABLED=true"
+            )
+
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AppSettings":
         """Build settings from an explicit mapping or the process environment."""
@@ -71,7 +83,7 @@ class AppSettings:
             database_url=source.get("DATABASE_URL", DEFAULT_DATABASE_URL),
             auth_enabled=_get_bool(source, "SOKORA_AUTH_ENABLED", False),
             session_secret=source.get(
-                "SOKORA_AUTH_SESSION_SECRET", "dev-session-secret"
+                "SOKORA_AUTH_SESSION_SECRET", DEFAULT_SESSION_SECRET
             ),
             session_ttl_seconds=_get_int(
                 source, "SOKORA_AUTH_SESSION_TTL_SECONDS", 3600
