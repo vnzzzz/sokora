@@ -32,7 +32,17 @@ fi
 
 docker image inspect "$image_ref" >/dev/null
 
-rm -rf "$output_dir"
+if [[ -L "$output_dir" ]]; then
+  echo "refusing to replace symlink output directory: $output_dir" >&2
+  exit 1
+fi
+if [[ -e "$output_dir" ]]; then
+  if [[ ! -f "$output_dir/manifest.env" ]] || ! grep -Fxq 'BUNDLE_FORMAT=1' "$output_dir/manifest.env"; then
+    echo "refusing to replace non-bundle output directory: $output_dir" >&2
+    exit 1
+  fi
+  rm -rf -- "$output_dir"
+fi
 mkdir -p "$output_dir"
 
 docker save --output "$output_dir/image.tar" "$image_ref"
