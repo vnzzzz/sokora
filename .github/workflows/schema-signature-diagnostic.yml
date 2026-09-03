@@ -158,6 +158,7 @@ jobs:
 
           uv run ruff format app/services/database_management.py
           uv run ruff check app/services/database_management.py
+          mkdir -p data assets/json
           uv run pytest -q app/tests/services/test_database_management.py app/tests/services/test_database_management_review_regressions.py
 
       - name: Remove temporary diagnostic workflow and commit fix
