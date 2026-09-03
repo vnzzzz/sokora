@@ -40,15 +40,25 @@ class DatabaseRestoreError(DatabaseManagementError):
     status_code = 500
 
 
+class _IndexSchema(NamedTuple):
+    unique: bool
+    partial: bool
+    columns: tuple[tuple[object, ...], ...]
+    predicate: str | None
+    expression: str | None
+
+
 class _TableSchema(NamedTuple):
     columns: tuple[tuple[object, ...], ...]
     foreign_keys: tuple[tuple[object, ...], ...]
-    indexes: tuple[tuple[object, ...], ...]
+    indexes: tuple[_IndexSchema, ...]
+    definition: str
+    conflict_policies: tuple[tuple[str, str], ...]
 
 
 class _SchemaSignature(NamedTuple):
     tables: tuple[tuple[str, _TableSchema], ...]
-    sql_definitions: tuple[tuple[object, ...], ...]
+    views_and_triggers: tuple[tuple[str, str, str, str], ...]
 
 
 def require_sqlite_database_path(runtime: DatabaseRuntime) -> Path:
@@ -71,15 +81,8 @@ def _quote_identifier(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
-def _canonicalize_sql_definition(sql: str) -> str:
-    """Normalize SQLite DDL without hiding semantic constraint differences.
-
-    SQLite and Alembic batch migrations can persist equivalent schemas with
-    different whitespace, keyword case, or quoting of simple identifiers.
-    Tokenize the DDL so those presentation differences compare equal while
-    preserving string literals, operators, CHECK expressions, conflict clauses,
-    and other semantic tokens.
-    """
+def _sql_tokens(sql: str) -> tuple[str, ...]:
+    """Tokenize SQLite DDL while normalizing presentation-only differences."""
 
     tokens: list[str] = []
     index = 0
@@ -139,9 +142,16 @@ def _canonicalize_sql_definition(sql: str) -> str:
         if char.isalpha() or char == "_":
             start = index
             index += 1
-            while index < length and (sql[index].isalnum() or sql[index] in {"_", "$"}):
+            while index < length and (
+                sql[index].isalnum() or sql[index] in {"_", "$"}
+            ):
                 index += 1
             tokens.append(sql[start:index].casefold())
+            continue
+
+        if sql[index : index + 3] == "->>":
+            tokens.append("->>")
+            index += 3
             continue
 
         two_character_operator = sql[index : index + 2]
@@ -150,15 +160,253 @@ def _canonicalize_sql_definition(sql: str) -> str:
             index += 2
             continue
 
-        if sql[index : index + 3] == "->>":
-            tokens.append("->>")
-            index += 3
-            continue
-
         tokens.append(char)
         index += 1
 
+    return tuple(tokens)
+
+
+def _canonicalize_tokens(tokens: tuple[str, ...] | list[str]) -> str:
     return "\x1f".join(tokens)
+
+
+def _canonicalize_sql_definition(sql: str) -> str:
+    return _canonicalize_tokens(_sql_tokens(sql))
+
+
+def _split_table_definition(
+    tokens: tuple[str, ...],
+) -> tuple[tuple[str, ...], list[list[str]], tuple[str, ...]]:
+    """Split CREATE TABLE tokens into prefix, top-level clauses, and suffix."""
+
+    try:
+        body_start = tokens.index("(")
+    except ValueError:
+        return tokens, [], ()
+
+    depth = 0
+    body_end: int | None = None
+    for position in range(body_start, len(tokens)):
+        token = tokens[position]
+        if token == "(":
+            depth += 1
+        elif token == ")":
+            depth -= 1
+            if depth == 0:
+                body_end = position
+                break
+
+    if body_end is None:
+        return tokens, [], ()
+
+    clauses: list[list[str]] = []
+    clause: list[str] = []
+    depth = 0
+    for token in tokens[body_start + 1 : body_end]:
+        if token == "(":
+            depth += 1
+        elif token == ")":
+            depth -= 1
+        if token == "," and depth == 0:
+            clauses.append(clause)
+            clause = []
+        else:
+            clause.append(token)
+    clauses.append(clause)
+
+    return tokens[:body_start], clauses, tokens[body_end + 1 :]
+
+
+def _constraint_kind_before_conflict(tokens: list[str], position: int) -> str:
+    preceding = tokens[:position]
+    for index in range(len(preceding) - 1, -1, -1):
+        token = preceding[index]
+        if token == "unique":
+            return "unique"
+        if token == "check":
+            return "check"
+        if token == "null" and index > 0 and preceding[index - 1] == "not":
+            return "not_null"
+        if token == "key" and index > 0 and preceding[index - 1] == "primary":
+            return "primary_key"
+    return "other"
+
+
+def _table_conflict_policies(sql: str) -> tuple[tuple[str, str], ...]:
+    _prefix, clauses, _suffix = _split_table_definition(_sql_tokens(sql))
+    policies: list[tuple[str, str]] = []
+    accepted = {"rollback", "abort", "fail", "ignore", "replace"}
+
+    for clause in clauses:
+        for index in range(len(clause) - 2):
+            if clause[index : index + 2] != ["on", "conflict"]:
+                continue
+            policy = clause[index + 2]
+            if policy in accepted:
+                policies.append((_constraint_kind_before_conflict(clause, index), policy))
+
+    return tuple(sorted(policies))
+
+
+def _remove_conflict_clause(tokens: list[str]) -> list[str]:
+    result: list[str] = []
+    index = 0
+    accepted = {"rollback", "abort", "fail", "ignore", "replace"}
+    while index < len(tokens):
+        if (
+            index + 2 < len(tokens)
+            and tokens[index : index + 2] == ["on", "conflict"]
+            and tokens[index + 2] in accepted
+        ):
+            index += 3
+            continue
+        result.append(tokens[index])
+        index += 1
+    return result
+
+
+def _is_table_unique_clause(clause: list[str]) -> bool:
+    if not clause:
+        return False
+    if clause[0] == "unique":
+        return True
+    return len(clause) >= 3 and clause[0] == "constraint" and clause[2] == "unique"
+
+
+def _normalize_column_unique_constraints(clause: list[str]) -> list[str]:
+    """Drop UNIQUE syntax represented semantically by SQLite unique indexes."""
+
+    result: list[str] = []
+    index = 0
+    while index < len(clause):
+        if clause[index] == "unique":
+            index += 1
+            continue
+        if (
+            index + 2 < len(clause)
+            and clause[index] == "constraint"
+            and clause[index + 2] == "unique"
+        ):
+            index += 3
+            continue
+        result.append(clause[index])
+        index += 1
+    return result
+
+
+def _canonicalize_table_definition(sql: str) -> str:
+    """Canonicalize table DDL while delegating UNIQUE semantics to PRAGMA indexes."""
+
+    prefix, clauses, suffix = _split_table_definition(_sql_tokens(sql))
+    if not clauses:
+        return _canonicalize_sql_definition(sql)
+
+    normalized_clauses: list[list[str]] = []
+    for clause in clauses:
+        if _is_table_unique_clause(clause):
+            continue
+        clause = _remove_conflict_clause(clause)
+        clause = _normalize_column_unique_constraints(clause)
+        normalized_clauses.append(clause)
+
+    normalized: list[str] = [*prefix, "("]
+    for index, clause in enumerate(normalized_clauses):
+        if index:
+            normalized.append(",")
+        normalized.extend(clause)
+    normalized.extend((")", *suffix))
+    return _canonicalize_tokens(normalized)
+
+
+def _index_predicate(sql: str | None) -> str | None:
+    if sql is None:
+        return None
+    tokens = _sql_tokens(sql)
+    depth = 0
+    for index, token in enumerate(tokens):
+        if token == "(":
+            depth += 1
+        elif token == ")":
+            depth -= 1
+        elif token == "where" and depth == 0:
+            return _canonicalize_tokens(tokens[index + 1 :])
+    return None
+
+
+def _index_expression(sql: str | None, index_columns: tuple[tuple[object, ...], ...]) -> str | None:
+    """Return raw index expression only when PRAGMA cannot name an indexed expression."""
+
+    has_expression = any(
+        len(column) >= 5 and column[0] == -2 and bool(column[4])
+        for column in index_columns
+    )
+    if not has_expression or sql is None:
+        return None
+
+    tokens = _sql_tokens(sql)
+    try:
+        on_position = tokens.index("on")
+        body_start = tokens.index("(", on_position + 1)
+    except ValueError:
+        return _canonicalize_sql_definition(sql)
+
+    depth = 0
+    expression_tokens: list[str] = []
+    for token in tokens[body_start + 1 :]:
+        if token == "(":
+            depth += 1
+        elif token == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        expression_tokens.append(token)
+    return _canonicalize_tokens(expression_tokens)
+
+
+def _semantic_indexes(
+    connection: sqlite3.Connection,
+    quoted_table: str,
+) -> tuple[_IndexSchema, ...]:
+    indexes: list[_IndexSchema] = []
+    for index_row in connection.execute(f"PRAGMA index_list({quoted_table})").fetchall():
+        index_name = str(index_row[1])
+        quoted_index = _quote_identifier(index_name)
+        index_columns = tuple(
+            tuple(row[1:])
+            for row in connection.execute(f"PRAGMA index_xinfo({quoted_index})").fetchall()
+        )
+        sql_row = connection.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
+            (index_name,),
+        ).fetchone()
+        index_sql = None if sql_row is None or sql_row[0] is None else str(sql_row[0])
+        indexes.append(
+            _IndexSchema(
+                unique=bool(index_row[2]),
+                partial=bool(index_row[4]),
+                columns=index_columns,
+                predicate=_index_predicate(index_sql),
+                expression=_index_expression(index_sql, index_columns),
+            )
+        )
+
+    # A UNIQUE index already supports the same lookup as an otherwise identical
+    # non-unique index. Historical create_all adoption represents UNIQUE(name)
+    # as one unique index, while fresh Alembic schema has a table UNIQUE plus a
+    # redundant regular index. Treat those forms as semantically equivalent.
+    unique_coverage = {
+        (index.partial, index.columns, index.predicate, index.expression)
+        for index in indexes
+        if index.unique
+    }
+    normalized = [
+        index
+        for index in indexes
+        if index.unique
+        or (index.partial, index.columns, index.predicate, index.expression)
+        not in unique_coverage
+    ]
+    return tuple(sorted(set(normalized), key=repr))
 
 
 def _integrity_check(connection: sqlite3.Connection) -> None:
@@ -188,26 +436,23 @@ def _alembic_revisions(connection: sqlite3.Connection) -> set[str]:
 
 
 def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
-    table_names = [
-        str(row[0])
-        for row in connection.execute(
-            """
-            SELECT name
-            FROM sqlite_master
-            WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-            ORDER BY name
-            """
-        ).fetchall()
-    ]
+    table_rows = connection.execute(
+        """
+        SELECT name, sql
+        FROM sqlite_master
+        WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+        ORDER BY name
+        """
+    ).fetchall()
 
     tables: list[tuple[str, _TableSchema]] = []
-    for table_name in table_names:
+    for table_name_value, table_sql_value in table_rows:
+        table_name = str(table_name_value)
+        table_sql = str(table_sql_value)
         quoted_table = _quote_identifier(table_name)
         columns = tuple(
             tuple(row[1:])
-            for row in connection.execute(
-                f"PRAGMA table_xinfo({quoted_table})"
-            ).fetchall()
+            for row in connection.execute(f"PRAGMA table_xinfo({quoted_table})").fetchall()
         )
         foreign_keys = tuple(
             tuple(row[2:])
@@ -215,46 +460,20 @@ def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
                 f"PRAGMA foreign_key_list({quoted_table})"
             ).fetchall()
         )
-
-        indexes: list[tuple[object, ...]] = []
-        for index_row in connection.execute(
-            f"PRAGMA index_list({quoted_table})"
-        ).fetchall():
-            index_name = str(index_row[1])
-            quoted_index = _quote_identifier(index_name)
-            index_columns = tuple(
-                tuple(row[1:])
-                for row in connection.execute(
-                    f"PRAGMA index_xinfo({quoted_index})"
-                ).fetchall()
-            )
-            # Index names are implementation details for SQLite auto-indexes.
-            indexes.append(
-                (
-                    bool(index_row[2]),
-                    str(index_row[3]),
-                    bool(index_row[4]),
-                    index_columns,
-                )
-            )
-
         tables.append(
             (
                 table_name,
                 _TableSchema(
                     columns=columns,
                     foreign_keys=foreign_keys,
-                    indexes=tuple(sorted(indexes, key=repr)),
+                    indexes=_semantic_indexes(connection, quoted_table),
+                    definition=_canonicalize_table_definition(table_sql),
+                    conflict_policies=_table_conflict_policies(table_sql),
                 ),
             )
         )
 
-    # PRAGMA metadata does not expose every semantic detail. In particular,
-    # table CHECK constraints, conflict policies, and partial-index predicates
-    # are preserved only in sqlite_master.sql. Compare canonicalized explicit
-    # definitions as well as the structural metadata above so supported legacy
-    # databases that differ only in generated identifier quoting remain valid.
-    sql_definitions = tuple(
+    views_and_triggers = tuple(
         (
             str(object_type),
             str(name),
@@ -265,15 +484,14 @@ def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
             """
             SELECT type, name, tbl_name, sql
             FROM sqlite_master
-            WHERE sql IS NOT NULL
-              AND NOT (type = 'table' AND name LIKE 'sqlite_%')
+            WHERE type IN ('view', 'trigger') AND sql IS NOT NULL
             ORDER BY type, name
             """
         ).fetchall()
     )
     return _SchemaSignature(
         tables=tuple(tables),
-        sql_definitions=sql_definitions,
+        views_and_triggers=views_and_triggers,
     )
 
 
