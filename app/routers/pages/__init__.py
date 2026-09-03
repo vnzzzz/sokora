@@ -13,6 +13,7 @@ from app.routers.pages.attendance_mutation import router as attendance_mutation_
 from app.routers.pages.auth import router as auth_router
 from app.routers.pages.calendar import router as calendar_router
 from app.routers.pages.csv import router as csv_router
+from app.routers.pages.database import router as database_router
 from app.routers.pages.dependencies import bind_custom_holiday_read_snapshot
 from app.routers.pages.group import router as group_router
 from app.routers.pages.holiday import router as holiday_router
@@ -26,6 +27,7 @@ router = APIRouter(include_in_schema=False)
 holiday_read_dependencies = [Depends(bind_custom_holiday_read_snapshot)]
 
 router.include_router(auth_router)
+router.include_router(database_router)
 router.include_router(top_router)
 router.include_router(user_router)
 router.include_router(attendance_router, dependencies=holiday_read_dependencies)
