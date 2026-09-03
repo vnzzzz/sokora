@@ -12,24 +12,29 @@ sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケ
 - HTMX / Alpine.js
 - SQLAlchemy / Alembic
 - SQLite（既定runtime。接続先は`DATABASE_URL`で設定）
+- PostgreSQL
 - uv
 - pytest / pytest-playwright / Ruff / mypy
 - Tailwind CSS
 
 ## Source of truth
 
-変更前にtaskに関係する一次情報を読む。
+変更前にtaskに関係する一次情報を読む。文書の責務分担は最初に`docs/README.md`を確認する。
 
+- docs入口 / SSoT map: `docs/README.md`
 - 全体要件: `docs/requirements.md`
 - DB要件: `docs/db/requirements.md`
 - API要件: `docs/api/requirements.md`
 - UI要件: `docs/ui/requirements.md`
 - template構成: `docs/ui/templates.md`
+- deployment入口 / support status: `docs/deployment/README.md`
+- production runtime contract: `docs/deployment/runtime.md`
+- operations: `docs/operations/`
 - architecture decision: `docs/adr/`
 - 依存関係・tool設定: `pyproject.toml`, `uv.lock`
 - 開発command: `Makefile`, `scripts/`
 
-Issueや実装とdocsが食い違う場合は、推測で合わせず、taskの完了条件へ影響する差異を確認して必要なSSoTを同じ変更で更新する。
+Issueや実装とdocsが食い違う場合は、推測で合わせず、taskの完了条件へ影響する差異を確認して必要なSSoTを同じ変更で更新する。未実装の機能やdeployment adapterを実装済みとして扱わない。
 
 ## Architecture map
 
@@ -56,6 +61,7 @@ app/templates/
 - `scripts/migration/`: Alembic
 - `scripts/seeding/`: seed data
 - `builder/`: Tailwind build source
+- `deploy/closed/`: closed-network deployment adapter assets
 
 既存の責務分離を優先し、新しいlayerやpatternを追加する前に関連実装を確認する。
 
@@ -65,9 +71,11 @@ app/templates/
 - DB modelを変更する場合、既存Alembic versionを書き換えず、新しいmigrationを追加する。
 - `.env`、credential、token等のsecretをcommitしない。`.env.sample`にはsample値だけを置く。
 - `DATABASE_URL`の既定値は`sqlite:///data/sokora.db`。`data/sokora.db`はruntime dataとして扱い、sourceとしてcommitしない。
+- SQLiteはsingle-instance runtime用。horizontal multi-replicaはshared PostgreSQLを利用する。
 - UI変更では既存のJinja/HTMX/Alpine patternと`docs/ui/`を確認する。
 - API変更では`docs/api/requirements.md`とpage側への影響を確認する。
 - DB変更では`docs/db/requirements.md`、model、migration、seed、testの整合を確認する。
+- production/deployment変更では`docs/deployment/README.md`と`docs/deployment/runtime.md`を確認し、provider固有処理をapplication coreへ持ち込まない。
 - 横断的なarchitecture判断は既存`docs/adr/`を確認し、必要ならADRを追加する。
 
 ## Common commands
