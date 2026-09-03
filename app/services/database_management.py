@@ -48,7 +48,7 @@ class _TableSchema(NamedTuple):
 
 class _SchemaSignature(NamedTuple):
     tables: tuple[tuple[str, _TableSchema], ...]
-    views_and_triggers: tuple[tuple[object, ...], ...]
+    sql_definitions: tuple[tuple[object, ...], ...]
 
 
 def require_sqlite_database_path(runtime: DatabaseRuntime) -> Path:
@@ -159,20 +159,25 @@ def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
             )
         )
 
-    views_and_triggers = tuple(
+    # PRAGMA metadata does not expose every semantic detail. In particular,
+    # table CHECK constraints, conflict policies, and partial-index predicates
+    # are preserved only in sqlite_master.sql. Compare every explicit schema
+    # definition as well as the structural metadata above.
+    sql_definitions = tuple(
         tuple(row)
         for row in connection.execute(
             """
             SELECT type, name, tbl_name, sql
             FROM sqlite_master
-            WHERE type IN ('view', 'trigger')
+            WHERE sql IS NOT NULL
+              AND NOT (type = 'table' AND name LIKE 'sqlite_%')
             ORDER BY type, name
             """
         ).fetchall()
     )
     return _SchemaSignature(
         tables=tuple(tables),
-        views_and_triggers=views_and_triggers,
+        sql_definitions=sql_definitions,
     )
 
 
