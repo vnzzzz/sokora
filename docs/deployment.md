@@ -9,9 +9,9 @@ sokoraのproduction deploymentは、root `Dockerfile`から生成する同一の
 | Target | Status | Entry point |
 | --- | --- | --- |
 | Closed network | Implemented | [closed-deployment.md](closed-deployment.md) |
-| GCP Cloud Run | Planned | [Issue #57](https://github.com/vnzzzz/sokora/issues/57) |
-| AWS managed container | Planned | [Issue #70](https://github.com/vnzzzz/sokora/issues/70) |
-| Azure managed container | Planned | [Issue #71](https://github.com/vnzzzz/sokora/issues/71) |
+| GCP Cloud Run | Planned | Issue #57[^57] |
+| AWS managed container | Planned | Issue #70[^70] |
+| Azure managed container | Planned | Issue #71[^71] |
 
 未実装targetについては、providerの一般的な手順をsokoraの正式なdeploy手順として先に固定しない。各Issueで実際のadapter、validation、運用境界が確定した時点でprovider別documentを追加する。
 
@@ -48,8 +48,6 @@ application coreやDB access層へGCP/AWS/Azure固有SDKやmetadata service依�
 
 provider固有adapterを追加するIssueでは、共通CIだけでdeploy可能とみなさず、そのproviderで必要なbuild/deploy/configuration boundaryを別途検証する。外部cloud環境を自動検証できない場合は、その未確認範囲をoperator actionとして明示する。
 
-## References
-
-- [Issue #57: GCP Cloud Run deployment](https://github.com/vnzzzz/sokora/issues/57)
-- [Issue #70: AWS managed container deployment](https://github.com/vnzzzz/sokora/issues/70)
-- [Issue #71: Azure managed container deployment](https://github.com/vnzzzz/sokora/issues/71)
+[^57]: https://github.com/vnzzzz/sokora/issues/57
+[^70]: https://github.com/vnzzzz/sokora/issues/70
+[^71]: https://github.com/vnzzzz/sokora/issues/71
