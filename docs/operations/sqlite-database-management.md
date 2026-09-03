@@ -35,13 +35,17 @@ restore時はapplication DB runtimeをmaintenance modeへ切り替える。
 2. 既存request DB sessionがcloseするまで待機
 3. live DBのconsistent rollback backupを作成
 4. SQLAlchemy poolをdispose
-5. 古い`-wal` / `-shm` / `-journal` sidecarを除去
-6. staged DBを同一filesystem内で`os.replace()`してatomic replacement
+5. staged DBを同一filesystem内で`os.replace()`してatomic replacement
+6. 置換前DBに属する古い`-wal` / `-shm` / `-journal` sidecarを除去
 7. engine / session factoryを再生成
 8. Alembic revisionを再確認
 9. 成功後にrequest DB sessionを再開
 
-replacement後に失敗した場合は、maintenance modeを解除する前にpre-restore rollback backupから自動復旧を試みる。自動rollback自体が失敗した場合はservice再起動と運用backupからの手動復旧が必要。
+sidecarはmain DBの`os.replace()`が成功した後、新しいSQLite connectionを開く前に除去する。置換前に削除すると、WAL modeでlive DBにまだcheckpointされていないcommitted frameを失う可能性があるため禁止する。
+
+replacement後に失敗した場合は、maintenance modeを解除する前にpre-restore rollback backupから自動復旧を試みる。rollback・connection再初期化・revision再検証が完了してからrequest DB sessionを再開する。
+
+自動rollback自体が失敗した場合はfail-closedとし、そのprocessのDB runtimeをunavailable状態へ遷移させる。以後のrequest DB sessionはDBへ接続せず失敗する。pre-restore rollback snapshotがまだ残っている場合は削除せずlive DBと同じdirectoryへ保持し、その絶対pathをcritical logと管理者向けerrorへ記録する。serviceを停止して保持snapshotまたは運用backupから手動復旧し、その後processを再起動する。
 
 ## Closed deploymentとの関係
 
