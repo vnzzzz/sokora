@@ -245,7 +245,9 @@ def test_restore_double_failure_fences_runtime_and_preserves_snapshot(
         monkeypatch.setattr(database_management.os, "replace", fail_rollback_replace)
 
         assert staged_path is not None
-        with pytest.raises(DatabaseRestoreError, match="手動復旧用snapshot") as exc_info:
+        with pytest.raises(
+            DatabaseRestoreError, match="手動復旧用snapshot"
+        ) as exc_info:
             restore_sqlite_database(runtime, staged_path)
 
         snapshots = list(tmp_path.glob(".sokora.db.rollback-*.db"))
