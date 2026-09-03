@@ -1,88 +1,170 @@
-name: Schema signature diagnostic
+name: Schema signature fix
 on:
   push:
     branches: [feat/58-sqlite-backup-restore]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  diagnose:
+  fix:
     runs-on: ubuntu-24.04
     env:
       PYTHONPATH: ${{ github.workspace }}
       SOKORA_AUTH_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feat/58-sqlite-backup-restore
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
         with:
           version: "0.12.7"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
       - run: uv sync --locked
-      - name: Prepare runtime dirs and assets
+      - name: Apply semantic foreign-key normalization
         run: |
-          mkdir -p data assets/json
-          ./scripts/prepare_dev_assets.sh
-      - name: Reproduce cumulative contamination and print schema diff
-        run: |
-          uv run python - <<'PY'
-          import sqlite3
-          import tempfile
+          python - <<'PY'
           from pathlib import Path
 
-          import pytest
+          path = Path("app/services/database_management.py")
+          text = path.read_text()
 
-          prefix = [
-              "app/tests/core",
-              "app/tests/crud",
-              "app/tests/db",
-              "app/tests/integration",
-              "app/tests/routers",
-              "app/tests/schemas",
-              "app/tests/services/auth",
-              "app/tests/services/test_analysis_read_service.py",
-              "app/tests/services/test_calendar_read_service.py",
-              "app/tests/services/test_custom_holiday_service.py",
-              "app/tests/services/test_database_management.py",
-          ]
-          result = pytest.main(["-q", *prefix])
-          print("PREFIX_PYTEST_RESULT=", result)
+          old_helpers = '''def _is_table_unique_clause(clause: list[str]) -> bool:
+              if not clause:
+                  return False
+              if clause[0] == "unique":
+                  return True
+              return len(clause) >= 3 and clause[0] == "constraint" and clause[2] == "unique"
 
-          import app.models  # noqa: F401
-          from app.db.session import Base, create_database_runtime, initialize_database, migrate_database
-          from app.services.database_management import _schema_signature
 
-          with tempfile.TemporaryDirectory() as directory:
-              root = Path(directory)
-              fresh_path = root / "fresh.db"
-              legacy_path = root / "legacy.db"
-              fresh_runtime = create_database_runtime(f"sqlite:///{fresh_path}")
-              legacy_runtime = create_database_runtime(f"sqlite:///{legacy_path}")
-              try:
-                  initialize_database(fresh_runtime)
-                  Base.metadata.create_all(bind=legacy_runtime.engine)
-                  migrate_database(legacy_runtime)
-                  with sqlite3.connect(fresh_path) as fresh, sqlite3.connect(legacy_path) as legacy:
-                      fresh_signature = _schema_signature(fresh)
-                      legacy_signature = _schema_signature(legacy)
-                      print("SIGNATURE_EQUAL=", fresh_signature == legacy_signature)
-                      fresh_tables = dict(fresh_signature.tables)
-                      legacy_tables = dict(legacy_signature.tables)
-                      for name in sorted(set(fresh_tables) | set(legacy_tables)):
-                          if fresh_tables.get(name) != legacy_tables.get(name):
-                              print("TABLE_DIFF", name)
-                              print("FRESH_TABLE", repr(fresh_tables.get(name)))
-                              print("LEGACY_TABLE", repr(legacy_tables.get(name)))
-                              print("RAW_FRESH", repr(fresh.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()[0]))
-                              print("RAW_LEGACY", repr(legacy.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()[0]))
-                      if fresh_signature.views_and_triggers != legacy_signature.views_and_triggers:
-                          print("VIEWS_TRIGGERS_DIFF")
-                          print("FRESH_VIEWS_TRIGGERS", repr(fresh_signature.views_and_triggers))
-                          print("LEGACY_VIEWS_TRIGGERS", repr(legacy_signature.views_and_triggers))
-              finally:
-                  fresh_runtime.dispose()
-                  legacy_runtime.dispose()
+          def _normalize_column_unique_constraints(clause: list[str]) -> list[str]:
+          '''.replace("          ", "")
+          new_helpers = '''def _is_table_unique_clause(clause: list[str]) -> bool:
+              if not clause:
+                  return False
+              if clause[0] == "unique":
+                  return True
+              return len(clause) >= 3 and clause[0] == "constraint" and clause[2] == "unique"
+
+
+          def _strip_table_constraint_name(clause: list[str]) -> list[str]:
+              if len(clause) >= 3 and clause[0] == "constraint":
+                  return clause[2:]
+              return clause
+
+
+          def _is_table_constraint_clause(clause: list[str]) -> bool:
+              normalized = _strip_table_constraint_name(clause)
+              if not normalized:
+                  return False
+              if normalized[0] in {"check", "foreign", "unique"}:
+                  return True
+              return len(normalized) >= 2 and normalized[:2] == ["primary", "key"]
+
+
+          def _normalize_column_unique_constraints(clause: list[str]) -> list[str]:
+          '''.replace("          ", "")
+          assert old_helpers in text
+          text = text.replace(old_helpers, new_helpers, 1)
+
+          old_canonical = '''    normalized_clauses: list[list[str]] = []
+              for clause in clauses:
+                  if _is_table_unique_clause(clause):
+                      continue
+                  clause = _remove_conflict_clause(clause)
+                  clause = _normalize_column_unique_constraints(clause)
+                  normalized_clauses.append(clause)
+
+              normalized: list[str] = [*prefix, "("]
+          '''.replace("              ", "")
+          new_canonical = '''    normalized_column_clauses: list[list[str]] = []
+              normalized_table_constraints: list[list[str]] = []
+              for clause in clauses:
+                  if _is_table_unique_clause(clause):
+                      continue
+                  clause = _remove_conflict_clause(clause)
+                  clause = _normalize_column_unique_constraints(clause)
+                  if _is_table_constraint_clause(clause):
+                      normalized_table_constraints.append(
+                          _strip_table_constraint_name(clause)
+                      )
+                  else:
+                      normalized_column_clauses.append(clause)
+
+              normalized_clauses = [
+                  *normalized_column_clauses,
+                  *sorted(normalized_table_constraints, key=_canonicalize_tokens),
+              ]
+              normalized: list[str] = [*prefix, "("]
+          '''.replace("              ", "")
+          assert old_canonical in text
+          text = text.replace(old_canonical, new_canonical, 1)
+
+          marker = '''def _integrity_check(connection: sqlite3.Connection) -> None:
+          '''.replace("          ", "")
+          helper = '''def _semantic_foreign_keys(
+              connection: sqlite3.Connection,
+              quoted_table: str,
+          ) -> tuple[tuple[object, ...], ...]:
+              """Return foreign-key constraints independent of SQLite constraint ids."""
+
+              rows = connection.execute(
+                  f"PRAGMA foreign_key_list({quoted_table})"
+              ).fetchall()
+              grouped: dict[int, list[tuple[object, ...]]] = {}
+              for row in rows:
+                  grouped.setdefault(int(row[0]), []).append(tuple(row))
+
+              constraints: list[tuple[object, ...]] = []
+              for group_rows in grouped.values():
+                  ordered = sorted(group_rows, key=lambda row: int(row[1]))
+                  first = ordered[0]
+                  columns = tuple(
+                      (str(row[3]), None if row[4] is None else str(row[4]))
+                      for row in ordered
+                  )
+                  constraints.append(
+                      (
+                          str(first[2]),
+                          columns,
+                          str(first[5]),
+                          str(first[6]),
+                          str(first[7]),
+                      )
+                  )
+
+              return tuple(sorted(constraints, key=repr))
+
+
+          def _integrity_check(connection: sqlite3.Connection) -> None:
+          '''.replace("          ", "")
+          assert marker in text
+          text = text.replace(marker, helper, 1)
+
+          old_fk = '''        foreign_keys = tuple(
+                      tuple(row[2:])
+                      for row in connection.execute(
+                          f"PRAGMA foreign_key_list({quoted_table})"
+                      ).fetchall()
+                  )
+          '''.replace("                  ", "")
+          new_fk = '''        foreign_keys = _semantic_foreign_keys(connection, quoted_table)
+          '''.replace("          ", "")
+          assert old_fk in text
+          text = text.replace(old_fk, new_fk, 1)
+
+          path.write_text(text)
           PY
+
+          uv run ruff format app/services/database_management.py
+          uv run ruff check app/services/database_management.py
+          uv run pytest -q app/tests/services/test_database_management.py app/tests/services/test_database_management_review_regressions.py
+
+      - name: Remove temporary diagnostic workflow and commit fix
+        run: |
+          rm .github/workflows/schema-signature-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/services/database_management.py .github/workflows/schema-signature-diagnostic.yml
+          git commit -m "fix: normalize SQLite foreign key schema order"
+          git push origin HEAD:feat/58-sqlite-backup-restore
