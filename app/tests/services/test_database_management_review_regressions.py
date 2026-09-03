@@ -80,7 +80,10 @@ def test_restore_accepts_equivalent_adopted_create_all_schema(tmp_path: Path) ->
         Base.metadata.create_all(bind=legacy_runtime.engine)
         migrate_database(legacy_runtime)
 
-        with sqlite3.connect(fresh_path) as fresh, sqlite3.connect(legacy_path) as legacy:
+        with (
+            sqlite3.connect(fresh_path) as fresh,
+            sqlite3.connect(legacy_path) as legacy,
+        ):
             fresh_sql = fresh.execute(
                 "SELECT sql FROM sqlite_master "
                 "WHERE type = 'table' AND name = 'custom_holidays'"

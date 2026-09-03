@@ -122,11 +122,13 @@ def _canonicalize_sql_definition(sql: str) -> str:
                 index += 1
 
             identifier_text = "".join(identifier)
-            is_simple_identifier = bool(identifier_text) and (
-                identifier_text[0].isalpha() or identifier_text[0] == "_"
-            ) and all(
-                character.isalnum() or character in {"_", "$"}
-                for character in identifier_text
+            is_simple_identifier = (
+                bool(identifier_text)
+                and (identifier_text[0].isalpha() or identifier_text[0] == "_")
+                and all(
+                    character.isalnum() or character in {"_", "$"}
+                    for character in identifier_text
+                )
             )
             if is_simple_identifier:
                 tokens.append(identifier_text.casefold())
@@ -137,9 +139,7 @@ def _canonicalize_sql_definition(sql: str) -> str:
         if char.isalpha() or char == "_":
             start = index
             index += 1
-            while index < length and (
-                sql[index].isalnum() or sql[index] in {"_", "$"}
-            ):
+            while index < length and (sql[index].isalnum() or sql[index] in {"_", "$"}):
                 index += 1
             tokens.append(sql[start:index].casefold())
             continue
