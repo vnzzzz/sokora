@@ -142,9 +142,7 @@ def _sql_tokens(sql: str) -> tuple[str, ...]:
         if char.isalpha() or char == "_":
             start = index
             index += 1
-            while index < length and (
-                sql[index].isalnum() or sql[index] in {"_", "$"}
-            ):
+            while index < length and (sql[index].isalnum() or sql[index] in {"_", "$"}):
                 index += 1
             tokens.append(sql[start:index].casefold())
             continue
