@@ -58,11 +58,13 @@ class DatabaseRuntime:
         try:
             yield db
         finally:
-            db.close()
-            with self._condition:
-                self._active_sessions -= 1
-                if self._active_sessions == 0:
-                    self._condition.notify_all()
+            try:
+                db.close()
+            finally:
+                with self._condition:
+                    self._active_sessions -= 1
+                    if self._active_sessions == 0:
+                        self._condition.notify_all()
 
     @contextmanager
     def exclusive_maintenance(self) -> Iterator[None]:
