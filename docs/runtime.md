@@ -36,7 +36,8 @@ local Make targetの`SERVICE_PORT`はhost側publish portであり、container li
 
 認証設定はenvironment/secret injectionをSSoTとし、replica-local mutable fileを共有stateとして利用しない。
 
-- `SOKORA_AUTH_ENABLED`でapplication guardを制御する。
+- `SOKORA_AUTH_ENABLED`の既定値は`false`。未設定のままではUI/APIのauthentication guardは無効で、signed sessionを要求しない。productionで認証を必要とする場合は明示的に`true`へ設定する。
+- `SOKORA_AUTH_ENABLED=true`では、`SOKORA_AUTH_SESSION_SECRET`に空値や既定の`dev-session-secret`を利用できない。十分な強度の非default secretをruntime secretとして明示設定しない場合、startup validationは失敗する。
 - OIDCは`OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URL`等のruntime設定を利用する。
 - Authlibがissuer discoveryからauthorization/token/JWKS/end-session metadataを取得し、provider固有endpoint pathをapplicationで組み立てない。
 - sessionはStarlette `SessionMiddleware`のsigned client-side cookie。persistent sessionへOIDC access/refresh/ID tokenを保持しない。
