@@ -71,6 +71,96 @@ def _quote_identifier(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+def _canonicalize_sql_definition(sql: str) -> str:
+    """Normalize SQLite DDL without hiding semantic constraint differences.
+
+    SQLite and Alembic batch migrations can persist equivalent schemas with
+    different whitespace, keyword case, or quoting of simple identifiers.
+    Tokenize the DDL so those presentation differences compare equal while
+    preserving string literals, operators, CHECK expressions, conflict clauses,
+    and other semantic tokens.
+    """
+
+    tokens: list[str] = []
+    index = 0
+    length = len(sql)
+
+    while index < length:
+        char = sql[index]
+        if char.isspace():
+            index += 1
+            continue
+
+        if char == "'":
+            start = index
+            index += 1
+            while index < length:
+                if sql[index] == "'":
+                    if index + 1 < length and sql[index + 1] == "'":
+                        index += 2
+                        continue
+                    index += 1
+                    break
+                index += 1
+            tokens.append(sql[start:index])
+            continue
+
+        if char in {'"', "`", "["}:
+            closing = "]" if char == "[" else char
+            index += 1
+            identifier: list[str] = []
+            while index < length:
+                current = sql[index]
+                if current == closing:
+                    if index + 1 < length and sql[index + 1] == closing:
+                        identifier.append(closing)
+                        index += 2
+                        continue
+                    index += 1
+                    break
+                identifier.append(current)
+                index += 1
+
+            identifier_text = "".join(identifier)
+            is_simple_identifier = bool(identifier_text) and (
+                identifier_text[0].isalpha() or identifier_text[0] == "_"
+            ) and all(
+                character.isalnum() or character in {"_", "$"}
+                for character in identifier_text
+            )
+            if is_simple_identifier:
+                tokens.append(identifier_text.casefold())
+            else:
+                tokens.append(f"{char}{identifier_text}{closing}")
+            continue
+
+        if char.isalpha() or char == "_":
+            start = index
+            index += 1
+            while index < length and (
+                sql[index].isalnum() or sql[index] in {"_", "$"}
+            ):
+                index += 1
+            tokens.append(sql[start:index].casefold())
+            continue
+
+        two_character_operator = sql[index : index + 2]
+        if two_character_operator in {"<=", ">=", "<>", "!=", "==", "||", "->"}:
+            tokens.append(two_character_operator)
+            index += 2
+            continue
+
+        if sql[index : index + 3] == "->>":
+            tokens.append("->>")
+            index += 3
+            continue
+
+        tokens.append(char)
+        index += 1
+
+    return "\x1f".join(tokens)
+
+
 def _integrity_check(connection: sqlite3.Connection) -> None:
     integrity_rows = [
         str(row[0]) for row in connection.execute("PRAGMA integrity_check").fetchall()
@@ -161,11 +251,17 @@ def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
 
     # PRAGMA metadata does not expose every semantic detail. In particular,
     # table CHECK constraints, conflict policies, and partial-index predicates
-    # are preserved only in sqlite_master.sql. Compare every explicit schema
-    # definition as well as the structural metadata above.
+    # are preserved only in sqlite_master.sql. Compare canonicalized explicit
+    # definitions as well as the structural metadata above so supported legacy
+    # databases that differ only in generated identifier quoting remain valid.
     sql_definitions = tuple(
-        tuple(row)
-        for row in connection.execute(
+        (
+            str(object_type),
+            str(name),
+            str(table_name),
+            _canonicalize_sql_definition(str(sql)),
+        )
+        for object_type, name, table_name, sql in connection.execute(
             """
             SELECT type, name, tbl_name, sql
             FROM sqlite_master
