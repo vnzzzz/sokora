@@ -26,47 +26,31 @@ jobs:
         run: |
           mkdir -p data assets/json
           ./scripts/prepare_dev_assets.sh
-      - name: Target test alone
+      - name: Prior database management tests plus target
         continue-on-error: true
-        run: uv run pytest -vv app/tests/services/test_database_management_review_regressions.py::test_restore_accepts_equivalent_adopted_create_all_schema
-      - name: Regression file in normal order
-        continue-on-error: true
-        run: uv run pytest -vv app/tests/services/test_database_management_review_regressions.py
-      - name: Direct comparison after pytest imports
         run: |
-          uv run python - <<'PY'
-          import sqlite3
-          import tempfile
-          from pathlib import Path
-          import app.tests.conftest  # noqa: F401
-          import app.models  # noqa: F401
-          from app.db.session import Base, create_database_runtime, initialize_database, migrate_database
-          from app.services.database_management import _schema_signature
-
-          with tempfile.TemporaryDirectory() as directory:
-              root = Path(directory)
-              fresh_path = root / "fresh.db"
-              legacy_path = root / "legacy.db"
-              fresh_runtime = create_database_runtime(f"sqlite:///{fresh_path}")
-              legacy_runtime = create_database_runtime(f"sqlite:///{legacy_path}")
-              try:
-                  initialize_database(fresh_runtime)
-                  Base.metadata.create_all(bind=legacy_runtime.engine)
-                  migrate_database(legacy_runtime)
-                  with sqlite3.connect(fresh_path) as fresh, sqlite3.connect(legacy_path) as legacy:
-                      fresh_signature = _schema_signature(fresh)
-                      legacy_signature = _schema_signature(legacy)
-                      print("SIGNATURE_EQUAL=", fresh_signature == legacy_signature)
-                      fresh_tables = dict(fresh_signature.tables)
-                      legacy_tables = dict(legacy_signature.tables)
-                      for name in sorted(set(fresh_tables) | set(legacy_tables)):
-                          if fresh_tables.get(name) != legacy_tables.get(name):
-                              print("TABLE_DIFF", name)
-                              print("fresh=", repr(fresh_tables.get(name)))
-                              print("legacy=", repr(legacy_tables.get(name)))
-                              print("raw_fresh=", repr(fresh.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()[0]))
-                              print("raw_legacy=", repr(legacy.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()[0]))
-              finally:
-                  fresh_runtime.dispose()
-                  legacy_runtime.dispose()
-          PY
+          uv run pytest -q \
+            app/tests/services/test_database_management.py \
+            app/tests/services/test_database_management_review_regressions.py::test_restore_accepts_equivalent_adopted_create_all_schema
+      - name: Core CRUD DB plus target
+        continue-on-error: true
+        run: |
+          uv run pytest -q \
+            app/tests/core app/tests/crud app/tests/db \
+            app/tests/services/test_database_management_review_regressions.py::test_restore_accepts_equivalent_adopted_create_all_schema
+      - name: Integration routers schemas plus target
+        continue-on-error: true
+        run: |
+          uv run pytest -q \
+            app/tests/integration app/tests/routers app/tests/schemas \
+            app/tests/services/test_database_management_review_regressions.py::test_restore_accepts_equivalent_adopted_create_all_schema
+      - name: Earlier service tests plus target
+        continue-on-error: true
+        run: |
+          uv run pytest -q \
+            app/tests/services/auth \
+            app/tests/services/test_analysis_read_service.py \
+            app/tests/services/test_calendar_read_service.py \
+            app/tests/services/test_custom_holiday_service.py \
+            app/tests/services/test_database_management.py \
+            app/tests/services/test_database_management_review_regressions.py::test_restore_accepts_equivalent_adopted_create_all_schema
