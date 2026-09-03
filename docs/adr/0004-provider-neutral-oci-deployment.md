@@ -28,6 +28,6 @@ providerごとにapplication code、Dockerfile、DB access、認証処理を分�
 
 ## 関連文書
 
-- [Deployment guide](../deployment/README.md)
-- [Production container runtime contract](../deployment/runtime.md)
+- [Deployment guide](../deployment.md)
+- [Production container runtime contract](../runtime.md)
 - [ADR 0003: multi-replica runtime](0003-multi-replica-runtime.md)
