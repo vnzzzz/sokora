@@ -9,9 +9,9 @@ sokoraのproduction deploymentは、root `Dockerfile`から生成する同一の
 | Target | Status | Entry point |
 | --- | --- | --- |
 | Closed network | Implemented | [closed.md](closed.md) |
-| GCP Cloud Run | Planned / #57 | #57でadapterと再現可能なdeploy手順を実装する |
-| AWS managed container | Planned / #70 | #70で推奨targetとadapterを実装する |
-| Azure managed container | Planned / #71 | #71で推奨targetとadapterを実装する |
+| GCP Cloud Run | Planned | [Issue #57](https://github.com/vnzzzz/sokora/issues/57) |
+| AWS managed container | Planned | [Issue #70](https://github.com/vnzzzz/sokora/issues/70) |
+| Azure managed container | Planned | [Issue #71](https://github.com/vnzzzz/sokora/issues/71) |
 
 未実装targetについては、providerの一般的な手順をsokoraの正式なdeploy手順として先に固定しない。各Issueで実際のadapter、validation、運用境界が確定した時点でprovider別documentを追加する。
 
