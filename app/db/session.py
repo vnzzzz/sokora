@@ -25,6 +25,10 @@ _ALEMBIC_CONFIG_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic.ini
 _ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
 
 
+class DatabaseRuntimeUnavailableError(RuntimeError):
+    """The runtime has been fenced after an unrecoverable database failure."""
+
+
 @dataclass
 class DatabaseRuntime:
     """Engine and session factory bound to one database URL."""
@@ -35,14 +39,17 @@ class DatabaseRuntime:
     _condition: Condition = field(default_factory=Condition, init=False, repr=False)
     _active_sessions: int = field(default=0, init=False, repr=False)
     _maintenance_active: bool = field(default=False, init=False, repr=False)
+    _unavailable_reason: str | None = field(default=None, init=False, repr=False)
 
     @contextmanager
     def managed_session(self) -> Iterator[Session]:
         """Yield a request session that participates in maintenance draining."""
 
         with self._condition:
-            while self._maintenance_active:
+            while self._maintenance_active and self._unavailable_reason is None:
                 self._condition.wait()
+            if self._unavailable_reason is not None:
+                raise DatabaseRuntimeUnavailableError(self._unavailable_reason)
             factory = self.session_factory
             self._active_sessions += 1
 
@@ -71,8 +78,12 @@ class DatabaseRuntime:
         """Block new request sessions and wait until existing ones are closed."""
 
         with self._condition:
+            if self._unavailable_reason is not None:
+                raise DatabaseRuntimeUnavailableError(self._unavailable_reason)
             while self._maintenance_active:
                 self._condition.wait()
+                if self._unavailable_reason is not None:
+                    raise DatabaseRuntimeUnavailableError(self._unavailable_reason)
             self._maintenance_active = True
             while self._active_sessions:
                 self._condition.wait()
@@ -83,6 +94,18 @@ class DatabaseRuntime:
             with self._condition:
                 self._maintenance_active = False
                 self._condition.notify_all()
+
+    def mark_unavailable(self, reason: str) -> None:
+        """Fence future request sessions after an unrecoverable DB failure."""
+
+        with self._condition:
+            self._unavailable_reason = reason
+            self._condition.notify_all()
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        with self._condition:
+            return self._unavailable_reason
 
     def recreate_connections(self) -> None:
         """Dispose the current pool and recreate engine/session bindings."""
