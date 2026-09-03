@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import configure_logging, logger
 from app.core.settings import AppSettings
-from app.db.session import get_app_database_runtime, initialize_database
+from app.db.session import DatabaseRuntime, get_app_database_runtime, initialize_database
 from app.middleware.auth import AuthRequiredMiddleware
 from app.routers.api.v1 import router as api_v1_router
 from app.routers.pages import router as pages_router
@@ -47,8 +47,12 @@ API_TAGS: List[Dict[str, str]] = [
 ]
 
 
-async def health_check() -> JSONResponse:
+async def health_check(request: Request) -> JSONResponse:
     """Return process readiness after the application lifespan has completed."""
+
+    runtime = getattr(request.app.state, "database_runtime", None)
+    if isinstance(runtime, DatabaseRuntime) and runtime.unavailable_reason is not None:
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
     return JSONResponse({"status": "ok"})
 
 
