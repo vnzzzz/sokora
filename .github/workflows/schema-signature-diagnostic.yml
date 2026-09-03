@@ -1,0 +1,43 @@
+name: Schema signature diagnostic
+on:
+  push:
+    branches: [feat/58-sqlite-backup-restore]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.7"
+      - run: uv sync --locked
+      - name: Show signature differences
+        run: |
+          uv run python - <<'PY'
+          import sqlite3, tempfile
+          from pathlib import Path
+          import app.models
+          from app.db.session import Base, create_database_runtime, initialize_database, migrate_database
+          from app.services.database_management import _schema_signature
+          with tempfile.TemporaryDirectory() as d:
+              root = Path(d); fp = root/'fresh.db'; lp = root/'legacy.db'
+              fr = create_database_runtime(f'sqlite:///{fp}'); lr = create_database_runtime(f'sqlite:///{lp}')
+              try:
+                  initialize_database(fr); Base.metadata.create_all(bind=lr.engine); migrate_database(lr)
+                  with sqlite3.connect(fp) as f, sqlite3.connect(lp) as l:
+                      fs = _schema_signature(f); ls = _schema_signature(l)
+                      print('SIGNATURE_EQUAL=', fs == ls)
+                      ft = dict(fs.tables); lt = dict(ls.tables)
+                      for name in sorted(set(ft) | set(lt)):
+                          if ft.get(name) != lt.get(name):
+                              print('TABLE_DIFF', name); print('fresh=', repr(ft.get(name))); print('legacy=', repr(lt.get(name)))
+                              print('raw_fresh=', repr(f.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()[0]))
+                              print('raw_legacy=', repr(l.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone()[0]))
+              finally:
+                  fr.dispose(); lr.dispose()
+          PY
