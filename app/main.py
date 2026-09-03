@@ -12,7 +12,11 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import configure_logging, logger
 from app.core.settings import AppSettings
-from app.db.session import DatabaseRuntime, get_app_database_runtime, initialize_database
+from app.db.session import (
+    DatabaseRuntime,
+    get_app_database_runtime,
+    initialize_database,
+)
 from app.middleware.auth import AuthRequiredMiddleware
 from app.routers.api.v1 import router as api_v1_router
 from app.routers.pages import router as pages_router
