@@ -67,6 +67,120 @@ def test_restore_rejects_table_constraint_definition_mismatch(tmp_path: Path) ->
             backup_path.unlink(missing_ok=True)
 
 
+def test_restore_rejects_conflict_policy_moved_between_constraints(
+    tmp_path: Path,
+) -> None:
+    runtime = _initialized_runtime(tmp_path)
+    live_path = tmp_path / "sokora.db"
+    backup_path: Path | None = None
+    candidate = tmp_path / "conflict-policy-mismatch.db"
+    try:
+        with sqlite3.connect(live_path) as db:
+            db.execute(
+                """
+                CREATE TABLE conflict_policy_probe (
+                    id INTEGER PRIMARY KEY,
+                    first_value TEXT UNIQUE ON CONFLICT IGNORE,
+                    second_value TEXT UNIQUE ON CONFLICT REPLACE
+                )
+                """
+            )
+            db.commit()
+
+        backup_path = create_sqlite_backup(runtime)
+        shutil.copy2(backup_path, candidate)
+
+        with sqlite3.connect(candidate) as db:
+            row = db.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'conflict_policy_probe'"
+            ).fetchone()
+            assert row is not None and row[0] is not None
+            table_sql = str(row[0])
+            changed_sql = table_sql.replace(
+                "first_value TEXT UNIQUE ON CONFLICT IGNORE",
+                "first_value TEXT UNIQUE ON CONFLICT REPLACE",
+            ).replace(
+                "second_value TEXT UNIQUE ON CONFLICT REPLACE",
+                "second_value TEXT UNIQUE ON CONFLICT IGNORE",
+            )
+            assert changed_sql != table_sql
+
+            db.execute("PRAGMA writable_schema = ON")
+            db.execute(
+                "UPDATE sqlite_master SET sql = ? "
+                "WHERE type = 'table' AND name = 'conflict_policy_probe'",
+                (changed_sql,),
+            )
+            db.execute("PRAGMA writable_schema = OFF")
+            db.commit()
+
+        with pytest.raises(InvalidDatabaseBackupError, match="schema"):
+            validate_sqlite_restore_candidate(candidate, runtime)
+    finally:
+        runtime.dispose()
+        if backup_path is not None:
+            backup_path.unlink(missing_ok=True)
+
+
+def test_restore_rejects_partial_index_predicate_mismatch(tmp_path: Path) -> None:
+    runtime = _initialized_runtime(tmp_path)
+    live_path = tmp_path / "sokora.db"
+    backup_path: Path | None = None
+    candidate = tmp_path / "partial-index-mismatch.db"
+    index_name = "idx_groups_name_partial_probe"
+    try:
+        with sqlite3.connect(live_path) as db:
+            db.execute(
+                f"CREATE INDEX {index_name} ON groups(name) WHERE id > 0"
+            )
+            db.commit()
+
+        backup_path = create_sqlite_backup(runtime)
+        shutil.copy2(backup_path, candidate)
+
+        with sqlite3.connect(candidate) as db:
+            db.execute(f"DROP INDEX {index_name}")
+            db.execute(
+                f"CREATE INDEX {index_name} ON groups(name) WHERE id > 1"
+            )
+            db.commit()
+
+        with pytest.raises(InvalidDatabaseBackupError, match="schema"):
+            validate_sqlite_restore_candidate(candidate, runtime)
+    finally:
+        runtime.dispose()
+        if backup_path is not None:
+            backup_path.unlink(missing_ok=True)
+
+
+def test_restore_rejects_expression_index_mismatch(tmp_path: Path) -> None:
+    runtime = _initialized_runtime(tmp_path)
+    live_path = tmp_path / "sokora.db"
+    backup_path: Path | None = None
+    candidate = tmp_path / "expression-index-mismatch.db"
+    index_name = "idx_groups_name_expression_probe"
+    try:
+        with sqlite3.connect(live_path) as db:
+            db.execute(f"CREATE INDEX {index_name} ON groups(lower(name))")
+            db.commit()
+
+        backup_path = create_sqlite_backup(runtime)
+        shutil.copy2(backup_path, candidate)
+
+        with sqlite3.connect(candidate) as db:
+            db.execute(f"DROP INDEX {index_name}")
+            db.execute(f"CREATE INDEX {index_name} ON groups(upper(name))")
+            db.commit()
+
+        with pytest.raises(InvalidDatabaseBackupError, match="schema"):
+            validate_sqlite_restore_candidate(candidate, runtime)
+    finally:
+        runtime.dispose()
+        if backup_path is not None:
+            backup_path.unlink(missing_ok=True)
+
+
 def test_restore_accepts_equivalent_adopted_create_all_schema(tmp_path: Path) -> None:
     fresh_runtime = _initialized_runtime(tmp_path)
     fresh_path = tmp_path / "sokora.db"
