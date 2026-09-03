@@ -469,11 +469,11 @@ def _semantic_foreign_keys(
     rows = connection.execute(f"PRAGMA foreign_key_list({quoted_table})").fetchall()
     grouped: dict[int, list[tuple[object, ...]]] = {}
     for row in rows:
-        grouped.setdefault(int(row[0]), []).append(tuple(row))
+        grouped.setdefault(int(str(row[0])), []).append(tuple(row))
 
     constraints: list[tuple[object, ...]] = []
     for group_rows in grouped.values():
-        ordered = sorted(group_rows, key=lambda row: int(row[1]))
+        ordered = sorted(group_rows, key=lambda row: int(str(row[1])))
         first = ordered[0]
         columns = tuple(
             (str(row[3]), None if row[4] is None else str(row[4])) for row in ordered
