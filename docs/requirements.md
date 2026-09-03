@@ -1,26 +1,82 @@
-# 要件ドキュメント
+# Sokora requirements
 
-sokora の API・DB・UI・production runtimeを横断的に把握するための要件集約ドキュメントです。詳細は分野別ドキュメントに委譲し、重複を避けます。
+この文書は、sokora全体で現在成立させるcross-cutting contractを記載する。API、DB、UI、deployment、operationsの詳細は [Documentation guide](README.md) から各SSoTを参照する。
 
-## ドキュメント一覧
-- [API 要件](api/requirements.md)
-- [DB 要件](db/requirements.md)
-- [UI 要件](ui/requirements.md)
-- [テンプレート構成](ui/templates.md)（UI のファイル配置の補足）
-- [Production container runtime contract](deployment/runtime.md)
+## Product scope
 
-## 共通方針
-- FastAPI（/api プレフィックス）と Jinja2 + HTMX/Alpine.js の SSR UI を整合させる。
-- 勤怠・ユーザー・マスタ（勤怠種別/社員種別/グループ）の整合性は DB モデルを基準に、API と UI の期待値を合わせる。
-- DB接続は `DATABASE_URL` をSSoTとし、local/閉域ではSQLiteを維持しつつ、外部/managed DBとしてPostgreSQLを利用できる。schema lifecycleは両backendでAlembicへ統一する。
-- production runtimeはprovider非依存のOCI imageとし、閉域/GCP/AWS/Azure固有差分をdeployment adapterへ閉じ込める。application/DB access層はcloud provider固有SDKへ依存しない。
-- 振る舞いの詳細は分野別ドキュメントを参照し、記述が無い場合はテストや実装を一次情報として更新する。
+sokoraは、ユーザーの勤怠種別・勤務場所をカレンダーUIで可視化・編集するWeb applicationである。
 
-## 認証方針
-- 標準OIDCを一次認証経路とし、local adminだけが使える管理用fallbackを併置する。自動failoverは行わず、login画面で利用者が明示的に選択する。
-- OIDC clientはAuthlibを利用し、`OIDC_ISSUER` のOpenID Provider Configurationからauthorization/token/JWKS/logout metadataをdiscoveryする。Keycloak固有endpoint pathをapplicationで組み立てず、一般的なOIDC providerへ適用可能な境界とする。
-- OIDC設定（issuer/client_id/client_secret/redirect_uri/scope/timeout）はruntimeのenvironment/secret injectionで管理し、replica-local mutable fileやruntime toggleを共有設定として利用しない。
-- sessionはStarletteの署名付きclient-side cookie。永続cookieには認証方式・OIDC subject・表示username・admin role等の最小identityだけを保持し、OIDC access/refresh/ID tokenは保持しない。OAuth state / OIDC nonceは認証flow中だけ一時的に保持する。
-- session cookieはHttpOnly + SameSite=Laxを基本とし、HTTPS productionでは`SOKORA_AUTH_SESSION_HTTPS_ONLY=true`にしてSecure属性を必須とする。既定TTLは1時間で、期限切れ時は再loginさせる。
-- OIDC user識別子は検証済みID tokenの`sub`を利用し、`preferred_username`等は表示用。現時点ではapplicationの`users` tableとは紐付けない。
-- admin-only routeは共通authorization policyで保護し、認証後redirect先はsame-origin pathだけを許可する。
+主要な利用機能:
+
+- 月次/週次カレンダーと日別詳細
+- 勤怠の登録・更新・削除
+- ユーザー、グループ、勤怠種別、社員種別、カスタム祝日の管理
+- 月次勤怠CSVのダウンロード
+- 月次/年度別の集計表示
+- optionalなOIDC認証とlocal admin fallback
+- file-backed SQLite利用時のadmin向けbackup/restore
+
+## Architecture boundary
+
+```text
+HTTP adapters
+├─ app/routers/pages/   -> HTML / HTMX
+└─ app/routers/api/v1/ -> JSON API
+          │
+          ├─ write use cases -> app/services/ -> app/crud/
+          └─ read paths      -> read service / app/crud/ / view helper
+                                      │
+                               app/models/ + app/db/
+```
+
+- JSON APIとpage/HTMX adapterはtransport contractを分離する。HTML fragmentや`HX-*` headerをJSON APIへ持ち込まない。
+- write business ruleとtransaction coordinationはservice層へ集約し、page adapterからJSON APIへ内部HTTP委譲しない。
+- read pathは画面/集計の複雑さに応じてdedicated read serviceまたは既存CRUD/read helperを利用する。DB由来のmutable stateをrouter/process-local cacheへ共有状態として保持しない。
+- DB schema/data contractはSQLAlchemy modelとAlembicを基準にし、詳細は [Database requirements](database.md) をSSoTとする。
+- UIの利用者向けbehaviorとHTMX contractは [UI requirements](ui.md) をSSoTとする。
+
+## Database and state
+
+- DB接続先のSSoTは`DATABASE_URL`とする。
+- supported backendはSQLiteとPostgreSQL。
+- SQLiteはlocal/standalone/closedのsingle-instance用途を対象とする。複数application replicaから同じSQLite fileを共有しない。
+- horizontal multi-replica runtimeはshared external PostgreSQLを利用する。共有状態contractは [ADR 0003](adr/0003-multi-replica-runtime.md) に従う。
+- schema lifecycleはSQLite/PostgreSQLともAlembicへ統一し、startup時にheadへ到達できなければserviceを開始しない。
+- DB由来のmutable stateをreplica-local cache/fileへ共有状態として保持しない。
+
+## Authentication and authorization
+
+- authentication guardはruntime設定で有効化できる。
+- 一般ユーザーの一次経路はprovider-neutralなOIDC Authorization Code flow。local loginは管理者専用fallbackであり、自動failoverは行わない。
+- OIDC endpointはissuer discoveryから取得し、Keycloak等の特定provider固有pathをapplicationで組み立てない。
+- sessionはStarletteのsigned client-side cookieとし、永続cookieへOIDC access/refresh/ID tokenを保持しない。
+- HTTPS productionではSecure cookieを必須とし、全replicaへ同じsession signing secretと認証設定を注入する。
+- admin-only routeは共通authorization dependencyで保護する。
+
+認証architectureの採用理由は [ADR 0002](adr/0002-authentication-runtime.md)、HTTP/runtimeの詳細contractは [API requirements](api.md) と [Production runtime](runtime.md) を参照する。
+
+## Production runtime and deployment
+
+- production artifactはroot `Dockerfile`から生成するprovider非依存OCI image 1種類とする。
+- containerは`PORT`でlistenし、DB/auth/config/secretはruntime injectionする。mutable DBやsecretをimageへ埋め込まない。
+- provider固有のregistry、network、identity、secret injection、managed PostgreSQL接続、probe、scaling、IaCはdeployment adapterへ閉じ込める。
+- application coreやDB access層へGCP/AWS/Azure固有SDKを追加しない。
+- health checkは認証不要の`GET /healthz`を共通入口とする。DB runtimeがfail-closedへfenceされた場合は503を返す。
+
+共通contractは [runtime.md](runtime.md)、providerごとの実装statusは [deployment.md](deployment.md)、architecture decisionは [ADR 0004](adr/0004-provider-neutral-oci-deployment.md) を参照する。
+
+現時点ではclosed-network adapterが実装済みで、GCP Cloud Run / AWS managed container / Azure managed containerは #57 / #70 / #71 で未実装である。未実装targetをsupport済みとして扱わない。
+
+## Operations
+
+- file-backed SQLiteでは`/admin/database`からadminがconsistent backupをdownloadし、current Alembic revision/schemaと互換なSQLite DBだけをrestoreできる。
+- SQLite restoreはmigration手段ではない。古いrevisionのDBをrestoreしてstartup migrationへ暗黙に委ねない。
+- PostgreSQL backup/restoreはDB運用基盤側の標準手段を利用し、application GUIでは扱わない。
+- SQLite backup/restoreとfailure recoveryの詳細は [SQLite database management](sqlite-database-management.md) をSSoTとする。
+
+## Documentation contract
+
+- 現在成立させる仕様・利用条件はrequirements/runtime/operations文書へ記載する。
+- architecture decisionの背景・trade-offはADRへ記録し、現在値や操作手順を重複させない。
+- READMEとindexは入口として保ち、詳細仕様を複製しない。
+- 実装済み事実、未実装事項、提案を混同しない。

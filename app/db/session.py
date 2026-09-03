@@ -1,4 +1,9 @@
-"""Database engine and session lifecycle helpers."""
+"""Database engine、request session、migrationのprocess-local lifecycleを管理する。
+
+DB backend固有のengine設定とapplication instanceごとのresource ownershipをこのmoduleへ
+集約する。特にSQLite restoreでは、request sessionのdrain、engine再生成、fail-closed fencingを
+同じDatabaseRuntimeが調停し、置換中のDBへ新しいrequestが接続しないことを保証する。
+"""
 
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
@@ -26,12 +31,25 @@ _ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
 
 
 class DatabaseRuntimeUnavailableError(RuntimeError):
-    """The runtime has been fenced after an unrecoverable database failure."""
+    """fail-closedへfenceされたDB runtimeへの新規session要求を表す。
+
+    restore recovery等でDB stateを安全と確認できなくなった後は、callerが同じprocessで
+    接続を再試行してreject済みDBへ戻ることを許可しない。process restart/manual recoveryが
+    完了するまで、このexceptionをrequest boundaryへ伝播させる。
+    """
 
 
 @dataclass
 class DatabaseRuntime:
-    """Engine and session factory bound to one database URL."""
+    """1つのdatabase URLに対するengine/session factoryと排他状態を所有する。
+
+    通常requestは`managed_session()`を通してactive session数へ参加する。DB file replacement等
+    のmaintenanceは`exclusive_maintenance()`で新規sessionを止め、既存sessionがcloseするまで
+    drainしてからengineを切り替える。
+
+    unrecoverable failureでは`mark_unavailable()`でruntimeをfenceする。fenceはmaintenance解除と
+    別概念であり、一度設定したprocessは新規DB sessionを再開しない。
+    """
 
     database_url: str
     engine: Engine
@@ -43,8 +61,12 @@ class DatabaseRuntime:
 
     @contextmanager
     def managed_session(self) -> Iterator[Session]:
-        """Yield a request session that participates in maintenance draining."""
+        """request用Sessionを生成し、そのlifetimeをmaintenance drainへ登録する。
 
+        maintenance中の新規requestは完了まで待機する。runtimeがfenceされた場合はsessionを
+        作らず`DatabaseRuntimeUnavailableError`を返す。Session生成または`close()`が失敗しても
+        active counterは必ず減算し、maintenance waiterを永久待機させない。
+        """
         with self._condition:
             while self._maintenance_active and self._unavailable_reason is None:
                 self._condition.wait()
@@ -75,8 +97,12 @@ class DatabaseRuntime:
 
     @contextmanager
     def exclusive_maintenance(self) -> Iterator[None]:
-        """Block new request sessions and wait until existing ones are closed."""
+        """新規request sessionを停止し、既存sessionをdrainして排他maintenanceを行う。
 
+        複数maintenance callerは直列化される。context内ではactive request sessionが0であり、
+        engine/file replacementとrecoveryをrequest trafficから隔離できる。終了時は通常requestを
+        再開するが、context内でruntimeがfenceされた場合は`managed_session()`が引き続き拒否する。
+        """
         with self._condition:
             if self._unavailable_reason is not None:
                 raise DatabaseRuntimeUnavailableError(self._unavailable_reason)
@@ -96,36 +122,43 @@ class DatabaseRuntime:
                 self._condition.notify_all()
 
     def mark_unavailable(self, reason: str) -> None:
-        """Fence future request sessions after an unrecoverable DB failure."""
+        """unrecoverable DB failure後、このprocessからの新規DB接続をfail-closedで停止する。
 
+        `reason`はoperator log/error用の内部診断値であり、health response等のpublic contractへ
+        そのまま公開しない。wait中のrequest/maintenance callerを起こし、fenceを即時観測させる。
+        """
         with self._condition:
             self._unavailable_reason = reason
             self._condition.notify_all()
 
     @property
     def unavailable_reason(self) -> str | None:
+        """runtimeがfenceされている場合だけ内部diagnostic reasonを返す。"""
         with self._condition:
             return self._unavailable_reason
 
     def recreate_connections(self) -> None:
-        """Dispose the current pool and recreate engine/session bindings."""
+        """現在のpoolを破棄し、同じdatabase URLへengine/session factoryを再bindする。
 
+        SQLite DB fileのatomic replacement後など、既存connectionが旧fileを参照し得る場合に使う。
+        callerは通常`exclusive_maintenance()`内で呼び、requestが旧/new poolを跨がないようにする。
+        """
         self.engine.dispose()
         engine, session_factory = _create_engine_and_session_factory(self.database_url)
         self.engine = engine
         self.session_factory = session_factory
 
     def dispose(self) -> None:
+        """このruntimeが所有するSQLAlchemy connection poolを解放する。"""
         self.engine.dispose()
 
 
 def sqlalchemy_database_url(database_url: str) -> URL:
-    """Return the SQLAlchemy URL used by the configured production drivers.
+    """application contractのDB URLをproduction driver向けSQLAlchemy URLへ正規化する。
 
-    A bare PostgreSQL URL is the portable application contract. SQLAlchemy's
-    bare ``postgresql://`` dialect historically selects psycopg2, while sokora
-    ships Psycopg 3. Normalize only URLs without an explicit PostgreSQL driver;
-    explicit ``postgresql+...`` URLs remain caller-controlled.
+    bare PostgreSQL URLはportableなapplication contractだが、SQLAlchemyのbare
+    ``postgresql://`` dialectはhistorically psycopg2を選ぶ。sokoraはPsycopg 3を同梱するため、
+    driver未指定のPostgreSQL URLだけ`postgresql+psycopg`へ変換する。明示driverは保持する。
     """
     url = make_url(database_url)
     if url.drivername in {"postgres", "postgresql"}:
@@ -134,7 +167,7 @@ def sqlalchemy_database_url(database_url: str) -> URL:
 
 
 def _database_url_for_logging(database_url: str) -> str:
-    """Render a diagnostic URL without credentials or query parameters."""
+    """credentialとquery parameterを除いたDB URLをdiagnostic log用に返す。"""
     url = sqlalchemy_database_url(database_url)
     return url.set(query={}).render_as_string(hide_password=True)
 
@@ -155,7 +188,7 @@ def _sqlite_is_memory_database(url: URL) -> bool:
 
 
 def _enable_sqlite_foreign_keys(dbapi_connection: Any, _connection_record: Any) -> None:
-    """Enable SQLite FK enforcement for every DB-API connection."""
+    """SQLiteの全DB-API connectionでforeign key enforcementを有効化する。"""
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute("PRAGMA foreign_keys=ON")
@@ -187,7 +220,7 @@ def _create_engine_and_session_factory(
 
 
 def create_database_runtime(database_url: str) -> DatabaseRuntime:
-    """Create an isolated database runtime for a database URL."""
+    """指定database URL専用のengine/session resourcesを持つDatabaseRuntimeを作成する。"""
     engine, session_factory = _create_engine_and_session_factory(database_url)
     return DatabaseRuntime(
         database_url=database_url,
@@ -200,7 +233,11 @@ _default_database_runtimes: dict[str, DatabaseRuntime] = {}
 
 
 def get_default_database_runtime() -> DatabaseRuntime:
-    """Return the lazily-created runtime for the current process settings."""
+    """process環境の`DATABASE_URL`ごとにlazy cacheされたdefault runtimeを返す。
+
+    application instanceでは`get_app_database_runtime()`を優先する。このdefault cacheはCLIや
+    compatibility caller向けで、異なるURLを同じruntimeへ誤って再bindしない。
+    """
     database_url = AppSettings.from_env().database_url
     runtime = _default_database_runtimes.get(database_url)
     if runtime is None:
@@ -210,19 +247,24 @@ def get_default_database_runtime() -> DatabaseRuntime:
 
 
 def clear_database_runtime_cache() -> None:
-    """Dispose cached default runtimes; primarily useful for test isolation."""
+    """default runtime cacheをdisposeして空にし、主にtest間のprocess stateを分離する。"""
     for runtime in _default_database_runtimes.values():
         runtime.dispose()
     _default_database_runtimes.clear()
 
 
 def SessionLocal() -> Session:
-    """Compatibility session constructor using the current DATABASE_URL."""
+    """current `DATABASE_URL`のdefault runtimeからSessionを作るcompatibility constructor。"""
     return get_default_database_runtime().session_factory()
 
 
 def get_app_database_runtime(app: Starlette) -> DatabaseRuntime:
-    """Return the database runtime associated with one application instance."""
+    """1 application instanceが所有するDatabaseRuntimeをlazyに取得・作成する。
+
+    runtimeをmodule-global singletonにせず`app.state`へbindすることで、test/application instance間の
+    DB resourceを分離する。同じapplication内のrequestは同じruntimeを共有し、maintenance/fenceを
+    一貫して観測する。
+    """
     runtime = getattr(app.state, "database_runtime", None)
     if isinstance(runtime, DatabaseRuntime):
         return runtime
@@ -234,14 +276,23 @@ def get_app_database_runtime(app: Starlette) -> DatabaseRuntime:
 
 
 def get_db(request: Request) -> Generator[Session, None, None]:
-    """Yield a request-scoped SQLAlchemy session."""
+    """requestをapplication DatabaseRuntimeのsession lifecycleへ参加させるFastAPI dependency。
+
+    direct `session_factory()`ではなく`managed_session()`を使うため、DB maintenanceは既存requestの
+    closeを待ち、新規requestを安全にblock/fenceできる。
+    """
     runtime = get_app_database_runtime(request.app)
     with runtime.managed_session() as db:
         yield db
 
 
 def sqlite_database_path(database_url: str) -> Path | None:
-    """Resolve a file-backed SQLite URL to the filesystem path SQLite opens."""
+    """file-backed SQLite URLが実際に開くfilesystem pathを返す。
+
+    PostgreSQLとin-memory SQLiteはfile操作の対象ではないためNoneを返す。relative pathはprocessの
+    current working directory基準でabsolute化し、backup/restoreがSQLAlchemy URL表現を独自解釈
+    しないための共通resolverとして利用する。
+    """
     url = make_url(database_url)
     if url.get_backend_name() != "sqlite" or not url.database:
         return None
@@ -262,8 +313,7 @@ def sqlite_database_path(database_url: str) -> Path | None:
 
 
 def alembic_heads() -> tuple[str, ...]:
-    """Return the migration heads accepted by database restore validation."""
-
+    """current source treeがrestore candidateに要求するAlembic head revisionを返す。"""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -273,9 +323,12 @@ def alembic_heads() -> tuple[str, ...]:
 
 
 def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
-    """指定したDatabaseRuntimeをAlembic headまでupgradeします。
+    """指定runtimeのschemaをcurrent Alembic headまでupgradeする。
 
-    application runtimeのconnectionをAlembicへ渡すため、in-memory SQLiteでもrequestと同じDBを更新します。
+    Alembicへapplication runtimeと同じconnectionを渡す。特にin-memory SQLiteはconnectionごとに
+    別DBになり得るため、別engineでmigrationするとrequest側のschemaが更新されない。
+
+    failureはcallerへ伝播し、startup側が未更新schemaでserviceを開始しないようにする。
     """
     from alembic import command
     from alembic.config import Config
@@ -292,15 +345,13 @@ def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
     config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
     config.attributes["database_url"] = runtime.database_url
 
-    # application runtimeと同じconnectionを使う。特に:memory: SQLiteでは
-    # 別connectionへmigrationするとrequest側とは別DBになってしまう。
     with runtime.engine.begin() as connection:
         config.attributes["connection"] = connection
         command.upgrade(config, "head")
 
 
 def init_db(runtime: DatabaseRuntime | None = None) -> None:
-    """Compatibility alias that now delegates schema setup to Alembic."""
+    """legacy caller向けschema setup aliasとしてAlembic migrationへ委譲する。"""
     migrate_database(runtime)
 
 
@@ -309,7 +360,11 @@ def seed_database(
     days_back: int = 60,
     days_forward: int = 60,
 ) -> Dict[str, int]:
-    """Seed a newly-created local SQLite database using the supplied runtime."""
+    """fresh local SQLite向けの初期master/attendance dataを指定runtimeへ投入する。
+
+    startup側がfresh file-backed SQLiteと判定した場合だけ呼ぶ。PostgreSQLや既存DBを暗黙に
+    seedしないため、backend/新規性の判断はこのfunctionでは行わない。
+    """
     from scripts.seeding.data_seeder import bootstrap_core_data, seed_attendance
 
     db = runtime.session_factory()
@@ -329,9 +384,14 @@ def seed_database(
 
 
 def initialize_database(runtime: DatabaseRuntime | None = None) -> bool:
-    """schemaをmigrateし、新規file-backed SQLiteだけ初期dataをseedします。
+    """startup前提となるschema migrationとfresh SQLite seedを完了する。
 
-    migrationまたはseed失敗は再送出し、callerが未更新schemaで起動を継続しないようにします。
+    すべてのbackendでAlembic headまでmigrationする。seedするのはstartup開始時にDB fileが
+    存在しなかったfile-backed SQLiteだけで、PostgreSQL/in-memory SQLite/既存SQLiteには
+    自動seedしない。
+
+    migrationまたはseed failureは再送出する。callerはこのfunctionが成功しない限りrequestを
+    受け付けず、partial initializationをhealthy runtimeとして扱わない。
     """
     runtime = runtime or get_default_database_runtime()
     database_path = sqlite_database_path(runtime.database_url)

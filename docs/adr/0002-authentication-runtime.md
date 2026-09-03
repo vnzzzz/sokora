@@ -24,7 +24,7 @@ ADR 0001 では Keycloak 固定、server-side session、file-backed runtime togg
 - Keycloak は利用可能な OIDC provider の一つであり、application architecture上の必須 provider ではない。
 - 認証設定変更は environment / secret の更新と application 再起動・再デプロイを通じて行う。application 内の file-backed toggle は持たない。
 - 認証済み session は各 replica のローカルファイルに依存しない。multi-replica runtimeでは全replicaへ同じsession signing secretと認証/OIDC設定を注入する。application全体の共有状態contractは [ADR 0003](0003-multi-replica-runtime.md) に従う。
-- 詳細な runtime/API/UI contract は `docs/requirements.md`、`docs/api/requirements.md`、`docs/ui/requirements.md`、`docs/deployment/runtime.md` を SSoT とする。
+- 詳細な runtime/API/UI contract は [requirements.md](../requirements.md)、[api.md](../api.md)、[ui.md](../ui.md)、[runtime.md](../runtime.md) を SSoT とする。
 
 ## Supersedes
 

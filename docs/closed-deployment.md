@@ -4,7 +4,7 @@
 
 閉域環境でも、GCP/AWS/Azureと同じprovider非依存production OCI imageを利用する。application codeやDockerfileを閉域向けに分岐せず、差分はimageの配送方法、runtime env/secret、network、persistent dataへ閉じ込める。
 
-runtime自体の共通contractは [runtime.md](./runtime.md) を参照する。本書では閉域向けdeployment adapterと運用境界を定義する。
+runtime自体の共通contractは [runtime.md](runtime.md) を参照する。本書では閉域向けdeployment adapterと運用境界を定義する。
 
 ## Deployment unit
 
@@ -92,7 +92,7 @@ PostgreSQL adapterはapplication startup前に `DATABASE_URL` を検証し、未
 
 DB backup/restoreはPostgreSQL運用基盤側の標準手段を利用する。application imageに`pg_dump`やvendor固有backup clientを追加しない。
 
-shared PostgreSQLを使うmulti-replica contractは [ADR 0003](../adr/0003-multi-replica-runtime.md) に従う。Compose adapterは閉域runtimeの最小1-process定義であり、replica orchestration/load balancerは対象環境側の責務とする。
+shared PostgreSQLを使うmulti-replica contractは [ADR 0003](adr/0003-multi-replica-runtime.md) に従う。Compose adapterは閉域runtimeの最小1-process定義であり、replica orchestration/load balancerは対象環境側の責務とする。
 
 ## Upgrade contract
 

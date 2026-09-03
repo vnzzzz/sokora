@@ -1,4 +1,8 @@
-"""Sokora FastAPI application factory."""
+"""SokoraのFastAPI application lifecycleと共通HTTP boundaryを定義する。
+
+router個別のbusiness ruleは各adapter/serviceへ委譲し、このmoduleではapplication startup、
+shared middleware、health probe、OpenAPIといったprocess全体のcontractだけを所有する。
+"""
 
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -46,24 +50,35 @@ API_TAGS: List[Dict[str, str]] = [
     },
     {
         "name": "Data",
-        "description": "CSVを管理するエンドポイント",
+        "description": "CSVデータを出力するエンドポイント",
     },
 ]
 
 
 async def health_check(request: Request) -> JSONResponse:
-    """Return process readiness after the application lifespan has completed."""
+    """processがrequestを安全に処理できるかをplatform probeへ返す。
 
+    通常はHTTP 200を返す。SQLite restore/recovery失敗後にDatabaseRuntimeが
+    fail-closedへfenceされた場合はHTTP 503を返し、platformがそのprocessを
+    healthyなreplicaとして扱わないようにする。
+
+    unavailable reasonにはfilesystem path等の内部情報が含まれ得るため、responseへは
+    公開せずstatusだけを返す。認証を要求しないこともdeployment runtime contractの一部。
+    """
     runtime = getattr(request.app.state, "database_runtime", None)
     if isinstance(runtime, DatabaseRuntime) and runtime.unavailable_reason is not None:
+        # Fenced runtimeへ再接続させない判断はDatabaseRuntimeが所有する。
+        # health endpointはその状態を外部orchestratorへ503として投影するだけに留める。
         return JSONResponse(status_code=503, content={"status": "unavailable"})
     return JSONResponse({"status": "ok"})
 
 
 async def application_error_handler(_request: Request, exc: Exception) -> JSONResponse:
-    """adapterで未処理のapplication errorをJSONへ変換します。
+    """adapterで未処理のApplicationErrorをpublic JSON errorへ変換する。
 
-    HTML/HTMX page adapterは画面固有fragmentを返すため、write handler内でApplicationErrorを処理します。
+    HTML/HTMX page adapterは画面固有fragmentを返すため、write handler内で
+    ApplicationErrorを処理する。ここではJSON API側から漏れたapplication errorだけを
+    共通形式へ変換し、未知のexceptionは誤って正常化せず再送出する。
     """
     if not isinstance(exc, ApplicationError):
         raise exc
@@ -75,9 +90,14 @@ async def application_error_handler(_request: Request, exc: Exception) -> JSONRe
 
 @asynccontextmanager
 async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """DB schema初期化後にapplication resourceを公開し、終了時にruntimeを解放します。
+    """runtime設定とDB schemaを確定してからrequest受付を開始する。
 
-    migration失敗はlifespanから伝播させ、Alembic headでない状態ではrequestを受け付けません。
+    起動時に設定validationとAlembic migrationを完了し、fresh file-backed SQLiteだけを
+    seedする。migration/seed failureは握り潰さずlifespan startupを失敗させるため、
+    applicationは未更新schemaのままtrafficを受けない。
+
+    shutdownではprocess-owned DatabaseRuntimeをdisposeし、次のapplication instanceが
+    stale engine/session factoryを再利用しないようapp stateから切り離す。
     """
     settings: AppSettings = app.state.settings_provider()
     settings.validate_runtime()
@@ -87,7 +107,6 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
     runtime = get_app_database_runtime(app)
     logger.info("Initializing database")
     try:
-        # schema headは起動前提。失敗を握り潰さずlifespanを失敗させる。
         initialize_database(runtime)
         yield
     finally:
@@ -96,11 +115,15 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_application(settings: AppSettings | None = None) -> FastAPI:
-    """Create a configured FastAPI application.
+    """shared middleware・router・lifespanを組み込んだFastAPI applicationを作成する。
 
-    Passing ``settings`` gives tests and alternate runtimes an explicit,
-    process-environment-independent configuration. Without an explicit object,
-    the provider reads the current environment when runtime startup begins.
+    ``settings``を明示した場合は、そのobjectをapplication lifetime中の設定SSoTとして
+    使用する。主にtestや埋め込みruntimeでprocess environmentから切り離すための入口。
+    省略時はstartup時にenvironmentを読むproviderを保持する。
+
+    DB engine自体はここで作成せずlifespanでapplication instanceへbindする。これにより
+    import時にDB接続を開始せず、startup validation/migrationより先にrequest resourceを
+    公開しない。
     """
     settings_provider: Callable[[], AppSettings]
     if settings is None:
@@ -158,7 +181,11 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
 
 
 def create_openapi_schema(app: FastAPI) -> Dict[str, Any]:
-    """Create the custom OpenAPI schema."""
+    """JSON API routerだけを対象とするSokoraのOpenAPI schemaを生成・cacheする。
+
+    page/HTMX routerと`/healthz`はapplication routeとして存在するがOpenAPIから除外する。
+    schemaはapplication instanceへcacheし、同一process内で毎回再構築しない。
+    """
     if app.openapi_schema:
         return app.openapi_schema
 
