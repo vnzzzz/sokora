@@ -399,24 +399,45 @@ def restore_sqlite_database(
                             exc_info=True,
                         )
                     except Exception as rollback_exc:
+                        preserved_snapshot: Path | None = None
+                        if rollback_path is not None and rollback_path.exists():
+                            preserved_snapshot = rollback_path.resolve()
+                            # The snapshot is now an operator recovery artifact.
+                            # Do not let the outer cleanup remove it.
+                            rollback_path = None
+
+                        runtime.mark_unavailable(
+                            "SQLite restore recovery failed; restart and manual recovery are required"
+                        )
                         logger.critical(
-                            "SQLite restore and automatic rollback both failed",
+                            "SQLite restore and automatic rollback both failed; "
+                            "runtime fenced; recovery snapshot=%s",
+                            preserved_snapshot,
                             exc_info=True,
                         )
-                        raise DatabaseRestoreError(
-                            "リストアと自動ロールバックに失敗しました。"
-                            "サービスを停止し、運用バックアップから手動復旧してください。"
-                        ) from rollback_exc
+
+                        message = (
+                            "リストアと自動ロールバックに失敗したためDBアクセスを停止しました。"
+                            "サービスを停止し、手動復旧後に再起動してください。"
+                        )
+                        if preserved_snapshot is not None:
+                            message += f" 手動復旧用snapshot: {preserved_snapshot}"
+                        raise DatabaseRestoreError(message) from rollback_exc
                 elif engine_disposed:
                     try:
                         runtime.recreate_connections()
                     except Exception as recreate_exc:
+                        runtime.mark_unavailable(
+                            "Database connection recovery failed; restart is required"
+                        )
                         logger.critical(
-                            "Failed to recreate database connections after restore failure",
+                            "Failed to recreate database connections after restore failure; "
+                            "runtime fenced",
                             exc_info=True,
                         )
                         raise DatabaseRestoreError(
-                            "DB接続の再初期化に失敗しました。サービス再起動が必要です。"
+                            "DB接続の再初期化に失敗したためDBアクセスを停止しました。"
+                            "サービス再起動が必要です。"
                         ) from recreate_exc
 
                 if isinstance(exc, DatabaseManagementError):
