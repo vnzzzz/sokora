@@ -109,7 +109,9 @@ PostgreSQLでもfresh schemaは同じAlembic revision chainで構築する。sch
 
 ## Health check
 
-`GET /healthz` は認証不要で `200 {"status":"ok"}` を返す。OCI `HEALTHCHECK` と各deployment adapterのprobeはこのendpointを利用できる。
+`GET /healthz` は認証不要で、DB runtimeが利用可能な通常状態では `200 {"status":"ok"}` を返す。OCI `HEALTHCHECK` と各deployment adapterのprobeはこのendpointを利用できる。
+
+SQLite restoreと自動rollbackがともに失敗する等、process内のDB runtimeがfail-closed状態へfenceされた場合は `503 {"status":"unavailable"}` を返す。health endpointでは内部failure reasonやfilesystem pathを公開しない。運用側はunhealthy instanceを再起動またはserviceから除外し、保持されたrollback snapshotまたは運用backupから手動復旧する。
 
 OCI healthcheckはPython標準ライブラリで `127.0.0.1:$PORT` へ直接接続し、runtimeのproxy環境変数を利用しない。proxy経由の外向き通信が必要な環境でもcontainer自身のhealth判定はproxy availabilityに依存しない。
 
