@@ -6,10 +6,13 @@ from threading import Event, Thread
 import pytest
 from sqlalchemy import text
 
+import app.models  # noqa: F401 - register model metadata for legacy schema tests
 from app.db.session import (
+    Base,
     DatabaseRuntimeUnavailableError,
     create_database_runtime,
     initialize_database,
+    migrate_database,
 )
 from app.services import database_management
 from app.services.database_management import (
@@ -62,6 +65,37 @@ def test_restore_rejects_table_constraint_definition_mismatch(tmp_path: Path) ->
         runtime.dispose()
         if backup_path is not None:
             backup_path.unlink(missing_ok=True)
+
+
+def test_restore_accepts_equivalent_adopted_create_all_schema(tmp_path: Path) -> None:
+    fresh_runtime = _initialized_runtime(tmp_path)
+    fresh_path = tmp_path / "sokora.db"
+    legacy_path = tmp_path / "legacy.db"
+    legacy_runtime = create_database_runtime(f"sqlite:///{legacy_path}")
+
+    try:
+        # Reproduce a pre-#54 database, then run the supported Alembic adoption
+        # path. SQLite batch migration retains quoting around custom_holidays
+        # even though the resulting structure and constraints match fresh DBs.
+        Base.metadata.create_all(bind=legacy_runtime.engine)
+        migrate_database(legacy_runtime)
+
+        with sqlite3.connect(fresh_path) as fresh, sqlite3.connect(legacy_path) as legacy:
+            fresh_sql = fresh.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'custom_holidays'"
+            ).fetchone()
+            legacy_sql = legacy.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type = 'table' AND name = 'custom_holidays'"
+            ).fetchone()
+        assert fresh_sql is not None and legacy_sql is not None
+        assert fresh_sql[0] != legacy_sql[0]
+
+        validate_sqlite_restore_candidate(legacy_path, fresh_runtime)
+    finally:
+        legacy_runtime.dispose()
+        fresh_runtime.dispose()
 
 
 def test_session_close_failure_does_not_block_future_maintenance() -> None:
