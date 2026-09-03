@@ -19,17 +19,18 @@ sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケ
 
 ## Source of truth
 
-変更前にtaskに関係する一次情報を読む。文書の責務分担は最初に`docs/README.md`を確認する。
+変更前にtaskに関係する一次情報を読む。文書の責務分担は最初に`docs/README.md`を確認する。主要文書はADRと画像を除いて`docs/`直下へ集約する。
 
 - docs入口 / SSoT map: `docs/README.md`
 - 全体要件: `docs/requirements.md`
-- DB要件: `docs/db/requirements.md`
-- API要件: `docs/api/requirements.md`
-- UI要件: `docs/ui/requirements.md`
-- template構成: `docs/ui/templates.md`
-- deployment入口 / support status: `docs/deployment/README.md`
-- production runtime contract: `docs/deployment/runtime.md`
-- operations: `docs/operations/`
+- DB要件: `docs/database.md`
+- API要件: `docs/api.md`
+- UI要件: `docs/ui.md`
+- template構成: `docs/templates.md`
+- deployment入口 / support status: `docs/deployment.md`
+- production runtime contract: `docs/runtime.md`
+- closed-network運用: `docs/closed-deployment.md`
+- SQLite backup/restore運用: `docs/sqlite-database-management.md`
 - architecture decision: `docs/adr/`
 - 依存関係・tool設定: `pyproject.toml`, `uv.lock`
 - 開発command: `Makefile`, `scripts/`
@@ -73,11 +74,12 @@ writeのtransaction/business ruleはservice境界を優先する。readは画面
 - `.env`、credential、token等のsecretをcommitしない。`.env.sample`にはsample値だけを置く。
 - `DATABASE_URL`の既定値は`sqlite:///data/sokora.db`。`data/sokora.db`はruntime dataとして扱い、sourceとしてcommitしない。
 - SQLiteはsingle-instance runtime用。horizontal multi-replicaはshared PostgreSQLを利用する。
-- UI変更では既存のJinja/HTMX/Alpine patternと`docs/ui/`を確認する。
-- API変更では`docs/api/requirements.md`とpage側への影響を確認する。
-- DB変更では`docs/db/requirements.md`、model、migration、seed、testの整合を確認する。
-- production/deployment変更では`docs/deployment/README.md`と`docs/deployment/runtime.md`を確認し、provider固有処理をapplication coreへ持ち込まない。
+- UI変更では既存のJinja/HTMX/Alpine patternと`docs/ui.md`を確認する。
+- API変更では`docs/api.md`とpage側への影響を確認する。
+- DB変更では`docs/database.md`、model、migration、seed、testの整合を確認する。
+- production/deployment変更では`docs/deployment.md`と`docs/runtime.md`を確認し、provider固有処理をapplication coreへ持ち込まない。
 - 横断的なarchitecture判断は既存`docs/adr/`を確認し、必要ならADRを追加する。
+- comment/docstringは処理の言い換えではなく、codeだけでは失われる判断理由、制約、不変条件、resource lifetimeを残す。公開関数・型ではcallerが守る条件やfailure boundaryが重要なら明示する。
 
 ## Common commands
 
