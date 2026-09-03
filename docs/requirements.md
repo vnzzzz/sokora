@@ -11,7 +11,7 @@ sokoraは、ユーザーの勤怠種別・勤務場所をカレンダーUIで可
 - 月次/週次カレンダーと日別詳細
 - 勤怠の登録・更新・削除
 - ユーザー、グループ、勤怠種別、社員種別、カスタム祝日の管理
-- CSV入出力
+- 月次勤怠CSVのダウンロード
 - 月次/年度別の集計表示
 - optionalなOIDC認証とlocal admin fallback
 - file-backed SQLite利用時のadmin向けbackup/restore
