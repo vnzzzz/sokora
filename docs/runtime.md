@@ -45,6 +45,9 @@ local Make targetの`SERVICE_PORT`はhost側publish portであり、container li
 - cookieはHttpOnly + SameSite=Lax。HTTPS productionでは`SOKORA_AUTH_SESSION_HTTPS_ONLY=true`を必須とする。
 - multi-replicaでは`SOKORA_AUTH_SESSION_SECRET`と認証/OIDC設定を全replicaへ同一値で注入する。
 - local admin loginは管理用fallbackで、自動failoverではない。
+  - `SOKORA_LOCAL_AUTH_ENABLED`の既定値は`true`だが、このflagだけではlocal admin loginは有効にならない。
+  - `SOKORA_LOCAL_AUTH_ENABLED=true` かつ `SOKORA_LOCAL_ADMIN_USERNAME` と `SOKORA_LOCAL_ADMIN_PASSWORD` の両方が設定されている場合だけlocal admin loginを有効化する。
+  - credentialが不足している場合、applicationは起動できるがlocal admin loginは利用できない。`/auth/settings`、`/admin/database`等のadmin-only operationを利用するdeploymentでは、username/passwordをruntime secret/configとして明示設定する。
 
 認証architectureの理由とsecurity boundaryは [ADR 0002](adr/0002-authentication-runtime.md)、HTTP guard behaviorは [API requirements](api.md) を参照する。
 
