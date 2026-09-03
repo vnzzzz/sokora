@@ -401,7 +401,9 @@ def _semantic_indexes(
         quoted_index = _quote_identifier(index_name)
         index_columns = tuple(
             tuple(row[1:])
-            for row in connection.execute(f"PRAGMA index_xinfo({quoted_index})").fetchall()
+            for row in connection.execute(
+                f"PRAGMA index_xinfo({quoted_index})"
+            ).fetchall()
         )
         sql_row = connection.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
