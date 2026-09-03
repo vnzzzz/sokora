@@ -6,7 +6,11 @@ from threading import Event, Thread
 import pytest
 from sqlalchemy import text
 
-from app.db.session import create_database_runtime, initialize_database
+from app.db.session import (
+    DatabaseRuntimeUnavailableError,
+    create_database_runtime,
+    initialize_database,
+)
 from app.services import database_management
 from app.services.database_management import (
     DatabaseRestoreError,
@@ -197,3 +201,73 @@ def test_restore_rollback_blocks_requests_until_previous_database_is_recovered(
             backup_path.unlink(missing_ok=True)
         if staged_path is not None:
             staged_path.unlink(missing_ok=True)
+
+
+def test_restore_double_failure_fences_runtime_and_preserves_snapshot(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime = _initialized_runtime(tmp_path)
+    backup_path: Path | None = None
+    staged_path: Path | None = None
+    preserved_snapshot: Path | None = None
+
+    try:
+        backup_path = create_sqlite_backup(runtime)
+        with backup_path.open("rb") as source:
+            staged_path = stage_sqlite_restore_upload(source, runtime)
+
+        original_verify = database_management._verify_rebound_runtime
+        verify_calls = 0
+
+        def fail_first_rebound_verification(runtime_to_verify) -> None:
+            nonlocal verify_calls
+            verify_calls += 1
+            if verify_calls == 1:
+                raise RuntimeError("forced post-replacement failure")
+            original_verify(runtime_to_verify)
+
+        original_replace = database_management.os.replace
+        replace_calls = 0
+
+        def fail_rollback_replace(source, destination) -> None:
+            nonlocal replace_calls
+            replace_calls += 1
+            if replace_calls == 2:
+                raise OSError("forced rollback failure")
+            original_replace(source, destination)
+
+        monkeypatch.setattr(
+            database_management,
+            "_verify_rebound_runtime",
+            fail_first_rebound_verification,
+        )
+        monkeypatch.setattr(database_management.os, "replace", fail_rollback_replace)
+
+        assert staged_path is not None
+        with pytest.raises(DatabaseRestoreError, match="手動復旧用snapshot") as exc_info:
+            restore_sqlite_database(runtime, staged_path)
+
+        snapshots = list(tmp_path.glob(".sokora.db.rollback-*.db"))
+        assert len(snapshots) == 1
+        preserved_snapshot = snapshots[0]
+        assert str(preserved_snapshot.resolve()) in str(exc_info.value)
+
+        with sqlite3.connect(preserved_snapshot) as snapshot:
+            assert snapshot.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+
+        assert runtime.unavailable_reason is not None
+        with pytest.raises(DatabaseRuntimeUnavailableError):
+            with runtime.managed_session():
+                pass
+        with pytest.raises(DatabaseRuntimeUnavailableError):
+            with runtime.exclusive_maintenance():
+                pass
+    finally:
+        runtime.dispose()
+        if backup_path is not None:
+            backup_path.unlink(missing_ok=True)
+        if staged_path is not None:
+            staged_path.unlink(missing_ok=True)
+        if preserved_snapshot is not None:
+            preserved_snapshot.unlink(missing_ok=True)
