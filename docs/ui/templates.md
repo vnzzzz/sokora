@@ -63,7 +63,6 @@ app/templates/
     │   ├── login.html
     │   └── settings.html
     ├── analysis.html
-    ├── analysis_by_type.html
     ├── attendance.html
     ├── csv.html
     ├── group.html
@@ -106,4 +105,4 @@ HTMXで差し替える部分template。attendance calendar、modal、monthly reg
 
 ## Update rule
 
-この文書はdirectory treeの完全なinventoryを目的にしない。新しいtop-level template責務や配置規則を追加・変更した場合だけ更新し、private partialの追加ごとに説明を重複させない。
+この文書はdirectory treeの完全なinventoryを目的にしない。新しいtop-level template責務や配置規則を追加・変更した場合だけ更新し、private partialの追加ごとに説明を重複させない。repositoryに残る未参照legacy fileをactive UI contractとして列挙しない。
