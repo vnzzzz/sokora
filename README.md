@@ -8,7 +8,7 @@
 
 - 月次/週次カレンダー、日別詳細、勤怠CRUD
 - ユーザー / グループ / 勤怠種別 / 社員種別 / カスタム祝日の管理
-- CSV入出力、月次・年度別の集計
+- 月次勤怠CSVのダウンロード、月次・年度別の集計
 - optionalなOIDC認証 + 管理者向けlocal login
 - file-backed SQLiteの管理者向けbackup/restore
 - SQLiteのstandalone runtimeと、PostgreSQLを使うmulti-replica runtime
