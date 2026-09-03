@@ -27,11 +27,13 @@
 
 ## Quick start
 
-`.env.sample`を`.env`へcopyし、少なくとも`VERSION`を設定する。必要に応じて`SERVICE_PORT`や`DATABASE_URL`等を変更する。
+`.env.sample`を`.env`へcopyし、`VERSION`と`SERVICE_PORT`を設定する。`.env.sample`では`SERVICE_PORT`が空なので、local起動では明示的にportを指定する。通常は`8000`でよい。必要に応じて`DATABASE_URL`等も変更する。
 
 ```bash
 cp .env.sample .env
-# .env の VERSION を設定
+# .env に以下を設定
+# VERSION=<version>
+# SERVICE_PORT=8000
 make install
 make run
 ```
