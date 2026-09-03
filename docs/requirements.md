@@ -19,19 +19,19 @@ sokoraは、ユーザーの勤怠種別・勤務場所をカレンダーUIで可
 ## Architecture boundary
 
 ```text
-HTTP
-├─ app/routers/pages/   -> HTML / HTMX adapter
-└─ app/routers/api/v1/ -> JSON API adapter
-       ↓
-   app/services/       -> use case / transaction coordination
-       ↓
-   app/crud/           -> database access
-       ↓
-   app/models/ + app/db/
+HTTP adapters
+├─ app/routers/pages/   -> HTML / HTMX
+└─ app/routers/api/v1/ -> JSON API
+          │
+          ├─ write use cases -> app/services/ -> app/crud/
+          └─ read paths      -> read service / app/crud/ / view helper
+                                      │
+                               app/models/ + app/db/
 ```
 
 - JSON APIとpage/HTMX adapterはtransport contractを分離する。HTML fragmentや`HX-*` headerをJSON APIへ持ち込まない。
-- business ruleとtransaction coordinationはservice層へ集約し、page adapterからJSON APIへ内部HTTP委譲しない。
+- write business ruleとtransaction coordinationはservice層へ集約し、page adapterからJSON APIへ内部HTTP委譲しない。
+- read pathは画面/集計の複雑さに応じてdedicated read serviceまたは既存CRUD/read helperを利用する。DB由来のmutable stateをrouter/process-local cacheへ共有状態として保持しない。
 - DB schema/data contractはSQLAlchemy modelとAlembicを基準にし、詳細は [DB requirements](db/requirements.md) をSSoTとする。
 - UIの利用者向けbehaviorとHTMX contractは [UI requirements](ui/requirements.md) をSSoTとする。
 
