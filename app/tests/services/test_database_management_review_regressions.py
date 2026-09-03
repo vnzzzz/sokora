@@ -131,9 +131,7 @@ def test_restore_rejects_partial_index_predicate_mismatch(tmp_path: Path) -> Non
     index_name = "idx_groups_name_partial_probe"
     try:
         with sqlite3.connect(live_path) as db:
-            db.execute(
-                f"CREATE INDEX {index_name} ON groups(name) WHERE id > 0"
-            )
+            db.execute(f"CREATE INDEX {index_name} ON groups(name) WHERE id > 0")
             db.commit()
 
         backup_path = create_sqlite_backup(runtime)
@@ -141,9 +139,7 @@ def test_restore_rejects_partial_index_predicate_mismatch(tmp_path: Path) -> Non
 
         with sqlite3.connect(candidate) as db:
             db.execute(f"DROP INDEX {index_name}")
-            db.execute(
-                f"CREATE INDEX {index_name} ON groups(name) WHERE id > 1"
-            )
+            db.execute(f"CREATE INDEX {index_name} ON groups(name) WHERE id > 1")
             db.commit()
 
         with pytest.raises(InvalidDatabaseBackupError, match="schema"):
