@@ -53,7 +53,7 @@ class _TableSchema(NamedTuple):
     foreign_keys: tuple[tuple[object, ...], ...]
     indexes: tuple[_IndexSchema, ...]
     definition: str
-    conflict_policies: tuple[tuple[str, str], ...]
+    conflict_policies: tuple[tuple[str, str, str], ...]
 
 
 class _SchemaSignature(NamedTuple):
@@ -232,9 +232,26 @@ def _constraint_kind_before_conflict(tokens: list[str], position: int) -> str:
     return "other"
 
 
-def _table_conflict_policies(sql: str) -> tuple[tuple[str, str], ...]:
+def _constraint_identity_before_conflict(tokens: list[str], position: int) -> str:
+    """Identify the exact constraint receiving an ON CONFLICT policy."""
+
+    preceding = tokens[:position]
+    identity_tokens: list[str] = []
+    index = 0
+    while index < len(preceding):
+        if preceding[index] == "constraint" and index + 1 < len(preceding):
+            # Constraint names are presentation metadata; the affected column(s)
+            # and expression determine the behavior that must match.
+            index += 2
+            continue
+        identity_tokens.append(preceding[index])
+        index += 1
+    return _canonicalize_tokens(identity_tokens)
+
+
+def _table_conflict_policies(sql: str) -> tuple[tuple[str, str, str], ...]:
     _prefix, clauses, _suffix = _split_table_definition(_sql_tokens(sql))
-    policies: list[tuple[str, str]] = []
+    policies: list[tuple[str, str, str]] = []
     accepted = {"rollback", "abort", "fail", "ignore", "replace"}
 
     for clause in clauses:
@@ -243,7 +260,13 @@ def _table_conflict_policies(sql: str) -> tuple[tuple[str, str], ...]:
                 continue
             policy = clause[index + 2]
             if policy in accepted:
-                policies.append((_constraint_kind_before_conflict(clause, index), policy))
+                policies.append(
+                    (
+                        _constraint_kind_before_conflict(clause, index),
+                        _constraint_identity_before_conflict(clause, index),
+                        policy,
+                    )
+                )
 
     return tuple(sorted(policies))
 
@@ -333,7 +356,10 @@ def _index_predicate(sql: str | None) -> str | None:
     return None
 
 
-def _index_expression(sql: str | None, index_columns: tuple[tuple[object, ...], ...]) -> str | None:
+def _index_expression(
+    sql: str | None,
+    index_columns: tuple[tuple[object, ...], ...],
+) -> str | None:
     """Return raw index expression only when PRAGMA cannot name an indexed expression."""
 
     has_expression = any(
@@ -368,12 +394,15 @@ def _semantic_indexes(
     quoted_table: str,
 ) -> tuple[_IndexSchema, ...]:
     indexes: list[_IndexSchema] = []
-    for index_row in connection.execute(f"PRAGMA index_list({quoted_table})").fetchall():
+    index_rows = connection.execute(f"PRAGMA index_list({quoted_table})").fetchall()
+    for index_row in index_rows:
         index_name = str(index_row[1])
         quoted_index = _quote_identifier(index_name)
         index_columns = tuple(
             tuple(row[1:])
-            for row in connection.execute(f"PRAGMA index_xinfo({quoted_index})").fetchall()
+            for row in connection.execute(
+                f"PRAGMA index_xinfo({quoted_index})"
+            ).fetchall()
         )
         sql_row = connection.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
@@ -452,7 +481,9 @@ def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
         quoted_table = _quote_identifier(table_name)
         columns = tuple(
             tuple(row[1:])
-            for row in connection.execute(f"PRAGMA table_xinfo({quoted_table})").fetchall()
+            for row in connection.execute(
+                f"PRAGMA table_xinfo({quoted_table})"
+            ).fetchall()
         )
         foreign_keys = tuple(
             tuple(row[2:])
