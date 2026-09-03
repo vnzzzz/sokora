@@ -394,15 +394,14 @@ def _semantic_indexes(
     quoted_table: str,
 ) -> tuple[_IndexSchema, ...]:
     indexes: list[_IndexSchema] = []
-    index_rows = connection.execute(f"PRAGMA index_list({quoted_table})").fetchall()
-    for index_row in index_rows:
+    for index_row in connection.execute(
+        f"PRAGMA index_list({quoted_table})"
+    ).fetchall():
         index_name = str(index_row[1])
         quoted_index = _quote_identifier(index_name)
         index_columns = tuple(
             tuple(row[1:])
-            for row in connection.execute(
-                f"PRAGMA index_xinfo({quoted_index})"
-            ).fetchall()
+            for row in connection.execute(f"PRAGMA index_xinfo({quoted_index})").fetchall()
         )
         sql_row = connection.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
