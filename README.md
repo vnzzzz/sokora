@@ -66,20 +66,21 @@ closed-network向けには同じimageからrepository-free bundleを生成でき
 make closed-bundle
 ```
 
-現時点でclosed-network deployment adapterは実装済み。GCP Cloud Run / AWS managed container / Azure managed containerはplannedで、詳細なsupport statusは [Deployment guide](docs/deployment/README.md) を参照する。
+現時点でclosed-network deployment adapterは実装済み。GCP Cloud Run / AWS managed container / Azure managed containerはplannedで、詳細なsupport statusは [Deployment guide](docs/deployment.md) を参照する。
 
 ## Documentation
 
-最初に [Documentation guide](docs/README.md) を参照する。文書ごとのSSoTはそこで定義する。
+最初に [Documentation guide](docs/README.md) を参照する。ADRと画像を除き、主要文書は`docs/`直下へ集約している。
 
 - [Cross-cutting requirements](docs/requirements.md)
-- [API requirements](docs/api/requirements.md)
-- [DB requirements](docs/db/requirements.md)
-- [UI requirements](docs/ui/requirements.md)
-- [Template/static layout](docs/ui/templates.md)
-- [Production runtime](docs/deployment/runtime.md)
-- [Closed-network deployment](docs/deployment/closed.md)
-- [SQLite database management](docs/operations/sqlite-database-management.md)
+- [API requirements](docs/api.md)
+- [Database requirements](docs/database.md)
+- [UI requirements](docs/ui.md)
+- [Template/static layout](docs/templates.md)
+- [Deployment guide](docs/deployment.md)
+- [Production runtime](docs/runtime.md)
+- [Closed-network deployment](docs/closed-deployment.md)
+- [SQLite database management](docs/sqlite-database-management.md)
 - [Architecture Decision Records](docs/adr/README.md)
 
 READMEはproject入口に限定し、DB/auth/deployment等の詳細contractは各SSoTへ集約する。
@@ -100,7 +101,7 @@ scripts/
   seeding/         seed
   testing/         test runner
 deploy/closed/     closed-network adapter assets
-docs/              requirements / ADR / deployment / operations
+docs/              requirements / runtime / operations / ADR
 builder/           Tailwind build source
 ```
 
