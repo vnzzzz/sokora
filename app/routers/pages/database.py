@@ -1,4 +1,9 @@
-"""Administrator-only SQLite database management pages."""
+"""管理者向けSQLite backup/restoreのHTTP adapter。
+
+DB consistency、candidate validation、maintenance/fail-closed recoveryは
+`app.services.database_management`と`DatabaseRuntime`が所有する。このrouterはadmin authorization、
+upload/download transport、利用者向けerror rendering、audit logのactor情報だけを担当する。
+"""
 
 from __future__ import annotations
 
@@ -64,6 +69,12 @@ async def database_management_page(
     result: str | None = None,
     _admin: dict[str, object] = Depends(require_admin),
 ) -> Response:
+    """current backendに応じたadmin DB management画面を表示する。
+
+    page自体はadmin-only。file-backed SQLiteではbackup/restore操作を有効化し、PostgreSQLと
+    in-memory SQLiteでは操作を無効化したdiagnostic viewを返す。`result=restored`はredirect後の
+    success表示だけに利用し、DB stateの判定には使わない。
+    """
     runtime = get_app_database_runtime(request.app)
     return templates.TemplateResponse(
         "pages/admin/database.html",
@@ -76,6 +87,12 @@ async def download_database_backup(
     request: Request,
     admin: dict[str, object] = Depends(require_admin),
 ) -> Response:
+    """file-backed SQLiteのconsistent snapshotを一時fileとしてdownloadする。
+
+    snapshot作成・integrity validationはserviceへ委譲し、event loopをblockしないようthreadpoolで
+    実行する。download完了後はBackgroundTaskで一時fileを削除し、server側にbackup copyを
+    永続保管しない。unsupported backendやvalidation failureは管理画面へ安全なerrorを返す。
+    """
     runtime = get_app_database_runtime(request.app)
     actor = _actor_name(admin)
 
@@ -107,6 +124,15 @@ async def restore_database_backup(
     confirm_restore: str = Form(""),
     admin: dict[str, object] = Depends(require_admin),
 ) -> Response:
+    """uploadされたSQLite DBを明示確認後にcurrent live DBへrestoreする。
+
+    destructive operationのため`confirm_restore=yes`を必須とする。uploadはlive DBと同じfilesystemへ
+    stageし、candidate validation・request drain・rollback backup・atomic replacement・recoveryは
+    service/runtime boundaryへ委譲する。
+
+    staged uploadは成功/失敗にかかわらずrouterがcleanupする。ただしserviceがmanual recovery用に
+    保持すると判断したpre-restore rollback snapshotは別artifactであり、このcleanup対象ではない。
+    """
     runtime = get_app_database_runtime(request.app)
     actor = _actor_name(admin)
     staged_path: Path | None = None
