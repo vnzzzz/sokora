@@ -2,7 +2,7 @@
 
 ADRは、sokoraの重要なarchitecture decisionについて「なぜその選択をしたか」を残す。
 
-現在の設定値、API一覧、運用手順、file配置の正本にはしない。それらは [docs/README.md](../README.md) のsource-of-truth mapに従う。
+現在の設定値、API一覧、運用手順、file配置の正本にはしない。それらは [docs/README.md](../README.md) のsource-of-truth mapに従う。主要な現行contract文書は`docs/`直下へ集約し、ADRだけをdecision historyとしてこのdirectoryへ残す。
 
 ## Status
 
