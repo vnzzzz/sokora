@@ -341,8 +341,8 @@ def restore_sqlite_database(
     exclusive section existing request sessions are drained, a rollback backup
     is created, SQLAlchemy connections are disposed, the staged database is
     atomically moved into place, and stale SQLite sidecars are removed. Any
-    failure after replacement attempts to restore the pre-operation backup
-    before requests are admitted again.
+    recovery and connection reinitialization also complete before requests are
+    admitted again.
     """
 
     live_path = require_sqlite_database_path(runtime)
@@ -350,79 +350,80 @@ def restore_sqlite_database(
     replaced = False
     engine_disposed = False
 
+    validate_sqlite_restore_candidate(staged_path, runtime)
     try:
-        validate_sqlite_restore_candidate(staged_path, runtime)
         with runtime.exclusive_maintenance():
-            with tempfile.NamedTemporaryFile(
-                dir=live_path.parent,
-                prefix=f".{live_path.name}.rollback-",
-                suffix=".db",
-                delete=False,
-            ) as rollback_file:
-                rollback_path = Path(rollback_file.name)
-
-            _backup_database(live_path, rollback_path)
-            live_mode = stat.S_IMODE(live_path.stat().st_mode)
-            os.chmod(staged_path, live_mode)
-
-            runtime.engine.dispose()
-            engine_disposed = True
-            os.replace(staged_path, live_path)
-            replaced = True
-
-            # Old WAL/SHM files belong to the database that was just replaced.
-            # Remove them only after os.replace succeeds, while maintenance
-            # mode still prevents any new SQLite connection from opening.
-            _remove_sqlite_sidecars(live_path)
-            _sync_directory(live_path.parent)
-
-            runtime.recreate_connections()
-            engine_disposed = False
-            _verify_rebound_runtime(runtime)
-
-            rollback_path.unlink(missing_ok=True)
-            rollback_path = None
-    except Exception as exc:
-        if replaced and rollback_path is not None and rollback_path.exists():
             try:
+                with tempfile.NamedTemporaryFile(
+                    dir=live_path.parent,
+                    prefix=f".{live_path.name}.rollback-",
+                    suffix=".db",
+                    delete=False,
+                ) as rollback_file:
+                    rollback_path = Path(rollback_file.name)
+
+                _backup_database(live_path, rollback_path)
+                live_mode = stat.S_IMODE(live_path.stat().st_mode)
+                os.chmod(staged_path, live_mode)
+
                 runtime.engine.dispose()
+                engine_disposed = True
+                os.replace(staged_path, live_path)
+                replaced = True
+
+                # Old WAL/SHM files belong to the database that was just replaced.
+                # Remove them only after os.replace succeeds, while maintenance
+                # mode still prevents any new SQLite connection from opening.
                 _remove_sqlite_sidecars(live_path)
-                os.replace(rollback_path, live_path)
-                rollback_path = None
                 _sync_directory(live_path.parent)
+
                 runtime.recreate_connections()
                 engine_disposed = False
                 _verify_rebound_runtime(runtime)
-                logger.error(
-                    "SQLite restore failed after replacement; previous DB restored",
-                    exc_info=True,
-                )
-            except Exception as rollback_exc:
-                logger.critical(
-                    "SQLite restore and automatic rollback both failed",
-                    exc_info=True,
-                )
-                raise DatabaseRestoreError(
-                    "リストアと自動ロールバックに失敗しました。"
-                    "サービスを停止し、運用バックアップから手動復旧してください。"
-                ) from rollback_exc
-        elif engine_disposed:
-            try:
-                runtime.recreate_connections()
-            except Exception as recreate_exc:
-                logger.critical(
-                    "Failed to recreate database connections after restore failure",
-                    exc_info=True,
-                )
-                raise DatabaseRestoreError(
-                    "DB接続の再初期化に失敗しました。サービス再起動が必要です。"
-                ) from recreate_exc
 
-        if isinstance(exc, DatabaseManagementError):
-            raise
-        raise DatabaseRestoreError(
-            "リストアに失敗したため、変更は適用されませんでした。"
-        ) from exc
+                rollback_path.unlink(missing_ok=True)
+                rollback_path = None
+            except Exception as exc:
+                if replaced and rollback_path is not None and rollback_path.exists():
+                    try:
+                        runtime.engine.dispose()
+                        _remove_sqlite_sidecars(live_path)
+                        os.replace(rollback_path, live_path)
+                        rollback_path = None
+                        _sync_directory(live_path.parent)
+                        runtime.recreate_connections()
+                        engine_disposed = False
+                        _verify_rebound_runtime(runtime)
+                        logger.error(
+                            "SQLite restore failed after replacement; previous DB restored",
+                            exc_info=True,
+                        )
+                    except Exception as rollback_exc:
+                        logger.critical(
+                            "SQLite restore and automatic rollback both failed",
+                            exc_info=True,
+                        )
+                        raise DatabaseRestoreError(
+                            "リストアと自動ロールバックに失敗しました。"
+                            "サービスを停止し、運用バックアップから手動復旧してください。"
+                        ) from rollback_exc
+                elif engine_disposed:
+                    try:
+                        runtime.recreate_connections()
+                    except Exception as recreate_exc:
+                        logger.critical(
+                            "Failed to recreate database connections after restore failure",
+                            exc_info=True,
+                        )
+                        raise DatabaseRestoreError(
+                            "DB接続の再初期化に失敗しました。サービス再起動が必要です。"
+                        ) from recreate_exc
+
+                if isinstance(exc, DatabaseManagementError):
+                    raise
+                raise DatabaseRestoreError(
+                    "リストアに失敗したため、変更は適用されませんでした。"
+                ) from exc
     finally:
         staged_path.unlink(missing_ok=True)
         if rollback_path is not None:
