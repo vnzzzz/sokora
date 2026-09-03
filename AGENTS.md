@@ -43,10 +43,11 @@ Issueや実装とdocsが食い違う場合は、推測で合わせず、taskの�
 ```text
 app/main.py
   ├─ app/routers/pages/   -> HTML / HTMX adapter
-  ├─ app/routers/api/v1/ -> JSON API adapter
-  └─ app/services/       -> use case / domain coordination
-       └─ app/crud/       -> database access
-            └─ app/models/ + app/db/
+  └─ app/routers/api/v1/ -> JSON API adapter
+          │
+          ├─ write use cases -> app/services/ -> app/crud/
+          └─ read paths      -> read service / app/crud/ / view helper
+                                      └─ app/models/ + app/db/
 
 app/templates/
   ├─ layout/
@@ -63,7 +64,7 @@ app/templates/
 - `builder/`: Tailwind build source
 - `deploy/closed/`: closed-network deployment adapter assets
 
-既存の責務分離を優先し、新しいlayerやpatternを追加する前に関連実装を確認する。
+writeのtransaction/business ruleはservice境界を優先する。readは画面/集計の複雑さに応じてdedicated read serviceまたは既存CRUD/helperを利用する。既存の責務分離を確認せず新しいlayerやpatternを追加しない。
 
 ## Repository-specific constraints
 
