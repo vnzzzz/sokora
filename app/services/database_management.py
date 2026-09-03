@@ -294,6 +294,21 @@ def _is_table_unique_clause(clause: list[str]) -> bool:
     return len(clause) >= 3 and clause[0] == "constraint" and clause[2] == "unique"
 
 
+def _strip_table_constraint_name(clause: list[str]) -> list[str]:
+    if len(clause) >= 3 and clause[0] == "constraint":
+        return clause[2:]
+    return clause
+
+
+def _is_table_constraint_clause(clause: list[str]) -> bool:
+    normalized = _strip_table_constraint_name(clause)
+    if not normalized:
+        return False
+    if normalized[0] in {"check", "foreign", "unique"}:
+        return True
+    return len(normalized) >= 2 and normalized[:2] == ["primary", "key"]
+
+
 def _normalize_column_unique_constraints(clause: list[str]) -> list[str]:
     """Drop UNIQUE syntax represented semantically by SQLite unique indexes."""
 
@@ -322,14 +337,22 @@ def _canonicalize_table_definition(sql: str) -> str:
     if not clauses:
         return _canonicalize_sql_definition(sql)
 
-    normalized_clauses: list[list[str]] = []
+    normalized_column_clauses: list[list[str]] = []
+    normalized_table_constraints: list[list[str]] = []
     for clause in clauses:
         if _is_table_unique_clause(clause):
             continue
         clause = _remove_conflict_clause(clause)
         clause = _normalize_column_unique_constraints(clause)
-        normalized_clauses.append(clause)
+        if _is_table_constraint_clause(clause):
+            normalized_table_constraints.append(_strip_table_constraint_name(clause))
+        else:
+            normalized_column_clauses.append(clause)
 
+    normalized_clauses = [
+        *normalized_column_clauses,
+        *sorted(normalized_table_constraints, key=_canonicalize_tokens),
+    ]
     normalized: list[str] = [*prefix, "("]
     for index, clause in enumerate(normalized_clauses):
         if index:
@@ -437,6 +460,37 @@ def _semantic_indexes(
     return tuple(sorted(set(normalized), key=repr))
 
 
+def _semantic_foreign_keys(
+    connection: sqlite3.Connection,
+    quoted_table: str,
+) -> tuple[tuple[object, ...], ...]:
+    """Return foreign-key constraints independent of SQLite constraint ids."""
+
+    rows = connection.execute(f"PRAGMA foreign_key_list({quoted_table})").fetchall()
+    grouped: dict[int, list[tuple[object, ...]]] = {}
+    for row in rows:
+        grouped.setdefault(int(row[0]), []).append(tuple(row))
+
+    constraints: list[tuple[object, ...]] = []
+    for group_rows in grouped.values():
+        ordered = sorted(group_rows, key=lambda row: int(row[1]))
+        first = ordered[0]
+        columns = tuple(
+            (str(row[3]), None if row[4] is None else str(row[4])) for row in ordered
+        )
+        constraints.append(
+            (
+                str(first[2]),
+                columns,
+                str(first[5]),
+                str(first[6]),
+                str(first[7]),
+            )
+        )
+
+    return tuple(sorted(constraints, key=repr))
+
+
 def _integrity_check(connection: sqlite3.Connection) -> None:
     integrity_rows = [
         str(row[0]) for row in connection.execute("PRAGMA integrity_check").fetchall()
@@ -484,12 +538,7 @@ def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
                 f"PRAGMA table_xinfo({quoted_table})"
             ).fetchall()
         )
-        foreign_keys = tuple(
-            tuple(row[2:])
-            for row in connection.execute(
-                f"PRAGMA foreign_key_list({quoted_table})"
-            ).fetchall()
-        )
+        foreign_keys = _semantic_foreign_keys(connection, quoted_table)
         tables.append(
             (
                 table_name,
