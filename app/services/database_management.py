@@ -28,9 +28,11 @@ _COPY_CHUNK_SIZE = 1024 * 1024
 
 
 class DatabaseManagementError(ApplicationError):
-    """DB管理operationで利用者へ安全に返せるapplication-level error。
+    """DB管理operationでadapterが扱えるapplication-level error。
 
-    raw sqlite3/OS exceptionや内部pathをHTTP boundaryへ直接漏らさないためのbase type。
+    raw sqlite3/OS exceptionはcauseとして保持し、利用者向けdetailへそのまま変換しない。
+    automatic rollbackまで失敗した場合のrecovery snapshot pathなど、operator actionに必要な
+    情報だけはsubclassが意図的にdetailへ含めることがある。
     """
 
 
@@ -44,9 +46,11 @@ class UnsupportedDatabaseBackendError(DatabaseManagementError):
 
 
 class InvalidDatabaseBackupError(DatabaseManagementError):
-    """upload candidateがreplacement前の安全性/互換性検査を満たさないことを表す。
+    """SQLite fileのintegrity/互換性validationが成立しないことを表す。
 
-    このerrorが出る段階ではlive DB replacementは開始していない。
+    主にupload candidateのreplacement前検査で使うほか、生成したonline backup自身の
+    integrity確認にも利用する。restore candidate検査から送出される場合、live DB replacementは
+    まだ開始していない。
     """
 
     status_code = 400
