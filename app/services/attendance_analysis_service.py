@@ -53,7 +53,7 @@ def get_attendance_analysis_data(
         month_value = month
 
     users_data = crud.user.get_all_users_with_details(db)
-    locations = crud.location.get_multi(db)
+    locations = crud.location.list_all(db)
     locations_sorted = sorted(
         locations,
         key=lambda item: (str(item.category or ""), item.order or 999, item.id),
