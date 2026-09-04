@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from pytest import MonkeyPatch
 from sqlalchemy.orm import Session
 
-from app import crud
+from app import crud, models
 from app.services import attendance_analysis_service
 
 
@@ -86,3 +86,56 @@ def test_analysis_defers_attendance_for_location_not_seen_by_master_read(
     assert second["summary"]["location_totals"] == {101: 1, 202: 1}
     assert second["users"]["analysis-user"]["location_counts"] == {101: 1, 202: 1}
     assert [int(location.id) for location in second["locations"]] == [101, 202]
+
+
+
+def test_analysis_includes_attendance_for_location_beyond_default_page_size(
+    db: Session,
+) -> None:
+    """101件目の勤怠種別もcomplete master setとしてanalysisへ含める。"""
+    group = models.Group(name="Analysis 101 Group", order=1)
+    user_type = models.UserType(name="Analysis 101 Type", order=1)
+    locations = [
+        models.Location(
+            name=f"Analysis 101 Location {index:03d}",
+            category="Office",
+            order=index,
+        )
+        for index in range(101)
+    ]
+    db.add_all([group, user_type, *locations])
+    db.flush()
+
+    user = models.User(
+        id="analysis-101-user",
+        username="Analysis 101 User",
+        group_id=group.id,
+        user_type_id=user_type.id,
+    )
+    db.add(user)
+    db.flush()
+
+    target_location = locations[-1]
+    db.add(
+        models.Attendance(
+            user_id=user.id,
+            location_id=target_location.id,
+            date=date(2032, 6, 15),
+            note="beyond default page size",
+        )
+    )
+    db.commit()
+
+    result = attendance_analysis_service.get_attendance_analysis_data(
+        db,
+        month="2032-06",
+    )
+
+    target_location_id = int(target_location.id)
+    assert len(result["locations"]) == 101
+    assert result["summary"]["total_attendance_days"] == 1
+    assert result["summary"]["location_totals"][target_location_id] == 1
+    assert (
+        result["users"]["analysis-101-user"]["location_counts"][target_location_id]
+        == 1
+    )
