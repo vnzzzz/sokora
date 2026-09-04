@@ -14,7 +14,12 @@ def get_attendance_data_for_csv(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
 ) -> Dict[str, str]:
-    """CSV用に user_id + date から勤怠種別名へのmappingを返す。"""
+    """CSV projection用に``user_id_YYYY-MM-DD``をkeyとする勤怠種別mappingを返す。
+
+    optionalな開始/終了日はpersistence queryへそのまま渡し、範囲外rowをservice側で再filter
+    しない。1ユーザー1日1勤怠というDB unique contractを前提に1 keyへ1 valueだけを持つ。
+    export readは共有DBのcurrent stateから毎回構築し、process-local cacheを作らない。
+    """
     rows = crud.attendance.list_export_rows(
         db,
         start_date=start_date,
