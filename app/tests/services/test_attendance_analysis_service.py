@@ -54,7 +54,7 @@ def test_analysis_defers_attendance_for_location_not_seen_by_master_read(
     )
     monkeypatch.setattr(
         crud.location,
-        "get_multi",
+        "list_all",
         lambda _db: list(visible_locations),
     )
     monkeypatch.setattr(
