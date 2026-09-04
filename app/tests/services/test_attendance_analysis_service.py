@@ -135,6 +135,5 @@ def test_analysis_includes_attendance_for_location_beyond_default_page_size(
     assert result["summary"]["total_attendance_days"] == 1
     assert result["summary"]["location_totals"][target_location_id] == 1
     assert (
-        result["users"]["analysis-101-user"]["location_counts"][target_location_id]
-        == 1
+        result["users"]["analysis-101-user"]["location_counts"][target_location_id] == 1
     )
