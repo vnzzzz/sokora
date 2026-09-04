@@ -90,11 +90,13 @@ async def application_error_handler(_request: Request, exc: Exception) -> JSONRe
 
 @asynccontextmanager
 async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """runtime設定とDB schemaを確定してからrequest受付を開始する。
+    """startup時点のruntime設定を検証し、DB schema準備後にrequest受付を開始する。
 
-    起動時に設定validationとAlembic migrationを完了し、fresh file-backed SQLiteだけを
-    seedする。migration/seed failureは握り潰さずlifespan startupを失敗させるため、
-    applicationは未更新schemaのままtrafficを受けない。
+    lifespan開始時にsettings providerから取得したinstanceへvalidationを適用し、Alembic
+    migrationを完了してfresh file-backed SQLiteだけをseedする。providerが後から返す別instance
+    までこのvalidationで保証するわけではないため、running processのconfig hot-reloadは
+    application contractに含めない。migration/seed failureは握り潰さずlifespan startupを
+    失敗させ、applicationは未更新schemaのままtrafficを受けない。
 
     shutdownではprocess-owned DatabaseRuntimeをdisposeし、次のapplication instanceが
     stale engine/session factoryを再利用しないようapp stateから切り離す。
