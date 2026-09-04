@@ -56,7 +56,6 @@ def test_remove_location(db: Session) -> None:
     assert location_after_remove is None
 
 
-
 def test_list_all_locations_is_not_truncated_at_default_page_size(
     db: Session,
 ) -> None:
