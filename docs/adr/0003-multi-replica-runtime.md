@@ -19,7 +19,9 @@ portable PostgreSQL backend導入後も、application replicaごとにDB由来�
 ## Consistency contract
 
 - write transactionがcommitした後に開始したread requestは、どのreplicaへrouteされてもそのcommitted stateを観測する。
-- write commit前から進行中のread requestは、そのrequestが取得したsnapshotを返し得る。linearizableな全request直列化は要求しない。
+- PostgreSQLの通常readはdefaultのREAD COMMITTEDを前提とし、複数SQL statementで構築する1 requestがsingle database snapshotを持つことまでは保証しない。各statementは実行時点までにcommit済みの異なるstateを観測し得る。
+- analysisのようにmasterとtransaction rowを別queryで読むread modelでは、先に観測したmaster集合をそのresponseのprojection boundaryとする。後続queryだけが新しいmaster参照rowを観測した場合、そのrowは現在responseから除外し、commit後に開始する次requestで反映する。これによりmixed read stateを500や不整合なview-model shapeへ変換しない。
+- write commit前から進行中のread requestは、request中に各queryが観測したcommitted stateに基づく結果を返し得る。linearizableな全request直列化は要求しない。
 - application runtimeが共有状態として依存してよいのは共有DB、runtime-injected config/secret、同一OCI imageに含まれるimmutable assetである。replica-local filesystemやmodule-global mutable DB cacheは共有stateとして利用しない。
 
 ## 検証
