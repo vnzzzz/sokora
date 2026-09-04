@@ -117,9 +117,15 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_application(settings: AppSettings | None = None) -> FastAPI:
     """shared middleware・router・lifespanを組み込んだFastAPI applicationを作成する。
 
-    ``settings``を明示した場合は、そのobjectをapplication lifetime中の設定SSoTとして
-    使用する。主にtestや埋め込みruntimeでprocess environmentから切り離すための入口。
-    省略時はstartup時にenvironmentを読むproviderを保持する。
+    ``settings``を明示した場合は、そのobjectをapplication lifetime中の設定providerとして
+    再利用する。主にtestや埋め込みruntimeでprocess environmentから切り離すための入口。
+    省略時は``AppSettings.from_env``をproviderとして保持するため、provider呼び出しごとに
+    process environmentから新しいsettings instanceを構築し得る。
+
+    ただしSessionMiddlewareのsecret/max-age/cookie属性など、application作成時に固定される
+    componentもある。process environmentを変更してrunning processをhot-reconfigureする
+    contractは提供せず、runtime config/secret変更はprocess restartで全componentへ一貫して
+    適用する。
 
     DB engine自体はここで作成せずlifespanでapplication instanceへbindする。これにより
     import時にDB接続を開始せず、startup validation/migrationより先にrequest resourceを
