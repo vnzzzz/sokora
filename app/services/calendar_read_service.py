@@ -19,6 +19,8 @@ from app.utils.ui_utils import get_location_color_classes
 
 
 class MonthCalendarViewModel(TypedDict):
+    """月次calendar templateが参照するsummary page contract。"""
+
     current_month: str
     month: str
     calendar: Dict[str, Any]
@@ -26,6 +28,8 @@ class MonthCalendarViewModel(TypedDict):
 
 
 class DayDetailViewModel(TypedDict):
+    """1日分の勤怠をgroup/社員種別へ編成したdetail contract。"""
+
     date_str: str
     date_jp: str
     organized_by_group: Dict[str, Dict[str, Any]]
@@ -33,14 +37,22 @@ class DayDetailViewModel(TypedDict):
 
 
 def normalize_month(month: Optional[str]) -> str:
-    """month queryをYYYY-MMへ正規化する。"""
+    """month queryをcanonicalな``YYYY-MM``へ正規化する。
+
+    未指定時だけ現在月を補う。形式不正は空値へ握り潰さずparse errorをcallerへ伝え、routerが
+    既存のerror view contractへ切り替えられるようにする。
+    """
     value = month or get_current_month_formatted()
     year, month_num = parse_month(value)
     return f"{year}-{month_num:02d}"
 
 
 def get_empty_month_view_model(month: Optional[str]) -> MonthCalendarViewModel:
-    """月パラメータ解析失敗時に既存UI向けの空view modelを返す。"""
+    """月parameter解析失敗時もcalendar templateをrenderできる空modelを返す。
+
+    prev/nextを元parameterへ固定し、error状態から不正な追加navigation valueを生成しない。
+    DB accessや補正推測は行わず、入力errorの表示だけに使う。
+    """
     current_month = month or get_current_month_formatted()
     return {
         "current_month": current_month,
@@ -59,7 +71,15 @@ def get_empty_month_view_model(month: Optional[str]) -> MonthCalendarViewModel:
 def get_month_view_model(
     db: Session, *, month: Optional[str] = None
 ) -> MonthCalendarViewModel:
-    """月次summary calendarの表示データをDBから毎回構築する。"""
+    """月次summary calendarを共有DBのcurrent stateから毎回構築する。
+
+    process-local DB result cacheは持たないため、commit後に開始した次readは別replicaのwriteも
+    共有DBから観測できる。祝日判定はcaller側request dependencyが束縛したcustom holiday
+    snapshotをcalendar utilityが参照する前提で、ここでは独自cacheを作らない。
+
+    location metadataが集計結果と対応しない場合だけneutralな表示classへfallbackし、欠落した
+    master rowを推測して作らない。
+    """
     current_month = normalize_month(month)
     year, month_num = parse_month(current_month)
     first_day = date(year, month_num, 1)
@@ -118,7 +138,12 @@ def get_month_view_model(
 
 
 def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
-    """日別詳細をgroup/user type単位へ編成する。"""
+    """日別detailをgroup/社員種別単位へ編成し、安定した表示順で返す。
+
+    日付が不正なら404等へ変換せず、既存UI contractどおり空detailを返す。groupは明示order、
+    persistent ID、nameの順でsortし、``order=0`` と未設定を区別する。社員種別もorder/ID/
+    name、同一種別内のuserは表示名/IDでtie-breakするため、DB row返却順へ依存しない。
+    """
     target_date = parse_date(day)
     if target_date is None:
         return {
