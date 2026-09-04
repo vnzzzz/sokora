@@ -55,11 +55,16 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        """request時点のshared settingsとsigned sessionからguard結果を決定する。
+        """request時点のsettings provider結果とsigned sessionからguard結果を決定する。
 
-        settings providerを毎request評価する一方、認証identityの形式はSessionMiddlewareが
-        検証したsession mappingだけを信頼する。exempt pathは「公開してよいendpoint」の
-        contractなので、機能routeを追加する目的だけで安易にprefixを広げない。
+        settings providerは毎request評価する。一方、SessionMiddlewareのsecret/cookie設定は
+        application作成時に固定されるため、provider値だけをrunning process内で変更する
+        hot-reconfigurationはsupportしない。runtime config変更はprocess restartで全middleware
+        へ同じ設定を適用する。
+
+        認証identityの形式はSessionMiddlewareが検証したsession mappingだけを信頼する。
+        exempt pathは「公開してよいendpoint」のcontractなので、機能routeを追加する目的だけで
+        安易にprefixを広げない。
         """
         settings = self.settings_provider()
         if not settings.auth_enabled:
