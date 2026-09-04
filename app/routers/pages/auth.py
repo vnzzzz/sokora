@@ -21,7 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 def _safe_next_path(next_path: str | None) -> str:
-    """Allow only a same-origin absolute path, never an external redirect."""
+    """login/logout後の戻り先をsame-origin absolute pathだけへ制限する。
+
+    scheme/netloc、protocol-relative path、backslashを含む値はrootへ縮退する。fragmentは
+    server redirectに不要なため捨て、pathとqueryだけを保持する。sessionに保存したnextも
+    callback直前に再度このfunctionへ通し、client入力をopen redirectへ変換しない。
+    """
     if not next_path or "\\" in next_path:
         return "/"
     parsed = urlsplit(next_path)
@@ -89,6 +94,12 @@ async def oidc_redirect(
     oidc_client: OIDCClient = Depends(get_oidc_client),
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Response:
+    """OIDC authorization flowを開始し、安全な戻り先をsigned sessionへ一時保存する。
+
+    OAuth state/OIDC nonceの生成・保持はOIDC client/Authlibへ委譲する。provider discoveryが
+    失敗した場合は一時next stateを破棄してlogin画面へ戻し、local adminへ自動failoverは
+    しない。
+    """
     request.session["auth_next"] = _safe_next_path(next)
     try:
         target = await oidc_client.build_authorization_url(
@@ -111,6 +122,12 @@ async def oidc_callback(
     request: Request,
     oidc_client: OIDCClient = Depends(get_oidc_client),
 ) -> Response:
+    """OIDC callbackを検証し、validated identityだけをapplication sessionへ保存する。
+
+    code exchange時のstate/nonce/ID token validationはOIDC clientへ委譲する。persistent session
+    にはaccess/refresh/ID tokenを保持せず、subjectと表示用usernameだけを保存する。state
+    mismatchは認証失敗として400にし、通常provider failureとは区別する。
+    """
     next_path = _safe_next_path(request.session.pop("auth_next", "/"))
     try:
         result = await oidc_client.exchange_code(request=request)
@@ -144,6 +161,12 @@ async def local_login(
     next: str = Form("/"),
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Response:
+    """configured local admin credentialを照合し、admin role付きsessionを発行する。
+
+    local auth flagとusername/passwordが揃わないruntimeでは経路自体を利用不可とする。
+    credentialはconstant-time compareで照合し、成功したlocal sessionだけへ``role=admin``
+    を付与する。一般user向けlocal identityやOIDC失敗からの自動fallbackは提供しない。
+    """
     if not settings.local_admin_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -177,6 +200,13 @@ async def logout(
     request: Request,
     oidc_client: OIDCClient | None = Depends(get_optional_oidc_client),
 ) -> Response:
+    """application sessionを破棄し、可能ならOIDC provider logoutも開始する。
+
+    provider logoutはOIDCでloginしたsessionかつdiscovered end-session endpointが利用可能な
+    場合だけ追加実行する。provider logoutが失敗/未対応でもapplication側identityを残さず、
+    local logoutを成立させる。persistent ID tokenを保持しないためprovider redirectには
+    registered callbackとclient IDを利用する。
+    """
     auth_session = request.session.pop("auth", None)
     request.session.pop("auth_error", None)
     request.session.pop("auth_next", None)
@@ -210,6 +240,11 @@ async def oidc_logout_callback(
     request: Request,
     oidc_client: OIDCClient | None = Depends(get_optional_oidc_client),
 ) -> Response:
+    """provider logout callback stateを検証し、残存application sessionを消去する。
+
+    state mismatchは400として拒否する。provider metadata/validationの一般failureはlogへ残すが、
+    logout後のapplication sessionを復活させる理由にはせず最終的にclearする。
+    """
     if oidc_client is not None:
         try:
             await oidc_client.validate_logout_response(request)

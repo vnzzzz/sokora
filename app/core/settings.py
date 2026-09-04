@@ -1,7 +1,9 @@
-"""Application settings loaded from environment variables.
+"""application runtime設定の読み取りとsecurity validationを集約する。
 
-Environment parsing is centralized here so application/runtime components can
-receive an explicit settings object instead of reading ``os.environ`` directly.
+environment parsingをこのmoduleへ閉じ込め、router/serviceが``os.environ``を直接参照しない
+ようにする。各 :class:`AppSettings` instanceは生成時点のsourceをimmutableに保持するが、
+application全体で同じinstanceを再利用するか、providerが新しいinstanceを作るかはcallerが
+決める。``validate_runtime()`` が検証するのも呼び出したinstanceだけである。
 """
 
 from dataclasses import dataclass
@@ -9,6 +11,8 @@ from os import environ
 from typing import Mapping
 
 DEFAULT_DATABASE_URL = "sqlite:///data/sokora.db"
+# Local development用の既定値。認証guardを有効にするruntimeではvalidate_runtime()が
+# この値を拒否し、明示的なsecret injectionを必須にする。
 DEFAULT_SESSION_SECRET = "dev-session-secret"
 
 
@@ -41,7 +45,20 @@ def _get_float(values: Mapping[str, str], name: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class AppSettings:
-    """Static application settings derived from environment variables."""
+    """1回のsettings readから構築したimmutableなapplication設定instance。
+
+    ``from_env()`` で生成した場合、このinstanceはその呼び出し時点のprocess environmentを
+    保持する。後続の``from_env()`` が同じ値を返すことや、applicationがこのinstanceだけを
+    lifetime全体で再利用することまでは保証しない。
+
+    default値はlocal developmentを成立させるための値を含む。``from_env()`` やconstructorは
+    security validationを自動実行しないため、検証が必要なboundaryのcallerが対象instanceへ
+    :meth:`validate_runtime` を明示的に適用する。application factory/lifespanが検証した
+    instanceとは別に後から生成されたinstanceまで、自動的にvalidated扱いにはならない。
+
+    OIDCやlocal adminの「利用可能か」という派生判定はauth layerが所有し、この型はprovider
+    固有endpointやprocess-local mutable stateを持たない。
+    """
 
     app_version: str = "1.0.0"
     log_level: str = "INFO"
@@ -64,7 +81,15 @@ class AppSettings:
     local_admin_password: str | None = None
 
     def validate_runtime(self) -> None:
-        """Reject runtime combinations that would weaken security contracts."""
+        """startup前にsecurity contractを弱める設定組合せを拒否する。
+
+        認証guardを有効にした場合、signed sessionはauthorization境界の一部になるため、
+        空secretやrepository既定のdevelopment secretを許可しない。認証を無効にした
+        development runtimeまで同じsecret要件で起動不能にはしない。
+
+        OIDC/local admin credentialの完全性は、それぞれの経路を「利用可能」と判定する
+        auth settings側で扱う。
+        """
         normalized_secret = self.session_secret.strip()
         if self.auth_enabled and (
             not normalized_secret or normalized_secret == DEFAULT_SESSION_SECRET
@@ -76,7 +101,12 @@ class AppSettings:
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AppSettings":
-        """Build settings from an explicit mapping or the process environment."""
+        """明示mappingまたはprocess environmentから1回分の設定snapshotを構築する。
+
+        ``values`` を渡せるのはtestやprogrammatic callerがprocess-global environmentへ
+        依存せず同じparserを利用するためである。このmethodは設定変更を監視せず、返却後に
+        source mappingが変わっても既存instanceへ反映しない。
+        """
         source = environ if values is None else values
         return cls(
             log_level=source.get("SOKORA_LOG_LEVEL", "INFO").upper(),

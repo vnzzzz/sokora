@@ -1,4 +1,8 @@
-"""Read models for master-management pages."""
+"""master管理画面のDB readをtemplate向けview modelへ編成する。
+
+routerからrelationship eager-load、grouping、表示順決定を分離し、Jinja側で追加queryや
+mutable groupingを行わないためのread boundaryである。
+"""
 
 from dataclasses import dataclass
 
@@ -9,6 +13,13 @@ from app import crud, models
 
 @dataclass(frozen=True)
 class UserMasterPageViewModel:
+    """user master pageのread contract。
+
+    ``users`` はgroup/user typeをeager-load済み、``grouped_users`` は表示用にgroup名で
+    partition済み、``group_names`` がその表示順を定義する。templateは独自query/sortを
+    追加せず、このprojectionをそのまま利用する。
+    """
+
     users: list[models.User]
     groups: list[models.Group]
     user_types: list[models.UserType]
@@ -18,13 +29,25 @@ class UserMasterPageViewModel:
 
 @dataclass(frozen=True)
 class LocationMasterPageViewModel:
+    """勤怠種別master pageのcategory grouping contract。
+
+    ``locations`` はCRUD queryのcategory/order/ID順を維持し、category名は最初に現れた順で
+    ``category_names`` へ記録する。``grouped_locations`` 内のrow順も元query順を保つ。
+    """
+
     locations: list[models.Location]
     category_names: list[str]
     grouped_locations: dict[str, list[models.Location]]
 
 
 def get_user_master_page_view_model(db: Session) -> UserMasterPageViewModel:
-    """Build the employee master list without router-side N+1 lookups/grouping."""
+    """user master listを固定されたread patternと表示順で構築する。
+
+    user/group/user typeを計3 queryで取得し、user relationshipは最初のqueryでeager-loadして
+    templateアクセスによるN+1を避ける。groupは明示orderを優先し、order未設定/未分類を後段へ
+    送り、同値はpersistent ID/nameで安定化する。group内userは社員種別ID、username、user ID
+    の順でsortする。
+    """
     users = (
         db.query(models.User)
         .options(joinedload(models.User.group), joinedload(models.User.user_type))
@@ -75,7 +98,12 @@ def get_user_master_page_view_model(db: Session) -> UserMasterPageViewModel:
 
 
 def get_location_master_page_view_model(db: Session) -> LocationMasterPageViewModel:
-    """Group attendance-location masters for the list template."""
+    """CRUD queryのdisplay orderを保ったまま勤怠種別をcategory別へpartitionする。
+
+    category未設定は表示上だけ「未分類」へ正規化する。category/group内の順序は
+    ``crud.location.get_multi`` が決定したcategory → order → IDをそのまま維持し、この
+    serviceで別のsort ruleを重ねない。
+    """
     locations = crud.location.get_multi(db)
     category_names: list[str] = []
     grouped_locations: dict[str, list[models.Location]] = {}

@@ -90,11 +90,13 @@ async def application_error_handler(_request: Request, exc: Exception) -> JSONRe
 
 @asynccontextmanager
 async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """runtime設定とDB schemaを確定してからrequest受付を開始する。
+    """startup時点のruntime設定を検証し、DB schema準備後にrequest受付を開始する。
 
-    起動時に設定validationとAlembic migrationを完了し、fresh file-backed SQLiteだけを
-    seedする。migration/seed failureは握り潰さずlifespan startupを失敗させるため、
-    applicationは未更新schemaのままtrafficを受けない。
+    lifespan開始時にsettings providerから取得したinstanceへvalidationを適用し、Alembic
+    migrationを完了してfresh file-backed SQLiteだけをseedする。providerが後から返す別instance
+    までこのvalidationで保証するわけではないため、running processのconfig hot-reloadは
+    application contractに含めない。migration/seed failureは握り潰さずlifespan startupを
+    失敗させ、applicationは未更新schemaのままtrafficを受けない。
 
     shutdownではprocess-owned DatabaseRuntimeをdisposeし、次のapplication instanceが
     stale engine/session factoryを再利用しないようapp stateから切り離す。
@@ -117,9 +119,15 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_application(settings: AppSettings | None = None) -> FastAPI:
     """shared middleware・router・lifespanを組み込んだFastAPI applicationを作成する。
 
-    ``settings``を明示した場合は、そのobjectをapplication lifetime中の設定SSoTとして
-    使用する。主にtestや埋め込みruntimeでprocess environmentから切り離すための入口。
-    省略時はstartup時にenvironmentを読むproviderを保持する。
+    ``settings``を明示した場合は、そのobjectをapplication lifetime中の設定providerとして
+    再利用する。主にtestや埋め込みruntimeでprocess environmentから切り離すための入口。
+    省略時は``AppSettings.from_env``をproviderとして保持するため、provider呼び出しごとに
+    process environmentから新しいsettings instanceを構築し得る。
+
+    ただしSessionMiddlewareのsecret/max-age/cookie属性など、application作成時に固定される
+    componentもある。process environmentを変更してrunning processをhot-reconfigureする
+    contractは提供せず、runtime config/secret変更はprocess restartで全componentへ一貫して
+    適用する。
 
     DB engine自体はここで作成せずlifespanでapplication instanceへbindする。これにより
     import時にDB接続を開始せず、startup validation/migrationより先にrequest resourceを

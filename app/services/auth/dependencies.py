@@ -13,11 +13,15 @@ from app.services.auth.settings import AuthSettings
 
 
 def get_auth_settings(request: Request) -> AuthSettings:
-    """applicationのshared settings providerからrequest用認証設定を構築する。
+    """applicationのsettings providerからrequest用認証設定を構築する。
 
-    environmentをdependencyごとに直接読み直さず、application lifecycleが保持する
-    settings providerを経由する。これによりtestで明示した設定と実runtimeの設定解決を
-    同じboundaryで扱う。
+    dependency自身は``os.environ``を直接参照せず、application factoryが選んだproviderを
+    経由する。default providerは呼び出し時にenvironmentから新しいAppSettingsを構築し得るが、
+    このdependencyはrequestごとにstartup security validationを再実行しない。
+
+    SessionMiddleware等にはapplication作成時に固定される設定もあるため、running processの
+    environment変更を認証設定のhot-reload手段として扱わない。runtime config変更はprocess
+    restartで一貫して適用する。
     """
     settings = request.app.state.settings_provider()
     return AuthSettings.from_app_settings(settings)

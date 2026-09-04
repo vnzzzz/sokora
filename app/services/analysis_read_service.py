@@ -1,4 +1,9 @@
-"""Analysis page presentation read model."""
+"""勤怠analysisの集計結果をtemplate向けpresentation modelへ変換する。
+
+集計期間と件数そのものはattendance analysis serviceが所有し、このmoduleはlocation/category、
+group/user type、user rowの表示順とrender-safeなpage shapeを決める。router/Jinjaが同じsorting
+ruleを個別実装しないためのread boundaryである。
+"""
 
 from __future__ import annotations
 
@@ -12,17 +17,23 @@ from app.services import attendance_analysis_service
 
 
 class LocationCell(TypedDict):
+    """1ユーザー×1勤怠種別の集計cell。location列順はpage model側で固定する。"""
+
     location_id: int
     count: int
 
 
 class DateGroup(TypedDict):
+    """1勤怠種別に属する日付detail。表示対象dateが無いgroupは作らない。"""
+
     location_id: int
     location_name: str
     dates: List[Dict[str, Any]]
 
 
 class AnalysisUserRow(TypedDict):
+    """analysis tableの1ユーザー行。location_cellsはlocation列と同じ順序を保つ。"""
+
     user_id: str
     user_name: str
     group_name: str
@@ -33,21 +44,29 @@ class AnalysisUserRow(TypedDict):
 
 
 class UserTypeSection(TypedDict):
+    """group内の社員種別section。usersは表示名・IDで安定sort済み。"""
+
     name: str
     users: List[AnalysisUserRow]
 
 
 class GroupSection(TypedDict):
+    """analysis tableのgroup section。明示orderを優先した表示順で返す。"""
+
     name: str
     user_types: List[UserTypeSection]
 
 
 class LocationCategory(TypedDict):
+    """勤怠種別filterのcategory section。未分類categoryは最後へ送る。"""
+
     name: str
     locations: List[Any]
 
 
 class AnalysisPageViewModel(TypedDict):
+    """analysis templateが正常系・error系の両方で参照するpage contract。"""
+
     analysis_data: Dict[str, Any]
     is_year_mode: bool
     current_month: str
@@ -68,6 +87,11 @@ def _optional_order_key(
     object_id: int,
     name: str,
 ) -> tuple[bool, int, int, str]:
+    """明示orderを優先し、未設定だけを末尾へ送る安定sort keyを返す。
+
+    ``0`` は有効な最小orderとして扱い、``None`` と同一視しない。orderが同じ場合は
+    persistent IDとnameでtie-breakし、DB返却順へ表示が依存しないようにする。
+    """
     return (
         order is None,
         order if order is not None else 0,
@@ -201,6 +225,15 @@ def get_analysis_page_view_model(
     mode: Optional[str] = None,
     today: Optional[date] = None,
 ) -> AnalysisPageViewModel:
+    """月次/年度集計をtemplateが直接renderできるpage modelへ編成する。
+
+    ``year``指定または``mode=year``で年度mode、それ以外を月次modeとする。集計serviceの
+    raw resultを変更せずcopyした上で、勤怠種別・group・社員種別・userの表示順をこのboundary
+    で決定する。order未設定は後段へ送り、明示された``order=0``は維持する。
+
+    ``today`` はtestで年度defaultとyear selector範囲を決定的にするためのclock injectionで、
+    data retention期間を制限するものではない。
+    """
     today_value = today or datetime.now().date()
     fiscal_default = _fiscal_year(today_value)
     is_year_mode = year is not None or mode == "year"
@@ -257,6 +290,12 @@ def get_error_page_view_model(
     month: Optional[str] = None,
     today: Optional[date] = None,
 ) -> AnalysisPageViewModel:
+    """集計失敗時も同じtemplate contractを満たすrender-safeな空modelを返す。
+
+    routerがexception path専用templateへ分岐せず、通常templateを空collectionで安全にrender
+    できるshapeを維持する。ここではDB readや再集計を行わず、元のfailureを隠すfallback処理を
+    増やさない。
+    """
     today_value = today or datetime.now().date()
     fiscal_default = _fiscal_year(today_value)
     current_month = month or ""

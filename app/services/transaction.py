@@ -15,11 +15,16 @@ def transaction(
     *,
     integrity_detail: str = "データベースの整合性制約に違反しました。",
 ) -> Iterator[None]:
-    """service use caseを1 transactionとしてcommit/rollbackします。
+    """service use caseを1 transactionとしてcommit/rollbackする。
 
-    CRUDは制約検出や生成値反映のため ``flush()`` できますが、transactionは
-    確定しません。DB ``IntegrityError`` はadapterへ直接漏らさず
-    ``DataIntegrityError`` に変換します。
+    CRUDは制約検出や生成値反映のため ``flush()`` できるが、transactionは確定しない。
+    context正常終了時にこのhelperがSessionをcommitし、途中例外ではflush済み変更を含めて
+    rollbackする。DB ``IntegrityError`` はadapterへ直接漏らさず
+    :class:`DataIntegrityError` に正規化する。
+
+    このhelperは渡されたSession全体のtransactionを所有する。callerは別use caseの未確定変更を
+    同じSessionへ混在させないこと。そうしたpending stateもcommit/rollback対象になるため、
+    service boundaryごとに1つのtransaction ownershipを維持する。
     """
     try:
         yield

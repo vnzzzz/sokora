@@ -28,7 +28,15 @@ _custom_holiday_snapshot: ContextVar[Mapping[str, str]] = ContextVar(
 
 
 class HolidayCache:
-    """production imageに含まれる標準祝日データの読み取り専用cache。"""
+    """production imageに含まれる標準祝日assetをprocess-localで読み取るcache。
+
+    このcacheへ入るのはbuild時に固定した標準祝日だけで、DBから変更できるcustom holidayは
+    保持しない。同一imageを使うreplica間で標準祝日を一致させつつ、mutableなDB stateを
+    process-localへ複製しないための責務分離である。
+
+    assetが読めない場合は空cacheへ縮退してapplication startup自体は継続する。failureはlogへ
+    残すため、operatorはbuild artifactの欠落として診断する。
+    """
 
     def __init__(self) -> None:
         self._cache: Dict[str, str] = {}
@@ -82,7 +90,8 @@ class HolidayCache:
             "years_covered": sorted({date[:4] for date in self._cache})
             if self._cache
             else [],
-            # 互換用。DB由来custom holidayはこのprocess cacheには保持しない。
+            # 診断viewの既存shapeを維持するためfieldだけ残す。custom holidayは共有DBを
+            # request-local snapshotとして読むため、process cache上の件数は常に0になる。
             "custom_total": 0,
         }
 
@@ -94,17 +103,33 @@ _holiday_cache = HolidayCache()
 def bind_custom_holiday_snapshot(
     holidays: Mapping[str, str],
 ) -> Token[Mapping[str, str]]:
-    """共有DBから読んだcustom holidayを現在requestのcontextへ束縛する。"""
+    """共有DBから読んだcustom holiday snapshotを現在contextへ束縛する。
+
+    callerのmappingをcopyしてread-only viewにするため、束縛後のcaller側mutationは現在request
+    の判定へ影響しない。返されたTokenは同じlogical contextで必ず
+    :func:`reset_custom_holiday_snapshot` へ渡し、request終了後にsnapshotを漏らさないこと。
+
+    ContextVarを使うことで同一process内の並行requestも別snapshotを持てるが、DB snapshotの
+    読み取り時点そのものはcallerが所有する。
+    """
     return _custom_holiday_snapshot.set(MappingProxyType(dict(holidays)))
 
 
 def reset_custom_holiday_snapshot(token: Token[Mapping[str, str]]) -> None:
-    """request終了時にcustom holiday snapshotを破棄する。"""
+    """対応するbind tokenをresetし、以前のcontext stateへ必ず戻す。
+
+    request dependencyは``finally``から呼び、template renderやDB readが例外終了した場合も
+    次requestへcustom holidayを持ち越さない。
+    """
     _custom_holiday_snapshot.reset(token)
 
 
 def get_holiday_name(date_obj: datetime.date) -> str:
-    """request-local custom holidayを優先して祝日名を返す。"""
+    """現在contextのcustom holidayを標準祝日より優先して名称を返す。
+
+    同じ日付が両方に存在する場合はDB由来custom holidayをauthoritative overrideとして扱う。
+    snapshotに日付が存在しない場合だけimmutableな標準祝日assetへfallbackする。
+    """
     date_str = date_obj.strftime("%Y-%m-%d")
     custom_name = _custom_holiday_snapshot.get().get(date_str)
     if custom_name is not None:

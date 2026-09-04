@@ -16,7 +16,16 @@ def get_attendance_analysis_data(
     month: Optional[str] = None,
     fiscal_year: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """月次または年度の勤怠集計を既存template向けshapeで返す。"""
+    """月次または年度の勤怠集計coreとなるread modelを構築する。
+
+    ``fiscal_year`` が指定された場合は4月1日〜翌3月31日の年度集計を優先し、``month``
+    は使用しない。年度指定が無い場合は``YYYY-MM``の月次集計とし、month未指定時だけ
+    current monthを採用する。
+
+    user/location/attendanceを取得してからPython上で集計し、返却shapeはpresentation serviceが
+    group/category/orderを再編成するためのraw read modelである。このfunctionはDB mutationや
+    process-local result cacheを持たない。
+    """
     if fiscal_year is not None:
         period_mode = "fiscal_year"
         start_date = date(fiscal_year, 4, 1)
