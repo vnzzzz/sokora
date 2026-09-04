@@ -26,7 +26,8 @@ portable PostgreSQL backend導入後も、application replicaごとにDB由来�
 
 ## 検証
 
-CIのPostgreSQL jobで同じdatabaseを参照する2つのlive Uvicorn processを起動し、replica Aでcustom holiday/attendanceを書き込んだ後、replica Bのcalendar readがその内容を返すことをintegration testで検証する。
+- CIのPostgreSQL jobで同じdatabaseを参照する2つのlive Uvicorn processを起動し、replica Aでcustom holiday/attendanceを書き込んだ後、replica Bのcalendar readがその内容を返すことをintegration testで検証する。
+- analysis readは、先行master queryには存在せず後続attendance queryだけが観測するrowをdeterministicなservice regression testで再現し、500にせず現在responseから除外することと、後続master readがそのrowを観測した後は通常どおり集計することを検証する。
 
 ## 影響
 
