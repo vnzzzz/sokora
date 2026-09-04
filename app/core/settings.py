@@ -1,8 +1,9 @@
 """application runtime設定の読み取りとsecurity validationを集約する。
 
 environment parsingをこのmoduleへ閉じ込め、router/serviceが``os.environ``を直接参照しない
-ようにする。生成した :class:`AppSettings` は1回の設定snapshotとして扱い、application
-lifecycleが必要なvalidationを行ってから各componentへ渡す。
+ようにする。各 :class:`AppSettings` instanceは生成時点のsourceをimmutableに保持するが、
+application全体で同じinstanceを再利用するか、providerが新しいinstanceを作るかはcallerが
+決める。``validate_runtime()`` が検証するのも呼び出したinstanceだけである。
 """
 
 from dataclasses import dataclass
@@ -44,11 +45,15 @@ def _get_float(values: Mapping[str, str], name: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class AppSettings:
-    """process environmentから導出したimmutableなapplication設定snapshot。
+    """1回のsettings readから構築したimmutableなapplication設定instance。
+
+    ``from_env()`` で生成した場合、このinstanceはその呼び出し時点のprocess environmentを
+    保持する。後続の``from_env()`` が同じ値を返すことや、applicationがこのinstanceだけを
+    lifetime全体で再利用することまでは保証しない。
 
     default値はlocal developmentを成立させるための値を含む。production安全性までdefaultへ
-    委ねず、application startupは :meth:`validate_runtime` を呼び、認証guard有効時の
-    session secret等、組合せとして危険な設定を拒否する。
+    委ねず、startup等のruntime boundaryは実際に利用するinstanceへ
+    :meth:`validate_runtime` を適用する。
 
     OIDCやlocal adminの「利用可能か」という派生判定はauth layerが所有し、この型はprovider
     固有endpointやprocess-local mutable stateを持たない。
