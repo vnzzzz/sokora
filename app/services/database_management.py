@@ -1,4 +1,13 @@
-"""Safe SQLite backup and restore operations for the administrator UI."""
+"""管理者向けSQLite backup/restoreのconsistency・validation・recovery境界。
+
+HTTP upload/downloadやauthorizationはrouterが担当し、このmoduleはfile-backed SQLiteだけを
+対象に、online backup、restore candidateのsemantic validation、atomic replacement、
+rollback/recoveryを実行する。
+
+restore前validationはmaintenance modeへ入る前に完了させ、live DBを書き換えない。実際の
+replacementでは :class:`DatabaseRuntime` のexclusive maintenanceを使ってrequest sessionを
+drainし、新connectionが開かない区間でengine/file/sidecarを切り替える。
+"""
 
 from __future__ import annotations
 
@@ -19,23 +28,36 @@ _COPY_CHUNK_SIZE = 1024 * 1024
 
 
 class DatabaseManagementError(ApplicationError):
-    """Base error for database administration operations."""
+    """DB管理operationで利用者へ安全に返せるapplication-level error。
+
+    raw sqlite3/OS exceptionや内部pathをHTTP boundaryへ直接漏らさないためのbase type。
+    """
 
 
 class UnsupportedDatabaseBackendError(DatabaseManagementError):
-    """The configured backend cannot be managed through the SQLite UI."""
+    """file-backed SQLite以外へSQLite固有operationを要求したことを表す。
+
+    PostgreSQLやin-memory SQLiteへfile copy/replaceを誤適用しないためのbackend guard。
+    """
 
     status_code = 409
 
 
 class InvalidDatabaseBackupError(DatabaseManagementError):
-    """An uploaded database failed validation."""
+    """upload candidateがreplacement前の安全性/互換性検査を満たさないことを表す。
+
+    このerrorが出る段階ではlive DB replacementは開始していない。
+    """
 
     status_code = 400
 
 
 class DatabaseRestoreError(DatabaseManagementError):
-    """A validated restore could not be applied safely."""
+    """validated candidateの適用または適用後recoveryが安全に完了できないことを表す。
+
+    automatic rollbackまで失敗した場合、runtimeはfail-closedへfenceされ、このerrorの
+    messageはoperator actionが必要であることを示す。
+    """
 
     status_code = 500
 
@@ -62,7 +84,12 @@ class _SchemaSignature(NamedTuple):
 
 
 def require_sqlite_database_path(runtime: DatabaseRuntime) -> Path:
-    """Return the live file path or reject non-file-backed SQLite backends."""
+    """runtime URLから管理対象となるlive SQLite file pathを確定する。
+
+    file pathを持たないin-memory SQLiteやPostgreSQLはここで拒否し、後続処理がfilesystem
+    operationをbackend判定なしで実行できるようにする。返すpathの存在確認はoperationごとに
+    必要条件が異なるため、このfunctionでは行わない。
+    """
 
     path = sqlite_database_path(runtime.database_url)
     if path is None:
@@ -82,7 +109,13 @@ def _quote_identifier(name: str) -> str:
 
 
 def _sql_tokens(sql: str) -> tuple[str, ...]:
-    """Tokenize SQLite DDL while normalizing presentation-only differences."""
+    """SQLite DDLをsemantic比較用tokenへ分解し、presentation差だけを正規化する。
+
+    whitespaceと単純identifierのquote/case差は同一視する一方、string literal、operator、
+    quoteしないと表現できないidentifierは区別したまま残す。後段のschema比較がSQL textの
+    formatting差でrejectしないためのlexical normalizationで、constraint semantics自体は
+    ここでは捨てない。
+    """
 
     tokens: list[str] = []
     index = 0
@@ -331,7 +364,16 @@ def _normalize_column_unique_constraints(clause: list[str]) -> list[str]:
 
 
 def _canonicalize_table_definition(sql: str) -> str:
-    """Canonicalize table DDL while delegating UNIQUE semantics to PRAGMA indexes."""
+    """CREATE TABLE定義をsemantic schema比較向けにcanonicalizeする。
+
+    column clauseの順序は保持する。table-level constraintは宣言順とconstraint名だけを
+    presentation差として正規化し、CHECK/PRIMARY KEY/FOREIGN KEY等の内容は残す。UNIQUEは
+    SQLiteが生成するindex signature側で比較するためDDL側から除き、ON CONFLICT policyは
+    別signatureへ切り出してaffected constraintとpolicyを保持する。
+
+    これによりAlembic生成DBとhistorical create_all adoptionの等価なschemaは同一視しつつ、
+    constraint内容の実差分までは隠さない。
+    """
 
     prefix, clauses, suffix = _split_table_definition(_sql_tokens(sql))
     if not clauses:
@@ -464,7 +506,12 @@ def _semantic_foreign_keys(
     connection: sqlite3.Connection,
     quoted_table: str,
 ) -> tuple[tuple[object, ...], ...]:
-    """Return foreign-key constraints independent of SQLite constraint ids."""
+    """SQLite-assigned FK IDやconstraint宣言順に依存しないFK signatureを返す。
+
+    PRAGMAのconstraint IDはschema生成経路で変わり得るため同一視する。一方、composite FK内の
+    column順、参照table/column、ON UPDATE、ON DELETE、MATCHはbehaviorへ影響するため保持する。
+    constraint集合だけをsortし、複合keyのcolumn順までは並べ替えない。
+    """
 
     rows = connection.execute(f"PRAGMA foreign_key_list({quoted_table})").fetchall()
     grouped: dict[int, list[tuple[object, ...]]] = {}
@@ -518,6 +565,12 @@ def _alembic_revisions(connection: sqlite3.Connection) -> set[str]:
 
 
 def _schema_signature(connection: sqlite3.Connection) -> _SchemaSignature:
+    """restore互換性判定に必要なSQLite schemaのsemantic signatureを構築する。
+
+    tableはcolumn metadata、FK、index、canonical DDL、constraint conflict policyを組み合わせる。
+    view/triggerは実行behaviorを持つためcanonicalized full SQLを比較する。SQLite内部tableは
+    application schemaではないので対象外とする。
+    """
     table_rows = connection.execute(
         """
         SELECT name, sql
@@ -578,7 +631,15 @@ def validate_sqlite_restore_candidate(
     candidate_path: Path,
     runtime: DatabaseRuntime,
 ) -> None:
-    """Validate file format, integrity, revision, and schema before replacement."""
+    """candidateをread-onlyで検査し、current live DBとrestore互換であることを保証する。
+
+    replacement前にSQLite header、integrity/FK、Alembic head、semantic schemaを検証する。
+    古いrevisionをrestore時にmigrationしたり、未知schemaを「近い」と推測したりしない。
+    current sokoraが現在利用しているschemaと一致するcandidateだけを許可する。
+
+    このfunctionはmaintenance modeへ入らずlive DBを書き換えないため、validation failure時に
+    rollbackは不要である。
+    """
 
     live_path = require_sqlite_database_path(runtime)
     if not candidate_path.is_file():
@@ -636,7 +697,14 @@ def _backup_database(source_path: Path, target_path: Path) -> None:
 
 
 def create_sqlite_backup(runtime: DatabaseRuntime) -> Path:
-    """Create a consistent online backup and return its temporary path."""
+    """online SQLite backup APIでconsistent snapshotを作り、一時file pathを返す。
+
+    snapshot中はruntimeのshared session countへ参加し、exclusive restoreが同時にlive fileを
+    replaceしないようにする。作成後にsnapshot自身のintegrity/FKを検証する。
+
+    返されたtemporary fileのownershipはcallerへ移り、download完了等の適切な時点でcallerが
+    削除する。失敗時だけこのfunctionが作成fileをcleanupする。
+    """
 
     source_path = require_sqlite_database_path(runtime)
     if not source_path.is_file():
@@ -666,7 +734,14 @@ def stage_sqlite_restore_upload(
     source: BinaryIO,
     runtime: DatabaseRuntime,
 ) -> Path:
-    """Copy an uploaded DB into the live DB directory for atomic replacement."""
+    """upload streamをlive DBと同じdirectoryへdurableなstaged fileとして保存する。
+
+    staged fileを同一filesystemへ置くのは後続の``os.replace``をatomic renameとして成立
+    させるためである。copy後はfileをflush/fsyncし、空uploadをrejectする。
+
+    返却後のstaged fileはrestore callerのownershipとなり、成功/失敗にかかわらず最終cleanup
+    する。validation前にlive DBへ触れることはない。
+    """
 
     live_path = require_sqlite_database_path(runtime)
     live_path.parent.mkdir(parents=True, exist_ok=True)
@@ -699,7 +774,11 @@ def _remove_sqlite_sidecars(database_path: Path) -> None:
 
 
 def _sync_directory(path: Path) -> None:
-    """Best-effort fsync of the containing directory after atomic replacement."""
+    """atomic rename後のdirectory entryをbest-effortでdurable化する。
+
+    platform/filesystemによってdirectory fsyncを利用できない場合はrestore自体を失敗扱いに
+    しない。file contentのdurabilityはstaging/SQLite backup側で別途確保する。
+    """
 
     try:
         directory_fd = os.open(path, os.O_RDONLY)
