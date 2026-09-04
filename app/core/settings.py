@@ -51,9 +51,10 @@ class AppSettings:
     保持する。後続の``from_env()`` が同じ値を返すことや、applicationがこのinstanceだけを
     lifetime全体で再利用することまでは保証しない。
 
-    default値はlocal developmentを成立させるための値を含む。production安全性までdefaultへ
-    委ねず、startup等のruntime boundaryは実際に利用するinstanceへ
-    :meth:`validate_runtime` を適用する。
+    default値はlocal developmentを成立させるための値を含む。``from_env()`` やconstructorは
+    security validationを自動実行しないため、検証が必要なboundaryのcallerが対象instanceへ
+    :meth:`validate_runtime` を明示的に適用する。application factory/lifespanが検証した
+    instanceとは別に後から生成されたinstanceまで、自動的にvalidated扱いにはならない。
 
     OIDCやlocal adminの「利用可能か」という派生判定はauth layerが所有し、この型はprovider
     固有endpointやprocess-local mutable stateを持たない。
