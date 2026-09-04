@@ -1,7 +1,8 @@
-"""Application settings loaded from environment variables.
+"""application runtime設定の読み取りとsecurity validationを集約する。
 
-Environment parsing is centralized here so application/runtime components can
-receive an explicit settings object instead of reading ``os.environ`` directly.
+environment parsingをこのmoduleへ閉じ込め、router/serviceが``os.environ``を直接参照しない
+ようにする。生成した :class:`AppSettings` は1回の設定snapshotとして扱い、application
+lifecycleが必要なvalidationを行ってから各componentへ渡す。
 """
 
 from dataclasses import dataclass
@@ -9,6 +10,8 @@ from os import environ
 from typing import Mapping
 
 DEFAULT_DATABASE_URL = "sqlite:///data/sokora.db"
+# Local development用の既定値。認証guardを有効にするruntimeではvalidate_runtime()が
+# この値を拒否し、明示的なsecret injectionを必須にする。
 DEFAULT_SESSION_SECRET = "dev-session-secret"
 
 
@@ -41,7 +44,15 @@ def _get_float(values: Mapping[str, str], name: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class AppSettings:
-    """Static application settings derived from environment variables."""
+    """process environmentから導出したimmutableなapplication設定snapshot。
+
+    default値はlocal developmentを成立させるための値を含む。production安全性までdefaultへ
+    委ねず、application startupは :meth:`validate_runtime` を呼び、認証guard有効時の
+    session secret等、組合せとして危険な設定を拒否する。
+
+    OIDCやlocal adminの「利用可能か」という派生判定はauth layerが所有し、この型はprovider
+    固有endpointやprocess-local mutable stateを持たない。
+    """
 
     app_version: str = "1.0.0"
     log_level: str = "INFO"
@@ -64,7 +75,15 @@ class AppSettings:
     local_admin_password: str | None = None
 
     def validate_runtime(self) -> None:
-        """Reject runtime combinations that would weaken security contracts."""
+        """startup前にsecurity contractを弱める設定組合せを拒否する。
+
+        認証guardを有効にした場合、signed sessionはauthorization境界の一部になるため、
+        空secretやrepository既定のdevelopment secretを許可しない。認証を無効にした
+        development runtimeまで同じsecret要件で起動不能にはしない。
+
+        OIDC/local admin credentialの完全性は、それぞれの経路を「利用可能」と判定する
+        auth settings側で扱う。
+        """
         normalized_secret = self.session_secret.strip()
         if self.auth_enabled and (
             not normalized_secret or normalized_secret == DEFAULT_SESSION_SECRET
@@ -76,7 +95,12 @@ class AppSettings:
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AppSettings":
-        """Build settings from an explicit mapping or the process environment."""
+        """明示mappingまたはprocess environmentから1回分の設定snapshotを構築する。
+
+        ``values`` を渡せるのはtestやprogrammatic callerがprocess-global environmentへ
+        依存せず同じparserを利用するためである。このmethodは設定変更を監視せず、返却後に
+        source mappingが変わっても既存instanceへ反映しない。
+        """
         source = environ if values is None else values
         return cls(
             log_level=source.get("SOKORA_LOG_LEVEL", "INFO").upper(),
