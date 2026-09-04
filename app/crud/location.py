@@ -38,6 +38,22 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             .all()
         )
 
+    def list_all(self, db: Session) -> List[Location]:
+        """paginationせず、全勤怠種別をcategory、order、ID順で取得する。
+
+        analysis等、完全なmaster集合をprojection boundaryとして利用するread向け。
+        page/API paginationを意図するcallerは :meth:`get_multi` を利用する。
+        """
+        return (
+            db.query(self.model)
+            .order_by(
+                nullslast(asc(self.model.category)),
+                nullslast(asc(self.model.order)),
+                asc(self.model.id),
+            )
+            .all()
+        )
+
     def get_by_name(self, db: Session, *, name: str) -> Optional[Location]:
         """勤怠種別名で1件取得し、存在しない場合は ``None`` を返します。"""
         return db.query(Location).filter(Location.name == name).first()

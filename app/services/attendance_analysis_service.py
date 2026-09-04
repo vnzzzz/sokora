@@ -22,9 +22,14 @@ def get_attendance_analysis_data(
     は使用しない。年度指定が無い場合は``YYYY-MM``の月次集計とし、month未指定時だけ
     current monthを採用する。
 
-    user/location/attendanceを取得してからPython上で集計し、返却shapeはpresentation serviceが
-    group/category/orderを再編成するためのraw read modelである。このfunctionはDB mutationや
-    process-local result cacheを持たない。
+    user/location/attendanceを順に取得してPython上で集計する。PostgreSQL READ COMMITTEDでは
+    各queryが異なるcommitted stateを観測し得るため、先に取得したuser/location集合をその
+    responseのprojection boundaryとする。後続attendance queryだけが新しいmaster参照rowを
+    観測した場合は現在responseから除外し、後続readのmaster queryもそのrowを観測した時点で
+    反映する。
+
+    返却shapeはpresentation serviceがgroup/category/orderを再編成するためのraw read modelで
+    あり、このfunctionはDB mutationやprocess-local result cacheを持たない。
     """
     if fiscal_year is not None:
         period_mode = "fiscal_year"
@@ -48,7 +53,7 @@ def get_attendance_analysis_data(
         month_value = month
 
     users_data = crud.user.get_all_users_with_details(db)
-    locations = crud.location.get_multi(db)
+    locations = crud.location.list_all(db)
     locations_sorted = sorted(
         locations,
         key=lambda item: (str(item.category or ""), item.order or 999, item.id),
@@ -67,9 +72,20 @@ def get_attendance_analysis_data(
         int(location.id): {} for location in locations_sorted if location.id is not None
     }
 
+    visible_user_ids = {str(user_id) for _, user_id, _, _ in users_data}
+    visible_location_ids = set(location_totals)
+
     attendances_by_user: Dict[str, list[Any]] = {}
     for attendance in attendances:
-        attendances_by_user.setdefault(str(attendance.user_id), []).append(attendance)
+        user_id = str(attendance.user_id)
+        location_id = int(attendance.location_id)
+
+        # READ COMMITTEDではmaster query後のcommitをattendance queryだけが観測し得る。
+        # 先行master readに無い参照rowはこのresponseへ混ぜず、後続master readで観測後に反映する。
+        if user_id not in visible_user_ids or location_id not in visible_location_ids:
+            continue
+
+        attendances_by_user.setdefault(user_id, []).append(attendance)
 
     for user_name, user_id, group_name, user_type_name in users_data:
         user_attendances = attendances_by_user.get(str(user_id), [])
