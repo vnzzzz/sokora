@@ -46,6 +46,11 @@ class MasterCrudResponder:
         modal_id: str,
         context: Mapping[str, Any],
     ) -> Response:
+        """form dialog fragmentを返し、HTMX clientへopen eventだけを通知する。
+
+        callerはmodel固有のcontextだけを渡し、request/modal ID/errors defaultはresponder側で
+        統一する。GET時点ではpage refreshやsuccess messageを発火しない。
+        """
         response_context = self._context(request, modal_id, context)
         response_context.setdefault("errors", {})
         return self.templates.TemplateResponse(
@@ -62,6 +67,12 @@ class MasterCrudResponder:
         context: Mapping[str, Any],
         message: str,
     ) -> Response:
+        """successful create/update後のdialog fragmentと共通HTMX eventを返す。
+
+        server-side writeがcommit済みであることをcallerの前提とし、clientへ
+        ``closeModal`` → page refresh → message表示の契約を1つのHX-Trigger payloadとして
+        渡す。ここでDB mutation自体は行わない。
+        """
         response_context = self._context(request, modal_id, context)
         response_context.setdefault("errors", {})
         return self.templates.TemplateResponse(
@@ -84,6 +95,12 @@ class MasterCrudResponder:
         context: Mapping[str, Any],
         errors: Mapping[str, list[str]],
     ) -> Response:
+        """validation/application errorを同じdialog fragment内へ再renderする。
+
+        master CRUD UIはfield errorをHTTP 200 fragmentとして扱い、success用HX-Triggerを
+        一切付けない。これによりdialogを閉じたりpage refreshしたりせず、利用者が入力を
+        修正できる状態を維持する。
+        """
         response_context = self._context(request, modal_id, context)
         response_context["errors"] = dict(errors)
         return self.templates.TemplateResponse(self.form_template, response_context)
@@ -95,6 +112,7 @@ class MasterCrudResponder:
         modal_id: str,
         context: Mapping[str, Any],
     ) -> Response:
+        """delete確認dialogを開くfragmentを返し、mutationはまだ実行しない。"""
         return self.templates.TemplateResponse(
             self.delete_template,
             self._context(request, modal_id, context),
@@ -103,6 +121,11 @@ class MasterCrudResponder:
 
     @staticmethod
     def delete_success(*, modal_id: str, message: str) -> HTMLResponse:
+        """commit済みdeleteを空fragment + close/refresh/message eventで通知する。
+
+        削除対象HTMLをserver側で再構築せず、page全体のread modelをrefreshさせることを
+        master画面共通contractとする。
+        """
         return HTMLResponse(
             content="",
             status_code=200,
@@ -123,6 +146,11 @@ class MasterCrudResponder:
         context: Mapping[str, Any],
         warning_message: str,
     ) -> Response:
+        """参照制約等でdeleteできない場合、確認dialogをwarning付きで維持する。
+
+        form errorと同様にsuccess triggerを付けず、clientがclose/refreshを誤実行しない
+        response contractを保つ。
+        """
         response_context = self._context(request, modal_id, context)
         response_context["warning_message"] = warning_message
         return self.templates.TemplateResponse(self.delete_template, response_context)
