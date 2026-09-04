@@ -101,10 +101,10 @@ def get_location_master_page_view_model(db: Session) -> LocationMasterPageViewMo
     """CRUD queryのdisplay orderを保ったまま勤怠種別をcategory別へpartitionする。
 
     category未設定は表示上だけ「未分類」へ正規化する。category/group内の順序は
-    ``crud.location.get_multi`` が決定したcategory → order → IDをそのまま維持し、この
+    ``crud.location.list_all`` が決定したcategory → order → IDをそのまま維持し、この
     serviceで別のsort ruleを重ねない。
     """
-    locations = crud.location.get_multi(db)
+    locations = crud.location.list_all(db)
     category_names: list[str] = []
     grouped_locations: dict[str, list[models.Location]] = {}
 
