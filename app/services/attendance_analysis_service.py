@@ -25,7 +25,8 @@ def get_attendance_analysis_data(
     user/location/attendanceを順に取得してPython上で集計する。PostgreSQL READ COMMITTEDでは
     各queryが異なるcommitted stateを観測し得るため、先に取得したuser/location集合をその
     responseのprojection boundaryとする。後続attendance queryだけが新しいmaster参照rowを
-    観測した場合は現在responseから除外し、commit後に開始する次readで反映する。
+    観測した場合は現在responseから除外し、後続readのmaster queryもそのrowを観測した時点で
+    反映する。
 
     返却shapeはpresentation serviceがgroup/category/orderを再編成するためのraw read modelで
     あり、このfunctionはDB mutationやprocess-local result cacheを持たない。
@@ -80,7 +81,7 @@ def get_attendance_analysis_data(
         location_id = int(attendance.location_id)
 
         # READ COMMITTEDではmaster query後のcommitをattendance queryだけが観測し得る。
-        # 先行master readに無い参照rowはこのresponseへ混ぜず、次requestで完全に反映する。
+        # 先行master readに無い参照rowはこのresponseへ混ぜず、後続master readで観測後に反映する。
         if user_id not in visible_user_ids or location_id not in visible_location_ids:
             continue
 
