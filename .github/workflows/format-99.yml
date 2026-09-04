@@ -1,0 +1,43 @@
+name: Format issue 99
+
+on:
+  push:
+    branches: ["fix/99-analysis-read-consistency"]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/99-analysis-read-consistency
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.7"
+      - run: uv sync --locked
+      - name: Format changed Python files
+        run: |
+          uv run ruff format \
+            app/crud/location.py \
+            app/services/attendance_analysis_service.py \
+            app/tests/crud/test_crud_location.py \
+            app/tests/services/test_attendance_analysis_service.py
+      - name: Commit formatted files and remove temporary workflow
+        run: |
+          rm .github/workflows/format-99.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/crud/location.py app/services/attendance_analysis_service.py \
+            app/tests/crud/test_crud_location.py \
+            app/tests/services/test_attendance_analysis_service.py \
+            .github/workflows/format-99.yml
+          git commit -m "style: format issue 99 changes"
+          git push origin HEAD:fix/99-analysis-read-consistency
