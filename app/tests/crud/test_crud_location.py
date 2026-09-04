@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app import crud
+from app.models.location import Location
 from app.schemas.location import LocationCreate, LocationUpdate  # 推測
 from app.tests.utils.utils import random_lower_string
 
@@ -53,3 +54,30 @@ def test_remove_location(db: Session) -> None:
 
     assert removed_location.id == location_id
     assert location_after_remove is None
+
+
+
+def test_list_all_locations_is_not_truncated_at_default_page_size(
+    db: Session,
+) -> None:
+    """全件readはgeneric get_multiのdefault 100件上限を継承しない。"""
+    db.add_all(
+        [
+            Location(
+                name=f"All Location {index:03d}",
+                category="All",
+                order=index,
+            )
+            for index in range(101)
+        ]
+    )
+    db.flush()
+
+    locations = crud.location.list_all(db)
+
+    assert len(locations) == 101
+    assert [str(location.name) for location in locations[:2]] == [
+        "All Location 000",
+        "All Location 001",
+    ]
+    assert str(locations[-1].name) == "All Location 100"
