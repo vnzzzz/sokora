@@ -88,7 +88,6 @@ def test_analysis_defers_attendance_for_location_not_seen_by_master_read(
     assert [int(location.id) for location in second["locations"]] == [101, 202]
 
 
-
 def test_analysis_includes_attendance_for_location_beyond_default_page_size(
     db: Session,
 ) -> None:
