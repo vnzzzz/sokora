@@ -1,3 +1,5 @@
+"""authentication guardをUI/API共通のrequest boundaryとして適用する。"""
+
 import logging
 import urllib.parse
 from typing import Callable, Iterable
@@ -17,7 +19,16 @@ def _is_exempt_path(path: str, exempt_prefixes: Iterable[str]) -> bool:
 
 
 class AuthRequiredMiddleware(BaseHTTPMiddleware):
-    """セッションを前提に UI/API 双方へ認証ガードを適用するミドルウェア"""
+    """signed sessionの有無をUI/API共通のauthentication boundaryとして強制する。
+
+    ``auth_enabled=false`` ではrequestをそのまま通す。guard有効時もlogin/static/health/
+    OpenAPI等の明示prefixはsessionなしで到達可能にし、それ以外はsessionの ``auth``
+    identityを要求する。
+
+    未認証APIはredirectせず401 JSONを返し、browser pageは元のrelative path/queryを
+    ``next`` としてloginへ307 redirectする。ここではadmin role等のauthorizationまでは
+    判定せず、admin-only policyはdependency側へ分離する。
+    """
 
     def __init__(
         self,
@@ -44,6 +55,12 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        """request時点のshared settingsとsigned sessionからguard結果を決定する。
+
+        settings providerを毎request評価する一方、認証identityの形式はSessionMiddlewareが
+        検証したsession mappingだけを信頼する。exempt pathは「公開してよいendpoint」の
+        contractなので、機能routeを追加する目的だけで安易にprefixを広げない。
+        """
         settings = self.settings_provider()
         if not settings.auth_enabled:
             return await call_next(request)
@@ -63,7 +80,11 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
         return RedirectResponse(url=login_url, status_code=307)
 
     def _build_next_path(self, request: Request) -> str:
-        """クエリ付きのリダイレクト先を安全に構成する"""
+        """元requestのrelative path/queryだけからlogin後の戻り先を構成する。
+
+        scheme/hostを取り込まないため、このmiddleware自身が生成する ``next`` が外部URLに
+        なることを防ぐ。最終的なnext path validationはlogin/callback側のboundaryでも行う。
+        """
         path = request.url.path
         query = request.url.query
         if not query:
