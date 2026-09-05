@@ -120,3 +120,24 @@ def test_location_master_view_model_groups_in_query_order(db: Session) -> None:
     assert [str(location.name) for location in view.grouped_locations["未分類"]] == [
         "remote"
     ]
+
+
+def test_location_master_view_model_is_not_truncated_at_default_page_size(
+    db: Session,
+) -> None:
+    for index in range(101):
+        crud.location.create(
+            db,
+            obj_in=schemas.LocationCreate(
+                name=f"location-{index:03d}",
+                category="office",
+                order=index,
+            ),
+        )
+    db.commit()
+
+    view = master_read_service.get_location_master_page_view_model(db)
+
+    assert len(view.locations) == 101
+    assert len(view.grouped_locations["office"]) == 101
+    assert str(view.locations[-1].name) == "location-100"
