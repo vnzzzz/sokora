@@ -283,4 +283,3 @@ def get_analysis_page_view_model(
         "location_details": analysis_data.get("location_details", {}),
         "empty_message": empty_message,
     }
-
