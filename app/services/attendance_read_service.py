@@ -277,7 +277,9 @@ def get_weekly_page_view_model(
         user_attendance_locations[user_id][date_str] = str(
             attendance.location_info.name
         )
-        user_attendance_notes[user_id][date_str] = attendance.note
+        user_attendance_notes[user_id][date_str] = (
+            None if attendance.note is None else str(attendance.note)
+        )
 
     calendar_day_count = sum(
         1
