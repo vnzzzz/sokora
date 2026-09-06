@@ -53,8 +53,8 @@ def get_user_master_page_view_model(db: Session) -> UserMasterPageViewModel:
         .options(joinedload(models.User.group), joinedload(models.User.user_type))
         .all()
     )
-    groups = crud.group.get_multi(db)
-    user_types = crud.user_type.get_multi(db)
+    groups = crud.group.list_all(db)
+    user_types = crud.user_type.list_all(db)
 
     grouped_users: dict[str, list[models.User]] = {}
     group_sort_keys: dict[str, tuple[bool, int, int, str]] = {}
