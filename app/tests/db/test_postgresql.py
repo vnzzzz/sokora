@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.settings import AppSettings
 from app.db.session import (
     _database_url_for_logging,
+    _postgresql_readiness_connect_args,
     create_database_runtime,
     sqlalchemy_database_url,
 )
@@ -35,6 +36,21 @@ def test_bare_postgresql_url_uses_psycopg3() -> None:
 def test_explicit_postgresql_driver_is_preserved() -> None:
     url = sqlalchemy_database_url("postgresql+pg8000://sokora@db.example/sokora")
     assert url.drivername == "postgresql+pg8000"
+
+
+def test_postgresql_readiness_preserves_configured_libpq_options() -> None:
+    url = sqlalchemy_database_url(
+        "postgresql://sokora@db.example/sokora"
+        "?options=-c%20search_path%3Dsokora"
+    )
+
+    connect_args = _postgresql_readiness_connect_args(url)
+
+    assert connect_args["connect_timeout"] == 2
+    assert (
+        connect_args["options"]
+        == "-c search_path=sokora -c statement_timeout=2000"
+    )
 
 
 def test_database_url_logging_omits_credentials_and_query_parameters() -> None:

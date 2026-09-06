@@ -364,16 +364,28 @@ def _probe_database_connection(database_url: str, runtime_engine: Engine) -> boo
     probe_engine = create_engine(
         url,
         poolclass=NullPool,
-        connect_args={
-            "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
-            "options": f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}",
-        },
+        connect_args=_postgresql_readiness_connect_args(url),
     )
     try:
         with probe_engine.connect() as connection:
             return connection.scalar(text("SELECT 1")) == 1
     finally:
         probe_engine.dispose()
+
+
+def _postgresql_readiness_connect_args(url: URL) -> dict[str, object]:
+    """runtime URLのlibpq optionsを保持しつつreadiness timeoutを追加する。"""
+    configured_options = url.query.get("options", "")
+    if isinstance(configured_options, tuple):
+        existing_options = " ".join(configured_options)
+    else:
+        existing_options = str(configured_options)
+    timeout_option = f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}"
+    options = " ".join(part for part in (existing_options.strip(), timeout_option) if part)
+    return {
+        "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
+        "options": options,
+    }
 
 
 def _probe_file_sqlite_database(database_path: Path) -> bool:
