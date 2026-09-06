@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.services import calendar_read_service
 
 pytestmark = pytest.mark.asyncio
 
