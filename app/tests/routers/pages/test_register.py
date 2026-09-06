@@ -31,3 +31,40 @@ async def test_register_user_calendar_partial(async_client, db) -> None:
     assert 'id="user-calendar"' in response.text
     # 1日目のセルに対するモーダル呼び出しURL（パスプレフィックスなし）を確認
     assert "/attendance/modals/U001/2024-12-01" in response.text
+
+
+async def test_register_user_calendar_invalid_month_redirects_to_current_month(
+    async_client,
+    db,
+    monkeypatch,
+) -> None:
+    group = crud_group.create(db, obj_in=GroupCreate(name="Redirect Group"))
+    user_type = crud_user_type.create(
+        db, obj_in=UserTypeCreate(name="Redirect Type")
+    )
+    crud_location.create(db, obj_in=LocationCreate(name="Redirect Location"))
+    crud_user.create(
+        db,
+        obj_in=UserCreate(
+            id="REDIRECT-001",
+            username="Redirect User",
+            group_id=int(group.id),
+            user_type_id=int(user_type.id),
+        ),
+    )
+    db.commit()
+
+    monkeypatch.setattr(
+        "app.routers.pages.register.get_current_month_formatted",
+        lambda: "2031-05",
+    )
+
+    response = await async_client.get(
+        "/attendance/monthly/users/REDIRECT-001?month=invalid",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    assert response.headers["location"] == (
+        "/attendance/monthly/users/REDIRECT-001?month=2031-05"
+    )
