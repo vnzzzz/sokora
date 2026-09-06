@@ -13,7 +13,6 @@ from app.utils.calendar_utils import (
     format_date_jp,
     get_current_month_formatted,
     get_today_formatted,
-    parse_date,
     parse_month,
 )
 from app.utils.ui_utils import get_location_color_classes
@@ -117,23 +116,14 @@ def get_month_view_model(
     }
 
 
-def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
+def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
     """日別detailをgroup/社員種別単位へ編成し、安定した表示順で返す。
 
-    日付が不正なら404等へ変換せず、既存UI contractどおり空detailを返す。groupは明示order、
-    persistent ID、nameの順でsortし、``order=0`` と未設定を区別する。社員種別もorder/ID/
-    name、同一種別内のuserは表示名/IDでtie-breakするため、DB row返却順へ依存しない。
+    HTTP input validationはrouterが所有し、このserviceはvalidated dateだけを受け取る。groupは
+    明示order、persistent ID、nameの順でsortし、``order=0`` と未設定を区別する。社員種別も
+    order/ID/name、同一種別内のuserは表示名/IDでtie-breakするため、DB row返却順へ依存しない。
     """
-    target_date = parse_date(day)
-    if target_date is None:
-        return {
-            "date_str": day,
-            "date_jp": "",
-            "organized_by_group": {},
-            "has_data": False,
-        }
-
-    rows = calendar_crud.get_day_attendance_rows(db, target_date=target_date)
+    rows = calendar_crud.get_day_attendance_rows(db, target_date=day)
     organized_by_group: Dict[str, Dict[str, Any]] = {}
     user_type_sort_info: Dict[str, tuple[int, int, str]] = {}
 
@@ -207,8 +197,8 @@ def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
     )
 
     return {
-        "date_str": day,
-        "date_jp": format_date_jp(target_date),
+        "date_str": day.isoformat(),
+        "date_jp": format_date_jp(day),
         "organized_by_group": sorted_groups,
         "has_data": bool(rows),
     }
