@@ -171,4 +171,3 @@ def test_fiscal_year_view_model_uses_april_to_march_period(
     assert period["label"] == "2031年度"
     assert period["start"] == date(2031, 4, 1)
     assert period["end"] == date(2032, 3, 31)
-
