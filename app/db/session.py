@@ -73,10 +73,9 @@ def is_database_unavailable_error(exc: Exception) -> bool:
     original = exc.orig
     sqlstate = getattr(original, "sqlstate", None)
     if isinstance(sqlstate, str):
-        return (
-            sqlstate.startswith("08")
-            or sqlstate in _POSTGRESQL_AVAILABILITY_SQLSTATES
-        )
+        if sqlstate.startswith("08"):
+            return True
+        return sqlstate in _POSTGRESQL_AVAILABILITY_SQLSTATES
 
     if exc.statement is not None:
         return False
