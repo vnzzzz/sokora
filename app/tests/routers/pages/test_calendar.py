@@ -8,7 +8,6 @@ from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
-from app.utils.calendar_utils import get_current_month_formatted
 
 pytestmark = pytest.mark.asyncio
 
@@ -39,17 +38,20 @@ async def test_month_calendar_preserves_htmx_fragment_contract(
 
 async def test_invalid_month_redirects_to_current_month(
     async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        "app.routers.pages.calendar.get_current_month_formatted",
+        lambda: "2031-05",
+    )
+
     response = await async_client.get(
         "/calendar?month=invalid",
         follow_redirects=False,
     )
 
     assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
-    assert response.headers["location"] == (
-        f"/calendar?month={get_current_month_formatted()}"
-    )
-
+    assert response.headers["location"] == "/calendar?month=2031-05"
 
 async def test_day_detail_renders_grouped_attendance(
     async_client: AsyncClient,
