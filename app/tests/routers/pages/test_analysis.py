@@ -72,6 +72,20 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert "Analysis Route User" in response.text
 
 
+async def test_fiscal_year_analysis_ignores_invalid_month_parameter(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis?mode=year&year=2031&month=invalid"
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert "2031年度" in response.text
+
+
 async def test_invalid_month_redirects_to_current_month(
     async_client: AsyncClient,
 ) -> None:
