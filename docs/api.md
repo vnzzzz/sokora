@@ -38,7 +38,7 @@
 ### Attendance
 
 - `GET /api/v1/attendances`: 勤怠一覧。
-- `GET /api/v1/attendances/day/{day}`: 日付別勤怠detail。
+- `GET /api/v1/attendances/day/{day}`: `YYYY-MM-DD`の日付別勤怠detail。不正な日付pathはrequest validationで422。
 - `POST /api/v1/attendances`: `AttendanceCreate` JSONから作成し201を返す。`user_id + date`は一意。
 - `PUT /api/v1/attendances/{attendance_id}`: `AttendanceUpdate` JSONから更新。
 - `DELETE /api/v1/attendances/{attendance_id}`: ID指定削除、204。
