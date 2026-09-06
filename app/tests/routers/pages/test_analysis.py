@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.services import analysis_read_service
-from app.utils.calendar_utils import get_current_month_formatted
 
 pytestmark = pytest.mark.asyncio
 
@@ -86,17 +85,20 @@ async def test_fiscal_year_analysis_ignores_invalid_month_parameter(
 
 async def test_invalid_month_redirects_to_current_month(
     async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        "app.routers.pages.analysis.get_current_month_formatted",
+        lambda: "2031-05",
+    )
+
     response = await async_client.get(
         "/analysis?month=invalid",
         follow_redirects=False,
     )
 
     assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
-    assert response.headers["location"] == (
-        f"/analysis?month={get_current_month_formatted()}"
-    )
-
+    assert response.headers["location"] == "/analysis?month=2031-05"
 
 async def test_unexpected_analysis_failure_is_not_rendered_as_empty_200(
     async_client: AsyncClient,
