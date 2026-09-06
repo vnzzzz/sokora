@@ -100,7 +100,8 @@ PostgreSQLのonline migrationはadvisory lockでsokora migration process間を�
 - application-scoped DB runtimeが初期化済み
 - SQLite restore等のexclusive maintenance中ではない
 - DB runtimeがfail-closedへfenceされていない
-- request poolとは独立した短時間接続でDBへ`SELECT 1`できる
+- file-backed SQLite / PostgreSQLではrequest poolと独立した短時間接続で`SELECT 1`できる
+- in-memory SQLiteではapplicationが実際に利用するruntime engine上でAlembic schemaを確認できる
 
 上記を満たさない場合は `503 {"status":"unavailable"}` を返す。PostgreSQL readiness接続は短いconnect timeoutを持ち、SQLite file-backed DBは対象fileの存在も確認する。health responseへ内部exception、credential、filesystem path等を公開しない。
 
