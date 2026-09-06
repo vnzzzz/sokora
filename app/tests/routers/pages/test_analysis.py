@@ -100,6 +100,7 @@ async def test_invalid_month_redirects_to_current_month(
     assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
     assert response.headers["location"] == "/analysis?month=2031-05"
 
+
 async def test_unexpected_analysis_failure_is_not_rendered_as_empty_200(
     async_client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
