@@ -20,7 +20,6 @@ from app.db.session import (
 )
 
 
-
 def test_create_database_runtime_uses_supplied_database_url(tmp_path: Path) -> None:
     database_path = tmp_path / "runtime.db"
     database_url = f"sqlite:///{database_path}"
