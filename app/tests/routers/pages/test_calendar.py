@@ -3,8 +3,8 @@
 from datetime import date
 
 import pytest
-from fastapi import status
-from httpx import AsyncClient
+from fastapi import FastAPI, status
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
@@ -52,6 +52,31 @@ async def test_invalid_month_redirects_to_current_month(
 
     assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
     assert response.headers["location"] == "/calendar?month=2031-05"
+
+
+async def test_internal_calendar_value_error_is_not_treated_as_invalid_month(
+    test_app: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_read(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("sensitive unexpected calendar read failure")
+
+    monkeypatch.setattr(
+        calendar_read_service,
+        "get_month_view_model",
+        fail_read,
+    )
+
+    transport = ASGITransport(app=test_app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/calendar?month=2031-05",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "location" not in response.headers
+    assert "sensitive unexpected calendar read failure" not in response.text
 
 
 async def test_day_detail_renders_grouped_attendance(
