@@ -349,9 +349,7 @@ def _probe_database_connection(database_url: str, runtime_engine: Engine) -> boo
 
     if backend == "sqlite" and _sqlite_is_memory_database(url):
         with runtime_engine.connect() as connection:
-            return (
-                connection.scalar(text("SELECT 1 FROM alembic_version LIMIT 1")) == 1
-            )
+            return connection.scalar(text("SELECT 1 FROM alembic_version LIMIT 1")) == 1
 
     if backend == "sqlite":
         database_path = sqlite_database_path(database_url)
