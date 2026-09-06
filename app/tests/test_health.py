@@ -32,6 +32,7 @@ def test_healthz_reports_fenced_database_runtime_unavailable() -> None:
     assert response.status_code == 503
     assert response.json() == {"status": "unavailable"}
 
+
 def test_fenced_database_runtime_rejects_csv_download_without_leaking_reason() -> None:
     settings = AppSettings(database_url="sqlite:///:memory:")
     app = create_application(settings)
