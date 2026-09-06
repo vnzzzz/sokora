@@ -39,9 +39,7 @@ async def test_register_user_calendar_invalid_month_redirects_to_current_month(
     monkeypatch,
 ) -> None:
     group = crud_group.create(db, obj_in=GroupCreate(name="Redirect Group"))
-    user_type = crud_user_type.create(
-        db, obj_in=UserTypeCreate(name="Redirect Type")
-    )
+    user_type = crud_user_type.create(db, obj_in=UserTypeCreate(name="Redirect Type"))
     crud_location.create(db, obj_in=LocationCreate(name="Redirect Location"))
     crud_user.create(
         db,
