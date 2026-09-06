@@ -65,7 +65,7 @@ class LocationCategory(TypedDict):
 
 
 class AnalysisPageViewModel(TypedDict):
-    """analysis templateが正常系・error系の両方で参照するpage contract。"""
+    """analysis templateが参照する正常readのpage contract。"""
 
     analysis_data: Dict[str, Any]
     is_year_mode: bool
@@ -284,52 +284,3 @@ def get_analysis_page_view_model(
         "empty_message": empty_message,
     }
 
-
-def get_error_page_view_model(
-    *,
-    month: Optional[str] = None,
-    today: Optional[date] = None,
-) -> AnalysisPageViewModel:
-    """集計失敗時も同じtemplate contractを満たすrender-safeな空modelを返す。
-
-    routerがexception path専用templateへ分岐せず、通常templateを空collectionで安全にrender
-    できるshapeを維持する。ここではDB readや再集計を行わず、元のfailureを隠すfallback処理を
-    増やさない。
-    """
-    today_value = today or datetime.now().date()
-    fiscal_default = _fiscal_year(today_value)
-    current_month = month or ""
-
-    analysis_data: Dict[str, Any] = {
-        "month": current_month,
-        "month_name": "エラー",
-        "period": {
-            "mode": "error",
-            "label": "エラー",
-            "start": None,
-            "end": None,
-            "fiscal_year": None,
-            "month": current_month,
-        },
-        "users": {},
-        "locations": [],
-        "group_summary": {},
-        "location_details": {},
-        "summary": {
-            "total_users": 0,
-            "total_attendance_days": 0,
-            "location_totals": {},
-        },
-    }
-
-    return {
-        "analysis_data": analysis_data,
-        "is_year_mode": False,
-        "current_month": current_month,
-        "current_year": fiscal_default,
-        "year_options": list(range(fiscal_default - 3, fiscal_default + 4)),
-        "location_categories": [],
-        "group_sections": [],
-        "location_details": {},
-        "empty_message": "エラー",
-    }
