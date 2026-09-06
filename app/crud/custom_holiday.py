@@ -34,7 +34,8 @@ class CRUDCustomHoliday(
             .all()
         )
 
-    def get_all(self, db: Session) -> List[CustomHoliday]:
+    def list_all(self, db: Session) -> List[CustomHoliday]:
+        """paginationせず、全カスタム祝日を日付順で取得します。"""
         return db.query(CustomHoliday).order_by(asc(CustomHoliday.date)).all()
 
 

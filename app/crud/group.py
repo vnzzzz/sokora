@@ -34,6 +34,10 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
             .all()
         )
 
+    def list_all(self, db: Session) -> List[Group]:
+        """paginationせず、全グループを``order``、次に名前順で取得します。"""
+        return db.query(Group).order_by(Group.order.nullslast(), Group.name).all()
+
     def remove(self, db: Session, *, id: int) -> Group:
         """未使用のグループを削除対象としてflushし、削除対象を返します。
 
