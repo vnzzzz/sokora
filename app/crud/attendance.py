@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import logger
 from app.models.attendance import Attendance
@@ -64,6 +64,27 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             }
             for attendance, location in rows
         ]
+
+    def list_user_for_period(
+        self,
+        db: Session,
+        *,
+        user_id: str,
+        start_date: date,
+        end_date: date,
+    ) -> List[Attendance]:
+        """1 userの期間内勤怠をlocation込みで日付順に一括取得する。"""
+        return list(
+            db.query(Attendance)
+            .options(joinedload(Attendance.location_info))
+            .filter(
+                Attendance.user_id == user_id,
+                Attendance.date >= start_date,
+                Attendance.date <= end_date,
+            )
+            .order_by(Attendance.date)
+            .all()
+        )
 
     def get_day_data(self, db: Session, *, day: str) -> Dict[str, List[Dict[str, Any]]]:
         """指定日の勤怠を勤怠種別ごとに返す。process-local cacheは持たない。"""
