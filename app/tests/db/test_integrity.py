@@ -155,3 +155,82 @@ def test_database_rejects_duplicate_attendance_user_date(tmp_path: Path) -> None
             )
     finally:
         runtime.dispose()
+
+
+
+def test_migration_adds_user_username_unique_constraint(tmp_path: Path) -> None:
+    runtime = _migrated_runtime(tmp_path)
+    try:
+        constraints = inspect(runtime.engine).get_unique_constraints("users")
+        assert any(
+            constraint["name"] == "uq_users_username"
+            and set(constraint["column_names"]) == {"username"}
+            for constraint in constraints
+        )
+    finally:
+        runtime.dispose()
+
+
+def test_migration_rejects_existing_duplicate_usernames_without_deleting_data(
+    tmp_path: Path,
+) -> None:
+    runtime = create_database_runtime(f"sqlite:///{tmp_path / 'user-duplicates.db'}")
+    try:
+        with runtime.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "create table users ("
+                    "id varchar primary key, "
+                    "username varchar not null, "
+                    "group_id integer not null, "
+                    "user_type_id integer not null)"
+                )
+            )
+            connection.execute(
+                text(
+                    "create table alembic_version ("
+                    "version_num varchar(32) not null primary key)"
+                )
+            )
+            connection.execute(
+                text(
+                    "insert into alembic_version(version_num) "
+                    "values ('7c4a1b2d3e5f')"
+                )
+            )
+            connection.execute(
+                text(
+                    "insert into users "
+                    "(id, username, group_id, user_type_id) values "
+                    "('u1', 'Duplicate Name', 1, 1), "
+                    "('u2', 'Duplicate Name', 1, 1)"
+                )
+            )
+
+        with pytest.raises(RuntimeError, match="resolve duplicates"):
+            migrate_database(runtime)
+
+        with runtime.session_factory() as db:
+            assert db.scalar(text("select count(*) from users")) == 2
+            assert (
+                db.scalar(text("select version_num from alembic_version"))
+                == "7c4a1b2d3e5f"
+            )
+    finally:
+        runtime.dispose()
+
+
+def test_database_rejects_duplicate_usernames(tmp_path: Path) -> None:
+    runtime = _migrated_runtime(tmp_path)
+    try:
+        _seed_reference_rows(runtime)
+
+        with runtime.session_factory() as db:
+            db.add(User(id="u2", username="User 1", group_id=1, user_type_id=1))
+            with pytest.raises(IntegrityError):
+                db.commit()
+            db.rollback()
+
+            assert db.query(User).filter(User.username == "User 1").count() == 1
+    finally:
+        runtime.dispose()

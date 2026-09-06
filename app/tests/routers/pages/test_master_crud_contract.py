@@ -329,3 +329,32 @@ async def test_user_modal_master_options_are_not_truncated_at_default_page_size(
     assert response.status_code == 200
     assert "modal-group-100" in response.text
     assert "modal-user-type-100" in response.text
+
+
+
+async def test_user_form_rejects_invalid_user_id(
+    async_client: AsyncClient,
+    db: Session,
+) -> None:
+    group = crud.group.create(
+        db,
+        obj_in=schemas.GroupCreate(name="invalid-id-form-group"),
+    )
+    user_type = crud.user_type.create(
+        db,
+        obj_in=schemas.UserTypeCreate(name="invalid-id-form-type"),
+    )
+    db.commit()
+
+    response = await async_client.post(
+        "/users",
+        data={
+            "id": "invalid id",
+            "username": "Invalid Form ID",
+            "group_id": str(group.id),
+            "user_type_id": str(user_type.id),
+        },
+    )
+
+    assert response.status_code == 422
+    assert db.get(models.User, "invalid id") is None

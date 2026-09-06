@@ -108,3 +108,33 @@ def test_user_delete_rolls_back_attendance_delete_when_user_delete_fails(
 
     assert db.get(models.User, user.id) is not None
     assert db.get(models.Attendance, attendance.id) is not None
+
+
+
+def test_duplicate_username_is_translated_after_stale_precheck(
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = db_with_data
+    group, user_type, _location = _reference_rows(db)
+    existing = _create_user(db, user_id="existing-identity")
+    username = str(existing.username)
+
+    monkeypatch.setattr(
+        user_service,
+        "get_user_by_username",
+        lambda *_args, **_kwargs: None,
+    )
+
+    with pytest.raises(DataIntegrityError):
+        user_service.create_user_with_validation(
+            db,
+            user_in=schemas.UserCreate(
+                id="concurrent-identity",
+                username=username,
+                group_id=int(group.id),
+                user_type_id=int(user_type.id),
+            ),
+        )
+
+    assert db.query(models.User).filter(models.User.username == username).count() == 1
