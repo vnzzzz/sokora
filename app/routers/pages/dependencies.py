@@ -24,7 +24,7 @@ async def bind_custom_holiday_read_snapshot(
     requestごとに共有DBを読み、ContextVarへ束縛することで別replicaのwriteを次の
     readから観測できるようにする。
     """
-    holidays = await run_in_threadpool(custom_holiday_crud.get_all, db)
+    holidays = await run_in_threadpool(custom_holiday_crud.list_all, db)
     snapshot = {
         holiday.date.strftime("%Y-%m-%d"): str(holiday.name) for holiday in holidays
     }
