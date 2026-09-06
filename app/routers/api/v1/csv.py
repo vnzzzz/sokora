@@ -9,7 +9,7 @@ from typing import BinaryIO, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
 
@@ -57,6 +57,15 @@ def _stream_prepared_csv(csv_file: BinaryIO) -> Iterator[bytes]:
         csv_file.close()
 
 
+def _is_database_unavailable_error(exc: Exception) -> bool:
+    """verified disconnect / connection acquisition failureだけをavailability errorとする。"""
+    if isinstance(exc, (DatabaseRuntimeUnavailableError, SQLAlchemyTimeoutError)):
+        return True
+    return isinstance(exc, DBAPIError) and (
+        exc.connection_invalidated or exc.statement is None
+    )
+
+
 @router.get("/download")
 def download_csv(
     month: Optional[str] = Query(
@@ -94,14 +103,19 @@ def download_csv(
         )
     except (
         DatabaseRuntimeUnavailableError,
-        OperationalError,
-        InterfaceError,
+        DBAPIError,
         SQLAlchemyTimeoutError,
     ) as exc:
-        logger.error("CSV生成時にDBを利用できません: %s", exc, exc_info=True)
+        if _is_database_unavailable_error(exc):
+            logger.error("CSV生成時にDBを利用できません: %s", exc, exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="データベースが一時的に利用できないため、CSVを生成できません。",
+            ) from exc
+        logger.error("CSV生成中にDB statement errorが発生しました: %s", exc, exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="データベースが一時的に利用できないため、CSVを生成できません。",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="CSVファイルの生成中にエラーが発生しました。",
         ) from exc
     except Exception as exc:
         logger.error("CSV生成中に内部エラーが発生しました: %s", exc, exc_info=True)

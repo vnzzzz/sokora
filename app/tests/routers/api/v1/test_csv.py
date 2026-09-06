@@ -76,6 +76,7 @@ async def test_download_csv_returns_503_before_response_start_on_database_failur
             "SELECT users",
             {},
             RuntimeError("database unavailable"),
+            connection_invalidated=True,
         )
 
     monkeypatch.setattr(csv_router, "generate_work_entries_csv_rows", failing_rows)
@@ -85,6 +86,27 @@ async def test_download_csv_returns_503_before_response_start_on_database_failur
     assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert "content-disposition" not in response.headers
     assert "database unavailable" not in response.text
+
+
+async def test_download_csv_returns_500_on_non_disconnect_operational_error(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_rows(*_args: object, **_kwargs: object):
+        yield ["user_name"]
+        raise OperationalError(
+            "SELECT missing_table",
+            {},
+            RuntimeError("no such table"),
+        )
+
+    monkeypatch.setattr(csv_router, "generate_work_entries_csv_rows", failing_rows)
+
+    response = await async_client.get("/api/v1/csv/download?month=2032-05")
+
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "content-disposition" not in response.headers
+    assert "no such table" not in response.text
 
 
 async def test_download_csv_returns_500_before_response_start_on_internal_failure(
