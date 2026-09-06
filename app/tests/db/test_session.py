@@ -50,6 +50,24 @@ def test_database_runtime_readiness_probe_detects_missing_sqlite_file(
         runtime.dispose()
 
 
+def test_database_runtime_readiness_probe_detects_missing_file_schema(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "readiness-schema.db"
+    runtime = create_database_runtime(f"sqlite:///{database_path}")
+    try:
+        migrate_database(runtime)
+        assert runtime.probe_readiness() is True
+
+        runtime.engine.dispose()
+        database_path.unlink()
+        database_path.touch()
+
+        assert runtime.probe_readiness() is False
+    finally:
+        runtime.dispose()
+
+
 def test_database_runtime_readiness_probe_detects_lost_in_memory_schema() -> None:
     runtime = create_database_runtime("sqlite:///:memory:")
     try:
