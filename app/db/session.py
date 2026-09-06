@@ -382,7 +382,9 @@ def _postgresql_readiness_connect_args(url: URL) -> dict[str, object]:
     else:
         existing_options = str(configured_options)
     timeout_option = f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}"
-    options = " ".join(part for part in (existing_options.strip(), timeout_option) if part)
+    options = " ".join(
+        part for part in (existing_options.strip(), timeout_option) if part
+    )
     return {
         "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
         "options": options,
