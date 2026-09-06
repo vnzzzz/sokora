@@ -355,5 +355,6 @@ async def test_user_form_rejects_invalid_user_id(
         },
     )
 
-    assert response.status_code == 422
+    _assert_inline_error(response)
+    assert "ユーザーIDは半角英数、-、_のみ使用できます。" in response.text
     assert db.get(models.User, "invalid id") is None

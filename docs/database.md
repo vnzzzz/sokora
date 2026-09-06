@@ -9,7 +9,7 @@ SQLAlchemy model (`app/models/`) とAlembic revisionがschemaの一次情報で�
 - `groups`: `id` (PK), `name` (unique, not null), `order` (nullable)。ユーザー所属グループ。
 - `user_types`: `id` (PK), `name` (unique, not null), `order` (nullable)。社員種別。
 - `locations`: `id` (PK), `name` (unique, not null), `category` (nullable), `order` (nullable)。勤怠種別/勤務場所。
-- `users`: `id` (string PK), `username` (not null), `group_id` (FK → `groups.id`), `user_type_id` (FK → `user_types.id`)。
+- `users`: `id` (string PK), `username` (unique, not null), `group_id` (FK → `groups.id`), `user_type_id` (FK → `user_types.id`)。
 - `attendance`: `id` (PK), `user_id` (FK → `users.id`), `date` (Date), `location_id` (FK → `locations.id`), `note` (nullable)。`UNIQUE(user_id, date)`で1ユーザー1日1レコードを保証する。
 - `custom_holidays`: `id` (PK), `date` (Date, unique, not null), `name` (not null), `created_at`, `updated_at`。画面から追加する祝日を保持する。
 

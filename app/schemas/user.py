@@ -30,22 +30,6 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """ユーザー作成用スキーマ"""
 
-    @classmethod
-    async def as_form(
-        cls,
-        id: str = Form(..., pattern=USER_ID_PATTERN),
-        username: str = Form(...),
-        group_id: str = Form(...),
-        user_type_id: str = Form(...),
-    ) -> "UserCreate":  # 戻り値の型アノテーションを追加
-        """フォームデータからインスタンスを生成"""
-        return cls(
-            id=id,  # idとして直接渡す
-            username=username,
-            group_id=group_id,
-            user_type_id=user_type_id,
-        )
-
 
 class UserUpdate(BaseModel):
     """ユーザー更新用スキーマ"""
