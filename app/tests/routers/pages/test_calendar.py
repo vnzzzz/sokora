@@ -117,6 +117,7 @@ async def test_month_calendar_sorts_normalized_uncategorized_locations_by_order(
 ) -> None:
     for name, category, order in (
         ("Calendar Null First", None, 0),
+        ("Calendar Literal Middle", "未分類", 10),
         ("Calendar Empty Later", "", 20),
         ("Calendar Null Unordered", None, None),
     ):
@@ -134,6 +135,9 @@ async def test_month_calendar_sorts_normalized_uncategorized_locations_by_order(
 
     assert response.status_code == status.HTTP_200_OK
     assert response.text.index("Calendar Null First") < response.text.index(
+        "Calendar Literal Middle"
+    )
+    assert response.text.index("Calendar Literal Middle") < response.text.index(
         "Calendar Empty Later"
     )
     assert response.text.index("Calendar Empty Later") < response.text.index(

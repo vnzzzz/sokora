@@ -81,6 +81,7 @@ async def test_attendance_modal_sorts_normalized_uncategorized_locations_by_orde
     )
     for name, category, order in (
         ("Modal Null First", None, 0),
+        ("Modal Literal Middle", "未分類", 10),
         ("Modal Empty Later", "", 20),
         ("Modal Null Unordered", None, None),
     ):
@@ -105,6 +106,9 @@ async def test_attendance_modal_sorts_normalized_uncategorized_locations_by_orde
 
     assert response.status_code == 200
     assert response.text.index("Modal Null First") < response.text.index(
+        "Modal Literal Middle"
+    )
+    assert response.text.index("Modal Literal Middle") < response.text.index(
         "Modal Empty Later"
     )
     assert response.text.index("Modal Empty Later") < response.text.index(

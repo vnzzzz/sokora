@@ -29,7 +29,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(func.nullif(self.model.category, ""))),
+                nullslast(asc(func.nullif(func.nullif(self.model.category, ""), "未分類"))),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -41,14 +41,14 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     def list_all(self, db: Session) -> List[Location]:
         """paginationせず、全勤怠種別を表示上のcategory、order、ID順で取得する。
 
-        空文字categoryとNULLは画面上どちらも「未分類」なので同一sort keyとして扱う。
+        空文字category、NULL、literal「未分類」は画面上同じgroupなので同一sort keyとして扱う。
         paginationを持たないmaster/read pathで完全な勤怠種別集合を扱うための共通read。
         明示的にpaginationするcallerだけ :meth:`get_multi` を利用する。
         """
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(func.nullif(self.model.category, ""))),
+                nullslast(asc(func.nullif(func.nullif(self.model.category, ""), "未分類"))),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -72,7 +72,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(func.nullif(Location.category, ""))),
+                    nullslast(asc(func.nullif(func.nullif(Location.category, ""), "未分類"))),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )
@@ -89,7 +89,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(func.nullif(Location.category, ""))),
+                    nullslast(asc(func.nullif(func.nullif(Location.category, ""), "未分類"))),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )
