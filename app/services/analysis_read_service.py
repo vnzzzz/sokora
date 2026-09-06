@@ -141,7 +141,7 @@ def _build_group_sections(
     locations: List[Any],
 ) -> List[GroupSection]:
     group_sort_info: Dict[str, tuple[bool, int, int, str]] = {}
-    for group in crud.group.get_multi(db):
+    for group in crud.group.list_all(db):
         if group.id is None:
             continue
         name = str(group.name)
@@ -149,7 +149,7 @@ def _build_group_sections(
         group_sort_info[name] = _optional_order_key(order, int(group.id), name)
 
     user_type_sort_info: Dict[str, tuple[bool, int, int, str]] = {}
-    for user_type in crud.user_type.get_multi(db):
+    for user_type in crud.user_type.list_all(db):
         if user_type.id is None:
             continue
         name = str(user_type.name)

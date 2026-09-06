@@ -93,7 +93,7 @@
       <tbody>
         {# カテゴリごとに勤怠種別を表示 #}
         {% for category in sorted_categories %}
-          {% set category_locations = categories[category]|sort(attribute='order') %}
+          {% set category_locations = categories[category] %}
           
           {% for location in category_locations %}
           <tr class="border-b border-base-300">
