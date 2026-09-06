@@ -71,6 +71,16 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert "Analysis Route User" in response.text
 
 
+async def test_fiscal_year_outside_supported_range_is_422(
+    test_app: FastAPI,
+) -> None:
+    transport = ASGITransport(app=test_app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/analysis?mode=year&year=9999")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
 async def test_fiscal_year_analysis_ignores_invalid_month_parameter(
     async_client: AsyncClient,
     db_with_data: Session,
