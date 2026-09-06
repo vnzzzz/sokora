@@ -2,12 +2,13 @@
 
 import csv
 import io
-from collections.abc import Iterable, Sequence
+import tempfile
+from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
-from typing import Optional
+from typing import BinaryIO, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
@@ -19,16 +20,41 @@ from app.utils.csv_utils import generate_work_entries_csv_rows
 router = APIRouter(prefix="/csv", tags=["Data"])
 
 
-def _encode_csv(rows: Iterable[Sequence[str]], encoding: str = "utf-8") -> bytes:
-    """全CSV行をresponse開始前にencodeし、生成失敗をcallerへ伝播する。"""
-    with io.StringIO(newline="") as buffer:
-        writer = csv.writer(buffer)
-        writer.writerows(rows)
-        csv_text = buffer.getvalue()
+def _prepare_csv_file(
+    rows: Iterable[Sequence[str]],
+    encoding: str = "utf-8",
+) -> BinaryIO:
+    """全CSV行をresponse開始前にdisk-backed temporary fileへ書き込む。"""
+    csv_file = tempfile.TemporaryFile(mode="w+b")
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
 
-    if encoding.lower() == "sjis":
-        return csv_text.encode("shift_jis", errors="replace")
-    return csv_text.encode("utf-8")
+    try:
+        for row in rows:
+            writer.writerow(row)
+            data = buffer.getvalue()
+            if encoding.lower() == "sjis":
+                csv_file.write(data.encode("shift_jis", errors="replace"))
+            else:
+                csv_file.write(data.encode("utf-8"))
+            buffer.seek(0)
+            buffer.truncate(0)
+        csv_file.seek(0)
+        return csv_file
+    except Exception:
+        csv_file.close()
+        raise
+    finally:
+        buffer.close()
+
+
+def _stream_prepared_csv(csv_file: BinaryIO) -> Iterator[bytes]:
+    """生成済みtemporary fileをchunk単位で返し、stream終了時に必ずcloseする。"""
+    try:
+        while chunk := csv_file.read(64 * 1024):
+            yield chunk
+    finally:
+        csv_file.close()
 
 
 @router.get("/download")
@@ -40,7 +66,7 @@ def download_csv(
         "utf-8", description="CSVエンコーディング（utf-8またはsjis）"
     ),
     db: Session = Depends(get_db),
-) -> Response:
+) -> StreamingResponse:
     """勤怠CSVを生成し、成功を確認してからdownload responseを返す。"""
     logger.info("CSVダウンロードリクエスト: month=%s, encoding=%s", month, encoding)
 
@@ -62,7 +88,7 @@ def download_csv(
             )
 
     try:
-        csv_content = _encode_csv(
+        csv_file = _prepare_csv_file(
             generate_work_entries_csv_rows(db, month=month),
             normalized_encoding,
         )
@@ -91,8 +117,8 @@ def download_csv(
     if normalized_encoding == "sjis":
         response_headers["Content-Type"] = "text/csv; charset=shift_jis"
 
-    return Response(
-        content=csv_content,
+    return StreamingResponse(
+        _stream_prepared_csv(csv_file),
         media_type="text/csv",
         headers=response_headers,
     )
