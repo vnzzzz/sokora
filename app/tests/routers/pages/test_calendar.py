@@ -90,12 +90,14 @@ async def test_day_detail_renders_grouped_attendance(
     assert "route note" in response.text
 
 
-async def test_invalid_day_returns_empty_detail(async_client: AsyncClient) -> None:
+async def test_invalid_day_returns_explicit_validation_error(
+    async_client: AsyncClient,
+) -> None:
     response = await async_client.get("/calendar/day/not-a-date")
 
-    assert response.status_code == status.HTTP_200_OK
-    assert "not-a-dateの勤怠情報" in response.text
-    assert "記録なし" in response.text
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "無効な日付です" in response.text
+    assert "記録なし" not in response.text
 
 
 async def test_month_calendar_handles_nullable_location_order(
