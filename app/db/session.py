@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 from fastapi import Request
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.engine import URL, make_url
-from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
@@ -45,13 +45,23 @@ class DatabaseRuntimeUnavailableError(RuntimeError):
     """
 
 
-def is_database_unavailable_error(exc: Exception) -> bool:
-    """verified disconnect / connection acquisition failureだけをavailability errorとする。
+_POSTGRESQL_AVAILABILITY_SQLSTATES = {
+    "53300",  # too_many_connections
+    "57P01",  # admin_shutdown
+    "57P02",  # crash_shutdown
+    "57P03",  # cannot_connect_now
+    "57P04",  # database_dropped
+    "57P05",  # idle_session_timeout
+}
 
-    ``connection_invalidated`` はSQLAlchemyが認識したdisconnectとして扱う。statementが無い
-    DBAPIErrorだけではcommit/rollback時のIntegrityError等も含み得るため、接続取得時に一般的な
-    OperationalError / InterfaceErrorに限定してavailability候補とする。
-    pool/connection acquisition timeoutとfail-closed runtimeもavailability failureとして扱う。
+
+def is_database_unavailable_error(exc: Exception) -> bool:
+    """supported DBで確認できるavailability failureだけを503候補とする。
+
+    SQLAlchemyがdisconnectと認識したerror、pool checkout timeout、fail-closed runtimeは
+    backend非依存にavailability failureとする。接続確立前のDBAPIErrorはstatement有無だけで
+    推測せず、PostgreSQL/psycopgのSQLSTATE・connection-attempt情報、SQLiteのCANTOPEN codeを
+    利用する。transaction rollback、認証、constraint等のerrorは503へ誤分類しない。
     """
     if isinstance(exc, (DatabaseRuntimeUnavailableError, SQLAlchemyTimeoutError)):
         return True
@@ -59,7 +69,21 @@ def is_database_unavailable_error(exc: Exception) -> bool:
         return False
     if exc.connection_invalidated:
         return True
-    return exc.statement is None and isinstance(exc, (OperationalError, InterfaceError))
+
+    original = exc.orig
+    sqlstate = getattr(original, "sqlstate", None)
+    if isinstance(sqlstate, str):
+        return sqlstate.startswith("08") or sqlstate in _POSTGRESQL_AVAILABILITY_SQLSTATES
+
+    if exc.statement is not None:
+        return False
+
+    # Psycopg 3 exposes pgconn when an exception was raised from a connection attempt.
+    if getattr(original, "pgconn", None) is not None:
+        return True
+
+    sqlite_errorcode = getattr(original, "sqlite_errorcode", None)
+    return sqlite_errorcode == sqlite3.SQLITE_CANTOPEN
 
 
 @dataclass
