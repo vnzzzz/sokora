@@ -1,7 +1,8 @@
 """Attendance weekly/monthly read-model regression contracts."""
 
 import pytest
-from httpx import AsyncClient
+from fastapi import FastAPI, status
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -105,6 +106,27 @@ async def test_monthly_read_query_count_does_not_scale_with_users(
 
     assert status_code == 200
     assert select_count <= 8
+
+
+@pytest.mark.asyncio
+async def test_weekly_outside_supported_year_redirects_to_current_week(
+    test_app: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.routers.pages.attendance.get_current_week_formatted",
+        lambda: "2031-05-12",
+    )
+
+    transport = ASGITransport(app=test_app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/attendance/weekly?week=9999-12-27",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+    assert response.headers["location"] == "/attendance/weekly?week=2031-05-12"
 
 
 @pytest.mark.asyncio
