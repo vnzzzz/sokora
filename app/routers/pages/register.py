@@ -77,8 +77,19 @@ def user_calendar(
         try:
             year, month_num = parse_month(month)
             current_month = f"{year}-{month_num:02d}"
-        except ValueError:
+        except ValueError as exc:
+            logger.warning(
+                "無効な個別calendar月パラメータ '%s': %s",
+                month,
+                exc,
+            )
             current_month = get_current_month_formatted()
+            return RedirectResponse(
+                url=(
+                    f"/attendance/monthly/users/{user_id}"
+                    f"?month={current_month}"
+                )
+            )
 
     view_model = attendance_read_service.get_user_monthly_calendar_view_model(
         db,
