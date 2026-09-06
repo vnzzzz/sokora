@@ -53,6 +53,7 @@ async def test_invalid_month_redirects_to_current_month(
     assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
     assert response.headers["location"] == "/calendar?month=2031-05"
 
+
 async def test_day_detail_renders_grouped_attendance(
     async_client: AsyncClient,
     db_with_data: Session,
