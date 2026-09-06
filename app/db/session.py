@@ -29,6 +29,7 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _ALEMBIC_CONFIG_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic.ini"
 _ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
 _READINESS_CONNECT_TIMEOUT_SECONDS = 2
+_READINESS_STATEMENT_TIMEOUT_MS = 2000
 
 
 class DatabaseRuntimeUnavailableError(RuntimeError):
@@ -355,7 +356,10 @@ def _probe_database_connection(database_url: str) -> bool:
             "timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
         }
     elif backend == "postgresql":
-        connect_args = {"connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS}
+        connect_args = {
+            "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
+            "options": f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}",
+        }
     else:
         return False
 
