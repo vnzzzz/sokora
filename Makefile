@@ -93,8 +93,7 @@ format: sync
 	uv run ruff format app scripts
 
 format-check: sync
-	uv run ruff format --diff app/services/attendance_read_service.py
-	false
+	uv run ruff format --check app scripts
 
 typecheck: sync
 	uv run mypy app

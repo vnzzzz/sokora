@@ -150,18 +150,14 @@ def _group_user_rows(
         group_name = str(group.name) if group is not None else "未分類"
         group_id = int(group.id) if group is not None and group.id is not None else 0
         group_order = (
-            int(group.order)
-            if group is not None and group.order is not None
-            else None
+            int(group.order) if group is not None and group.order is not None else None
         )
         group_sort_keys.setdefault(
             group_name,
             _optional_order_key(group_order, group_id, group_name),
         )
 
-        user_type_name = (
-            str(user_type.name) if user_type is not None else "未分類"
-        )
+        user_type_name = str(user_type.name) if user_type is not None else "未分類"
         user_type_id = (
             int(user_type.id)
             if user_type is not None and user_type.id is not None
@@ -178,9 +174,7 @@ def _group_user_rows(
         )
         user_type_display_orders.setdefault(
             user_type_name,
-            float(user_type_order)
-            if user_type_order is not None
-            else float("inf"),
+            float(user_type_order) if user_type_order is not None else float("inf"),
         )
 
         grouped.setdefault(group_name, {}).setdefault(user_type_name, []).append(row)
