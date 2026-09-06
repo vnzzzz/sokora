@@ -134,6 +134,15 @@ async def test_monthly_user_calendar_invalid_month_is_explicit_400(
     assert response.status_code == 400
 
 
+async def test_calendar_invalid_month_is_explicit_400(
+    async_client: AsyncClient,
+) -> None:
+    response = await async_client.get("/calendar?month=invalid")
+
+    assert response.status_code == 400
+    assert "エラー" in response.text
+
+
 async def test_analysis_invalid_month_is_explicit_400(
     async_client: AsyncClient,
 ) -> None:
