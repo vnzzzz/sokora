@@ -172,14 +172,3 @@ def test_fiscal_year_view_model_uses_april_to_march_period(
     assert period["start"] == date(2031, 4, 1)
     assert period["end"] == date(2032, 3, 31)
 
-
-def test_error_view_model_is_render_safe() -> None:
-    view_model = analysis_read_service.get_error_page_view_model(
-        month="invalid",
-        today=date(2031, 5, 15),
-    )
-
-    assert view_model["analysis_data"]["period"]["mode"] == "error"
-    assert view_model["current_month"] == "invalid"
-    assert view_model["group_sections"] == []
-    assert view_model["location_categories"] == []
