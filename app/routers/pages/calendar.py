@@ -3,13 +3,14 @@
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import logger
 from app.db.session import get_db
 from app.services import calendar_read_service
+from app.utils.calendar_utils import get_current_month_formatted
 
 router = APIRouter(prefix="/calendar", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -26,7 +27,8 @@ def get_calendar(
         view_model = calendar_read_service.get_month_view_model(db, month=month)
     except ValueError as exc:
         logger.warning("無効なcalendar month '%s': %s", month, exc)
-        view_model = calendar_read_service.get_empty_month_view_model(month)
+        current_month = get_current_month_formatted()
+        return RedirectResponse(url=f"/calendar?month={current_month}")
 
     headers = (
         {"HX-Reswap": "innerHTML"}
