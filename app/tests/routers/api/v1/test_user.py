@@ -437,7 +437,6 @@ async def test_delete_user_not_found(async_client: AsyncClient) -> None:
 #     ...
 
 
-
 @pytest.mark.parametrize(
     "invalid_user_id",
     ["contains space", "日本語ID", "slash/id"],

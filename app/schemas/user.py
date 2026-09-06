@@ -19,9 +19,7 @@ USER_ID_PATTERN = r"^[a-zA-Z0-9_-]+$"
 class UserBase(BaseModel):
     """ユーザーの基本スキーマ"""
 
-    id: str = Field(
-        ..., description="ユーザーID (半角英数-_)", pattern=USER_ID_PATTERN
-    )
+    id: str = Field(..., description="ユーザーID (半角英数-_)", pattern=USER_ID_PATTERN)
     username: str = Field(..., description="ユーザー名")
     group_id: int | str = Field(..., description="所属グループID")
     user_type_id: int | str = Field(..., description="社員種別ID")

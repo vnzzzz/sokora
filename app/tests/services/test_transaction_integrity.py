@@ -110,7 +110,6 @@ def test_user_delete_rolls_back_attendance_delete_when_user_delete_fails(
     assert db.get(models.Attendance, attendance.id) is not None
 
 
-
 def test_duplicate_username_is_translated_after_stale_precheck(
     db_with_data: Session,
     monkeypatch: pytest.MonkeyPatch,

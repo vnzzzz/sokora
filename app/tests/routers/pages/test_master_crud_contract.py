@@ -331,7 +331,6 @@ async def test_user_modal_master_options_are_not_truncated_at_default_page_size(
     assert "modal-user-type-100" in response.text
 
 
-
 async def test_user_form_rejects_invalid_user_id(
     async_client: AsyncClient,
     db: Session,

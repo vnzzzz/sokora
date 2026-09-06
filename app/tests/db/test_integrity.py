@@ -157,7 +157,6 @@ def test_database_rejects_duplicate_attendance_user_date(tmp_path: Path) -> None
         runtime.dispose()
 
 
-
 def test_migration_adds_user_username_unique_constraint(tmp_path: Path) -> None:
     runtime = _migrated_runtime(tmp_path)
     try:
