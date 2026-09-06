@@ -101,11 +101,7 @@ def download_csv(
             generate_work_entries_csv_rows(db, month=month),
             normalized_encoding,
         )
-    except (
-        DatabaseRuntimeUnavailableError,
-        DBAPIError,
-        SQLAlchemyTimeoutError,
-    ) as exc:
+    except (DatabaseRuntimeUnavailableError, DBAPIError, SQLAlchemyTimeoutError) as exc:
         if _is_database_unavailable_error(exc):
             logger.error("CSV生成時にDBを利用できません: %s", exc, exc_info=True)
             raise HTTPException(
