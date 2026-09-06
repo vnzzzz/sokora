@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, TypedDict
 from sqlalchemy.orm import Session
 
 from app.crud.calendar import calendar_crud
+from app.crud.location import location as location_crud
 from app.utils.calendar_utils import (
     build_calendar_data,
     format_date_jp,
@@ -95,7 +96,7 @@ def get_month_view_model(
         first_day=first_day,
         last_day=last_day,
     )
-    locations = calendar_crud.list_locations(db)
+    locations = location_crud.list_all(db)
     location_names = [str(location.name) for location in locations]
 
     calendar_data = build_calendar_data(

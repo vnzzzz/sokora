@@ -37,3 +37,24 @@ async def test_holidays_page_shows_empty_state(async_client, db) -> None:
     assert response.status_code == 200
     assert "alert alert-info" in response.text
     assert "カスタム祝日は登録されていません" in response.text
+
+
+async def test_holidays_page_is_not_truncated_at_default_page_size(
+    async_client, db
+) -> None:
+    first_day = datetime.date(2035, 1, 1)
+    db.add_all(
+        [
+            CustomHoliday(
+                date=first_day + datetime.timedelta(days=index),
+                name=f"custom-holiday-{index:03d}",
+            )
+            for index in range(101)
+        ]
+    )
+    db.commit()
+
+    response = await async_client.get("/holidays")
+
+    assert response.status_code == 200
+    assert "custom-holiday-100" in response.text

@@ -21,7 +21,7 @@ router = APIRouter(tags=["Groups"])
 @router.get("", response_model=GroupList)
 def get_groups(db: Session = Depends(get_db)) -> Any:
     """グループ一覧を表示順、次に名前順で返します。"""
-    groups = group.get_multi(db=db)
+    groups = group.list_all(db=db)
     return {"groups": groups}
 
 

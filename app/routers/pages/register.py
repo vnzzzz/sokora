@@ -7,7 +7,6 @@
 
 import calendar
 import logging
-import operator
 from datetime import date
 from typing import Any, Dict, List, Optional
 
@@ -158,11 +157,11 @@ def register_page(
             users.append((user_name, user_id, user_type_id, user_obj))
 
     # グループ情報をIDをキーとする辞書として取得します。
-    groups = group.get_multi(db)
+    groups = group.list_all(db)
     groups_map = {g.id: g for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
-    user_types = user_type.get_multi(db)
+    user_types = user_type.list_all(db)
     user_types_map = {int(ut.id): ut for ut in user_types}
 
     # 表示用にユーザーをグループ名でグルーピングし、さらに社員種別でサブグルーピングします。
@@ -231,10 +230,8 @@ def register_page(
         grouped_users.keys(), key=lambda g: group_name_to_order.get(g, float("inf"))
     )
 
-    # 利用可能な全勤怠種別を取得します。（オブジェクトのリストとして）
-    location_objects_unsorted: List[Location] = location_crud.get_multi(db)
-    # IDでソートした Location オブジェクトのリストをテンプレートに渡す
-    location_objects = sorted(location_objects_unsorted, key=operator.attrgetter("id"))
+    # 利用可能な全勤怠種別を表示順で全件取得します。
+    location_objects: List[Location] = location_crud.list_all(db)
 
     # 勤怠種別名に対応するCSSクラス情報 (テキストと背景) を生成します。
     location_styles: Dict[str, Dict[str, str]] = {}
@@ -356,7 +353,7 @@ def user_calendar(
         }
 
     # 勤怠種別情報を取得
-    location_objects = location_crud.get_multi(db)
+    location_objects = location_crud.list_all(db)
     location_styles = {}
     for loc in location_objects:
         location_styles[str(loc.name)] = get_location_color_classes(int(loc.id))

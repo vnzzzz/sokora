@@ -28,7 +28,7 @@ def group_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """グループ管理ページを表示する。"""
     return templates.TemplateResponse(
         "pages/group.html",
-        {"request": request, "groups": group.get_multi(db)},
+        {"request": request, "groups": group.list_all(db)},
     )
 
 

@@ -36,6 +36,11 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
             .all()
         )
 
+    def list_all(self, db: Session) -> List[UserType]:
+        """paginationせず、全社員種別を``order``、次に名前順で取得します。"""
+        query = db.query(UserType)
+        return query.order_by(UserType.order.nullslast(), UserType.name).all()
+
     def remove(self, db: Session, *, id: int) -> UserType:
         """未使用の社員種別を削除対象としてflushし、削除対象を返します。
 

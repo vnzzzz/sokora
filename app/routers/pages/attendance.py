@@ -7,7 +7,6 @@
 
 import json
 import logging
-import operator
 from datetime import date
 from typing import Any, Dict, List, Optional
 
@@ -152,11 +151,11 @@ def attendance_page(
             users.append((user_name, user_id, user_type_id, user_obj))
 
     # グループ情報をIDをキーとする辞書として取得します。
-    groups = group.get_multi(db)
+    groups = group.list_all(db)
     groups_map = {g.id: g for g in groups}
 
     # ユーザータイプ情報をIDをキーとする辞書として取得します。
-    user_types = user_type.get_multi(db)
+    user_types = user_type.list_all(db)
     user_types_map: Dict[int, Any] = {int(ut.id): ut for ut in user_types}
 
     # 表示用にユーザーをグループ名でグルーピングし、さらに社員種別でサブグルーピングします。
@@ -220,10 +219,8 @@ def attendance_page(
         # ソート済みのリストを保存（辞書ではなくリスト）
         grouped_users[g_name] = user_type_list
 
-    # 利用可能な全勤怠種別を取得します。（オブジェクトのリストとして）
-    location_objects_unsorted: List[Location] = location_crud.get_multi(db)
-    # IDでソートした Location オブジェクトのリストをテンプレートに渡す
-    location_objects = sorted(location_objects_unsorted, key=operator.attrgetter("id"))
+    # 利用可能な全勤怠種別を表示順で全件取得します。
+    location_objects: List[Location] = location_crud.list_all(db)
 
     # 勤怠種別名に対応するCSSクラス情報 (テキストと背景) を生成します。
     location_styles: Dict[str, Dict[str, str]] = {}
@@ -346,9 +343,7 @@ def get_attendance_modal(
     note = attendance_obj.note if attendance_obj else None  # 備考フィールドを取得
 
     # 全勤怠種別を取得
-    locations: List[Location] = sorted(
-        location_crud.get_multi(db), key=operator.attrgetter("id")
-    )
+    locations: List[Location] = location_crud.list_all(db)
 
     # マクロを使用するためのコンテキストを作成
     context = {

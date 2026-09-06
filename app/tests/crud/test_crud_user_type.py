@@ -53,3 +53,18 @@ def test_remove_user_type(db: Session) -> None:
 
     assert removed_user_type.id == user_type_id
     assert user_type_after_remove is None
+
+
+def test_list_all_user_types_is_not_truncated_at_default_page_size(
+    db: Session,
+) -> None:
+    for index in range(101):
+        crud.user_type.create(
+            db,
+            obj_in=UserTypeCreate(name=f"all-user-type-{index:03d}", order=index),
+        )
+
+    user_types = crud.user_type.list_all(db)
+
+    assert len(user_types) == 101
+    assert str(user_types[-1].name) == "all-user-type-100"

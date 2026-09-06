@@ -21,7 +21,7 @@ router = APIRouter(tags=["UserTypes"])
 @router.get("", response_model=UserTypeList)
 def get_user_types(db: Session = Depends(get_db)) -> Any:
     """社員種別一覧を表示順、次に名前順で返します。"""
-    user_types = user_type.get_multi(db=db)
+    user_types = user_type.list_all(db=db)
     return {"user_types": user_types}
 
 

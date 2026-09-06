@@ -304,3 +304,28 @@ async def test_legacy_row_mutation_endpoints_are_removed(
 ) -> None:
     response = await async_client.post(path, data={})
     assert response.status_code == 405
+
+
+async def test_user_modal_master_options_are_not_truncated_at_default_page_size(
+    async_client: AsyncClient,
+    db: Session,
+) -> None:
+    db.add_all(
+        [
+            models.Group(name=f"modal-group-{index:03d}", order=index)
+            for index in range(101)
+        ]
+    )
+    db.add_all(
+        [
+            models.UserType(name=f"modal-user-type-{index:03d}", order=index)
+            for index in range(101)
+        ]
+    )
+    db.commit()
+
+    response = await async_client.get("/users/modal")
+
+    assert response.status_code == 200
+    assert "modal-group-100" in response.text
+    assert "modal-user-type-100" in response.text

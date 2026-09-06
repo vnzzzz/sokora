@@ -54,7 +54,7 @@
       <div class="mt-4">
         <h4 class="font-medium text-base-content mb-2 border-b pb-1 text-sm">{{ category }}</h4>
         <div class="grid grid-cols-3 gap-x-2 gap-y-1">
-          {% for location in categories[category]|sort(attribute='order') %}
+          {% for location in categories[category] %}
             <button
               type="button"
               class="btn btn-outline btn-sm location-select-btn {{ location.id == current_location_id and 'btn-active' or '' }} whitespace-normal h-auto py-1 text-xs"

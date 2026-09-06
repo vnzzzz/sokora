@@ -42,7 +42,7 @@ def _holiday_error_field(detail: str) -> str:
 @router.get("", response_class=HTMLResponse)
 def get_holiday_page(request: Request, db: Session = Depends(get_db)) -> Any:
     """祝日管理ページを表示する。"""
-    custom_holidays = crud_custom_holiday.get_multi(db)
+    custom_holidays = crud_custom_holiday.list_all(db)
     cache_info = get_cache_info()
     built_in_total = cache_info.get("total_holidays", 0) - cache_info.get(
         "custom_total", 0

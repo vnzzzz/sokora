@@ -5,10 +5,10 @@
 勤怠種別モデルの作成、読取、更新、削除操作を提供します。
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import asc, nullslast
+from sqlalchemy import asc, func, nullslast
 from sqlalchemy.orm import Session
 
 from app.core.config import logger
@@ -19,17 +19,23 @@ from app.schemas.location import LocationCreate, LocationUpdate
 from .base import CRUDBase
 
 
+def _display_category_sort_key(category: Any) -> Any:
+    """画面上の「未分類」値を同一categoryとしてNULL lastで並べます。"""
+    normalized = func.nullif(func.nullif(category, ""), "未分類")
+    return nullslast(asc(normalized))
+
+
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     """勤怠種別固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[Location]:
-        """category、order、IDの順で勤怠種別一覧を取得します。"""
+        """表示上のcategory、order、IDの順で勤怠種別一覧を取得します。"""
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(self.model.category)),
+                _display_category_sort_key(self.model.category),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -39,15 +45,16 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         )
 
     def list_all(self, db: Session) -> List[Location]:
-        """paginationせず、全勤怠種別をcategory、order、ID順で取得する。
+        """paginationせず、全勤怠種別を表示上のcategory、order、ID順で取得する。
 
-        analysis等、完全なmaster集合をprojection boundaryとして利用するread向け。
-        page/API paginationを意図するcallerは :meth:`get_multi` を利用する。
+        空文字category、NULL、literal「未分類」は画面上同じgroupなので同一sort keyとして扱う。
+        paginationを持たないmaster/read pathで完全な勤怠種別集合を扱うための共通read。
+        明示的にpaginationするcallerだけ :meth:`get_multi` を利用する。
         """
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(self.model.category)),
+                _display_category_sort_key(self.model.category),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -71,7 +78,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(Location.category)),
+                    _display_category_sort_key(Location.category),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )
@@ -88,7 +95,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(Location.category)),
+                    _display_category_sort_key(Location.category),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )

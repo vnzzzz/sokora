@@ -28,8 +28,8 @@ responder = MasterCrudResponder(
 def _user_form_context(db: Session, user_obj: Any) -> dict[str, Any]:
     return {
         "user": user_obj,
-        "groups": group.get_multi(db),
-        "user_types": user_type.get_multi(db),
+        "groups": group.list_all(db),
+        "user_types": user_type.list_all(db),
     }
 
 

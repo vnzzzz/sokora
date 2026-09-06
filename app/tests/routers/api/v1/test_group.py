@@ -64,6 +64,21 @@ async def test_get_groups_with_data(
     assert data["groups"][1]["id"] == group1.id
 
 
+async def test_get_groups_is_not_truncated_at_default_page_size(
+    async_client: AsyncClient, db: Session
+) -> None:
+    db.add_all(
+        [Group(name=f"API Group {index:03d}", order=index) for index in range(101)]
+    )
+    db.commit()
+
+    response = await async_client.get("/api/v1/groups")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.json()["groups"]) == 101
+    assert response.json()["groups"][-1]["name"] == "API Group 100"
+
+
 async def test_create_group_success(
     async_client: AsyncClient, db: Session, test_data_tracker: dict
 ) -> None:

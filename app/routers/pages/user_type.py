@@ -28,7 +28,7 @@ def get_user_type_manage_page(request: Request, db: Session = Depends(get_db)) -
     """社員種別管理ページを表示する。"""
     return templates.TemplateResponse(
         "pages/user_type.html",
-        {"request": request, "user_types": user_type.get_multi(db)},
+        {"request": request, "user_types": user_type.list_all(db)},
     )
 
 

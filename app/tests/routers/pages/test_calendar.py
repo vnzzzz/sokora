@@ -81,3 +81,65 @@ async def test_invalid_day_returns_empty_detail(async_client: AsyncClient) -> No
     assert response.status_code == status.HTTP_200_OK
     assert "not-a-dateの勤怠情報" in response.text
     assert "記録なし" in response.text
+
+
+async def test_month_calendar_handles_nullable_location_order(
+    async_client: AsyncClient,
+    db: Session,
+) -> None:
+    for name, order in (
+        ("Calendar Zero", 0),
+        ("Calendar Later", 20),
+        ("Calendar Unordered", None),
+    ):
+        crud.location.create(
+            db,
+            obj_in=schemas.LocationCreate(
+                name=name,
+                category="Office",
+                order=order,
+            ),
+        )
+    db.commit()
+
+    response = await async_client.get("/calendar?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.text.index("Calendar Zero") < response.text.index("Calendar Later")
+    assert response.text.index("Calendar Later") < response.text.index(
+        "Calendar Unordered"
+    )
+
+
+async def test_month_calendar_sorts_normalized_uncategorized_locations_by_order(
+    async_client: AsyncClient,
+    db: Session,
+) -> None:
+    for name, category, order in (
+        ("Calendar Null First", None, 0),
+        ("Calendar Literal Middle", "未分類", 10),
+        ("Calendar Empty Later", "", 20),
+        ("Calendar Null Unordered", None, None),
+    ):
+        crud.location.create(
+            db,
+            obj_in=schemas.LocationCreate(
+                name=name,
+                category=category,
+                order=order,
+            ),
+        )
+    db.commit()
+
+    response = await async_client.get("/calendar?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.text.index("Calendar Null First") < response.text.index(
+        "Calendar Literal Middle"
+    )
+    assert response.text.index("Calendar Literal Middle") < response.text.index(
+        "Calendar Empty Later"
+    )
+    assert response.text.index("Calendar Empty Later") < response.text.index(
+        "Calendar Null Unordered"
+    )
