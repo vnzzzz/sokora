@@ -48,4 +48,3 @@ def test_fenced_database_runtime_returns_503_for_csv_download() -> None:
     assert "content-disposition" not in response.headers
     assert "forced recovery failure" not in response.text
     assert "/internal/database/path" not in response.text
-
