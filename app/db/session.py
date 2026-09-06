@@ -153,7 +153,7 @@ class DatabaseRuntime:
 
         probe_succeeded = False
         try:
-            probe_succeeded = _probe_database_connection(self.database_url)
+            probe_succeeded = _probe_database_connection(self.database_url, self.engine)
         except Exception:
             logger.warning("Database readiness probe failed", exc_info=True)
         finally:
@@ -342,10 +342,16 @@ def sqlite_database_path(database_url: str) -> Path | None:
     return path if path.is_absolute() else Path.cwd() / path
 
 
-def _probe_database_connection(database_url: str) -> bool:
-    """request poolを使わず、supported DBへ短時間接続してSELECT 1を実行する。"""
+def _probe_database_connection(database_url: str, runtime_engine: Engine) -> bool:
+    """supported DBの実runtimeへ短時間のreadiness queryを実行する。"""
     url = sqlalchemy_database_url(database_url)
     backend = url.get_backend_name()
+
+    if backend == "sqlite" and _sqlite_is_memory_database(url):
+        with runtime_engine.connect() as connection:
+            return (
+                connection.scalar(text("SELECT 1 FROM alembic_version LIMIT 1")) == 1
+            )
 
     if backend == "sqlite":
         database_path = sqlite_database_path(database_url)
