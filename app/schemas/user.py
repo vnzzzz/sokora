@@ -13,7 +13,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from .group import Group
 from .user_type import UserType
 
-
 USER_ID_PATTERN = r"^[a-zA-Z0-9_-]+$"
 
 
