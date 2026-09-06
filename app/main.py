@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import configure_logging, logger
@@ -56,15 +57,19 @@ API_TAGS: List[Dict[str, str]] = [
 ]
 
 
-def health_check(request: Request) -> JSONResponse:
+async def health_check(request: Request) -> JSONResponse:
     """runtimeとDBがrequest処理可能かをplatform readiness probeへ返す。
 
     application-scoped DatabaseRuntimeが存在し、maintenance/fence中ではなく、
-    DBへの短時間接続とSELECT 1が成功した場合だけHTTP 200を返す。内部failure reasonや
-    credential/path等はresponseへ公開しない。認証不要であることもruntime contractの一部。
+    DBへの短時間接続とSELECT 1が成功した場合だけHTTP 200を返す。同期DB probeは
+    threadpoolで実行し、event loopをblockしない。内部failure reasonやcredential/path等は
+    responseへ公開しない。認証不要であることもruntime contractの一部。
     """
     runtime = getattr(request.app.state, "database_runtime", None)
-    if not isinstance(runtime, DatabaseRuntime) or not runtime.probe_readiness():
+    if not isinstance(runtime, DatabaseRuntime):
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
+
+    if not await run_in_threadpool(runtime.probe_readiness):
         return JSONResponse(status_code=503, content={"status": "unavailable"})
     return JSONResponse({"status": "ok"})
 
