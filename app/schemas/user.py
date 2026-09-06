@@ -14,11 +14,14 @@ from .group import Group
 from .user_type import UserType
 
 
+USER_ID_PATTERN = r"^[a-zA-Z0-9_-]+$"
+
+
 class UserBase(BaseModel):
     """ユーザーの基本スキーマ"""
 
     id: str = Field(
-        ..., description="ユーザーID (半角英数-_)", pattern=r"^[a-zA-Z0-9_-]+$"
+        ..., description="ユーザーID (半角英数-_)", pattern=USER_ID_PATTERN
     )
     username: str = Field(..., description="ユーザー名")
     group_id: int | str = Field(..., description="所属グループID")
@@ -30,12 +33,10 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """ユーザー作成用スキーマ"""
 
-    id: str = Field(..., description="ユーザーID (半角英数-_)")
-
     @classmethod
     async def as_form(
         cls,
-        id: str = Form(...),  # idとして直接受け取る
+        id: str = Form(..., pattern=USER_ID_PATTERN),
         username: str = Form(...),
         group_id: str = Form(...),
         user_type_id: str = Form(...),
