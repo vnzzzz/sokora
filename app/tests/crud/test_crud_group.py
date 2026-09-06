@@ -51,3 +51,16 @@ def test_remove_group(db: Session) -> None:
 
     assert removed_group.id == group_id
     assert group_after_remove is None
+
+
+def test_list_all_groups_is_not_truncated_at_default_page_size(db: Session) -> None:
+    for index in range(101):
+        crud.group.create(
+            db,
+            obj_in=GroupCreate(name=f"all-group-{index:03d}", order=index),
+        )
+
+    groups = crud.group.list_all(db)
+
+    assert len(groups) == 101
+    assert str(groups[-1].name) == "all-group-100"
