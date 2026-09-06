@@ -26,7 +26,7 @@ def get_attendances(db: Session = Depends(get_db)) -> Any:
 
 
 @router.get("/day/{day}")
-def get_day_attendance(day: str, db: Session = Depends(get_db)) -> Any:
+def get_day_attendance(day: Date, db: Session = Depends(get_db)) -> Any:
     """YYYY-MM-DDの日別勤怠projectionをJSONで返す。"""
     return {"success": True, "data": crud.attendance.get_day_data(db, day=day)}
 
