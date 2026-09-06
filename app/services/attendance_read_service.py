@@ -258,9 +258,15 @@ def get_weekly_page_view_model(
     )
 
     visible_user_ids = {row[1] for row in directory["users"]}
-    user_attendances = {user_id: {} for user_id in visible_user_ids}
-    user_attendance_locations = {user_id: {} for user_id in visible_user_ids}
-    user_attendance_notes = {user_id: {} for user_id in visible_user_ids}
+    user_attendances: dict[str, dict[str, bool]] = {
+        user_id: {} for user_id in visible_user_ids
+    }
+    user_attendance_locations: dict[str, dict[str, str]] = {
+        user_id: {} for user_id in visible_user_ids
+    }
+    user_attendance_notes: dict[str, dict[str, Optional[str]]] = {
+        user_id: {} for user_id in visible_user_ids
+    }
 
     for attendance in attendances:
         user_id = str(attendance.user_id)
