@@ -5,9 +5,12 @@ from datetime import date
 import pytest
 from fastapi import status
 from httpx import AsyncClient
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app import models
+from app.services import analysis_read_service
+from app.utils.calendar_utils import get_current_month_formatted
 
 pytestmark = pytest.mark.asyncio
 
@@ -69,9 +72,81 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert "Analysis Route User" in response.text
 
 
-async def test_invalid_month_renders_error_page(async_client: AsyncClient) -> None:
-    response = await async_client.get("/analysis?month=invalid")
+async def test_invalid_month_redirects_to_current_month(
+    async_client: AsyncClient,
+) -> None:
+    response = await async_client.get(
+        "/analysis?month=invalid",
+        follow_redirects=False,
+    )
 
-    assert response.status_code == status.HTTP_200_OK
-    assert "エラー" in response.text
-    assert "Internal Server Error" not in response.text
+    assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+    assert response.headers["location"] == (
+        f"/analysis?month={get_current_month_formatted()}"
+    )
+
+
+async def test_unexpected_analysis_failure_is_not_rendered_as_empty_200(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_read(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("unexpected analysis read failure")
+
+    monkeypatch.setattr(
+        analysis_read_service,
+        "get_analysis_page_view_model",
+        fail_read,
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected analysis read failure"):
+        await async_client.get("/analysis?month=2031-05")
+
+
+async def test_database_unavailable_analysis_failure_returns_503_without_detail(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_read(*_args: object, **_kwargs: object) -> None:
+        raise OperationalError(
+            "SELECT users",
+            {},
+            RuntimeError("sensitive database unavailable detail"),
+            connection_invalidated=True,
+        )
+
+    monkeypatch.setattr(
+        analysis_read_service,
+        "get_analysis_page_view_model",
+        fail_read,
+    )
+
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert "sensitive database unavailable detail" not in response.text
+
+
+async def test_analysis_statement_error_is_not_misclassified_as_unavailable(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    error = OperationalError(
+        "SELECT missing_table",
+        {},
+        RuntimeError("no such table"),
+    )
+
+    def fail_read(*_args: object, **_kwargs: object) -> None:
+        raise error
+
+    monkeypatch.setattr(
+        analysis_read_service,
+        "get_analysis_page_view_model",
+        fail_read,
+    )
+
+    with pytest.raises(OperationalError) as exc_info:
+        await async_client.get("/analysis?month=2031-05")
+
+    assert exc_info.value is error
