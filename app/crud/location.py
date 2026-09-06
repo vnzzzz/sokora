@@ -5,7 +5,7 @@
 勤怠種別モデルの作成、読取、更新、削除操作を提供します。
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import asc, func, nullslast
@@ -19,6 +19,12 @@ from app.schemas.location import LocationCreate, LocationUpdate
 from .base import CRUDBase
 
 
+def _display_category_sort_key(category: Any) -> Any:
+    """画面上の「未分類」値を同一categoryとしてNULL lastで並べます。"""
+    normalized = func.nullif(func.nullif(category, ""), "未分類")
+    return nullslast(asc(normalized))
+
+
 class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     """勤怠種別固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
@@ -29,7 +35,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(func.nullif(func.nullif(self.model.category, ""), "未分類"))),
+                _display_category_sort_key(self.model.category),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -48,7 +54,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(func.nullif(func.nullif(self.model.category, ""), "未分類"))),
+                _display_category_sort_key(self.model.category),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -72,7 +78,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(func.nullif(func.nullif(Location.category, ""), "未分類"))),
+                    _display_category_sort_key(Location.category),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )
@@ -89,7 +95,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(func.nullif(func.nullif(Location.category, ""), "未分類"))),
+                    _display_category_sort_key(Location.category),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )
