@@ -120,6 +120,9 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         location_id = client.post(
             "/api/v1/locations", json={"name": f"pg-location-{suffix}"}
         ).json()["id"]
+
+        calendar_response = client.get("/calendar", params={"month": "2031-01"})
+        assert calendar_response.status_code == 200
         user_id = f"pg-user-{suffix}"
         user_response = client.post(
             "/api/v1/users",
