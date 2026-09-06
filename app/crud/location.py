@@ -8,7 +8,7 @@
 from typing import Dict, List, Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import asc, nullslast
+from sqlalchemy import asc, func, nullslast
 from sqlalchemy.orm import Session
 
 from app.core.config import logger
@@ -25,11 +25,11 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[Location]:
-        """category、order、IDの順で勤怠種別一覧を取得します。"""
+        """表示上のcategory、order、IDの順で勤怠種別一覧を取得します。"""
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(self.model.category)),
+                nullslast(asc(func.nullif(self.model.category, ""))),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -39,15 +39,16 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         )
 
     def list_all(self, db: Session) -> List[Location]:
-        """paginationせず、全勤怠種別をcategory、order、ID順で取得する。
+        """paginationせず、全勤怠種別を表示上のcategory、order、ID順で取得する。
 
+        空文字categoryとNULLは画面上どちらも「未分類」なので同一sort keyとして扱う。
         paginationを持たないmaster/read pathで完全な勤怠種別集合を扱うための共通read。
         明示的にpaginationするcallerだけ :meth:`get_multi` を利用する。
         """
         return (
             db.query(self.model)
             .order_by(
-                nullslast(asc(self.model.category)),
+                nullslast(asc(func.nullif(self.model.category, ""))),
                 nullslast(asc(self.model.order)),
                 asc(self.model.id),
             )
@@ -71,7 +72,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(Location.category)),
+                    nullslast(asc(func.nullif(Location.category, ""))),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )
@@ -88,7 +89,7 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
             locations = (
                 db.query(Location)
                 .order_by(
-                    nullslast(asc(Location.category)),
+                    nullslast(asc(func.nullif(Location.category, ""))),
                     nullslast(asc(Location.order)),
                     asc(Location.id),
                 )

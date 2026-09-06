@@ -70,3 +70,43 @@ async def test_attendance_modal_handles_nullable_location_order(
     assert response.status_code == 200
     assert response.text.index("Modal Zero") < response.text.index("Modal Later")
     assert response.text.index("Modal Later") < response.text.index("Modal Unordered")
+
+
+async def test_attendance_modal_sorts_normalized_uncategorized_locations_by_order(
+    async_client, db
+) -> None:
+    group = crud_group.create(db, obj_in=GroupCreate(name="uncategorized-order-group"))
+    user_type = crud_user_type.create(
+        db, obj_in=UserTypeCreate(name="uncategorized-order-type")
+    )
+    for name, category, order in (
+        ("Modal Null First", None, 0),
+        ("Modal Empty Later", "", 20),
+        ("Modal Null Unordered", None, None),
+    ):
+        crud_location.create(
+            db,
+            obj_in=LocationCreate(name=name, category=category, order=order),
+        )
+    crud_user.create(
+        db,
+        obj_in=UserCreate(
+            id="uncategorized-order-user",
+            username="Uncategorized Order User",
+            group_id=int(group.id),
+            user_type_id=int(user_type.id),
+        ),
+    )
+    db.commit()
+
+    response = await async_client.get(
+        "/attendance/modals/uncategorized-order-user/2031-05-03"
+    )
+
+    assert response.status_code == 200
+    assert response.text.index("Modal Null First") < response.text.index(
+        "Modal Empty Later"
+    )
+    assert response.text.index("Modal Empty Later") < response.text.index(
+        "Modal Null Unordered"
+    )

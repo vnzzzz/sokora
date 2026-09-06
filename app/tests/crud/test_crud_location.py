@@ -80,3 +80,24 @@ def test_list_all_locations_is_not_truncated_at_default_page_size(
         "All Location 001",
     ]
     assert str(locations[-1].name) == "All Location 100"
+
+
+def test_list_all_locations_sorts_empty_and_null_category_as_same_group(
+    db: Session,
+) -> None:
+    db.add_all(
+        [
+            Location(name="uncategorized-empty-later", category="", order=20),
+            Location(name="uncategorized-null-first", category=None, order=0),
+            Location(name="uncategorized-null-unordered", category=None, order=None),
+        ]
+    )
+    db.flush()
+
+    locations = crud.location.list_all(db)
+
+    assert [str(location.name) for location in locations] == [
+        "uncategorized-null-first",
+        "uncategorized-empty-later",
+        "uncategorized-null-unordered",
+    ]
