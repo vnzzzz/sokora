@@ -101,10 +101,10 @@ PostgreSQLのonline migrationはadvisory lockでsokora migration process間を�
 - SQLite restore等のexclusive maintenance中ではない
 - DB runtimeがfail-closedへfenceされていない
 - file-backed SQLiteではread-only connectionで実Alembic schemaを確認できる
-- PostgreSQLではrequest poolと独立した短時間接続で`SELECT 1`できる
+- PostgreSQLではrequest poolと独立した短時間接続で実Alembic schemaを確認できる
 - in-memory SQLiteではapplicationが実際に利用するruntime engine上でAlembic schemaを確認できる
 
-上記を満たさない場合は `503 {"status":"unavailable"}` を返す。file-backed SQLiteはread-only connectionでAlembic schemaを読み、missing/empty/schema-loss時にDBを新規作成せずunavailableとする。PostgreSQLはrequest poolと分離した短時間connectionでprobeし、connect / statement timeoutを持つ。in-memory SQLiteは別connectionでは別DBになるため、application runtime engine自身のAlembic schemaへread queryを行う。health responseへ内部exception、credential、filesystem path等を公開しない。
+上記を満たさない場合は `503 {"status":"unavailable"}` を返す。file-backed SQLiteはread-only connectionでAlembic schemaを読み、missing/empty/schema-loss時にDBを新規作成せずunavailableとする。PostgreSQLはrequest poolと分離した短時間connectionでAlembic schemaを読み、connect / statement timeoutを持つ。in-memory SQLiteは別connectionでは別DBになるため、application runtime engine自身のAlembic schemaへread queryを行う。health responseへ内部exception、credential、filesystem path等を公開しない。
 
 OCI `HEALTHCHECK`はPython標準ライブラリで`127.0.0.1:$PORT`へ直接接続し、runtime proxy availabilityへ依存しない。純粋なprocess liveness用`/livez`は現時点では提供しない。
 

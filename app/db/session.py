@@ -5,11 +5,11 @@ DB backend固有のengine設定とapplication instanceごとのresource ownershi
 同じDatabaseRuntimeが調停し、置換中のDBへ新しいrequestが接続しないことを保証する。
 """
 
+import sqlite3
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-import sqlite3
 from threading import Condition
 from typing import Any, Dict
 from urllib.parse import unquote, urlsplit
@@ -31,6 +31,7 @@ _ALEMBIC_CONFIG_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic.ini
 _ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
 _READINESS_CONNECT_TIMEOUT_SECONDS = 2
 _READINESS_STATEMENT_TIMEOUT_MS = 2000
+_READINESS_SCHEMA_SQL = "SELECT 1 FROM alembic_version LIMIT 1"
 
 
 class DatabaseRuntimeUnavailableError(RuntimeError):
@@ -350,7 +351,7 @@ def _probe_database_connection(database_url: str, runtime_engine: Engine) -> boo
 
     if backend == "sqlite" and _sqlite_is_memory_database(url):
         with runtime_engine.connect() as connection:
-            return connection.scalar(text("SELECT 1 FROM alembic_version LIMIT 1")) == 1
+            return connection.scalar(text(_READINESS_SCHEMA_SQL)) == 1
 
     if backend == "sqlite":
         database_path = sqlite_database_path(database_url)
@@ -368,7 +369,7 @@ def _probe_database_connection(database_url: str, runtime_engine: Engine) -> boo
     )
     try:
         with probe_engine.connect() as connection:
-            return connection.scalar(text("SELECT 1")) == 1
+            return connection.scalar(text(_READINESS_SCHEMA_SQL)) == 1
     finally:
         probe_engine.dispose()
 
@@ -400,7 +401,7 @@ def _probe_file_sqlite_database(database_path: Path) -> bool:
     try:
         return (
             connection.execute(
-                "SELECT 1 FROM alembic_version LIMIT 1"
+                _READINESS_SCHEMA_SQL
             ).fetchone()
             == (1,)
         )

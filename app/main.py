@@ -61,7 +61,7 @@ async def health_check(request: Request) -> JSONResponse:
     """runtimeとDBがrequest処理可能かをplatform readiness probeへ返す。
 
     application-scoped DatabaseRuntimeが存在し、maintenance/fence中ではなく、
-    DBへの短時間接続とSELECT 1が成功した場合だけHTTP 200を返す。同期DB probeは
+    DBへの短時間readiness queryが成功した場合だけHTTP 200を返す。同期DB probeは
     threadpoolで実行し、event loopをblockしない。内部failure reasonやcredential/path等は
     responseへ公開しない。認証不要であることもruntime contractの一部。
     """
