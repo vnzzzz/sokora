@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import logger
 from app.db.session import get_db
 from app.services import calendar_read_service
-from app.utils.calendar_utils import get_current_month_formatted
+from app.utils.calendar_utils import get_current_month_formatted, parse_date
 
 router = APIRouter(prefix="/calendar", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -49,7 +49,17 @@ def get_day_detail(
     db: Session = Depends(get_db),
 ) -> Any:
     """日別calendar detailをrenderする。"""
-    view_model = calendar_read_service.get_day_detail_view_model(db, day=day)
+    target_date = parse_date(day)
+    if target_date is None:
+        return HTMLResponse(
+            content="無効な日付です。",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    view_model = calendar_read_service.get_day_detail_view_model(
+        db,
+        day=target_date,
+    )
     return templates.TemplateResponse(
         "components/top/day_detail.html",
         {"request": request, **view_model},
