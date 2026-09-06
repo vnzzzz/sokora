@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 from fastapi import Request
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.engine import URL, make_url
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
@@ -48,15 +48,18 @@ class DatabaseRuntimeUnavailableError(RuntimeError):
 def is_database_unavailable_error(exc: Exception) -> bool:
     """verified disconnect / connection acquisition failureだけをavailability errorとする。
 
-    SQL statement自体が失敗したDBAPIErrorはprogramming/schema errorの可能性があるため、
-    connection invalidationが確認できる場合かstatement未生成の接続取得失敗だけを503候補にする。
-    pool/connection acquisition timeoutとfail-closed runtimeはavailability failureとして扱う。
+    ``connection_invalidated`` はSQLAlchemyが認識したdisconnectとして扱う。statementが無い
+    DBAPIErrorだけではcommit/rollback時のIntegrityError等も含み得るため、接続取得時に一般的な
+    OperationalError / InterfaceErrorに限定してavailability候補とする。
+    pool/connection acquisition timeoutとfail-closed runtimeもavailability failureとして扱う。
     """
     if isinstance(exc, (DatabaseRuntimeUnavailableError, SQLAlchemyTimeoutError)):
         return True
-    return isinstance(exc, DBAPIError) and (
-        exc.connection_invalidated or exc.statement is None
-    )
+    if not isinstance(exc, DBAPIError):
+        return False
+    if exc.connection_invalidated:
+        return True
+    return exc.statement is None and isinstance(exc, (OperationalError, InterfaceError))
 
 
 @dataclass
