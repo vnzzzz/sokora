@@ -14,7 +14,11 @@ from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
 
 from app.core.config import logger
-from app.db.session import DatabaseRuntimeUnavailableError, get_db
+from app.db.session import (
+    DatabaseRuntimeUnavailableError,
+    get_db,
+    is_database_unavailable_error,
+)
 from app.utils.csv_utils import generate_work_entries_csv_rows
 
 router = APIRouter(prefix="/csv", tags=["Data"])
@@ -57,15 +61,6 @@ def _stream_prepared_csv(csv_file: BinaryIO) -> Iterator[bytes]:
         csv_file.close()
 
 
-def _is_database_unavailable_error(exc: Exception) -> bool:
-    """verified disconnect / connection acquisition failureだけをavailability errorとする。"""
-    if isinstance(exc, (DatabaseRuntimeUnavailableError, SQLAlchemyTimeoutError)):
-        return True
-    return isinstance(exc, DBAPIError) and (
-        exc.connection_invalidated or exc.statement is None
-    )
-
-
 @router.get("/download")
 def download_csv(
     month: Optional[str] = Query(
@@ -102,7 +97,7 @@ def download_csv(
             normalized_encoding,
         )
     except (DatabaseRuntimeUnavailableError, DBAPIError, SQLAlchemyTimeoutError) as exc:
-        if _is_database_unavailable_error(exc):
+        if is_database_unavailable_error(exc):
             logger.error("CSV生成時にDBを利用できません: %s", exc, exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
