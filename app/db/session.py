@@ -142,11 +142,11 @@ class DatabaseRuntime:
             return self._unavailable_reason
 
     def probe_readiness(self) -> bool:
-        """runtime stateとDB lightweight queryからrequest処理可能性を判定する。
+        """runtime stateとDB schema queryからrequest処理可能性を判定する。
 
         maintenance/fence中は待機せずFalseを返す。通常時はprobeをactive session相当に
-        登録してSQLite restore等のexclusive maintenanceと競合させず、request poolとは
-        独立した短時間接続でDBへSELECT 1を実行する。
+        登録してSQLite restore等のexclusive maintenanceと競合させず、backendごとの
+        bounded/read-only contractで実Alembic schemaへの到達性を確認する。
         """
         with self._condition:
             if self._maintenance_active or self._unavailable_reason is not None:
