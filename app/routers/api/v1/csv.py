@@ -108,7 +108,9 @@ def download_csv(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="データベースが一時的に利用できないため、CSVを生成できません。",
             ) from exc
-        logger.error("CSV生成中にDB statement errorが発生しました: %s", exc, exc_info=True)
+        logger.error(
+            "CSV生成中にDB statement errorが発生しました: %s", exc, exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="CSVファイルの生成中にエラーが発生しました。",
