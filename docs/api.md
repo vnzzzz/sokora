@@ -78,7 +78,7 @@ user create/updateではgroup/user typeの参照整合性を検証する。user 
 
 ### CSV
 
-- `GET /api/v1/csv/download?month=YYYY-MM&encoding=utf-8|sjis`: 月次勤怠CSVをstreaming responseで返す。month/encodingを検証し、download filenameを`Content-Disposition`で指定する。
+- `GET /api/v1/csv/download?month=YYYY-MM&encoding=utf-8|sjis`: 月次勤怠CSVを返す。month/encodingを検証し、CSV生成とencodeが成功した後にdownload responseを開始する。invalid requestは400、DB/runtime unavailableは503、unexpected internal failureは500とし、failureをCSV本文へ埋め込んだ200 responseにはしない。正常時はdownload filenameを`Content-Disposition`で指定する。
 
 custom holidayのCRUDは現時点でJSON APIを持たず、page/HTMX adapter + serviceで提供する。APIの対称性だけを理由に未使用endpointを追加しない。
 

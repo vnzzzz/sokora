@@ -31,3 +31,20 @@ def test_healthz_reports_fenced_database_runtime_unavailable() -> None:
 
     assert response.status_code == 503
     assert response.json() == {"status": "unavailable"}
+
+
+def test_fenced_database_runtime_returns_503_for_csv_download() -> None:
+    settings = AppSettings(database_url="sqlite:///:memory:")
+    app = create_application(settings)
+
+    with TestClient(app) as client:
+        runtime = app.state.database_runtime
+        runtime.mark_unavailable("forced recovery failure at /internal/database/path")
+
+        response = client.get("/api/v1/csv/download?month=2032-05")
+
+    assert response.status_code == 503
+    assert response.headers["content-type"].startswith("application/json")
+    assert "content-disposition" not in response.headers
+    assert "forced recovery failure" not in response.text
+    assert "/internal/database/path" not in response.text

@@ -6,6 +6,7 @@ import datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.utils.csv_utils import (
@@ -227,15 +228,10 @@ class TestGenerateWorkEntriesCsvRows:
         self, mock_crud_user: Any
     ) -> None:
         """generate_work_entries_csv_rows関数のテスト（エラー処理）"""
-        # ユーザー取得でエラーを発生
-        mock_crud_user.get_all_users_with_details.side_effect = Exception("DB Error")
+        mock_crud_user.get_all_users_with_details.side_effect = RuntimeError("DB Error")
 
-        rows = list(generate_work_entries_csv_rows(self.mock_db, "2024-02"))
-
-        # ヘッダー行 + エラー行
-        assert len(rows) == 2
-        assert rows[0][0] == "user_name"  # ヘッダー行
-        assert rows[1][0] == "Error generating CSV data"  # エラー行
+        with pytest.raises(RuntimeError, match="DB Error"):
+            list(generate_work_entries_csv_rows(self.mock_db, "2024-02"))
 
     @patch("app.utils.csv_utils.crud_user")
     @patch("app.utils.csv_utils.attendance_read_service")
