@@ -61,7 +61,7 @@ HTTP adapters
 - containerは`PORT`でlistenし、DB/auth/config/secretはruntime injectionする。mutable DBやsecretをimageへ埋め込まない。
 - provider固有のregistry、network、identity、secret injection、managed PostgreSQL接続、probe、scaling、IaCはdeployment adapterへ閉じ込める。
 - application coreやDB access層へGCP/AWS/Azure固有SDKを追加しない。
-- health checkは認証不要の`GET /healthz`を共通入口とする。DB runtimeがfail-closedへfenceされた場合は503を返す。
+- health checkは認証不要の`GET /healthz`を共通readiness入口とする。application runtimeが利用可能でDBへのlightweight queryが成功した場合だけ200を返し、maintenance/fence/DB unavailableでは503を返す。
 
 共通contractは [runtime.md](runtime.md)、providerごとの実装statusは [deployment.md](deployment.md)、architecture decisionは [ADR 0004](adr/0004-provider-neutral-oci-deployment.md) を参照する。
 

@@ -19,6 +19,41 @@ def test_healthz_is_available_without_authentication() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_healthz_reports_database_probe_failure_unavailable(monkeypatch) -> None:
+    settings = AppSettings(database_url="sqlite:///:memory:")
+    app = create_application(settings)
+
+    with TestClient(app) as client:
+        runtime = app.state.database_runtime
+        monkeypatch.setattr(runtime, "probe_readiness", lambda: False, raising=False)
+
+        response = client.get("/healthz")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable"}
+
+
+def test_healthz_does_not_expose_probe_failure_details(monkeypatch) -> None:
+    settings = AppSettings(database_url="sqlite:///:memory:")
+    app = create_application(settings)
+
+    with TestClient(app) as client:
+        runtime = app.state.database_runtime
+
+        def failed_probe() -> bool:
+            runtime.mark_unavailable("credential=secret /internal/database/path")
+            return False
+
+        monkeypatch.setattr(runtime, "probe_readiness", failed_probe)
+
+        response = client.get("/healthz")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable"}
+    assert "secret" not in response.text
+    assert "/internal/database/path" not in response.text
+
+
 def test_healthz_reports_fenced_database_runtime_unavailable() -> None:
     settings = AppSettings(database_url="sqlite:///:memory:")
     app = create_application(settings)

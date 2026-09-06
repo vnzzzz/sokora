@@ -5,6 +5,7 @@ DB backend固有のengine設定とapplication instanceごとのresource ownershi
 同じDatabaseRuntimeが調停し、置換中のDBへ新しいrequestが接続しないことを保証する。
 """
 
+import sqlite3
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -14,10 +15,10 @@ from typing import Any, Dict
 from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 from starlette.applications import Starlette
 
 from app.core.config import logger
@@ -28,6 +29,9 @@ Base = declarative_base()
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _ALEMBIC_CONFIG_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic.ini"
 _ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
+_READINESS_CONNECT_TIMEOUT_SECONDS = 2
+_READINESS_STATEMENT_TIMEOUT_MS = 2000
+_READINESS_SCHEMA_SQL = "SELECT 1 FROM alembic_version LIMIT 1"
 
 
 class DatabaseRuntimeUnavailableError(RuntimeError):
@@ -136,6 +140,34 @@ class DatabaseRuntime:
         """runtimeがfenceされている場合だけ内部diagnostic reasonを返す。"""
         with self._condition:
             return self._unavailable_reason
+
+    def probe_readiness(self) -> bool:
+        """runtime stateとDB schema queryからrequest処理可能性を判定する。
+
+        maintenance/fence中は待機せずFalseを返す。通常時はprobeをactive session相当に
+        登録してSQLite restore等のexclusive maintenanceと競合させず、backendごとの
+        bounded/read-only contractで実Alembic schemaへの到達性を確認する。
+        """
+        with self._condition:
+            if self._maintenance_active or self._unavailable_reason is not None:
+                return False
+            self._active_sessions += 1
+
+        probe_succeeded = False
+        try:
+            probe_succeeded = _probe_database_connection(self.database_url, self.engine)
+        except Exception:
+            logger.warning("Database readiness probe failed", exc_info=True)
+        finally:
+            with self._condition:
+                self._active_sessions -= 1
+                runtime_usable = (
+                    not self._maintenance_active and self._unavailable_reason is None
+                )
+                if self._active_sessions == 0:
+                    self._condition.notify_all()
+
+        return probe_succeeded and runtime_usable
 
     def recreate_connections(self) -> None:
         """現在のpoolを破棄し、同じdatabase URLへengine/session factoryを再bindする。
@@ -310,6 +342,68 @@ def sqlite_database_path(database_url: str) -> Path | None:
 
     path = Path(database)
     return path if path.is_absolute() else Path.cwd() / path
+
+
+def _probe_database_connection(database_url: str, runtime_engine: Engine) -> bool:
+    """supported DBの実runtimeへ短時間のreadiness queryを実行する。"""
+    url = sqlalchemy_database_url(database_url)
+    backend = url.get_backend_name()
+
+    if backend == "sqlite" and _sqlite_is_memory_database(url):
+        with runtime_engine.connect() as connection:
+            return connection.scalar(text(_READINESS_SCHEMA_SQL)) == 1
+
+    if backend == "sqlite":
+        database_path = sqlite_database_path(database_url)
+        if database_path is None:
+            return False
+        return _probe_file_sqlite_database(database_path)
+
+    if backend != "postgresql":
+        return False
+
+    probe_engine = create_engine(
+        url,
+        poolclass=NullPool,
+        connect_args=_postgresql_readiness_connect_args(url),
+    )
+    try:
+        with probe_engine.connect() as connection:
+            return connection.scalar(text(_READINESS_SCHEMA_SQL)) == 1
+    finally:
+        probe_engine.dispose()
+
+
+def _postgresql_readiness_connect_args(url: URL) -> dict[str, object]:
+    """runtime URLのlibpq optionsを保持しつつreadiness timeoutを追加する。"""
+    configured_options = url.query.get("options", "")
+    if isinstance(configured_options, tuple):
+        existing_options = " ".join(configured_options)
+    else:
+        existing_options = str(configured_options)
+    timeout_option = f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}"
+    options = " ".join(
+        part for part in (existing_options.strip(), timeout_option) if part
+    )
+    return {
+        "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
+        "options": options,
+    }
+
+
+def _probe_file_sqlite_database(database_path: Path) -> bool:
+    """file-backed SQLiteを作成/変更せず、実schemaをread-onlyで確認する。"""
+    database_uri = f"{database_path.resolve().as_uri()}?mode=ro"
+    connection = sqlite3.connect(
+        database_uri,
+        uri=True,
+        timeout=_READINESS_CONNECT_TIMEOUT_SECONDS,
+        check_same_thread=False,
+    )
+    try:
+        return connection.execute(_READINESS_SCHEMA_SQL).fetchone() == (1,)
+    finally:
+        connection.close()
 
 
 def alembic_heads() -> tuple[str, ...]:

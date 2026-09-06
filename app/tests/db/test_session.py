@@ -33,6 +33,64 @@ def test_create_database_runtime_uses_supplied_database_url(tmp_path: Path) -> N
         runtime.dispose()
 
 
+def test_database_runtime_readiness_probe_detects_missing_sqlite_file(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "readiness.db"
+    runtime = create_database_runtime(f"sqlite:///{database_path}")
+    try:
+        migrate_database(runtime)
+        assert runtime.probe_readiness() is True
+
+        runtime.engine.dispose()
+        database_path.unlink()
+
+        assert runtime.probe_readiness() is False
+        assert not database_path.exists()
+    finally:
+        runtime.dispose()
+
+
+def test_database_runtime_readiness_probe_detects_missing_file_schema(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "readiness-schema.db"
+    runtime = create_database_runtime(f"sqlite:///{database_path}")
+    try:
+        migrate_database(runtime)
+        assert runtime.probe_readiness() is True
+
+        runtime.engine.dispose()
+        database_path.unlink()
+        database_path.touch()
+
+        assert runtime.probe_readiness() is False
+    finally:
+        runtime.dispose()
+
+
+def test_database_runtime_readiness_probe_detects_lost_in_memory_schema() -> None:
+    runtime = create_database_runtime("sqlite:///:memory:")
+    try:
+        migrate_database(runtime)
+        assert runtime.probe_readiness() is True
+
+        runtime.engine.dispose()
+
+        assert runtime.probe_readiness() is False
+    finally:
+        runtime.dispose()
+
+
+def test_database_runtime_readiness_probe_is_unavailable_during_maintenance() -> None:
+    runtime = create_database_runtime("sqlite:///:memory:")
+    try:
+        with runtime.exclusive_maintenance():
+            assert runtime.probe_readiness() is False
+    finally:
+        runtime.dispose()
+
+
 def test_create_database_runtime_shares_sqlite_uri_memory_database() -> None:
     database_url = "sqlite:///file:memdb1?mode=memory&cache=shared&uri=true"
 
