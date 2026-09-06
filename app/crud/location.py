@@ -41,8 +41,8 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     def list_all(self, db: Session) -> List[Location]:
         """paginationせず、全勤怠種別をcategory、order、ID順で取得する。
 
-        analysis等、完全なmaster集合をprojection boundaryとして利用するread向け。
-        page/API paginationを意図するcallerは :meth:`get_multi` を利用する。
+        paginationを持たないmaster/read pathで完全な勤怠種別集合を扱うための共通read。
+        明示的にpaginationするcallerだけ :meth:`get_multi` を利用する。
         """
         return (
             db.query(self.model)

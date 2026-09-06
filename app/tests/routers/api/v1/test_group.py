@@ -67,7 +67,9 @@ async def test_get_groups_with_data(
 async def test_get_groups_is_not_truncated_at_default_page_size(
     async_client: AsyncClient, db: Session
 ) -> None:
-    db.add_all([Group(name=f"API Group {index:03d}", order=index) for index in range(101)])
+    db.add_all(
+        [Group(name=f"API Group {index:03d}", order=index) for index in range(101)]
+    )
     db.commit()
 
     response = await async_client.get("/api/v1/groups")
