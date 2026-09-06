@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ templates = Jinja2Templates(directory="app/templates")
 def get_analysis_page(
     request: Request,
     month: Optional[str] = None,
-    year: Optional[int] = None,
+    year: Optional[int] = Query(default=None, ge=1900, le=2100),
     mode: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
