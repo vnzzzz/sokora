@@ -3,8 +3,8 @@
 from datetime import date
 
 import pytest
-from fastapi import status
-from httpx import AsyncClient
+from fastapi import FastAPI, status
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -142,14 +142,14 @@ async def test_database_unavailable_analysis_failure_returns_503_without_detail(
     assert "sensitive database unavailable detail" not in response.text
 
 
-async def test_analysis_statement_error_is_not_misclassified_as_unavailable(
-    async_client: AsyncClient,
+async def test_analysis_statement_error_returns_generic_500_without_detail(
+    test_app: FastAPI,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     error = OperationalError(
         "SELECT missing_table",
         {},
-        RuntimeError("no such table"),
+        RuntimeError("sensitive no such table detail"),
     )
 
     def fail_read(*_args: object, **_kwargs: object) -> None:
@@ -161,7 +161,10 @@ async def test_analysis_statement_error_is_not_misclassified_as_unavailable(
         fail_read,
     )
 
-    with pytest.raises(OperationalError) as exc_info:
-        await async_client.get("/analysis?month=2031-05")
+    transport = ASGITransport(app=test_app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/analysis?month=2031-05")
 
-    assert exc_info.value is error
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "sensitive no such table detail" not in response.text
+    assert "SELECT missing_table" not in response.text
