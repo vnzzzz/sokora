@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from app.core.config import logger
 from app.db.session import get_db
 from app.services import calendar_read_service
-from app.utils.calendar_utils import get_current_month_formatted, parse_date, parse_month
+from app.utils.calendar_utils import (
+    get_current_month_formatted,
+    parse_date,
+    parse_month,
+)
 
 router = APIRouter(prefix="/calendar", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
