@@ -14,7 +14,6 @@ from app.utils.calendar_utils import (
 )
 from app.utils.ui_utils import get_location_color_classes
 
-
 UserViewRow = tuple[str, str, int, models.User]
 UserTypeSection = tuple[float, str, list[UserViewRow]]
 

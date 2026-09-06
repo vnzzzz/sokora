@@ -86,9 +86,7 @@ migrate: sync
 	PYTHONPATH=$(CURDIR) uv run alembic -c scripts/migration/alembic.ini upgrade head
 
 lint: sync
-	uv run ruff check app/services/attendance_read_service.py --fix || true
-	git diff -- app/services/attendance_read_service.py
-	false
+	uv run ruff check app scripts
 
 format: sync
 	uv run ruff check app scripts --select I --fix
