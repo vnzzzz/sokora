@@ -256,7 +256,7 @@ def test_day_detail_null_group_order_is_after_large_explicit_order(
 
     view_model = calendar_read_service.get_day_detail_view_model(
         db,
-        day=target_date.isoformat(),
+        day=target_date,
     )
 
     assert list(view_model["organized_by_group"]) == [
