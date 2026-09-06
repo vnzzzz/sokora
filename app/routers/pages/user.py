@@ -2,9 +2,10 @@
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app import schemas
@@ -95,18 +96,34 @@ async def user_delete_modal(
 @router.post("", response_class=HTMLResponse)
 async def create_user(
     request: Request,
-    user_in: schemas.UserCreate = Depends(schemas.UserCreate.as_form),
+    id: str = Form(...),
+    username: str = Form(...),
+    group_id: str = Form(...),
+    user_type_id: str = Form(...),
     db: Session = Depends(get_db),
 ) -> Any:
     """社員を作成し、標準master CRUD triggerを返す。"""
     modal_id = "user-modal-new"
     try:
+        user_in = schemas.UserCreate(
+            id=id,
+            username=username,
+            group_id=group_id,
+            user_type_id=user_type_id,
+        )
         created = user_service.create_user_with_validation(db=db, user_in=user_in)
         return responder.form_success(
             request,
             modal_id=modal_id,
             context=_user_form_context(db, created),
             message=f"社員 {created.username} を追加しました。",
+        )
+    except ValidationError:
+        return responder.form_error(
+            request,
+            modal_id=modal_id,
+            context=_user_form_context(db, None),
+            errors={"id": ["ユーザーIDは半角英数、-、_のみ使用できます。"]},
         )
     except (HTTPException, ApplicationError) as exc:
         detail = str(exc.detail)

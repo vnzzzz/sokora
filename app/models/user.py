@@ -5,7 +5,7 @@
 ユーザーのSQLAlchemyモデル。
 """
 
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -15,6 +15,7 @@ class User(Base):  # type: ignore
     """システム内の社員を表すユーザーモデル"""
 
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("username", name="uq_users_username"),)
 
     id = Column(String, primary_key=True, nullable=False, index=True)
     username = Column(String, nullable=False, index=True)

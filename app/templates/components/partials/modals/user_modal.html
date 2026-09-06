@@ -32,6 +32,8 @@
         name="id"
         class="input input-bordered w-full"
         value="{{ user.id if user else '' }}"
+        pattern="[A-Za-z0-9_-]+"
+        title="半角英数、-、_のみ使用できます"
         required
       >
     </div>

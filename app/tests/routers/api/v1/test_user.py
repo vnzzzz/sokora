@@ -435,3 +435,28 @@ async def test_delete_user_not_found(async_client: AsyncClient) -> None:
 # ユーザー削除時に勤怠データも削除されるため、in_use のテストは不要
 # async def test_delete_user_in_use(async_client: AsyncClient, db: Session) -> None:
 #     ...
+
+
+@pytest.mark.parametrize(
+    "invalid_user_id",
+    ["contains space", "日本語ID", "slash/id"],
+)
+async def test_create_user_rejects_invalid_user_id(
+    async_client: AsyncClient,
+    db: Session,
+    invalid_user_id: str,
+) -> None:
+    test_group, test_user_type = create_test_dependencies(db)
+
+    response = await async_client.post(
+        "/api/v1/users",
+        json={
+            "id": invalid_user_id,
+            "username": f"Invalid ID {invalid_user_id}",
+            "group_id": test_group.id,
+            "user_type_id": test_user_type.id,
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert db.get(User, invalid_user_id) is None

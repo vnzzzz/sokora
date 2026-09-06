@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import IntegrityError
 
 from app.core.settings import AppSettings
 from app.db.session import (
@@ -124,16 +125,40 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         calendar_response = client.get("/calendar", params={"month": "2031-01"})
         assert calendar_response.status_code == 200
         user_id = f"pg-user-{suffix}"
+        username = f"PostgreSQL User {suffix}"
         user_response = client.post(
             "/api/v1/users",
             json={
                 "id": user_id,
-                "username": f"PostgreSQL User {suffix}",
+                "username": username,
                 "group_id": group_id,
                 "user_type_id": user_type_id,
             },
         )
         assert user_response.status_code == 200
+
+        user_constraints = inspect(runtime.engine).get_unique_constraints("users")
+        assert any(
+            constraint["name"] == "uq_users_username"
+            and set(constraint["column_names"]) == {"username"}
+            for constraint in user_constraints
+        )
+        with runtime.session_factory() as db:
+            with pytest.raises(IntegrityError):
+                db.execute(
+                    text(
+                        "insert into users (id, username, group_id, user_type_id) "
+                        "values (:id, :username, :group_id, :user_type_id)"
+                    ),
+                    {
+                        "id": f"{user_id}-duplicate",
+                        "username": username,
+                        "group_id": group_id,
+                        "user_type_id": user_type_id,
+                    },
+                )
+                db.commit()
+            db.rollback()
 
         attendance_date = date(2031, 1, 15).isoformat()
         attendance_payload = {
