@@ -46,6 +46,7 @@ def test_database_runtime_readiness_probe_detects_missing_sqlite_file(
         database_path.unlink()
 
         assert runtime.probe_readiness() is False
+        assert not database_path.exists()
     finally:
         runtime.dispose()
 

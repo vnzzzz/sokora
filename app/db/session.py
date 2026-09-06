@@ -9,6 +9,7 @@ from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+import sqlite3
 from threading import Condition
 from typing import Any, Dict
 from urllib.parse import unquote, urlsplit
@@ -353,30 +354,46 @@ def _probe_database_connection(database_url: str, runtime_engine: Engine) -> boo
 
     if backend == "sqlite":
         database_path = sqlite_database_path(database_url)
-        if database_path is not None and not database_path.exists():
+        if database_path is None:
             return False
-        connect_args: dict[str, object] = {
-            "check_same_thread": False,
-            "timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
-        }
-    elif backend == "postgresql":
-        connect_args = {
-            "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
-            "options": f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}",
-        }
-    else:
+        return _probe_file_sqlite_database(database_path)
+
+    if backend != "postgresql":
         return False
 
     probe_engine = create_engine(
         url,
         poolclass=NullPool,
-        connect_args=connect_args,
+        connect_args={
+            "connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
+            "options": f"-c statement_timeout={_READINESS_STATEMENT_TIMEOUT_MS}",
+        },
     )
     try:
         with probe_engine.connect() as connection:
             return connection.scalar(text("SELECT 1")) == 1
     finally:
         probe_engine.dispose()
+
+
+def _probe_file_sqlite_database(database_path: Path) -> bool:
+    """file-backed SQLiteを作成/変更せず、実schemaをread-onlyで確認する。"""
+    database_uri = f"{database_path.resolve().as_uri()}?mode=ro"
+    connection = sqlite3.connect(
+        database_uri,
+        uri=True,
+        timeout=_READINESS_CONNECT_TIMEOUT_SECONDS,
+        check_same_thread=False,
+    )
+    try:
+        return (
+            connection.execute(
+                "SELECT 1 FROM alembic_version LIMIT 1"
+            ).fetchone()
+            == (1,)
+        )
+    finally:
+        connection.close()
 
 
 def alembic_heads() -> tuple[str, ...]:
