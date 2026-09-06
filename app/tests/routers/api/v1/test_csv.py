@@ -10,7 +10,6 @@ from httpx import AsyncClient
 from sqlalchemy.exc import OperationalError
 
 from app.routers.api.v1 import csv as csv_router
-
 from app.tests.routers.api.v1.test_attendance import (
     create_test_group_via_api,
     create_test_location_via_api,
