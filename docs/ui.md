@@ -35,8 +35,8 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
 - `/`: top page。`/calendar`からmonthly summaryをHTMX loadし、日付選択で`/calendar/day/{YYYY-MM-DD}`のdetailを取得する。
 - `/calendar`: month queryに対応するsummary calendar。routerはHTTP input/renderを担当し、DB readとview model生成はcalendar read serviceへ委譲する。DB由来のprocess-local cacheは持たない。
 - `/calendar/day/{day}`: daily attendance detail。request開始時点のDB stateからgroup/user type/location等をまとめて表示する。
-- `/attendance/weekly`: weekly attendance calendar。cellからattendance modalを開き、writeは`/attendance/entries` page/HTMX adapterを利用する。
-- `/attendance/monthly`: user list + user calendar。`/attendance/monthly/users/{user_id}`、`/attendance/modals/{user_id}/{date}`等のHTMX partialを利用する。
+- `/attendance/weekly`: weekly attendance calendar。routerはHTTP input/renderに集中し、user grouping・location master・period attendanceのread modelは`attendance_read_service`へ委譲する。user単位queryは行わない。cellからattendance modalを開き、writeは`/attendance/entries` page/HTMX adapterを利用する。
+- `/attendance/monthly`: user list + user calendar。read modelは`attendance_read_service`へ集約し、user listは不要なcalendar queryを行わず、user calendarは対象user/periodだけを一括readする。`/attendance/monthly/users/{user_id}`、`/attendance/modals/{user_id}/{date}`等のHTMX partialを利用する。
 - attendance write成功時は`closeModal` / `refreshAttendance` / `refreshUserAttendance`等の`HX-Trigger`を返し、clientが対象calendarを再取得する。
 - refresh対象のmonth/weekは変更対象dateから導出し、`Referer`やtest専用headerをUI stateのSSoTにしない。
 - application errorはHTML fragmentとしてmodal内へ返し、JSON API error responseをHTML targetへ流用しない。

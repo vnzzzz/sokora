@@ -11,7 +11,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import asc, func, nullslast
 from sqlalchemy.orm import Session
 
-from app.core.config import logger
 from app.models.attendance import Attendance
 from app.models.location import Location
 from app.schemas.location import LocationCreate, LocationUpdate
@@ -71,40 +70,6 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         if existing:
             return existing
         return self.create(db, obj_in=LocationCreate(name=name))
-
-    def get_all_locations(self, db: Session) -> List[str]:
-        """表示順に並べた勤怠種別名だけを返します。取得失敗時は空listです。"""
-        try:
-            locations = (
-                db.query(Location)
-                .order_by(
-                    _display_category_sort_key(Location.category),
-                    nullslast(asc(Location.order)),
-                    asc(Location.id),
-                )
-                .all()
-            )
-            return [str(loc.name) for loc in locations]
-        except Exception as e:
-            logger.error(f"Error getting location types: {str(e)}")
-            return []
-
-    def get_location_dict(self, db: Session) -> Dict[int, str]:
-        """勤怠種別を ``{id: name}`` 形式で返します。取得失敗時は空dictです。"""
-        try:
-            locations = (
-                db.query(Location)
-                .order_by(
-                    _display_category_sort_key(Location.category),
-                    nullslast(asc(Location.order)),
-                    asc(Location.id),
-                )
-                .all()
-            )
-            return {int(loc.id): str(loc.name) for loc in locations}
-        except Exception as e:
-            logger.error(f"Error getting location dict: {str(e)}")
-            return {}
 
     def get_or_create_multiple(
         self, db: Session, *, location_names: List[str]
