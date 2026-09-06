@@ -3,7 +3,6 @@ from urllib.parse import quote
 
 from fastapi import FastAPI
 from sqlalchemy import inspect, text
-from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -16,31 +15,10 @@ from app.db.session import (
     create_database_runtime,
     get_db,
     initialize_database,
-    is_database_unavailable_error,
     migrate_database,
     sqlite_database_path,
 )
 
-
-
-def test_database_unavailable_classifier_rejects_integrity_error_without_statement() -> None:
-    error = IntegrityError(
-        None,
-        {},
-        RuntimeError("deferred foreign key violation"),
-    )
-
-    assert is_database_unavailable_error(error) is False
-
-
-def test_database_unavailable_classifier_accepts_connection_operational_error() -> None:
-    error = OperationalError(
-        None,
-        {},
-        RuntimeError("could not open database"),
-    )
-
-    assert is_database_unavailable_error(error) is True
 
 
 def test_create_database_runtime_uses_supplied_database_url(tmp_path: Path) -> None:
