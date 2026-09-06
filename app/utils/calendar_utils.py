@@ -16,7 +16,6 @@ from urllib.parse import urlparse
 
 from fastapi import Request
 
-from app.core.config import logger
 from app.models.attendance import Attendance  # Attendancesの型ヒント用に必要
 from app.utils.holiday_cache import get_holiday_name, is_holiday
 from app.utils.ui_utils import generate_location_data
@@ -377,109 +376,43 @@ def build_week_calendar_data(
     attendance_counts: Dict[int, int],
     location_types: List[str],
 ) -> Dict[str, Any]:
+    """特定週のcalendar dataをDB accessなしで構築する。
+
+    validation errorやunexpected errorはempty dataへ握り潰さずcallerへ伝播する。
     """
-    特定の週のカレンダーデータを構築する（DBアクセスなし）
+    monday = parse_week(week_str)
+    week_name = format_week_name(monday)
+    week_days = [monday + timedelta(days=i) for i in range(7)]
 
-    Args:
-        week_str: 週文字列（月曜日の日付、YYYY-MM-DD形式）
-        attendances: 対象週の全勤怠レコードのリスト
-        attendance_counts: 日付の日部分をキー、勤怠データ数を値とする辞書
-        location_types: 利用可能な全勤怠種別名のソート済みリスト
+    location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    for attendance_record in attendances:
+        day = attendance_record.date.day
+        location_name = str(attendance_record.location_info)
+        location_counts[day][location_name] += 1
 
-    Returns:
-        Dict[str, Any]: カレンダーデータ
-                       エラー時は空のデータを返す可能性がある
-    """
-    try:
-        # 対象週を解析（月曜日の日付）
-        monday = parse_week(week_str)
-        week_name = format_week_name(monday)
-
-        # 週の7日間を生成（月曜日から日曜日）
-        week_days = []
-        for i in range(7):
-            day_date = monday + timedelta(days=i)
-            week_days.append(day_date)
-
-        # 日付をキー、勤怠種別名をサブキーとするネストしたカウント辞書を初期化
-        location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(
-            lambda: defaultdict(int)
-        )
-
-        # 取得した勤怠レコードを日ごと・勤怠種別ごとに集計
-        for attendance_record in attendances:
-            day = attendance_record.date.day
-            # locationリレーションから名前を取得
-            location_name = str(attendance_record.location_info)
-            location_counts[day][location_name] += 1
-
-        # カレンダー表示用のデータ構造を構築（1週間分）
-        week_data = []
-        for day_date in week_days:
-            date_str = format_date(day_date)
-            day = day_date.day
-
-            # 事前に一括取得したデータから、この日の総勤怠数を取得
-            attendance_count = attendance_counts.get(day, 0)
-
-            # 祝日判定と祝日名取得
-            is_holiday_flag = is_holiday(day_date)
-            holiday_name = get_holiday_name(day_date)
-
-            day_data = {
-                "day": day,
-                "date": date_str,
-                "has_data": attendance_count > 0,
-                "is_holiday": is_holiday_flag,
-                "holiday_name": holiday_name,
-            }
-
-            # 各勤怠種別ごとの勤怠数を追加
-            for loc_type in location_types:
-                day_data[loc_type] = location_counts[day].get(loc_type, 0)
-
-            week_data.append(day_data)
-
-        # 前週と翌週の週文字列（月曜日の日付）を計算
-        prev_week_monday = get_prev_week_date(monday)
-        prev_week = format_date(prev_week_monday)
-
-        next_week_monday = get_next_week_date(monday)
-        next_week = format_date(next_week_monday)
-
-        # UI表示用の勤怠種別データを生成
-        locations_ui_data = generate_location_data(location_types)
-
-        return {
-            "week_name": week_name,
-            "weeks": [week_data],  # 週単位なので1週間分のデータを配列に入れる
-            "locations": locations_ui_data,
-            "prev_week": prev_week,
-            "next_week": next_week,
+    week_data = []
+    for day_date in week_days:
+        day = day_date.day
+        day_data = {
+            "day": day,
+            "date": format_date(day_date),
+            "has_data": attendance_counts.get(day, 0) > 0,
+            "is_holiday": is_holiday(day_date),
+            "holiday_name": get_holiday_name(day_date),
         }
-    except ValueError as ve:
-        logger.error(f"週フォーマット解析エラー: {str(ve)}")
-        # エラー発生時は空のデータを返す
-        return {
-            "week_name": "",
-            "weeks": [],
-            "locations": [],
-            "prev_week": "",
-            "next_week": "",
-        }
-    except Exception as e:
-        logger.error(
-            f"週カレンダーデータ構築中に予期せぬエラーが発生しました: {str(e)}",
-            exc_info=True,
-        )
-        # エラー発生時は空のデータを返す
-        return {
-            "week_name": "",
-            "weeks": [],
-            "locations": [],
-            "prev_week": "",
-            "next_week": "",
-        }
+        for loc_type in location_types:
+            day_data[loc_type] = location_counts[day].get(loc_type, 0)
+        week_data.append(day_data)
+
+    return {
+        "week_name": week_name,
+        "weeks": [week_data],
+        "locations": generate_location_data(location_types),
+        "prev_week": format_date(get_prev_week_date(monday)),
+        "next_week": format_date(get_next_week_date(monday)),
+    }
 
 
 # --- カレンダー関連ユーティリティ ---
@@ -491,124 +424,56 @@ def build_calendar_data(
     attendance_counts: Dict[int, int],
     location_types: List[str],
 ) -> Dict[str, Any]:
+    """特定月のcalendar dataをDB accessなしで構築する。
+
+    validation errorやunexpected errorはempty dataへ握り潰さずcallerへ伝播する。
     """
-    特定の月のカレンダーデータを構築する（DBアクセスなし）
+    year, month_num = parse_month(month)
+    month_name = f"{year}年{month_num}月"
+    month_calendar = calendar.monthcalendar(year, month_num)
 
-    Args:
-        month: 月文字列（YYYY-MM形式）
-        attendances: 対象月の全勤怠レコードのリスト
-        attendance_counts: 日付の日部分をキー、勤怠データ数を値とする辞書
-        location_types: 利用可能な全勤怠種別名のソート済みリスト
+    location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    for attendance_record in attendances:
+        day = attendance_record.date.day
+        location_name = str(attendance_record.location_info)
+        location_counts[day][location_name] += 1
 
-    Returns:
-        Dict[str, Any]: カレンダーデータ
-                       エラー時は空のデータを返す可能性がある
-    """
-    try:
-        # 対象月を解析
-        year, month_num = parse_month(month)
+    weeks = []
+    for week in month_calendar:
+        week_data = []
+        for day in week:
+            if day == 0:
+                day_data = {
+                    "day": 0,
+                    "date": "",
+                    "has_data": False,
+                }
+                for loc_type in location_types:
+                    day_data[loc_type] = 0
+                week_data.append(day_data)
+                continue
 
-        # 月名を生成（YYYY年M月形式）
-        month_name = f"{year}年{month_num}月"
+            current_date = date(year, month_num, day)
+            day_data = {
+                "day": day,
+                "date": format_date(current_date),
+                "has_data": attendance_counts.get(day, 0) > 0,
+                "is_holiday": is_holiday(current_date),
+                "holiday_name": get_holiday_name(current_date),
+            }
+            for loc_type in location_types:
+                day_data[loc_type] = location_counts[day].get(loc_type, 0)
+            week_data.append(day_data)
+        weeks.append(week_data)
 
-        # 月のカレンダーを生成
-        cal = calendar.monthcalendar(year, month_num)
-
-        # 日付をキー、勤怠種別名をサブキーとするネストしたカウント辞書を初期化
-        location_counts: DefaultDict[int, DefaultDict[str, int]] = defaultdict(
-            lambda: defaultdict(int)
-        )
-
-        # 取得した勤怠レコードを日ごと・勤怠種別ごとに集計
-        for attendance_record in attendances:
-            day = attendance_record.date.day
-            # locationリレーションから名前を取得
-            location_name = str(attendance_record.location_info)
-            location_counts[day][location_name] += 1
-
-        # カレンダー表示用のデータ構造を構築
-        weeks = []
-        for week in cal:
-            week_data = []
-            for day in week:
-                if day == 0:
-                    # calendar.monthcalendar は月の範囲外の日を0として返すため、
-                    # UI側で非表示にするためのプレースホルダーデータを設定
-                    day_data = {
-                        "day": 0,  # 日の値が0であればUI側で非表示にする想定
-                        "date": "",
-                        "has_data": False,
-                    }
-                    # プレースホルダーにも勤怠種別カラムは用意 (UIの構造を合わせるため)
-                    for loc_type in location_types:
-                        day_data[loc_type] = 0
-
-                    week_data.append(day_data)
-                else:
-                    # 有効な日付の場合、詳細データを設定
-                    current_date = date(year, month_num, day)
-                    date_str = format_date(current_date)
-
-                    # 事前に一括取得したデータから、この日の総勤怠数を取得 (引数のattendance_countsを使用)
-                    attendance_count = attendance_counts.get(day, 0)
-
-                    # 祝日判定と祝日名取得
-                    is_holiday_flag = is_holiday(current_date)
-                    holiday_name = get_holiday_name(current_date)
-
-                    day_data = {
-                        "day": day,
-                        "date": date_str,
-                        "has_data": attendance_count > 0,
-                        "is_holiday": is_holiday_flag,
-                        "holiday_name": holiday_name,
-                    }
-
-                    # 各勤怠種別ごとの勤怠数を追加 (計算済みのlocation_countsを使用)
-                    for loc_type in location_types:
-                        day_data[loc_type] = location_counts[day].get(loc_type, 0)
-
-                    week_data.append(day_data)
-
-            weeks.append(week_data)
-
-        # 前月と翌月の月文字列を計算
-        prev_month_date = get_prev_month_date(year, month_num)
-        prev_month = f"{prev_month_date.year}-{prev_month_date.month:02d}"
-
-        next_month_date = get_next_month_date(year, month_num)
-        next_month = f"{next_month_date.year}-{next_month_date.month:02d}"
-
-        # UI表示用の勤怠種別データを生成
-        locations_ui_data = generate_location_data(location_types)
-
-        return {
-            "month_name": month_name,
-            "weeks": weeks,
-            "locations": locations_ui_data,
-            "prev_month": prev_month,
-            "next_month": next_month,
-        }
-    except ValueError as ve:
-        logger.error(f"月フォーマット解析エラー: {str(ve)}")
-        # エラー発生時は空のデータを返す
-        return {
-            "month_name": "エラー",
-            "weeks": [],
-            "locations": [],
-            "prev_month": "",
-            "next_month": "",
-        }
-    except Exception as e:
-        logger.error(
-            f"カレンダーデータ構築中に予期せぬエラーが発生しました: {str(e)}",
-            exc_info=True,
-        )
-        # エラー発生時は空のデータを返す
-        return {
-            "month_name": "エラー",
-            "weeks": [],
-            "locations": [],
-            "prev_month": "",
-            "next_month": "",
-        }
+    prev_month_date = get_prev_month_date(year, month_num)
+    next_month_date = get_next_month_date(year, month_num)
+    return {
+        "month_name": month_name,
+        "weeks": weeks,
+        "locations": generate_location_data(location_types),
+        "prev_month": f"{prev_month_date.year}-{prev_month_date.month:02d}",
+        "next_month": f"{next_month_date.year}-{next_month_date.month:02d}",
+    }
