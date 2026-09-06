@@ -144,19 +144,19 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
             for constraint in user_constraints
         )
         with runtime.session_factory() as db:
-            db.execute(
-                text(
-                    "insert into users (id, username, group_id, user_type_id) "
-                    "values (:id, :username, :group_id, :user_type_id)"
-                ),
-                {
-                    "id": f"{user_id}-duplicate",
-                    "username": username,
-                    "group_id": group_id,
-                    "user_type_id": user_type_id,
-                },
-            )
             with pytest.raises(IntegrityError):
+                db.execute(
+                    text(
+                        "insert into users (id, username, group_id, user_type_id) "
+                        "values (:id, :username, :group_id, :user_type_id)"
+                    ),
+                    {
+                        "id": f"{user_id}-duplicate",
+                        "username": username,
+                        "group_id": group_id,
+                        "user_type_id": user_type_id,
+                    },
+                )
                 db.commit()
             db.rollback()
 
