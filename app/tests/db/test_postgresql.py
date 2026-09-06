@@ -49,8 +49,7 @@ def test_postgresql_readiness_preserves_configured_libpq_options() -> None:
 
     assert connect_args["connect_timeout"] == 2
     assert (
-        connect_args["options"]
-        == "-c search_path=sokora -c statement_timeout=2000"
+        connect_args["options"] == "-c search_path=sokora -c statement_timeout=2000"
     )
 
 

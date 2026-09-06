@@ -399,12 +399,7 @@ def _probe_file_sqlite_database(database_path: Path) -> bool:
         check_same_thread=False,
     )
     try:
-        return (
-            connection.execute(
-                _READINESS_SCHEMA_SQL
-            ).fetchone()
-            == (1,)
-        )
+        return connection.execute(_READINESS_SCHEMA_SQL).fetchone() == (1,)
     finally:
         connection.close()
 
