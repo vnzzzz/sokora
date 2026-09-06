@@ -315,6 +315,8 @@ def parse_week(week_str: str) -> date:
     """
     try:
         monday = datetime.datetime.strptime(week_str, "%Y-%m-%d").date()
+        if monday.year < 1900 or monday.year > 2100:
+            raise ValueError(f"年は1900-2100の範囲で指定してください: {monday.year}")
         # 月曜日かどうかを確認
         if monday.weekday() != 0:
             raise ValueError(f"指定された日付は月曜日ではありません: {week_str}")
