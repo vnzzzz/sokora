@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import logger
 from app.db.session import get_db
 from app.services import calendar_read_service
-from app.utils.calendar_utils import get_current_month_formatted, parse_date
+from app.utils.calendar_utils import get_current_month_formatted, parse_date, parse_month
 
 router = APIRouter(prefix="/calendar", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -22,13 +22,24 @@ def get_calendar(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """月次summary calendarをrenderする。"""
+    """月次summary calendarをrenderする。
+
+    HTTP month validationだけをこのadapterで処理し、read service内部のValueError等を
+    validation errorへ誤変換しない。
+    """
+    current_month = month or get_current_month_formatted()
     try:
-        view_model = calendar_read_service.get_month_view_model(db, month=month)
+        year, month_num = parse_month(current_month)
+        current_month = f"{year}-{month_num:02d}"
     except ValueError as exc:
         logger.warning("無効なcalendar month '%s': %s", month, exc)
-        current_month = get_current_month_formatted()
-        return RedirectResponse(url=f"/calendar?month={current_month}")
+        fallback_month = get_current_month_formatted()
+        return RedirectResponse(url=f"/calendar?month={fallback_month}")
+
+    view_model = calendar_read_service.get_month_view_model(
+        db,
+        month=current_month,
+    )
 
     headers = (
         {"HX-Reswap": "innerHTML"}
