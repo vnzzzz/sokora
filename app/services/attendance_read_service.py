@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import crud, models
 from app.crud.calendar import calendar_crud
-from app.utils.calendar_utils import build_calendar_data, build_week_calendar_data
+from app.utils.calendar_utils import (
+    build_calendar_data,
+    build_week_calendar_data,
+)
 from app.utils.ui_utils import get_location_color_classes
 
 
