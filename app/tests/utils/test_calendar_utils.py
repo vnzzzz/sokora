@@ -404,6 +404,14 @@ class TestCalendarDataBuilding:
         assert "locations" in result
         assert len(result["weeks"]) > 0
 
+    def test_build_week_calendar_data_propagates_invalid_week(self) -> None:
+        with pytest.raises(ValueError):
+            build_week_calendar_data("invalid", [], {}, [])
+
+    def test_build_calendar_data_propagates_invalid_month(self) -> None:
+        with pytest.raises(ValueError):
+            build_calendar_data("invalid", [], {}, [])
+
     @patch("app.utils.calendar_utils.is_holiday")
     @patch("app.utils.calendar_utils.get_holiday_name")
     def test_build_calendar_data_with_holiday(
