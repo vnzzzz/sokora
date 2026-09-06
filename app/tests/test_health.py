@@ -19,6 +19,20 @@ def test_healthz_is_available_without_authentication() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_healthz_reports_database_probe_failure_unavailable(monkeypatch) -> None:
+    settings = AppSettings(database_url="sqlite:///:memory:")
+    app = create_application(settings)
+
+    with TestClient(app) as client:
+        runtime = app.state.database_runtime
+        monkeypatch.setattr(runtime, "probe_readiness", lambda: False, raising=False)
+
+        response = client.get("/healthz")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable"}
+
+
 def test_healthz_reports_fenced_database_runtime_unavailable() -> None:
     settings = AppSettings(database_url="sqlite:///:memory:")
     app = create_application(settings)
