@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 
 from app.core.settings import AppSettings
@@ -75,6 +76,22 @@ def test_database_url_logging_omits_credentials_and_query_parameters() -> None:
         assert "application_name" not in diagnostic_url
         assert ":***@" in diagnostic_url
         assert "?" not in diagnostic_url
+    finally:
+        runtime.dispose()
+
+
+def test_postgresql_readiness_requires_application_schema() -> None:
+    database_url = os.getenv("SOKORA_TEST_POSTGRES_URL")
+    if not database_url:
+        pytest.skip("SOKORA_TEST_POSTGRES_URL is not configured")
+
+    url = make_url(database_url)
+    query = dict(url.query)
+    query["options"] = "-c search_path=sokora_readiness_missing_schema"
+    probe_database_url = url.set(query=query).render_as_string(hide_password=False)
+    runtime = create_database_runtime(probe_database_url)
+    try:
+        assert runtime.probe_readiness() is False
     finally:
         runtime.dispose()
 
