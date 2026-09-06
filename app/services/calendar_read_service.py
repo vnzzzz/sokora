@@ -41,32 +41,11 @@ def normalize_month(month: Optional[str]) -> str:
     """month queryをcanonicalな``YYYY-MM``へ正規化する。
 
     未指定時だけ現在月を補う。形式不正は空値へ握り潰さずparse errorをcallerへ伝え、routerが
-    既存のerror view contractへ切り替えられるようにする。
+    current monthへのredirect contractを適用できるようにする。
     """
     value = month or get_current_month_formatted()
     year, month_num = parse_month(value)
     return f"{year}-{month_num:02d}"
-
-
-def get_empty_month_view_model(month: Optional[str]) -> MonthCalendarViewModel:
-    """月parameter解析失敗時もcalendar templateをrenderできる空modelを返す。
-
-    prev/nextを元parameterへ固定し、error状態から不正な追加navigation valueを生成しない。
-    DB accessや補正推測は行わず、入力errorの表示だけに使う。
-    """
-    current_month = month or get_current_month_formatted()
-    return {
-        "current_month": current_month,
-        "month": "エラー",
-        "calendar": {
-            "weeks": [],
-            "locations": [],
-            "month_name": "エラー",
-            "prev_month": current_month,
-            "next_month": current_month,
-        },
-        "today_date": get_today_formatted(),
-    }
 
 
 def get_month_view_model(
