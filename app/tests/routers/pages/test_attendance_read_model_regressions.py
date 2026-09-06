@@ -5,15 +5,26 @@ from httpx import AsyncClient
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-from app import crud, models, schemas
+from app import crud, schemas
 from app.crud.calendar import calendar_crud
 
 
 def _base_ids(db: Session) -> tuple[int, int]:
-    group = db.query(models.Group).first()
-    user_type = db.query(models.UserType).first()
-    assert group is not None and group.id is not None
-    assert user_type is not None and user_type.id is not None
+    group = crud.group.create(
+        db,
+        obj_in=schemas.GroupCreate(name="Read Model Group"),
+    )
+    user_type = crud.user_type.create(
+        db,
+        obj_in=schemas.UserTypeCreate(name="Read Model Type"),
+    )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(name="Read Model Location"),
+    )
+    db.commit()
+    assert group.id is not None
+    assert user_type.id is not None
     return int(group.id), int(user_type.id)
 
 
@@ -65,9 +76,8 @@ async def _count_route_selects(
 @pytest.mark.asyncio
 async def test_weekly_read_query_count_does_not_scale_with_users(
     async_client: AsyncClient,
-    db_with_data: Session,
+    db: Session,
 ) -> None:
-    db = db_with_data
     _create_users(db, count=8)
 
     status_code, select_count = await _count_route_selects(
@@ -83,9 +93,8 @@ async def test_weekly_read_query_count_does_not_scale_with_users(
 @pytest.mark.asyncio
 async def test_monthly_read_query_count_does_not_scale_with_users(
     async_client: AsyncClient,
-    db_with_data: Session,
+    db: Session,
 ) -> None:
-    db = db_with_data
     _create_users(db, count=8)
 
     status_code, select_count = await _count_route_selects(
@@ -101,7 +110,7 @@ async def test_monthly_read_query_count_does_not_scale_with_users(
 @pytest.mark.asyncio
 async def test_weekly_unexpected_read_failure_is_not_rendered_as_empty_200(
     async_client: AsyncClient,
-    db_with_data: Session,
+    db: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fail_read(*_args, **_kwargs):
@@ -116,16 +125,15 @@ async def test_weekly_unexpected_read_failure_is_not_rendered_as_empty_200(
 @pytest.mark.asyncio
 async def test_user_monthly_unexpected_read_failure_is_not_rendered_as_empty_200(
     async_client: AsyncClient,
-    db_with_data: Session,
+    db: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    db = db_with_data
     _create_users(db, count=1)
 
     def fail_read(*_args, **_kwargs):
         raise RuntimeError("unexpected monthly read failure")
 
-    monkeypatch.setattr(calendar_crud, "get_month_attendances", fail_read)
+    monkeypatch.setattr(crud.attendance, "list_user_for_period", fail_read)
 
     with pytest.raises(RuntimeError, match="unexpected monthly read failure"):
         await async_client.get(
