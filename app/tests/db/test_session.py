@@ -50,6 +50,15 @@ def test_database_runtime_readiness_probe_detects_missing_sqlite_file(
         runtime.dispose()
 
 
+def test_database_runtime_readiness_probe_is_unavailable_during_maintenance() -> None:
+    runtime = create_database_runtime("sqlite:///:memory:")
+    try:
+        with runtime.exclusive_maintenance():
+            assert runtime.probe_readiness() is False
+    finally:
+        runtime.dispose()
+
+
 def test_create_database_runtime_shares_sqlite_uri_memory_database() -> None:
     database_url = "sqlite:///file:memdb1?mode=memory&cache=shared&uri=true"
 

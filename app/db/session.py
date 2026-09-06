@@ -14,10 +14,10 @@ from typing import Any, Dict
 from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 from starlette.applications import Starlette
 
 from app.core.config import logger
@@ -28,6 +28,7 @@ Base = declarative_base()
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _ALEMBIC_CONFIG_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic.ini"
 _ALEMBIC_SCRIPT_PATH = _REPOSITORY_ROOT / "scripts" / "migration" / "alembic"
+_READINESS_CONNECT_TIMEOUT_SECONDS = 2
 
 
 class DatabaseRuntimeUnavailableError(RuntimeError):
@@ -136,6 +137,34 @@ class DatabaseRuntime:
         """runtimeがfenceされている場合だけ内部diagnostic reasonを返す。"""
         with self._condition:
             return self._unavailable_reason
+
+    def probe_readiness(self) -> bool:
+        """runtime stateとDB lightweight queryからrequest処理可能性を判定する。
+
+        maintenance/fence中は待機せずFalseを返す。通常時はprobeをactive session相当に
+        登録してSQLite restore等のexclusive maintenanceと競合させず、request poolとは
+        独立した短時間接続でDBへSELECT 1を実行する。
+        """
+        with self._condition:
+            if self._maintenance_active or self._unavailable_reason is not None:
+                return False
+            self._active_sessions += 1
+
+        probe_succeeded = False
+        try:
+            probe_succeeded = _probe_database_connection(self.database_url)
+        except Exception:
+            logger.warning("Database readiness probe failed", exc_info=True)
+        finally:
+            with self._condition:
+                self._active_sessions -= 1
+                runtime_usable = (
+                    not self._maintenance_active and self._unavailable_reason is None
+                )
+                if self._active_sessions == 0:
+                    self._condition.notify_all()
+
+        return probe_succeeded and runtime_usable
 
     def recreate_connections(self) -> None:
         """現在のpoolを破棄し、同じdatabase URLへengine/session factoryを再bindする。
@@ -310,6 +339,36 @@ def sqlite_database_path(database_url: str) -> Path | None:
 
     path = Path(database)
     return path if path.is_absolute() else Path.cwd() / path
+
+
+def _probe_database_connection(database_url: str) -> bool:
+    """request poolを使わず、supported DBへ短時間接続してSELECT 1を実行する。"""
+    url = sqlalchemy_database_url(database_url)
+    backend = url.get_backend_name()
+
+    if backend == "sqlite":
+        database_path = sqlite_database_path(database_url)
+        if database_path is not None and not database_path.exists():
+            return False
+        connect_args: dict[str, object] = {
+            "check_same_thread": False,
+            "timeout": _READINESS_CONNECT_TIMEOUT_SECONDS,
+        }
+    elif backend == "postgresql":
+        connect_args = {"connect_timeout": _READINESS_CONNECT_TIMEOUT_SECONDS}
+    else:
+        return False
+
+    probe_engine = create_engine(
+        url,
+        poolclass=NullPool,
+        connect_args=connect_args,
+    )
+    try:
+        with probe_engine.connect() as connection:
+            return connection.scalar(text("SELECT 1")) == 1
+    finally:
+        probe_engine.dispose()
 
 
 def alembic_heads() -> tuple[str, ...]:

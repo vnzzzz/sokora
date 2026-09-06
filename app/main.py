@@ -56,20 +56,15 @@ API_TAGS: List[Dict[str, str]] = [
 ]
 
 
-async def health_check(request: Request) -> JSONResponse:
-    """processがrequestを安全に処理できるかをplatform probeへ返す。
+def health_check(request: Request) -> JSONResponse:
+    """runtimeとDBがrequest処理可能かをplatform readiness probeへ返す。
 
-    通常はHTTP 200を返す。SQLite restore/recovery失敗後にDatabaseRuntimeが
-    fail-closedへfenceされた場合はHTTP 503を返し、platformがそのprocessを
-    healthyなreplicaとして扱わないようにする。
-
-    unavailable reasonにはfilesystem path等の内部情報が含まれ得るため、responseへは
-    公開せずstatusだけを返す。認証を要求しないこともdeployment runtime contractの一部。
+    application-scoped DatabaseRuntimeが存在し、maintenance/fence中ではなく、
+    DBへの短時間接続とSELECT 1が成功した場合だけHTTP 200を返す。内部failure reasonや
+    credential/path等はresponseへ公開しない。認証不要であることもruntime contractの一部。
     """
     runtime = getattr(request.app.state, "database_runtime", None)
-    if isinstance(runtime, DatabaseRuntime) and runtime.unavailable_reason is not None:
-        # Fenced runtimeへ再接続させない判断はDatabaseRuntimeが所有する。
-        # health endpointはその状態を外部orchestratorへ503として投影するだけに留める。
+    if not isinstance(runtime, DatabaseRuntime) or not runtime.probe_readiness():
         return JSONResponse(status_code=503, content={"status": "unavailable"})
     return JSONResponse({"status": "ok"})
 

@@ -100,7 +100,7 @@ shared PostgreSQLを使うmulti-replica contractは [ADR 0003](adr/0003-multi-re
 2. new immutable imageをbundleまたはregistryからload/pullする。
 3. deployment envの `SOKORA_IMAGE` をnew tagへ変更する。
 4. new bundleの同じCompose adapterでcontainerをreplaceする。
-5. startup migration完了後、`/healthz` と主要操作を確認する。
+5. startup migration完了後、DB readinessを含む`/healthz` と主要操作を確認する。
 6. acceptanceまではold imageとDB backupを保持する。
 
 application startupがmigrationを所有するため、operatorが別系統のmanual schema bootstrapを実行しない。
@@ -130,7 +130,7 @@ internal PostgreSQL/OIDC endpoint等、proxyを経由させない宛先はdeploy
 - image archive checksumを検証して`docker load`でき、loaded image IDがmanifestと一致する
 - bundle内にrepo/test/dev toolingを含めない
 - PostgreSQL adapterはblank/non-PostgreSQL `DATABASE_URL` をfail-closedで拒否する
-- bundleのSQLite Compose adapterだけでimageを再起動し `/healthz` が成功する
+- bundleのSQLite Compose adapterだけでimageを再起動し、DB readinessを含む`/healthz` が成功する
 - PostgreSQL自体のproduction image接続contractは既存PostgreSQL jobで継続検証する
 
 bundle sourceは `deploy/closed/`、packaging entrypointは `scripts/deployment/package_closed_bundle.sh` とする。
