@@ -78,9 +78,7 @@ async def test_fiscal_year_analysis_ignores_invalid_month_parameter(
 ) -> None:
     _add_analysis_attendance(db_with_data)
 
-    response = await async_client.get(
-        "/analysis?mode=year&year=2031&month=invalid"
-    )
+    response = await async_client.get("/analysis?mode=year&year=2031&month=invalid")
 
     assert response.status_code == status.HTTP_200_OK
     assert "2031年度" in response.text
