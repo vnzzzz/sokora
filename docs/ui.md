@@ -33,7 +33,7 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
 ## Calendar and attendance
 
 - `/`: top page。`/calendar`からmonthly summaryをHTMX loadし、日付選択で`/calendar/day/{YYYY-MM-DD}`のdetailを取得する。
-- `/calendar`: month queryに対応するsummary calendar。routerはHTTP input/renderを担当し、DB readとview model生成はcalendar read serviceへ委譲する。DB由来のprocess-local cacheは持たない。
+- `/calendar`: month queryに対応するsummary calendar。routerはHTTP input/renderを担当し、DB readとview model生成はcalendar read serviceへ委譲する。DB由来のprocess-local cacheは持たない。不正monthはcurrent monthへredirectし、DB/internal read failureを空calendarのHTTP 200へ変換しない。
 - `/calendar/day/{day}`: daily attendance detail。request開始時点のDB stateからgroup/user type/location等をまとめて表示する。
 - `/attendance/weekly`: weekly attendance calendar。routerはHTTP input/renderに集中し、user grouping・location master・period attendanceのread modelは`attendance_read_service`へ委譲する。user単位queryは行わない。cellからattendance modalを開き、writeは`/attendance/entries` page/HTMX adapterを利用する。
 - `/attendance/monthly`: user list + user calendar。read modelは`attendance_read_service`へ集約し、user listは不要なcalendar queryを行わず、user calendarは対象user/periodだけを一括readする。`/attendance/monthly/users/{user_id}`、`/attendance/modals/{user_id}/{date}`等のHTMX partialを利用する。
@@ -53,7 +53,7 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
 ## CSV and analysis
 
 - `/csv`: month/encoding selection UI。downloadは`/api/v1/csv/download`を利用し、validationはAPI contractへ委譲する。
-- `/analysis`: monthly/yearly aggregation view。routerはHTTP input/render、period/aggregation/sorting/view modelはanalysis serviceが担当する。
+- `/analysis`: monthly/yearly aggregation view。routerはHTTP input/render、period/aggregation/sorting/view modelはanalysis serviceが担当する。不正な月次monthはcurrent monthへredirectし、DB/internal read failureを空のanalysis HTTP 200へ変換しない。
 
 ## Admin diagnostics and SQLite database management
 
