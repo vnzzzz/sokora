@@ -18,6 +18,7 @@ from app.core.config import configure_logging, logger
 from app.core.settings import AppSettings
 from app.db.session import (
     DatabaseRuntime,
+    DatabaseRuntimeUnavailableError,
     get_app_database_runtime,
     initialize_database,
 )
@@ -71,6 +72,19 @@ async def health_check(request: Request) -> JSONResponse:
         # health endpointはその状態を外部orchestratorへ503として投影するだけに留める。
         return JSONResponse(status_code=503, content={"status": "unavailable"})
     return JSONResponse({"status": "ok"})
+
+
+async def database_runtime_unavailable_handler(
+    _request: Request, exc: Exception
+) -> JSONResponse:
+    """fail-closed DB runtimeを内部reasonを漏らさずHTTP 503へ変換する。"""
+    if not isinstance(exc, DatabaseRuntimeUnavailableError):
+        raise exc
+    logger.error("Database runtime is unavailable: %s", exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "データベースが一時的に利用できません。"},
+    )
 
 
 async def application_error_handler(_request: Request, exc: Exception) -> JSONResponse:
@@ -157,6 +171,10 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
     )
     app.state.settings_provider = settings_provider
     app.state.settings = initial_settings
+    app.add_exception_handler(
+        DatabaseRuntimeUnavailableError,
+        database_runtime_unavailable_handler,
+    )
     app.add_exception_handler(ApplicationError, application_error_handler)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
