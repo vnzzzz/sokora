@@ -85,10 +85,7 @@ def user_calendar(
             )
             current_month = get_current_month_formatted()
             return RedirectResponse(
-                url=(
-                    f"/attendance/monthly/users/{user_id}"
-                    f"?month={current_month}"
-                )
+                url=f"/attendance/monthly/users/{user_id}?month={current_month}"
             )
 
     view_model = attendance_read_service.get_user_monthly_calendar_view_model(
