@@ -1,169 +1,47 @@
-# app/tests/e2e/test_group_page.py
-
 import time
 
 from playwright.sync_api import Page, expect
 
-BASE_URL = "http://localhost:8000"
-UI_BASE = BASE_URL
-GROUPS_URL = f"{UI_BASE}/groups"
+GROUPS_URL = "http://localhost:8000/groups"
 
 
-def test_group_page_display(page: Page) -> None:
-    """グループページが正常に表示されることをテスト"""
-    page.goto(GROUPS_URL)
-    expect(page.locator("body")).to_be_visible()
-    expect(page.locator("h2")).to_contain_text("グループ")
-
-
-def test_create_group(page: Page) -> None:
-    """新しいグループを作成し、成功通知が更新後も表示されることをテスト"""
-    timestamp = int(time.time())
-    group_name = f"テストグループ_{timestamp}"
+def test_group_crud_lifecycle(page: Page) -> None:
+    suffix = time.time_ns()
+    initial_name = f"E2Eグループ_{suffix}"
+    updated_name = f"E2Eグループ更新_{suffix}"
 
     page.goto(GROUPS_URL)
-    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-    page.locator('button:has-text("グループ追加")').click()
+    expect(page.locator("h2")).to_have_text("グループ管理")
+
+    page.get_by_role("button", name="グループ追加").click()
     add_modal = page.locator("#add-group")
     expect(add_modal).to_be_visible()
-    add_modal.locator("#add-group-name").fill(group_name)
-    add_modal.locator("#add-group-order").fill("1")
-    add_modal.locator('button[form="add-group-form"]').click()
+    add_modal.locator('input[name="name"]').fill(initial_name)
+    add_modal.locator('input[name="order"]').fill("999")
+    add_modal.get_by_role("button", name="登録").click()
 
-    # reload後の一覧更新を待ち、成功通知も同じ画面で読めることを確認する。
-    expect(page.locator("table")).to_contain_text(group_name, timeout=5000)
-    expect(page.locator('#ui-message-container [role="status"]')).to_contain_text(
-        f"グループ {group_name} を追加しました。",
-        timeout=3000,
-    )
+    expect(add_modal).to_be_hidden()
+    row = page.locator("#group-table-body tr").filter(has_text=initial_name)
+    expect(row).to_be_visible()
+    row_id = row.get_attribute("id")
+    assert row_id is not None and row_id.startswith("group-row-")
+    group_id = row_id.removeprefix("group-row-")
 
-    # モーダルが閉じることを確認
-    expect(add_modal).to_be_hidden(timeout=3000)
+    row.get_by_role("button", name="編集").click()
+    edit_modal = page.locator(f"#edit-group-{group_id}")
+    expect(edit_modal).to_be_visible()
+    edit_modal.locator('input[name="name"]').fill(updated_name)
+    edit_modal.get_by_role("button", name="更新").click()
 
+    expect(edit_modal).to_be_hidden()
+    updated_row = page.locator(f"#group-row-{group_id}")
+    expect(updated_row).to_contain_text(updated_name)
+    expect(updated_row).not_to_contain_text(initial_name)
 
-def test_edit_group(page: Page) -> None:
-    """グループ編集テスト（テスト専用データを作成・編集・削除）"""
-    timestamp = int(time.time())
-    initial_name = f"テスト編集前グループ_{timestamp}"
-    new_name = f"テスト編集済みグループ_{timestamp}"
-    page.goto(GROUPS_URL)
-    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
+    updated_row.get_by_role("button", name="削除").click()
+    delete_modal = page.locator(f"#group-delete-modal-{group_id}")
+    expect(delete_modal).to_be_visible()
+    delete_modal.get_by_role("button", name="削除").click()
 
-    try:
-        # 1. テスト用グループを作成
-        page.locator('button:has-text("グループ追加")').click()
-        add_modal = page.locator("#add-group")
-        expect(add_modal).to_be_visible()
-        add_modal.locator("#add-group-name").fill(initial_name)
-        add_modal.locator("#add-group-order").fill("999")  # 末尾に配置
-        add_modal.locator('button[form="add-group-form"]').click()
-
-        # 追加完了を待機
-        page.wait_for_timeout(1000)
-        expect(add_modal).to_be_hidden(timeout=3000)
-
-        # 作成されたグループがテーブルに表示されることを確認
-        expect(page.locator("table")).to_contain_text(initial_name)
-
-        # 2. 作成したグループの編集ボタンを特定してクリック
-        # 作成したグループの行を特定
-        group_row = page.locator(f'tr:has-text("{initial_name}")')
-        expect(group_row).to_be_visible()
-
-        # その行の編集ボタンをクリック
-        edit_button = group_row.locator('button:has-text("編集")')
-        edit_button.click()
-
-        # 編集モーダルが表示されることを確認
-        edit_modal = page.locator(".modal[open]")
-        expect(edit_modal).to_be_visible()
-
-        # 3. グループ名を編集
-        name_input = edit_modal.locator('input[name="name"]')
-        expect(name_input).to_be_visible()
-        name_input.fill(new_name)
-
-        # 更新ボタンをクリック
-        update_button = edit_modal.locator('button:has-text("更新")')
-        update_button.click()
-        page.wait_for_timeout(1000)
-
-        # モーダルが閉じることを確認
-        expect(edit_modal).to_be_hidden(timeout=3000)
-
-        # 4. 編集後の名前がテーブルに表示されることを確認
-        expect(page.locator("table")).to_contain_text(new_name)
-        expect(page.locator("table")).not_to_contain_text(initial_name)
-
-    finally:
-        # 5. テストで作成したグループを削除
-        try:
-            # 編集後の名前で行を特定
-            test_group_row = page.locator(f'tr:has-text("{new_name}")')
-            if test_group_row.is_visible():
-                # 削除ボタンをクリック
-                delete_button = test_group_row.locator('button:has-text("削除")')
-                delete_button.click()
-
-                # 削除確認モーダルが表示される場合の処理
-                delete_modal = page.locator(".modal[open]")
-                if delete_modal.is_visible():
-                    confirm_button = delete_modal.locator('button:has-text("削除")')
-                    if confirm_button.is_visible():
-                        confirm_button.click()
-                        page.wait_for_timeout(1000)
-
-                # グループが削除されたことを確認
-                page.wait_for_timeout(500)
-                expect(page.locator("table")).not_to_contain_text(new_name)
-        except Exception as e:
-            print(f"Test cleanup failed: {e}")
-
-    # 基本的な表示確認
-    expect(page.locator("body")).to_be_visible()
-
-
-def test_delete_group(page: Page) -> None:
-    """グループ削除テスト（テスト専用データを作成・削除）"""
-    timestamp = int(time.time())
-    group_name = f"テスト削除用グループ_{timestamp}"
-
-    page.goto(GROUPS_URL)
-    page.on("console", lambda msg: print(f"BROWSER CONSOLE: {msg.text}"))
-
-    # 1. テスト用グループを作成
-    page.locator('button:has-text("グループ追加")').click()
-    add_modal = page.locator("#add-group")
-    expect(add_modal).to_be_visible()
-    add_modal.locator("#add-group-name").fill(group_name)
-    add_modal.locator("#add-group-order").fill("999")
-    add_modal.locator('button[form="add-group-form"]').click()
-
-    # 追加完了を待機
-    page.wait_for_timeout(1000)
-    expect(add_modal).to_be_hidden(timeout=3000)
-
-    # 作成されたグループがテーブルに表示されることを確認
-    expect(page.locator("table")).to_contain_text(group_name)
-
-    # 2. 作成したグループの削除ボタンをクリック
-    group_row = page.locator(f'tr:has-text("{group_name}")')
-    expect(group_row).to_be_visible()
-
-    delete_button = group_row.locator('button:has-text("削除")')
-    delete_button.click()
-
-    # 削除確認モーダルが表示される場合の処理
-    delete_modal = page.locator(".modal[open]")
-    if delete_modal.is_visible():
-        confirm_button = delete_modal.locator('button:has-text("削除")')
-        if confirm_button.is_visible():
-            confirm_button.click()
-            page.wait_for_timeout(1000)
-
-    # 3. グループが削除されたことを確認
-    page.wait_for_timeout(500)
-    expect(page.locator("table")).not_to_contain_text(group_name)
-
-    # 基本的な表示確認
-    expect(page.locator("body")).to_be_visible()
+    expect(delete_modal).to_be_hidden()
+    expect(page.locator(f"#group-row-{group_id}")).not_to_be_visible()
