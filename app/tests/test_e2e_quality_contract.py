@@ -20,27 +20,27 @@ def test_e2e_suite_has_no_known_false_pass_patterns() -> None:
 
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler):
-                exception_type = node.type
-                is_exception = isinstance(exception_type, ast.Name)
-                if is_exception and exception_type.id == "Exception":
-                    violations.append(
-                        f"{path.name}:{node.lineno}: broad except Exception"
+                if isinstance(node.type, ast.Name):
+                    if node.type.id == "Exception":
+                        message = f"{path.name}:{node.lineno}: broad except Exception"
+                        violations.append(message)
+
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute):
+                    if node.func.attr == "wait_for_timeout":
+                        message = f"{path.name}:{node.lineno}: wait_for_timeout"
+                        violations.append(message)
+
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not node.name.startswith("test_"):
+                continue
+
+            for child in ast.walk(node):
+                if isinstance(child, ast.Return) and child.value is None:
+                    message = (
+                        f"{path.name}:{child.lineno}: silent return in {node.name}"
                     )
-
-            is_wait_call = isinstance(node, ast.Call) and isinstance(
-                node.func, ast.Attribute
-            )
-            if is_wait_call and node.func.attr == "wait_for_timeout":
-                violations.append(
-                    f"{path.name}:{node.lineno}: wait_for_timeout"
-                )
-
-            is_test = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            if is_test and node.name.startswith("test_"):
-                for child in ast.walk(node):
-                    if isinstance(child, ast.Return) and child.value is None:
-                        violations.append(
-                            f"{path.name}:{child.lineno}: silent return in {node.name}"
-                        )
+                    violations.append(message)
 
     assert not violations, "\n".join(violations)
