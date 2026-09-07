@@ -157,6 +157,14 @@ async def test_attendance_json_api_not_found_and_validation(
     assert invalid_date.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
+async def test_get_day_attendance_rejects_invalid_date(
+    async_client: AsyncClient,
+) -> None:
+    response = await async_client.get("/api/v1/attendances/day/not-a-date")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
 async def test_get_day_attendance_projection(async_client: AsyncClient) -> None:
     user_id, location_id = await _attendance_references(async_client, "day")
     attendance_date = date(2030, 4, 2)

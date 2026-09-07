@@ -13,7 +13,6 @@ from app.utils.calendar_utils import (
     format_date_jp,
     get_current_month_formatted,
     get_today_formatted,
-    parse_date,
     parse_month,
 )
 from app.utils.ui_utils import get_location_color_classes
@@ -41,32 +40,11 @@ def normalize_month(month: Optional[str]) -> str:
     """month queryをcanonicalな``YYYY-MM``へ正規化する。
 
     未指定時だけ現在月を補う。形式不正は空値へ握り潰さずparse errorをcallerへ伝え、routerが
-    既存のerror view contractへ切り替えられるようにする。
+    current monthへのredirect contractを適用できるようにする。
     """
     value = month or get_current_month_formatted()
     year, month_num = parse_month(value)
     return f"{year}-{month_num:02d}"
-
-
-def get_empty_month_view_model(month: Optional[str]) -> MonthCalendarViewModel:
-    """月parameter解析失敗時もcalendar templateをrenderできる空modelを返す。
-
-    prev/nextを元parameterへ固定し、error状態から不正な追加navigation valueを生成しない。
-    DB accessや補正推測は行わず、入力errorの表示だけに使う。
-    """
-    current_month = month or get_current_month_formatted()
-    return {
-        "current_month": current_month,
-        "month": "エラー",
-        "calendar": {
-            "weeks": [],
-            "locations": [],
-            "month_name": "エラー",
-            "prev_month": current_month,
-            "next_month": current_month,
-        },
-        "today_date": get_today_formatted(),
-    }
 
 
 def get_month_view_model(
@@ -138,23 +116,14 @@ def get_month_view_model(
     }
 
 
-def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
+def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
     """日別detailをgroup/社員種別単位へ編成し、安定した表示順で返す。
 
-    日付が不正なら404等へ変換せず、既存UI contractどおり空detailを返す。groupは明示order、
-    persistent ID、nameの順でsortし、``order=0`` と未設定を区別する。社員種別もorder/ID/
-    name、同一種別内のuserは表示名/IDでtie-breakするため、DB row返却順へ依存しない。
+    HTTP input validationはrouterが所有し、このserviceはvalidated dateだけを受け取る。groupは
+    明示order、persistent ID、nameの順でsortし、``order=0`` と未設定を区別する。社員種別も
+    order/ID/name、同一種別内のuserは表示名/IDでtie-breakするため、DB row返却順へ依存しない。
     """
-    target_date = parse_date(day)
-    if target_date is None:
-        return {
-            "date_str": day,
-            "date_jp": "",
-            "organized_by_group": {},
-            "has_data": False,
-        }
-
-    rows = calendar_crud.get_day_attendance_rows(db, target_date=target_date)
+    rows = calendar_crud.get_day_attendance_rows(db, target_date=day)
     organized_by_group: Dict[str, Dict[str, Any]] = {}
     user_type_sort_info: Dict[str, tuple[int, int, str]] = {}
 
@@ -228,8 +197,8 @@ def get_day_detail_view_model(db: Session, *, day: str) -> DayDetailViewModel:
     )
 
     return {
-        "date_str": day,
-        "date_jp": format_date_jp(target_date),
+        "date_str": day.isoformat(),
+        "date_jp": format_date_jp(day),
         "organized_by_group": sorted_groups,
         "has_data": bool(rows),
     }

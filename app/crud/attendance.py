@@ -86,13 +86,10 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             .all()
         )
 
-    def get_day_data(self, db: Session, *, day: str) -> Dict[str, List[Dict[str, Any]]]:
-        """指定日の勤怠を勤怠種別ごとに返す。process-local cacheは持たない。"""
-        try:
-            date_obj = date.fromisoformat(day)
-        except ValueError:
-            return {}
-
+    def get_day_data(
+        self, db: Session, *, day: date
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """指定日の勤怠を勤怠種別ごとに返す。input validationはadapterが所有する。"""
         rows = (
             db.query(
                 Attendance.user_id,
@@ -105,7 +102,7 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
             .join(User, Attendance.user_id == User.id)
             .join(Location, Attendance.location_id == Location.id)
             .outerjoin(UserType, User.user_type_id == UserType.id)
-            .filter(Attendance.date == date_obj)
+            .filter(Attendance.date == day)
             .all()
         )
 

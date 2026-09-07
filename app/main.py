@@ -12,6 +12,8 @@ from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -22,6 +24,7 @@ from app.db.session import (
     DatabaseRuntimeUnavailableError,
     get_app_database_runtime,
     initialize_database,
+    is_database_unavailable_error,
 )
 from app.middleware.auth import AuthRequiredMiddleware
 from app.routers.api.v1 import router as api_v1_router
@@ -74,13 +77,17 @@ async def health_check(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
-async def database_runtime_unavailable_handler(
+async def database_unavailable_handler(
     _request: Request, exc: Exception
 ) -> JSONResponse:
-    """fail-closed DB runtimeを内部reasonを漏らさずHTTP 503へ変換する。"""
-    if not isinstance(exc, DatabaseRuntimeUnavailableError):
+    """verified DB availability failureを内部reasonを漏らさずHTTP 503へ変換する。
+
+    connection invalidation / acquisition timeout / fail-closed runtimeだけをavailability failureと
+    みなし、SQL statement errorや未知のexceptionは正常化せず再送出する。
+    """
+    if not is_database_unavailable_error(exc):
         raise exc
-    logger.error("Database runtime is unavailable: %s", exc)
+    logger.error("Database is unavailable: %s", exc, exc_info=True)
     return JSONResponse(
         status_code=503,
         content={"detail": "データベースが一時的に利用できません。"},
@@ -171,10 +178,12 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
     )
     app.state.settings_provider = settings_provider
     app.state.settings = initial_settings
-    app.add_exception_handler(
+    for database_error_type in (
         DatabaseRuntimeUnavailableError,
-        database_runtime_unavailable_handler,
-    )
+        DBAPIError,
+        SQLAlchemyTimeoutError,
+    ):
+        app.add_exception_handler(database_error_type, database_unavailable_handler)
     app.add_exception_handler(ApplicationError, application_error_handler)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")

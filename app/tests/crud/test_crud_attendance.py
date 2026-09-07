@@ -101,7 +101,7 @@ def test_day_projection_is_fresh_without_process_cache(db_with_data: Session) ->
         ),
     )
     db.commit()
-    first_read = crud.attendance.get_day_data(db, day=target_date.isoformat())
+    first_read = crud.attendance.get_day_data(db, day=target_date)
     assert sum(len(rows) for rows in first_read.values()) == 1
 
     crud.attendance.create(

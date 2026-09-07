@@ -17,6 +17,8 @@ from urllib.parse import unquote, urlsplit
 from fastapi import Request
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.engine import URL, make_url
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 from starlette.applications import Starlette
@@ -41,6 +43,49 @@ class DatabaseRuntimeUnavailableError(RuntimeError):
     接続を再試行してreject済みDBへ戻ることを許可しない。process restart/manual recoveryが
     完了するまで、このexceptionをrequest boundaryへ伝播させる。
     """
+
+
+_POSTGRESQL_AVAILABILITY_SQLSTATES = {
+    "53300",  # too_many_connections
+    "57P01",  # admin_shutdown
+    "57P02",  # crash_shutdown
+    "57P03",  # cannot_connect_now
+    "57P04",  # database_dropped
+    "57P05",  # idle_session_timeout
+}
+
+
+def is_database_unavailable_error(exc: Exception) -> bool:
+    """supported DBで確認できるavailability failureだけを503候補とする。
+
+    SQLAlchemyがdisconnectと認識したerror、pool checkout timeout、fail-closed runtimeは
+    backend非依存にavailability failureとする。接続確立前のDBAPIErrorはstatement有無だけで
+    推測せず、PostgreSQL/psycopgのSQLSTATE・connection-attempt情報、SQLiteのCANTOPEN codeを
+    利用する。transaction rollback、認証、constraint等のerrorは503へ誤分類しない。
+    """
+    if isinstance(exc, (DatabaseRuntimeUnavailableError, SQLAlchemyTimeoutError)):
+        return True
+    if not isinstance(exc, DBAPIError):
+        return False
+    if exc.connection_invalidated:
+        return True
+
+    original = exc.orig
+    sqlstate = getattr(original, "sqlstate", None)
+    if isinstance(sqlstate, str):
+        if sqlstate.startswith("08"):
+            return True
+        return sqlstate in _POSTGRESQL_AVAILABILITY_SQLSTATES
+
+    if exc.statement is not None:
+        return False
+
+    # Psycopg 3 exposes pgconn when an exception was raised from a connection attempt.
+    if getattr(original, "pgconn", None) is not None:
+        return True
+
+    sqlite_errorcode = getattr(original, "sqlite_errorcode", None)
+    return sqlite_errorcode == sqlite3.SQLITE_CANTOPEN
 
 
 @dataclass

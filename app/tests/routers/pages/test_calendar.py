@@ -3,11 +3,12 @@
 from datetime import date
 
 import pytest
-from fastapi import status
-from httpx import AsyncClient
+from fastapi import FastAPI, status
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
+from app.services import calendar_read_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -34,6 +35,49 @@ async def test_month_calendar_preserves_htmx_fragment_contract(
     assert response.headers["HX-Reswap"] == "innerHTML"
     assert 'id="calendar-metadata"' in response.text
     assert "2031-05" in response.text
+
+
+async def test_invalid_month_redirects_to_current_month(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.routers.pages.calendar.get_current_month_formatted",
+        lambda: "2031-05",
+    )
+
+    response = await async_client.get(
+        "/calendar?month=invalid",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+    assert response.headers["location"] == "/calendar?month=2031-05"
+
+
+async def test_internal_calendar_value_error_is_not_treated_as_invalid_month(
+    test_app: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_read(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("sensitive unexpected calendar read failure")
+
+    monkeypatch.setattr(
+        calendar_read_service,
+        "get_month_view_model",
+        fail_read,
+    )
+
+    transport = ASGITransport(app=test_app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/calendar?month=2031-05",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "location" not in response.headers
+    assert "sensitive unexpected calendar read failure" not in response.text
 
 
 async def test_day_detail_renders_grouped_attendance(
@@ -75,12 +119,14 @@ async def test_day_detail_renders_grouped_attendance(
     assert "route note" in response.text
 
 
-async def test_invalid_day_returns_empty_detail(async_client: AsyncClient) -> None:
+async def test_invalid_day_returns_explicit_validation_error(
+    async_client: AsyncClient,
+) -> None:
     response = await async_client.get("/calendar/day/not-a-date")
 
-    assert response.status_code == status.HTTP_200_OK
-    assert "not-a-dateの勤怠情報" in response.text
-    assert "記録なし" in response.text
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "無効な日付です" in response.text
+    assert "記録なし" not in response.text
 
 
 async def test_month_calendar_handles_nullable_location_order(

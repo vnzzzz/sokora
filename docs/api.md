@@ -29,6 +29,7 @@
 - request schema/format errorはFastAPI/Pydantic contractに従う。
 - domain/application側で事前判定できる入力不備、not found、重複等は適切な4xxへ変換する。
 - concurrent write等でDB constraintへ競合した場合は409等のapplication errorへ変換する。
+- verified DB disconnect / connection acquisition timeout / fail-closed runtimeは503へ変換する。SQL statement / transaction rollback / constraint / authentication / unexpected internal errorをavailability failureへ誤分類しない。
 - internal DB exception text、credential、filesystem path等をpublic API errorへ露出しない。
 - page/HTMX adapterのvalidation/application errorはJSON responseを再利用せず、UIが扱えるHTML fragmentとして返す。
 
@@ -37,7 +38,7 @@
 ### Attendance
 
 - `GET /api/v1/attendances`: 勤怠一覧。
-- `GET /api/v1/attendances/day/{day}`: 日付別勤怠detail。
+- `GET /api/v1/attendances/day/{day}`: `YYYY-MM-DD`の日付別勤怠detail。不正な日付pathはrequest validationで422。
 - `POST /api/v1/attendances`: `AttendanceCreate` JSONから作成し201を返す。`user_id + date`は一意。
 - `PUT /api/v1/attendances/{attendance_id}`: `AttendanceUpdate` JSONから更新。
 - `DELETE /api/v1/attendances/{attendance_id}`: ID指定削除、204。

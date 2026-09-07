@@ -191,7 +191,7 @@ def test_day_detail_uses_one_select_and_orders_view_model(
     try:
         view_model = calendar_read_service.get_day_detail_view_model(
             db,
-            day=target_date.isoformat(),
+            day=target_date,
         )
     finally:
         event.remove(engine, "before_cursor_execute", count_selects)
@@ -256,7 +256,7 @@ def test_day_detail_null_group_order_is_after_large_explicit_order(
 
     view_model = calendar_read_service.get_day_detail_view_model(
         db,
-        day=target_date.isoformat(),
+        day=target_date,
     )
 
     assert list(view_model["organized_by_group"]) == [
@@ -265,15 +265,16 @@ def test_day_detail_null_group_order_is_after_large_explicit_order(
     ]
 
 
-def test_invalid_day_returns_empty_view_model(db_with_data: Session) -> None:
+def test_valid_day_without_attendance_returns_empty_view_model(
+    db_with_data: Session,
+) -> None:
+    target_date = date(2031, 8, 1)
+
     view_model = calendar_read_service.get_day_detail_view_model(
         db_with_data,
-        day="not-a-date",
+        day=target_date,
     )
 
-    assert view_model == {
-        "date_str": "not-a-date",
-        "date_jp": "",
-        "organized_by_group": {},
-        "has_data": False,
-    }
+    assert view_model["date_str"] == target_date.isoformat()
+    assert view_model["organized_by_group"] == {}
+    assert view_model["has_data"] is False
