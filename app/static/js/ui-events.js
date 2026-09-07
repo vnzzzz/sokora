@@ -36,9 +36,12 @@
     window.setTimeout(() => closingModalIds.delete(modalId), 1000)
 
     const modal = document.getElementById(modalId)
-    if (modal && typeof modal.close === 'function' && modal.open) {
+    if (!modal) return
+
+    if (typeof modal.close === 'function' && modal.open) {
       modal.close()
     }
+    modal.remove()
   }
 
   function storeFlashMessage(message) {
