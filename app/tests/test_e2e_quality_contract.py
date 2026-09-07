@@ -8,9 +8,9 @@ E2E_DIR = Path(__file__).parent / "e2e"
 
 def _iter_test_functions(tree: ast.AST):
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
-            "test_"
-        ):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith("test_"):
+                yield node
             yield node
 
 
@@ -61,17 +61,23 @@ def test_e2e_suite_has_no_known_false_pass_patterns() -> None:
             if isinstance(node, ast.ExceptHandler):
                 exception_type = node.type
                 if isinstance(exception_type, ast.Name) and exception_type.id == "Exception":
-                    violations.append(f"{path.name}:{node.lineno}: broad except Exception")
+                    violations.append(
+                        f"{path.name}:{node.lineno}: broad except Exception"
+                    )
 
             if (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "wait_for_timeout"
             ):
-                violations.append(f"{path.name}:{node.lineno}: wait_for_timeout")
+                violations.append(
+                    f"{path.name}:{node.lineno}: wait_for_timeout"
+                )
 
             if _is_nonnegative_len_tautology(node):
-                violations.append(f"{path.name}:{node.lineno}: len(...) >= 0 tautology")
+                violations.append(
+                    f"{path.name}:{node.lineno}: len(...) >= 0 tautology"
+                )
 
         for test_function in _iter_test_functions(tree):
             for node in ast.walk(test_function):
