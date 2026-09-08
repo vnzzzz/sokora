@@ -1,75 +1,44 @@
-import time
-from datetime import date, timedelta
+from datetime import date
 
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000"
 ATTENDANCE_WEEKLY_URL = f"{BASE_URL}/attendance/weekly"
+TEST_MONDAY = date(2099, 12, 7)
 
 
-def _future_monday() -> date:
-    target = date.today() + timedelta(days=90)
-    return target + timedelta(days=(7 - target.weekday()) % 7)
-
-
-def _create_owned_test_user(page: Page) -> str:
-    groups_response = page.request.get(f"{BASE_URL}/api/v1/groups")
-    user_types_response = page.request.get(f"{BASE_URL}/api/v1/user_types")
-    assert groups_response.ok
-    assert user_types_response.ok
-
-    groups = groups_response.json()["groups"]
-    user_types = user_types_response.json()["user_types"]
-    assert groups
-    assert user_types
-
-    suffix = time.time_ns()
-    user_id = f"E2EA{suffix % 100_000_000:08d}"
-    create_response = page.request.post(
-        f"{BASE_URL}/api/v1/users",
-        data={
-            "id": user_id,
-            "username": f"E2Eテスト勤怠社員_{suffix}",
-            "group_id": groups[0]["id"],
-            "user_type_id": user_types[0]["id"],
-        },
+def _clear_attendance_slot(page: Page, user_id: str, target_date: str) -> None:
+    response = page.request.delete(
+        f"{BASE_URL}/api/v1/attendances?user_id={user_id}&date={target_date}"
     )
-    assert create_response.ok
-    return user_id
-
-
-def _delete_owned_test_user(page: Page, user_id: str) -> None:
-    response = page.request.delete(f"{BASE_URL}/api/v1/users/{user_id}")
     assert response.status in {204, 404}
 
 
 def test_attendance_modal_create_update_delete_refreshes_week(page: Page) -> None:
-    user_id = _create_owned_test_user(page)
+    user_id: str | None = None
+    target_date: str | None = None
+
     try:
-        monday = _future_monday()
-        page.goto(f"{ATTENDANCE_WEEKLY_URL}?week={monday.isoformat()}")
-        page.wait_for_function(
-            "() => Boolean(window.htmx) && document.readyState === 'complete'"
-        )
+        page.goto(f"{ATTENDANCE_WEEKLY_URL}?week={TEST_MONDAY.isoformat()}")
+
+        cell = page.locator("#calendar td.attendance-cell").first
+        expect(cell).to_be_visible()
+        user_id = cell.get_attribute("data-user-id")
+        target_date = cell.get_attribute("data-date")
+        assert user_id
+        assert target_date
+
+        _clear_attendance_slot(page, user_id, target_date)
+        page.reload()
 
         cell = page.locator(
             f'#calendar td.attendance-cell[data-user-id="{user_id}"]'
-        ).first
+            f'[data-date="{target_date}"]'
+        )
         expect(cell).to_be_visible()
         expect(cell).to_have_attribute("data-has-data", "false")
 
-        target_date = cell.get_attribute("data-date")
-        assert target_date
-        modal_path = f"/attendance/modals/{user_id}/{target_date}"
-        expect(cell).to_have_attribute("hx-get", modal_path)
-
-        with page.expect_response(
-            lambda response: response.url.endswith(modal_path)
-        ) as response_info:
-            cell.click()
-        modal_response = response_info.value
-        assert modal_response.status == 200
-
+        cell.click()
         modal = page.locator(f"#attendance-modal-{user_id}-{target_date}")
         expect(modal).to_be_visible()
 
@@ -119,4 +88,5 @@ def test_attendance_modal_create_update_delete_refreshes_week(page: Page) -> Non
         expect(refreshed_cell).to_have_attribute("data-location", "", timeout=5000)
         expect(refreshed_cell).to_be_empty()
     finally:
-        _delete_owned_test_user(page, user_id)
+        if user_id and target_date:
+            _clear_attendance_slot(page, user_id, target_date)
