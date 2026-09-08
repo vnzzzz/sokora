@@ -8,8 +8,8 @@ USERS_URL = "http://localhost:8000/users"
 def test_user_crud_lifecycle_uses_real_master_ids(page: Page) -> None:
     suffix = time.time_ns()
     user_id = f"e2e_{suffix}"
-    initial_name = f"E2E社員_{suffix}"
-    updated_name = f"E2E社員更新_{suffix}"
+    initial_name = f"E2Eテスト社員_{suffix}"
+    updated_name = f"E2Eテスト社員更新_{suffix}"
 
     page.goto(USERS_URL)
     expect(page.locator("h2")).to_have_text("社員管理")
