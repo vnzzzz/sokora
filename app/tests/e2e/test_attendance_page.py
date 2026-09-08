@@ -24,7 +24,7 @@ def _create_owned_test_user(page: Page) -> str:
     assert user_types
 
     suffix = time.time_ns()
-    user_id = f"e2e_att_{suffix}"
+    user_id = f"E2EA{suffix % 100_000_000:08d}"
     create_response = page.request.post(
         f"{BASE_URL}/api/v1/users",
         data={
