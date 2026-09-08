@@ -7,8 +7,8 @@ GROUPS_URL = "http://localhost:8000/groups"
 
 def test_group_crud_lifecycle(page: Page) -> None:
     suffix = time.time_ns()
-    initial_name = f"E2Eグループ_{suffix}"
-    updated_name = f"E2Eグループ更新_{suffix}"
+    initial_name = f"E2Eテストグループ_{suffix}"
+    updated_name = f"E2Eテストグループ更新_{suffix}"
 
     page.goto(GROUPS_URL)
     expect(page.locator("h2")).to_have_text("グループ管理")
