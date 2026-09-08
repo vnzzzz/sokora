@@ -93,7 +93,7 @@ format: sync
 	uv run ruff format app scripts
 
 format-check: sync
-	uv run ruff format --diff app/tests/e2e/test_attendance_page.py
+	uv run ruff format --check app scripts
 
 typecheck: sync
 	uv run mypy app
