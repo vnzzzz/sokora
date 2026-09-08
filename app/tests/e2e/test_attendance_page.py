@@ -57,8 +57,16 @@ def test_attendance_modal_create_update_delete_refreshes_week(page: Page) -> Non
 
         target_date = cell.get_attribute("data-date")
         assert target_date
+        modal_path = f"/attendance/modals/{user_id}/{target_date}"
+        expect(cell).to_have_attribute("hx-get", modal_path)
 
-        cell.click()
+        with page.expect_response(
+            lambda response: response.url.endswith(modal_path)
+        ) as response_info:
+            cell.click()
+        modal_response = response_info.value
+        assert modal_response.status == 200
+
         modal = page.locator(f"#attendance-modal-{user_id}-{target_date}")
         expect(modal).to_be_visible()
 
