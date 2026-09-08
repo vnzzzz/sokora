@@ -48,6 +48,9 @@ def test_attendance_modal_create_update_delete_refreshes_week(page: Page) -> Non
     try:
         monday = _future_monday()
         page.goto(f"{ATTENDANCE_WEEKLY_URL}?week={monday.isoformat()}")
+        page.wait_for_function(
+            "() => Boolean(window.htmx) && document.readyState === 'complete'"
+        )
 
         cell = page.locator(
             f'#calendar td.attendance-cell[data-user-id="{user_id}"]'
