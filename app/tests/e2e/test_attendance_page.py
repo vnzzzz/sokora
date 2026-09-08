@@ -14,7 +14,7 @@ def _future_monday() -> date:
 
 def _create_owned_test_user(page: Page) -> str:
     groups_response = page.request.get(f"{BASE_URL}/api/v1/groups")
-    user_types_response = page.request.get(f"{BASE_URL}/api/v1/user-types")
+    user_types_response = page.request.get(f"{BASE_URL}/api/v1/user_types")
     assert groups_response.ok
     assert user_types_response.ok
 
