@@ -7,8 +7,8 @@ LOCATIONS_URL = "http://localhost:8000/locations"
 
 def test_location_crud_lifecycle(page: Page) -> None:
     suffix = time.time_ns()
-    initial_name = f"E2E勤怠種別_{suffix}"
-    updated_name = f"E2E勤怠種別更新_{suffix}"
+    initial_name = f"E2Eテスト勤怠種別_{suffix}"
+    updated_name = f"E2Eテスト勤怠種別更新_{suffix}"
 
     page.goto(LOCATIONS_URL)
     expect(page.locator("h2")).to_have_text("勤怠種別管理")
