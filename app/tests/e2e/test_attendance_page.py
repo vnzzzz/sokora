@@ -76,9 +76,7 @@ def test_attendance_modal_create_update_delete_refreshes_week(page: Page) -> Non
             f'#calendar td.attendance-cell[data-user-id="{user_id}"]'
             f'[data-date="{target_date}"]'
         )
-        expect(refreshed_cell).to_have_attribute(
-            "data-has-data", "true", timeout=5000
-        )
+        expect(refreshed_cell).to_have_attribute("data-has-data", "true", timeout=5000)
         expect(refreshed_cell).to_have_attribute(
             "data-location", first_location_name, timeout=5000
         )
@@ -106,9 +104,7 @@ def test_attendance_modal_create_update_delete_refreshes_week(page: Page) -> Non
         delete_modal.get_by_role("button", name="削除").click()
 
         expect(delete_modal).to_be_hidden()
-        expect(refreshed_cell).to_have_attribute(
-            "data-has-data", "false", timeout=5000
-        )
+        expect(refreshed_cell).to_have_attribute("data-has-data", "false", timeout=5000)
         expect(refreshed_cell).to_have_attribute("data-location", "", timeout=5000)
         expect(refreshed_cell).to_be_empty()
     finally:
