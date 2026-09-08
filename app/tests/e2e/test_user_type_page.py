@@ -7,8 +7,8 @@ USER_TYPES_URL = "http://localhost:8000/user-types"
 
 def test_user_type_crud_lifecycle(page: Page) -> None:
     suffix = time.time_ns()
-    initial_name = f"E2E社員種別_{suffix}"
-    updated_name = f"E2E社員種別更新_{suffix}"
+    initial_name = f"E2Eテスト社員種別_{suffix}"
+    updated_name = f"E2Eテスト社員種別更新_{suffix}"
 
     page.goto(USER_TYPES_URL)
     expect(page.locator("h2")).to_have_text("社員種別管理")
