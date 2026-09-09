@@ -341,6 +341,8 @@ async def save_auth_oidc_settings(
     """Persist OIDC configuration without ever echoing the client secret."""
     app_settings = request.app.state.settings_provider()
     try:
+        if enabled:
+            await check_oidc_discovery(issuer, app_settings.oidc_http_timeout)
         save_oidc_config(
             db,
             app_settings,
