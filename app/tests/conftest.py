@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker  # Session をインポート
 
 # from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker # 不要
 # --- アプリケーションとDB設定のインポート ---
-from app.db.session import DatabaseRuntime, Base, get_db  # get_db と Base をインポート
+from app.db.session import Base, DatabaseRuntime, get_db  # get_db と Base をインポート
 from app.main import app as main_app
 
 # トップレベルでモデルをインポート
