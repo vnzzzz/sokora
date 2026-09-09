@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -39,7 +40,7 @@ def _set_signed_session(async_client, session: dict[str, object]) -> None:
     )
 
 
-async def _login_admin(async_client, monkeypatch) -> None:
+async def _login_admin(async_client, monkeypatch) -> str:
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
@@ -56,6 +57,15 @@ async def _login_admin(async_client, monkeypatch) -> None:
     )
     assert response.status_code == 303
     assert response.headers["location"] == "/auth/settings"
+
+    settings_page = await async_client.get("/auth/settings")
+    assert settings_page.status_code == 200
+    match = re.search(
+        r'name="csrf_token" value="([^"]+)"',
+        settings_page.text,
+    )
+    assert match is not None
+    return match.group(1)
 
 
 @pytest.mark.asyncio
@@ -76,6 +86,7 @@ async def test_auth_settings_uses_legacy_environment_until_db_row_exists(
     assert 'name="issuer"' in settings_page.text
     assert 'name="client_id"' in settings_page.text
     assert 'name="client_secret"' in settings_page.text
+    assert 'name="csrf_token"' in settings_page.text
     assert "legacy-secret" not in settings_page.text
 
     login_page = await async_client.get("/auth/login")
@@ -96,11 +107,12 @@ async def test_db_oidc_settings_encrypt_secret_and_become_source_of_truth(
         "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
     )
 
-    await _login_admin(async_client, monkeypatch)
+    csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
+            "csrf_token": csrf_token,
             "enabled": "true",
             "issuer": "https://db.example/realms/sokora",
             "client_id": "db-client",
@@ -144,11 +156,12 @@ async def test_db_disabled_oidc_never_falls_back_to_legacy_environment(
     monkeypatch.setenv("OIDC_CLIENT_SECRET", "legacy-secret")
     monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
 
-    await _login_admin(async_client, monkeypatch)
+    csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
+            "csrf_token": csrf_token,
             "enabled": "false",
             "issuer": "",
             "client_id": "",
@@ -197,10 +210,11 @@ async def test_oidc_unlink_keeps_database_disabled_state(
         "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
     )
 
-    await _login_admin(async_client, monkeypatch)
+    csrf_token = await _login_admin(async_client, monkeypatch)
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
+            "csrf_token": csrf_token,
             "enabled": "true",
             "issuer": "https://db.example/realms/sokora",
             "client_id": "db-client",
@@ -213,6 +227,7 @@ async def test_oidc_unlink_keeps_database_disabled_state(
 
     unlink = await async_client.post(
         "/auth/settings/oidc/unlink",
+        data={"csrf_token": csrf_token},
         follow_redirects=False,
     )
     assert unlink.status_code == 303
@@ -267,11 +282,12 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
         "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
         "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
     )
-    await _login_admin(async_client, monkeypatch)
+    csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
+            "csrf_token": csrf_token,
             "enabled": "true",
             "issuer": "https://db.example/realms/sokora",
             "client_id": "db-client",
@@ -306,6 +322,96 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
 
 
 @pytest.mark.asyncio
+async def test_oidc_settings_mutations_require_valid_csrf_token(
+    async_client, db, monkeypatch
+) -> None:
+    monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
+    monkeypatch.setenv(
+        "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
+        "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+    )
+    csrf_token = await _login_admin(async_client, monkeypatch)
+
+    missing = await async_client.post(
+        "/auth/settings/oidc",
+        data={
+            "enabled": "true",
+            "issuer": "https://db.example/realms/sokora",
+            "client_id": "db-client",
+            "client_secret": "db-secret",
+            "scope": "openid profile email",
+        },
+        follow_redirects=False,
+    )
+    assert missing.status_code == 403
+    assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
+
+    wrong = await async_client.post(
+        "/auth/settings/oidc/test",
+        data={
+            "csrf_token": csrf_token + "-tampered",
+            "issuer": "https://candidate.example/realms/sokora",
+        },
+        follow_redirects=False,
+    )
+    assert wrong.status_code == 403
+
+    save = await async_client.post(
+        "/auth/settings/oidc",
+        data={
+            "csrf_token": csrf_token,
+            "enabled": "true",
+            "issuer": "https://db.example/realms/sokora",
+            "client_id": "db-client",
+            "client_secret": "db-secret",
+            "scope": "openid profile email",
+        },
+        follow_redirects=False,
+    )
+    assert save.status_code == 303
+
+    unlink_without_token = await async_client.post(
+        "/auth/settings/oidc/unlink",
+        follow_redirects=False,
+    )
+    assert unlink_without_token.status_code == 403
+    assert db.scalar(text("SELECT oidc_enabled FROM auth_config WHERE id = 1")) in {
+        1,
+        True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_enabled_oidc_save_requires_openid_scope(
+    async_client, db, monkeypatch
+) -> None:
+    monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
+    monkeypatch.setenv(
+        "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
+        "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+    )
+    csrf_token = await _login_admin(async_client, monkeypatch)
+
+    save = await async_client.post(
+        "/auth/settings/oidc",
+        data={
+            "csrf_token": csrf_token,
+            "enabled": "true",
+            "issuer": "https://db.example/realms/sokora",
+            "client_id": "db-client",
+            "client_secret": "db-secret",
+            "scope": "profile email",
+        },
+        follow_redirects=False,
+    )
+
+    assert save.status_code == 303
+    assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
+    page = await async_client.get("/auth/settings")
+    assert "scope に openid が必要です" in page.text
+
+
+@pytest.mark.asyncio
 async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
     async_client, db, monkeypatch
 ) -> None:
@@ -317,7 +423,7 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
         "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
         "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
     )
-    await _login_admin(async_client, monkeypatch)
+    csrf_token = await _login_admin(async_client, monkeypatch)
 
     async def reject_discovery(_issuer: str, _timeout: float):
         raise OIDCDiscoveryError(
@@ -329,6 +435,7 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
+            "csrf_token": csrf_token,
             "enabled": "true",
             "issuer": "https://db.example/realms/sokora",
             "client_id": "db-client",
@@ -351,7 +458,7 @@ async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
 ) -> None:
     import app.routers.pages.auth as auth_router
 
-    await _login_admin(async_client, monkeypatch)
+    csrf_token = await _login_admin(async_client, monkeypatch)
     seen: dict[str, object] = {}
 
     async def fake_check(issuer: str, timeout: float):
@@ -364,6 +471,7 @@ async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
     response = await async_client.post(
         "/auth/settings/oidc/test",
         data={
+            "csrf_token": csrf_token,
             "enabled": "true",
             "issuer": "https://candidate.example/realms/sokora",
             "client_id": "candidate-client",
