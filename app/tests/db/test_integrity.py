@@ -231,6 +231,38 @@ def test_sqlite_migration_rolls_back_when_foreign_key_check_fails(
                 connection.scalar(text("SELECT user_id FROM attendance WHERE id=1"))
                 == "missing-user"
             )
+            assert (
+                connection.scalar(
+                    text(
+                        "SELECT COUNT(*) FROM sqlite_master "
+                        "WHERE name = '_alembic_tmp_users'"
+                    )
+                )
+                == 0
+            )
+
+        with runtime.engine.begin() as connection:
+            connection.exec_driver_sql(
+                "UPDATE attendance SET user_id='u1' WHERE id=1"
+            )
+
+        migrate_database(runtime)
+
+        with runtime.engine.connect() as connection:
+            assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+            assert (
+                connection.scalar(
+                    text(
+                        "SELECT COUNT(*) FROM sqlite_master "
+                        "WHERE name = '_alembic_tmp_users'"
+                    )
+                )
+                == 0
+            )
+            assert (
+                connection.scalar(text("SELECT version_num FROM alembic_version"))
+                != "7c4a1b2d3e5f"
+            )
     finally:
         runtime.dispose()
 
