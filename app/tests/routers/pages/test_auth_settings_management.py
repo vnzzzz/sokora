@@ -13,7 +13,7 @@ from app.main import app
 
 @pytest.fixture(autouse=True)
 def _stub_oidc_discovery(monkeypatch) -> None:
-    import app.routers.pages.admin_auth as admin_admin_auth_router
+    import app.routers.pages.admin_auth as admin_auth_router
 
     async def fake_check(issuer: str, _timeout: float) -> dict[str, str]:
         normalized = issuer.rstrip("/")
@@ -443,7 +443,7 @@ async def test_enabled_oidc_save_requires_openid_scope(
 async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
     async_client, db, monkeypatch
 ) -> None:
-    import app.routers.pages.admin_auth as admin_admin_auth_router
+    import app.routers.pages.admin_auth as admin_auth_router
     from app.services.auth.config_store import OIDCDiscoveryError
 
     monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
@@ -493,7 +493,7 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
 async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
     async_client, monkeypatch
 ) -> None:
-    import app.routers.pages.admin_auth as admin_admin_auth_router
+    import app.routers.pages.admin_auth as admin_auth_router
 
     csrf_token = await _login_admin(async_client, monkeypatch)
     seen: dict[str, object] = {}
