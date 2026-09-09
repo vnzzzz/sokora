@@ -15,8 +15,8 @@ from typing import Any, Dict
 from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
-from sqlalchemy import Engine, create_engine, event, text
-from sqlalchemy.engine import Connection, URL, make_url
+from sqlalchemy import Connection, Engine, create_engine, event, text
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
