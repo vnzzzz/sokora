@@ -2,9 +2,9 @@
 
 ## Scope
 
-閉域環境でも、GCP/AWS/Azureと同じprovider非依存production OCI imageを利用する。application codeやDockerfileを閉域向けに分岐せず、差分はimageの配送方法、runtime env/secret、network、persistent dataへ閉じ込める。
+閉域環境でも、root `Dockerfile`から生成するprovider非依存production OCI imageを利用する。application codeやDockerfileを閉域向けに分岐せず、差分はimageの配送方法、runtime env/secret、network、persistent dataへ閉じ込める。
 
-runtime自体の共通contractは [runtime.md](runtime.md) を参照する。本書では閉域向けdeployment adapterと運用境界を定義する。
+runtime自体の共通contractは [runtime.md](runtime.md) を参照する。本書では実装済みの閉域Docker deployment bundle / Compose / operator手順と運用境界を定義する。
 
 ## Deployment unit
 
