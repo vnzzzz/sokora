@@ -825,10 +825,10 @@ name = "sokora"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "cryptography" },
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "authlib" },
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "itsdangerous" },
