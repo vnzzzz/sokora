@@ -1,136 +1,131 @@
 # Closed-network deployment
 
-## Scope
+閉域Dockerサーバー向けには、production imageと実行に必要な最小assetだけをまとめたrepository-free bundleを提供します。runtime hostへsource repositoryやbuild toolingを持ち込む必要はありません。
 
-閉域環境でも、root `Dockerfile`から生成するprovider非依存production OCI imageを利用する。application codeやDockerfileを閉域向けに分岐せず、差分はimageの配送方法、runtime env/secret、network、persistent dataへ閉じ込める。
+具体的なoperator commandはbundleへ同梱される [`deploy/closed/README.md`](../deploy/closed/README.md) が正本です。この文書ではdelivery / state / upgrade boundaryを説明します。
 
-runtime自体の共通contractは [runtime.md](runtime.md) を参照する。本書では実装済みの閉域Docker deployment bundle / Compose / operator手順と運用境界を定義する。
+## Delivery flow
 
-## Deployment unit
-
-runtime hostへ持ち込む標準単位は `scripts/deployment/package_closed_bundle.sh` が生成するbundleとする。
-
-bundleには以下だけを含める。
-
-- production imageの `docker save` archive
-- archiveのSHA-256 checksum
-- image reference / image ID / **そのimageをbuildしたsource revision** を記録したmanifest
-- mandatory manifestとchecksumを検証後に `docker load` し、manifestのimage IDと一致することまで確認するloader
-- SQLite / PostgreSQL用の薄いDocker Compose定義
-- deployment/runtime env template
-- runtime host向けoperator guide
-
-開発repo、tests、docs全体、devcontainer、agent設定、Node/uv等のbuild toolingはruntime deployment unitへ含めない。production image自体のartifact boundaryもこの方針と一致する。
-
-`SOURCE_REVISION` はpackagingを行ったcheckoutから暗黙推測しない。prebuilt imageをbundle化するときは、そのimageをbuildした40文字Git commitをcallerが明示する。これにより「古い/外部build image + 現在のpackaging checkout」の組合せでも誤ったprovenanceをmanifestへ記録しない。
-
-bundle再生成は既存directoryを先に削除しない。同一filesystem上のsibling temporary directoryへ全artifactを生成し、manifestを最後に書いた後だけ完成済みbundleへ切り替える。途中で `docker save`、checksum、copy等が失敗した場合はprevious known-good bundleを保持し、partial bundleを正式な出力先へ残さない。
-
-## Build location
-
-### 外部でbuildして搬入する場合
-
-推奨経路。source checkoutからversion付きimageをbuildしてそのままbundle化する場合は、`closed-bundle` がbuild対象checkoutのrevisionを自動でmanifestへ渡す。
-
-```bash
-VERSION=2026.09.02 make closed-bundle
+```mermaid
+flowchart LR
+    Source["Source revision"] --> Image["Production OCI image"]
+    Image --> Bundle["Closed bundle<br/>image + manifest + Compose"]
+    Bundle --> Transfer["Approved transfer"]
+    Transfer --> Verify["Checksum / manifest / image ID verification"]
+    Verify --> Runtime["Docker host"]
+    Runtime --> SQLite[("SQLite + /app/data")]
+    Runtime --> PostgreSQL[("External PostgreSQL")]
 ```
 
-すでに別工程でbuild済みのimageをbundle化する場合は、そのimageのsource revisionを明示する。
+## Build and package
+
+source checkoutからimageをbuildしてbundle化:
 
 ```bash
-VERSION=2026.09.02 \
+VERSION=2026.09.09 make closed-bundle
+```
+
+すでに別工程でbuildしたimageをpackageする場合、**そのimageをbuildした40文字commit SHA**を明示します。
+
+```bash
+VERSION=2026.09.09 \
 SOURCE_REVISION=<40-character-build-commit> \
 make package-closed-bundle
 ```
 
-生成先は既定で `dist/sokora-2026.09.02-closed/`。このdirectoryだけを承認済み媒体等でruntime側へ搬入する。
+既定出力は`dist/sokora-<version>-closed/`です。
 
-### 閉域内でbuildする場合
+packaging checkoutのHEADをprebuilt imageのprovenanceとして暗黙利用しません。bundle生成はstaging directoryで完了してから出力先を置き換えるため、途中failureでprevious known-good bundleを破壊しません。
 
-閉域内に依存取得可能なbuild hostを用意し、source checkout/release sourceから同じroot `Dockerfile` をbuildする。
+## Bundle
 
-```bash
-VERSION=2026.09.02 make closed-bundle
-```
-
-sourceはbuild hostだけで利用し、runtime hostへは生成済みbundleだけを渡す。閉域専用Dockerfileは作らない。
-
-## Registry delivery
-
-閉域内registryへ到達できる場合は `docker save/load` の代わりにimmutable version tagをregistry経由で配送してよい。重要なのは配送経路ではなく、同一production imageをそのまま実行すること。
-
-`latest` のようなmutable tagだけでupgrade/rollbackを運用しない。release/versionまたはcommitに対応するimmutable tagを保持する。
-
-## Runtime state boundary
-
-image/bundle lifecycleとmutable stateを分離する。
-
-| State | Location/contract |
+| File | Purpose |
 | --- | --- |
-| deployment values | `/etc/sokora/deployment.env` 等。image tag、publish port、data/env path |
-| application secret/config | `/etc/sokora/runtime.env` 等。bundle外で権限制御し、Compose operatorがread可能なownership/modeにする |
-| SQLite DB | `/var/lib/sokora` 等のpersistent host storageを `/app/data` へmount |
-| PostgreSQL data | external PostgreSQL。application container filesystemへ保持しない |
-| image | immutable version tag。old versionをrollback期間中保持 |
+| `image.tar` | `docker save`したproduction image |
+| `image.tar.sha256` | transport checksum |
+| `manifest.env` | image reference / image ID / source revision |
+| `load-image.sh` | manifest + checksum + loaded image ID verification |
+| `compose.sqlite.yaml` | single-instance SQLite runtime |
+| `compose.postgresql.yaml` | external PostgreSQL runtime |
+| `compose.env.example` | non-secret deployment values |
+| `runtime.env.example` | runtime setting / secret placeholders |
+| `README.md` | runtime host向けoperator guide |
 
-bundle内のexample env fileをそのままsecret storeとして扱わない。referenceのnon-root Docker operator運用では `/etc/sokora/runtime.env` をoperator owner・`0600`、deployment envをoperator owner・`0640` とし、Composeが`env_file`を読めることを保証する。rootや専用service accountで運用する場合は、そのidentityへ同等のread権限を与え、Compose実行identityも統一する。
+loaderはmanifestやchecksumの異常を`docker load`前に拒否し、load後もimmutable image IDを照合します。
 
-## SQLite
+## Persistent state
 
-SQLiteはsingle-instance runtimeだけをsupportする。`deploy/closed/compose.sqlite.yaml` はpersistent host directoryを `/app/data` へbind mountし、`DATABASE_URL=sqlite:///data/sokora.db` を固定する。generic `runtime.env.example` の `DATABASE_URL` は意図的にblankであり、SQLite adapterが明示的にoverrideする。
+bundleはreplace可能なartifactです。mutable stateとsecretはbundle外へ置きます。
 
-upgrade前は稼働中DBの単純なfile copyではなくSQLite backup APIを利用する。bundle付属READMEに、production image内のPython標準`sqlite3`からconsistent backupを作成する手順を記載する。
+| State | Reference location |
+| --- | --- |
+| deployment values | `/etc/sokora/deployment.env` |
+| runtime config / secret | `/etc/sokora/runtime.env` |
+| SQLite data | `/var/lib/sokora` → `/app/data` |
+| PostgreSQL data | external PostgreSQL |
+| image | immutable version tag |
 
-startupでAlembic migrationが適用されるため、schema-changing upgrade後のrollbackでは原則としてpre-upgrade DB backupも同時にrestoreする。old imageへ戻すだけでschema互換性が保たれるとは仮定しない。
+reference operatorでは`runtime.env`を`0600`、deployment envを`0640`とし、`docker compose`を実行するidentityが読めるownershipにします。
 
-## PostgreSQL
+## Runtime mode
 
-`deploy/closed/compose.postgresql.yaml` はapplication側のpersistent data volumeを持たず、`runtime.env` の `DATABASE_URL` でexternal PostgreSQLへ接続する。template値はblankのままとし、operatorが実URLを設定する。
+| Mode | Database | Persistent mount | Replica |
+| --- | --- | --- | --- |
+| SQLite | `sqlite:///data/sokora.db` | host data dir → `/app/data` | 1 |
+| PostgreSQL | explicit `DATABASE_URL` | application data mountなし | surrounding platform次第 |
 
-PostgreSQL adapterはapplication startup前に `DATABASE_URL` を検証し、未設定またはPostgreSQL scheme以外ならexitする。これにより設定漏れ時にdefault SQLiteへfallbackしてunmounted container filesystemへDBを作ることを禁止する。
+PostgreSQL Composeは`DATABASE_URL`がblankまたはPostgreSQL scheme以外ならapplication startup前にfailします。設定漏れをdefault SQLiteへfallbackさせません。
 
-DB backup/restoreはPostgreSQL運用基盤側の標準手段を利用する。application imageに`pg_dump`やvendor固有backup clientを追加しない。
+SQLite / PostgreSQLの一般的な選択基準は [Deployment](deployment.md) を参照してください。
 
-shared PostgreSQLを使うmulti-replica contractは [ADR 0003](adr/0003-multi-replica-runtime.md) に従う。Compose adapterは閉域runtimeの最小1-process定義であり、replica orchestration/load balancerは対象環境側の責務とする。
+## Install and start
 
-## Upgrade contract
+runtime hostでは次の順で操作します。
 
-1. current versionのDB backup/snapshotを取得する。
-2. new immutable imageをbundleまたはregistryからload/pullする。
-3. deployment envの `SOKORA_IMAGE` をnew tagへ変更する。
-4. new bundleの同じCompose adapterでcontainerをreplaceする。
-5. startup migration完了後、DB readinessを含む`/healthz` と主要操作を確認する。
-6. acceptanceまではold imageとDB backupを保持する。
+1. bundleを搬入
+2. `./load-image.sh`でimageを検証・load
+3. `runtime.env.example` / `compose.env.example`をpersistent configへinstall
+4. runtime secret、port、DB設定を編集
+5. SQLiteの場合はpersistent data directoryを作成
+6. 選択したCompose fileで`up -d --pull never`
+7. `/healthz`と主要user flowを確認
 
-application startupがmigrationを所有するため、operatorが別系統のmanual schema bootstrapを実行しない。
+正確な`install` / `docker compose` commandはbundle内 [operator guide](../deploy/closed/README.md) に維持します。
 
-## Rollback contract
+## Upgrade
 
-- DB schema互換性が確認できる場合のみimage tagをold versionへ戻すだけのrollbackを許容する。
-- schema-changing upgrade後は、applicationを停止してpre-upgrade DB stateもrestoreしてからold imageを起動する。
-- automatic Alembic downgradeをimage rollbackの暗黙動作にはしない。
+1. current DB backup / snapshotを取得
+2. new bundleを搬入し`load-image.sh`で検証
+3. `SOKORA_IMAGE`をnew immutable tagへ変更
+4. new bundleの同じCompose modeでcontainerをreplace
+5. startup migration完了後に`/healthz`と主要操作を確認
+6. acceptanceまでprevious image / bundle / DB backupを保持
 
-この方針によりimage rollbackとDB rollbackの境界を明示し、old application + new incompatible schemaの組合せを避ける。
+startupがAlembic migrationを所有するため、operatorが別系統のmanual schema bootstrapを行いません。
+
+## Rollback
+
+image rollbackとDB rollbackを別物として扱います。
+
+- schema互換が確認できる場合: previous image tagへ戻す
+- schema-changing upgrade: applicationを停止し、pre-upgrade DB stateをrestoreしてからprevious imageを起動
+- automatic Alembic downgrade: 実行しない
+
+SQLite backupはlive DBの単純copyではなくbackup APIを利用します。PostgreSQLは対象DB基盤のbackup / snapshot機能を利用します。
 
 ## Proxy
 
-閉域proxyはimageへ焼き込まない。build時は既存Makefileの `proxy` / `NO_PROXY` contract、runtime時は標準 `HTTP_PROXY` / `HTTPS_PROXY` / lowercase variants / `NO_PROXY` をenvironment injectionする。
+proxy設定をimageへ焼き込みません。runtimeでは標準`HTTP_PROXY` / `HTTPS_PROXY` / lowercase variants / `NO_PROXY`をenvironmentから渡します。
 
-internal PostgreSQL/OIDC endpoint等、proxyを経由させない宛先はdeployment環境側で `NO_PROXY` に追加する。proxy有無で別Dockerfile・別application codeを持たない。
+internal PostgreSQL / OIDC endpoint等、proxyを経由させない宛先はdeployment環境側の`NO_PROXY`へ追加します。
 
 ## Validation
 
-`Closed deployment` CIでは以下を保証する。
+`Closed deployment` CIは少なくとも次を検証します。
 
-- 同じproduction imageからrepository-free bundleを生成できる
-- callerが明示したbuild revisionがmanifestへそのまま記録される
-- packaging途中失敗時にprevious known-good bundleを失わない
-- manifest欠落を`docker load`前に拒否する
-- image archive checksumを検証して`docker load`でき、loaded image IDがmanifestと一致する
-- bundle内にrepo/test/dev toolingを含めない
-- PostgreSQL adapterはblank/non-PostgreSQL `DATABASE_URL` をfail-closedで拒否する
-- bundleのSQLite Compose adapterだけでimageを再起動し、DB readinessを含む`/healthz` が成功する
-- PostgreSQL自体のproduction image接続contractは既存PostgreSQL jobで継続検証する
-
-bundle sourceは `deploy/closed/`、packaging entrypointは `scripts/deployment/package_closed_bundle.sh` とする。
+- repository-free bundle生成
+- source revision / checksum / image ID verification
+- packaging failure時のprevious bundle保持
+- SQLite Composeでの起動と`/healthz`
+- PostgreSQL Composeのfail-closed `DATABASE_URL` validation
+- bundleへrepository/test/dev toolingを混入させないこと
