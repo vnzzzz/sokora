@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.db.session import get_app_database_runtime, get_db
 from app.services.auth.config_store import (
     AuthConfigError,
     OIDCDiscoveryError,
@@ -383,24 +383,25 @@ async def save_auth_oidc_settings(
     scope: str = Form("openid profile email"),
     csrf_token: str = Form(""),
     _admin: dict[str, object] = Depends(require_admin),
-    db: Session = Depends(get_db),
 ) -> Response:
-    """Persist OIDC configuration without ever echoing the client secret."""
+    """Validate external discovery first, then persist through a short DB session."""
     _require_auth_settings_csrf(request, csrf_token)
     app_settings = request.app.state.settings_provider()
     try:
         if enabled:
             validate_oidc_scope_for_enable(scope)
             await check_oidc_discovery(issuer, app_settings.oidc_http_timeout)
-        save_oidc_config(
-            db,
-            app_settings,
-            enabled=enabled,
-            issuer=issuer,
-            client_id=client_id,
-            client_secret=client_secret,
-            scope=scope,
-        )
+        runtime = get_app_database_runtime(request.app)
+        with runtime.managed_session() as db:
+            save_oidc_config(
+                db,
+                app_settings,
+                enabled=enabled,
+                issuer=issuer,
+                client_id=client_id,
+                client_secret=client_secret,
+                scope=scope,
+            )
     except AuthConfigError as exc:
         _remember_settings_form(
             request,
