@@ -1,9 +1,28 @@
+import base64
+import json
 from pathlib import Path
 
 import pytest
+from itsdangerous import TimestampSigner
 from sqlalchemy import inspect, text
 
 from app.db.session import create_database_runtime, initialize_database
+from app.main import app
+
+
+
+
+def _set_signed_session(async_client, session: dict[str, object]) -> None:
+    session_secret = next(
+        middleware
+        for middleware in app.user_middleware
+        if middleware.cls.__name__ == "SessionMiddleware"
+    ).options["secret_key"]
+    payload = base64.b64encode(json.dumps(session).encode("utf-8"))
+    async_client.cookies.set(
+        "session",
+        TimestampSigner(session_secret).sign(payload).decode("utf-8"),
+    )
 
 
 async def _login_admin(async_client, monkeypatch) -> None:
@@ -192,6 +211,118 @@ async def test_oidc_unlink_keeps_database_disabled_state(
     async_client.cookies.clear()
     login_page = await async_client.get("/auth/login")
     assert "/auth/redirect" not in login_page.text
+
+
+
+
+@pytest.mark.asyncio
+async def test_oidc_settings_write_requires_local_admin(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+
+    unauthenticated = await async_client.post(
+        "/auth/settings/oidc",
+        data={"enabled": "false"},
+        follow_redirects=False,
+    )
+    assert unauthenticated.status_code == 401
+
+    _set_signed_session(
+        async_client,
+        {"auth": {"method": "oidc", "subject": "user-1", "username": "user-1"}},
+    )
+    non_admin = await async_client.post(
+        "/auth/settings/oidc",
+        data={"enabled": "false"},
+        follow_redirects=False,
+    )
+    assert non_admin.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_local_admin_break_glass_survives_wrong_db_secret_key(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
+    monkeypatch.setenv(
+        "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
+        "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+    )
+    await _login_admin(async_client, monkeypatch)
+
+    save = await async_client.post(
+        "/auth/settings/oidc",
+        data={
+            "enabled": "true",
+            "issuer": "https://db.example/realms/sokora",
+            "client_id": "db-client",
+            "client_secret": "db-secret",
+            "scope": "openid profile email",
+        },
+        follow_redirects=False,
+    )
+    assert save.status_code == 303
+
+    async_client.cookies.clear()
+    monkeypatch.setenv(
+        "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
+        "MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=",
+    )
+
+    login_page = await async_client.get("/auth/login/admin")
+    assert login_page.status_code == 200
+
+    local_login = await async_client.post(
+        "/auth/local",
+        data={"username": "admin", "password": "secret", "next": "/auth/settings"},
+        follow_redirects=False,
+    )
+    assert local_login.status_code == 303
+    assert local_login.headers["location"] == "/auth/settings"
+
+    settings_page = await async_client.get("/auth/settings")
+    assert settings_page.status_code == 200
+    assert "client secretを復号できません" in settings_page.text
+    assert "/auth/redirect" not in (await async_client.get("/auth/login")).text
+
+
+@pytest.mark.asyncio
+async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
+    async_client, monkeypatch
+) -> None:
+    import app.routers.pages.auth as auth_router
+
+    await _login_admin(async_client, monkeypatch)
+    seen: dict[str, object] = {}
+
+    async def fake_check(issuer: str, timeout: float):
+        seen["issuer"] = issuer
+        seen["timeout"] = timeout
+        return {"issuer": issuer}
+
+    monkeypatch.setattr(auth_router, "check_oidc_discovery", fake_check)
+
+    response = await async_client.post(
+        "/auth/settings/oidc/test",
+        data={
+            "enabled": "true",
+            "issuer": "https://candidate.example/realms/sokora",
+            "client_id": "candidate-client",
+            "client_secret": "must-not-survive",
+            "scope": "openid email",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert seen["issuer"] == "https://candidate.example/realms/sokora"
+
+    page = await async_client.get("/auth/settings")
+    assert page.status_code == 200
+    assert "OIDC discoveryへ接続できました。" in page.text
+    assert "https://candidate.example/realms/sokora" in page.text
+    assert "candidate-client" in page.text
+    assert "must-not-survive" not in page.text
 
 
 def test_migration_adds_auth_config_without_replacing_existing_data(
