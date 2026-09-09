@@ -13,9 +13,9 @@
 | [database.md](database.md) | data model、DB backend、schema lifecycle、transaction contract |
 | [ui.md](ui.md) | SSR/HTMX UIの利用者向けbehaviorとpage adapter contract |
 | [templates.md](templates.md) | Jinja template / static assetの配置と責務 |
-| [deployment.md](deployment.md) | deploymentの入口、providerごとの実装status、責務境界 |
+| [deployment.md](deployment.md) | generic container配置、SQLite/PostgreSQL構成、deployment environment責務 |
 | [runtime.md](runtime.md) | provider非依存production OCI image/runtime contract |
-| [closed-deployment.md](closed-deployment.md) | 実装済みclosed-network deployment adapterと運用境界 |
+| [closed-deployment.md](closed-deployment.md) | 実装済みclosed-network Docker bundle / Compose / operator手順 |
 | [sqlite-database-management.md](sqlite-database-management.md) | SQLite backup/restoreの管理操作とfailure recovery contract |
 | [adr/](adr/) | 重要なarchitecture decisionと、その採用理由・trade-off |
 
@@ -27,9 +27,9 @@ ADRは**なぜそのarchitectureを選んだか**を記録します。背景、�
 
 ## Deployment documentation
 
-共通のproduction artifactはprovider非依存OCI imageです。provider固有差分はdeployment adapterへ閉じ込めます。
+共通のproduction artifactはprovider非依存OCI imageです。[deployment.md](deployment.md) には、特定cloud providerのsupport状況ではなく、一般的なcontainer runtimeが満たす条件とSQLite / external PostgreSQLの構成判断を記載します。
 
-現在、closed-network adapterは実装済みです。GCP Cloud Run、AWS managed container、Azure managed containerはそれぞれ #57、#70、#71 で未実装のため、再現可能なdeploy手順が存在するものとしては記載しません。現在のstatusと将来の入口は [deployment.md](deployment.md) を参照してください。
+provider別adapter、deploy script、IaC、support matrixはsokora repositoryでは管理しません。実装済みのclosed-network Docker deploymentだけはrepository-owned distribution targetとして、bundle / Compose / operator手順を [closed-deployment.md](closed-deployment.md) に維持します。
 
 ## 更新ルール
 
