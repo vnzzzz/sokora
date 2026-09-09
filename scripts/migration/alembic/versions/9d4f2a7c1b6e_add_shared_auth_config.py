@@ -25,6 +25,7 @@ def upgrade() -> None:
         sa.Column("oidc_client_id", sa.String(), nullable=True),
         sa.Column("oidc_client_secret_encrypted", sa.Text(), nullable=True),
         sa.Column("oidc_scope", sa.String(), nullable=False),
+        sa.CheckConstraint("id = 1", name="ck_auth_config_singleton"),
         sa.PrimaryKeyConstraint("id"),
     )
 
