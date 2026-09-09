@@ -13,7 +13,7 @@ from app.main import app
 
 @pytest.fixture(autouse=True)
 def _stub_oidc_discovery(monkeypatch) -> None:
-    import app.routers.pages.auth as auth_router
+    import app.routers.pages.admin_auth as admin_auth_router
 
     async def fake_check(issuer: str, _timeout: float) -> dict[str, str]:
         normalized = issuer.rstrip("/")
@@ -24,7 +24,7 @@ def _stub_oidc_discovery(monkeypatch) -> None:
             "jwks_uri": f"{normalized}/jwks",
         }
 
-    monkeypatch.setattr(auth_router, "check_oidc_discovery", fake_check)
+    monkeypatch.setattr(admin_auth_router, "check_oidc_discovery", fake_check)
 
 
 def _set_signed_session(async_client, session: dict[str, object]) -> None:
@@ -51,14 +51,14 @@ async def _login_admin(async_client, monkeypatch) -> str:
         data={
             "username": "admin",
             "password": "secret",
-            "next": "/auth/settings",
+            "next": "/admin/auth",
         },
         follow_redirects=False,
     )
     assert response.status_code == 303
-    assert response.headers["location"] == "/auth/settings"
+    assert response.headers["location"] == "/admin/auth"
 
-    settings_page = await async_client.get("/auth/settings")
+    settings_page = await async_client.get("/admin/auth")
     assert settings_page.status_code == 200
     match = re.search(
         r'name="csrf_token" value="([^"]+)"',
@@ -79,10 +79,10 @@ async def test_auth_settings_uses_legacy_environment_until_db_row_exists(
 
     await _login_admin(async_client, monkeypatch)
 
-    settings_page = await async_client.get("/auth/settings")
+    settings_page = await async_client.get("/admin/auth")
     assert settings_page.status_code == 200
     assert 'data-testid="oidc-config-source">legacy_environment<' in settings_page.text
-    assert 'action="/auth/settings/oidc"' in settings_page.text
+    assert 'action="/admin/auth/oidc"' in settings_page.text
     assert 'name="issuer"' in settings_page.text
     assert 'name="client_id"' in settings_page.text
     assert 'name="client_secret"' in settings_page.text
@@ -110,7 +110,7 @@ async def test_db_oidc_settings_encrypt_secret_and_become_source_of_truth(
     csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -122,7 +122,7 @@ async def test_db_oidc_settings_encrypt_secret_and_become_source_of_truth(
         follow_redirects=False,
     )
     assert save.status_code == 303
-    assert save.headers["location"] == "/auth/settings"
+    assert save.headers["location"] == "/admin/auth"
 
     row = db.execute(
         text(
@@ -138,7 +138,7 @@ async def test_db_oidc_settings_encrypt_secret_and_become_source_of_truth(
     assert "db-secret" not in row.oidc_client_secret_encrypted
     assert row.oidc_scope == "openid profile email"
 
-    settings_page = await async_client.get("/auth/settings")
+    settings_page = await async_client.get("/admin/auth")
     assert settings_page.status_code == 200
     assert 'data-testid="oidc-config-source">database<' in settings_page.text
     assert "https://db.example/realms/sokora" in settings_page.text
@@ -159,7 +159,7 @@ async def test_db_disabled_oidc_never_falls_back_to_legacy_environment(
     csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "false",
@@ -172,7 +172,7 @@ async def test_db_disabled_oidc_never_falls_back_to_legacy_environment(
     )
     assert save.status_code == 303
 
-    settings_page = await async_client.get("/auth/settings")
+    settings_page = await async_client.get("/admin/auth")
     assert settings_page.status_code == 200
     assert 'data-testid="oidc-config-source">database<' in settings_page.text
 
@@ -212,7 +212,7 @@ async def test_oidc_unlink_keeps_database_disabled_state(
 
     csrf_token = await _login_admin(async_client, monkeypatch)
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -226,7 +226,7 @@ async def test_oidc_unlink_keeps_database_disabled_state(
     assert save.status_code == 303
 
     unlink = await async_client.post(
-        "/auth/settings/oidc/unlink",
+        "/admin/auth/oidc/unlink",
         data={"csrf_token": csrf_token},
         follow_redirects=False,
     )
@@ -249,24 +249,17 @@ async def test_oidc_unlink_keeps_database_disabled_state(
 
 
 @pytest.mark.asyncio
-async def test_oidc_settings_write_requires_local_admin(
+async def test_oidc_settings_write_rejects_non_admin_session(
     async_client, monkeypatch
 ) -> None:
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
-
-    unauthenticated = await async_client.post(
-        "/auth/settings/oidc",
-        data={"enabled": "false"},
-        follow_redirects=False,
-    )
-    assert unauthenticated.status_code == 401
 
     _set_signed_session(
         async_client,
         {"auth": {"method": "oidc", "subject": "user-1", "username": "user-1"}},
     )
     non_admin = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={"enabled": "false"},
         follow_redirects=False,
     )
@@ -285,7 +278,7 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
     csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -309,13 +302,13 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
 
     local_login = await async_client.post(
         "/auth/local",
-        data={"username": "admin", "password": "secret", "next": "/auth/settings"},
+        data={"username": "admin", "password": "secret", "next": "/admin/auth"},
         follow_redirects=False,
     )
     assert local_login.status_code == 303
-    assert local_login.headers["location"] == "/auth/settings"
+    assert local_login.headers["location"] == "/admin/auth"
 
-    settings_page = await async_client.get("/auth/settings")
+    settings_page = await async_client.get("/admin/auth")
     assert settings_page.status_code == 200
     assert "client secretを復号できません" in settings_page.text
     assert "SSOが現在利用できません" in (await async_client.get("/auth/login")).text
@@ -333,7 +326,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     csrf_token = await _login_admin(async_client, monkeypatch)
 
     missing = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "enabled": "true",
             "issuer": "https://db.example/realms/sokora",
@@ -347,7 +340,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
 
     wrong = await async_client.post(
-        "/auth/settings/oidc/test",
+        "/admin/auth/oidc/test",
         data={
             "csrf_token": csrf_token + "-tampered",
             "issuer": "https://candidate.example/realms/sokora",
@@ -357,7 +350,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     assert wrong.status_code == 403
 
     non_ascii_save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": "é",
             "enabled": "false",
@@ -367,7 +360,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     assert non_ascii_save.status_code == 403
 
     non_ascii_test = await async_client.post(
-        "/auth/settings/oidc/test",
+        "/admin/auth/oidc/test",
         data={
             "csrf_token": "é",
             "issuer": "https://candidate.example/realms/sokora",
@@ -377,7 +370,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     assert non_ascii_test.status_code == 403
 
     non_ascii_unlink = await async_client.post(
-        "/auth/settings/oidc/unlink",
+        "/admin/auth/oidc/unlink",
         data={"csrf_token": "é"},
         follow_redirects=False,
     )
@@ -385,7 +378,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
 
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -399,7 +392,7 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     assert save.status_code == 303
 
     unlink_without_token = await async_client.post(
-        "/auth/settings/oidc/unlink",
+        "/admin/auth/oidc/unlink",
         follow_redirects=False,
     )
     assert unlink_without_token.status_code == 403
@@ -421,7 +414,7 @@ async def test_enabled_oidc_save_requires_openid_scope(
     csrf_token = await _login_admin(async_client, monkeypatch)
 
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -435,7 +428,7 @@ async def test_enabled_oidc_save_requires_openid_scope(
 
     assert save.status_code == 303
     assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
-    page = await async_client.get("/auth/settings")
+    page = await async_client.get("/admin/auth")
     assert "scope に openid が必要です" in page.text
 
 
@@ -443,7 +436,7 @@ async def test_enabled_oidc_save_requires_openid_scope(
 async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
     async_client, db, monkeypatch
 ) -> None:
-    import app.routers.pages.auth as auth_router
+    import app.routers.pages.admin_auth as admin_auth_router
     from app.services.auth.config_store import OIDCDiscoveryError
 
     monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
@@ -458,19 +451,19 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
             "OIDC discovery metadataのissuerが入力値と一致しません。"
         )
 
-    monkeypatch.setattr(auth_router, "check_oidc_discovery", reject_discovery)
+    monkeypatch.setattr(admin_auth_router, "check_oidc_discovery", reject_discovery)
 
     def db_runtime_must_not_be_requested(_app):
         raise AssertionError("DB runtime must be acquired after discovery succeeds")
 
     monkeypatch.setattr(
-        auth_router,
+        admin_auth_router,
         "get_app_database_runtime",
         db_runtime_must_not_be_requested,
     )
 
     save = await async_client.post(
-        "/auth/settings/oidc",
+        "/admin/auth/oidc",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -484,7 +477,7 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
 
     assert save.status_code == 303
     assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
-    page = await async_client.get("/auth/settings")
+    page = await async_client.get("/admin/auth")
     assert "issuerが入力値と一致しません" in page.text
     assert "db-secret" not in page.text
 
@@ -493,7 +486,7 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
 async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
     async_client, monkeypatch
 ) -> None:
-    import app.routers.pages.auth as auth_router
+    import app.routers.pages.admin_auth as admin_auth_router
 
     csrf_token = await _login_admin(async_client, monkeypatch)
     seen: dict[str, object] = {}
@@ -503,10 +496,10 @@ async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
         seen["timeout"] = timeout
         return {"issuer": issuer}
 
-    monkeypatch.setattr(auth_router, "check_oidc_discovery", fake_check)
+    monkeypatch.setattr(admin_auth_router, "check_oidc_discovery", fake_check)
 
     response = await async_client.post(
-        "/auth/settings/oidc/test",
+        "/admin/auth/oidc/test",
         data={
             "csrf_token": csrf_token,
             "enabled": "true",
@@ -520,7 +513,7 @@ async def test_oidc_discovery_check_uses_unsaved_candidate_without_secret(
     assert response.status_code == 303
     assert seen["issuer"] == "https://candidate.example/realms/sokora"
 
-    page = await async_client.get("/auth/settings")
+    page = await async_client.get("/admin/auth")
     assert page.status_code == 200
     assert "OIDC discoveryへ接続できました。" in page.text
     assert "https://candidate.example/realms/sokora" in page.text

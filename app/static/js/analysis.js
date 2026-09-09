@@ -2,10 +2,6 @@
  * 勤怠集計ページのJavaScript
  */
 
-// グローバル変数
-let selectedLocationId = null
-let selectedLocationName = ''
-
 // 統合ページ用のJavaScript関数
 function initializeAnalysisPage(config) {
   const isDetailMode = Boolean(config?.isDetailMode)
@@ -293,18 +289,3 @@ function updateDetailColumns(locationDetails) {
   })
 }
 
-/**
- * 指定された月の分析ページに遷移する
- */
-function navigateToMonth(month, userId, urlBase) {
-  urlBase = urlBase || '/analysis'
-  let url = urlBase
-  if (month) {
-    url += '?month=' + month
-  }
-  window.location.href = url
-}
-
-// グローバルスコープに関数を追加
-window.navigateToMonth = navigateToMonth
-window.initializeAnalysisPage = initializeAnalysisPage

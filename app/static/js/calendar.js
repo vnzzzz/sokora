@@ -1,23 +1,18 @@
 ;(function () {
   'use strict'
 
-  let serverTodayDate = null
-  let cachedTodayDate = null
+  const calendarArea = document.getElementById('calendar-area')
+  if (!calendarArea) return
 
   function getTodayDate() {
-    if (cachedTodayDate) return cachedTodayDate
-
-    if (serverTodayDate) {
-      cachedTodayDate = serverTodayDate
-      return cachedTodayDate
-    }
+    const metadata = calendarArea.querySelector('#calendar-metadata')
+    if (metadata && metadata.dataset.todayDate) return metadata.dataset.todayDate
 
     const today = new Date()
     const year = today.getFullYear()
     const month = String(today.getMonth() + 1).padStart(2, '0')
     const day = String(today.getDate()).padStart(2, '0')
-    cachedTodayDate = `${year}-${month}-${day}`
-    return cachedTodayDate
+    return `${year}-${month}-${day}`
   }
 
   function loadDayDetail(date) {
@@ -28,70 +23,42 @@
   function highlightSelectedDate(date) {
     if (!date) return
 
-    document.querySelectorAll('.selected-date, .selected-column').forEach((element) => {
+    calendarArea.querySelectorAll('.selected-date, .selected-column').forEach((element) => {
       element.classList.remove('selected-date', 'selected-column')
     })
 
-    const headerCell = document.querySelector(`th.calendar-cell[data-date="${date}"]`)
+    const headerCell = calendarArea.querySelector(`th.calendar-cell[data-date="${date}"]`)
     if (headerCell) headerCell.classList.add('selected-date')
 
-    document.querySelectorAll(`td.calendar-cell[data-date="${date}"]`).forEach((cell) => {
+    calendarArea.querySelectorAll(`td.calendar-cell[data-date="${date}"]`).forEach((cell) => {
       cell.classList.add('selected-column')
     })
 
-    localStorage.setItem('selectedDate', date)
     loadDayDetail(date)
   }
 
-  function setupCalendarSelection() {
+  function initializeCalendar() {
+    if (!calendarArea.querySelector('#calendar-metadata')) return
+
     const todayDate = getTodayDate()
-    const todayCell = document.querySelector(`th.calendar-cell[data-date="${todayDate}"]`)
-    const firstCell = document.querySelector('th.calendar-cell[data-date]')
-    const target = todayCell || firstCell
+    const target =
+      calendarArea.querySelector(`th.calendar-cell[data-date="${todayDate}"]`) ||
+      calendarArea.querySelector('th.calendar-cell[data-date]')
 
     if (target) highlightSelectedDate(target.dataset.date)
   }
 
-  function handleDateClick(event) {
-    highlightSelectedDate(event.currentTarget.dataset.date)
-  }
-
-  function initCalendar() {
-    const metadata = document.getElementById('calendar-metadata')
-    serverTodayDate = metadata && metadata.dataset.todayDate ? metadata.dataset.todayDate : null
-    cachedTodayDate = null
-
-    const cells = document.querySelectorAll('.calendar-cell[data-date]')
-    if (!cells.length) return
-
-    setupCalendarSelection()
-    cells.forEach((cell) => {
-      cell.removeEventListener('click', handleDateClick)
-      cell.addEventListener('click', handleDateClick)
-    })
-  }
+  calendarArea.addEventListener('click', (event) => {
+    const cell = event.target.closest('.calendar-cell[data-date]')
+    if (!cell || !calendarArea.contains(cell)) return
+    highlightSelectedDate(cell.dataset.date)
+  })
 
   document.body.addEventListener('htmx:afterSwap', (event) => {
-    const calendarArea = document.getElementById('calendar-area')
-    if (
-      calendarArea &&
-      event.target &&
-      calendarArea.contains(event.target) &&
-      document.getElementById('calendar-metadata')
-    ) {
-      window.setTimeout(initCalendar, 50)
+    if (event.target === calendarArea || calendarArea.contains(event.target)) {
+      initializeCalendar()
     }
   })
 
-  function initializeIfPresent() {
-    if (document.getElementById('calendar-metadata')) {
-      window.setTimeout(initCalendar, 50)
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeIfPresent)
-  } else {
-    initializeIfPresent()
-  }
+  initializeCalendar()
 })()

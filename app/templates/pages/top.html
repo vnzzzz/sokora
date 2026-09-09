@@ -12,14 +12,12 @@ block content %}
   </div>
 
   <!-- 詳細表示エリア -->
-  <div
-    id="detail-area"
-    hx-get="/calendar/day/{{ today_date }}"
-    hx-trigger="load"
-    hx-target="#detail-area"
-    hx-swap="innerHTML"
-  >
-    <!-- 詳細データは /calendar/day エンドポイントから非同期に読み込まれます -->
+  <div id="detail-area">
+    <!-- calendar初期化時に選択日の詳細を1回だけ読み込みます -->
   </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/calendar.js') }}" defer></script>
 {% endblock %}

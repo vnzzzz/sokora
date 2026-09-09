@@ -37,7 +37,6 @@ class WeeklyAttendanceViewModel(AttendanceDirectoryViewModel):
     current_week: str
     location_objects: list[models.Location]
     location_styles: dict[str, dict[str, str]]
-    location_data_for_js: dict[int, str]
     user_attendances: dict[str, dict[str, bool]]
     user_attendance_locations: dict[str, dict[str, str]]
     user_attendance_notes: dict[str, dict[str, Optional[str]]]
@@ -297,9 +296,6 @@ def get_weekly_page_view_model(
         "current_week": week,
         "location_objects": locations,
         "location_styles": _location_styles(locations),
-        "location_data_for_js": {
-            int(location.id): str(location.name) for location in locations
-        },
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
         "user_attendance_notes": user_attendance_notes,

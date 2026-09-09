@@ -25,11 +25,8 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
 
-<style>
-  .attendance-cell:hover {
-    opacity: 0.8;
-    transition: all 0.2s;
-  }
-</style>
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/attendance-interactions.js') }}" defer></script>
 {% endblock %}

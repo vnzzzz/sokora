@@ -8,7 +8,7 @@
 
   <!-- CSVダウンロードフォーム -->
   <div class="mt-4">
-    <div class="card bg-base-100 shadow p-5">
+    <form action="/api/v1/csv/download" method="get" class="card bg-base-100 shadow p-5">
       <div class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- 月選択 -->
@@ -18,7 +18,7 @@
             </label>
             <select
               id="month-select"
-              name="month-select"
+              name="month"
               class="select select-bordered w-full focus:border-neutral"
               autocomplete="off"
             >
@@ -63,7 +63,7 @@
         </div>
 
         <div class="flex justify-end pt-4">
-          <button id="download-btn" class="btn btn-neutral shadow-sm">
+          <button type="submit" class="btn btn-neutral shadow-sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -82,43 +82,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </form>
   </div>
 </div>
-{% endblock %} {% block extra_scripts %}
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const downloadBtn = document.getElementById('download-btn')
-    const monthSelect = document.getElementById('month-select')
-    const encodingRadios = document.querySelectorAll('input[name="encoding"]')
-
-    // ダウンロードボタンのクリックイベント
-    downloadBtn.addEventListener('click', function () {
-      // 選択された月を取得
-      const selectedMonth = monthSelect.value
-
-      // 選択されたエンコーディングを取得
-      let selectedEncoding = 'utf-8'
-      encodingRadios.forEach((radio) => {
-        if (radio.checked) {
-          selectedEncoding = radio.value
-        }
-      })
-
-      // パラメータを構築
-      let downloadUrl = '/api/v1/csv/download?'
-      const params = []
-
-      if (selectedMonth) {
-        params.push(`month=${selectedMonth}`)
-      }
-
-      params.push(`encoding=${selectedEncoding}`)
-
-      // URLを構築して新しいタブでダウンロード
-      downloadUrl += params.join('&')
-      window.location.href = downloadUrl
-    })
-  })
-</script>
 {% endblock %}

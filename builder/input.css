@@ -66,3 +66,54 @@
 .w-1\/7 {
   width: 14.285714%;
 }
+
+/* Shared application shell */
+[x-cloak] {
+  display: none !important;
+}
+
+html,
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="dark"] ::selection {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] ::selection {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.theme-controller {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
+}
+
+.theme-controller .btn {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-color);
+  border: none;
+}
+
+.theme-controller .btn:hover {
+  background-color: var(--btn-primary-bg);
+  opacity: 0.9;
+}
+
+/* Shared attendance presentation */
+.tooltip-custom::before {
+  max-width: 200px !important;
+  width: max-content !important;
+  white-space: pre-wrap !important;
+  text-align: left !important;
+  padding: 0.5rem !important;
+  line-height: 1.4 !important;
+}
+
+.attendance-cell:hover {
+  opacity: 0.8;
+  transition: all 0.2s;
+}

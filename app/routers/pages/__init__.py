@@ -7,6 +7,7 @@ HTMLページ表示に関連するルートハンドラーをまとめたパッ�
 
 from fastapi import APIRouter, Depends
 
+from app.routers.pages.admin_auth import router as admin_auth_router
 from app.routers.pages.analysis import router as analysis_router
 from app.routers.pages.attendance import router as attendance_router
 from app.routers.pages.attendance_mutation import router as attendance_mutation_router
@@ -27,6 +28,7 @@ router = APIRouter(include_in_schema=False)
 holiday_read_dependencies = [Depends(bind_custom_holiday_read_snapshot)]
 
 router.include_router(auth_router)
+router.include_router(admin_auth_router)
 router.include_router(database_router)
 router.include_router(top_router)
 router.include_router(user_router)

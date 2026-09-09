@@ -95,4 +95,3 @@ def test_weekly_view_model_includes_all_locations_without_default_pagination(
     )
 
     assert len(view_model["location_objects"]) == 101
-    assert len(view_model["location_data_for_js"]) == 101
