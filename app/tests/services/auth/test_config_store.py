@@ -59,7 +59,6 @@ async def test_oidc_discovery_rejects_unavailable_or_incomplete_metadata(
         )
 
 
-
 def test_oidc_client_secret_is_preserved_as_opaque_value(db) -> None:
     secret = "  opaque-client-secret\t"
     settings = AppSettings(
