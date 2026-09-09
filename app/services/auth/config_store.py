@@ -126,6 +126,10 @@ def save_oidc_config(
         if existing is not None and existing.oidc_client_secret_encrypted
         else None
     )
+    client_identity_changed = existing is not None and (
+        normalized_issuer != existing.oidc_issuer
+        or normalized_client_id != existing.oidc_client_id
+    )
 
     if new_secret:
         encrypted_secret = encrypt_client_secret(
@@ -143,6 +147,8 @@ def save_oidc_config(
             app_settings.oidc_client_secret,
             app_settings.auth_config_encryption_key,
         )
+    elif client_identity_changed:
+        encrypted_secret = None
 
     if enabled:
         missing_fields: list[str] = []
