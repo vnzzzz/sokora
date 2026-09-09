@@ -69,7 +69,6 @@ app/templates/
 - `components/macros/`: reusable Jinja macro
 - domain component directory: screen-specific presentation
 
-full pageとpartialで同じmarkupを別実装として複製しません。shared behaviorへ昇格するときは既存macro / common componentと責務を比較します。
 
 `components/macros/ui.html`はlegacy template向けcompatibility facadeです。新規templateは必要な責務のmacroを直接importします。
 
