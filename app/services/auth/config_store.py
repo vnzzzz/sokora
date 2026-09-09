@@ -243,4 +243,10 @@ async def check_oidc_discovery(
     ):
         raise OIDCDiscoveryError("OIDC discovery metadataに必須項目がありません。")
 
+    expected_issuer = normalized_issuer.rstrip("/")
+    if metadata["issuer"] != expected_issuer:
+        raise OIDCDiscoveryError(
+            "OIDC discovery metadataのissuerが入力値と一致しません。"
+        )
+
     return metadata
