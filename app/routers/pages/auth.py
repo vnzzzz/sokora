@@ -206,26 +206,44 @@ async def local_login(
 
 
 @router.post("/logout")
-async def logout(
+async def logout(request: Request) -> Response:
+    """application sessionを最初のresponseで破棄し、その後だけprovider logoutへ進む。
+
+    shared DB / IdPはapplication logoutのcritical pathへ置かない。OIDC sessionの場合も、
+    authenticated identityを含まないcookieをclientへ返してから別requestでprovider logoutを
+    best-effort実行する。これによりDB接続がblack-holeしてもlocal logout完了をblockしない。
+    """
+    auth_session = request.session.get("auth")
+    was_oidc = isinstance(auth_session, dict) and auth_session.get("method") == "oidc"
+
+    request.session.clear()
+    if was_oidc:
+        request.session["logout_pending"] = True
+        return RedirectResponse(
+            "/auth/logout/provider",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    return RedirectResponse(
+        _login_url(reason="logout"),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/logout/provider")
+async def oidc_provider_logout(
     request: Request,
     oidc_client: OIDCClient | None = Depends(get_optional_oidc_client),
 ) -> Response:
-    """application sessionを破棄し、可能ならOIDC provider logoutも開始する。
+    """local logout完了後にだけprovider logoutをbest-effortで開始する。"""
+    if request.session.pop("logout_pending", None) is not True:
+        request.session.clear()
+        return RedirectResponse(
+            _login_url(reason="logout"),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
-    provider logoutはOIDCでloginしたsessionかつdiscovered end-session endpointが利用可能な
-    場合だけ追加実行する。provider logoutが失敗/未対応でもapplication側identityを残さず、
-    local logoutを成立させる。persistent ID tokenを保持しないためprovider redirectには
-    registered callbackとclient IDを利用する。
-    """
-    auth_session = request.session.pop("auth", None)
-    request.session.pop("auth_error", None)
-    request.session.pop("auth_next", None)
-
-    if (
-        isinstance(auth_session, dict)
-        and auth_session.get("method") == "oidc"
-        and oidc_client is not None
-    ):
+    if oidc_client is not None:
         callback_url = str(request.url_for("oidc_logout_callback"))
         try:
             logout_url = await oidc_client.get_logout_url(
