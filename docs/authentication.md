@@ -36,7 +36,7 @@ authentication guardが有効な場合、未認証のUI requestは`/auth/login`�
 | `OIDC_REDIRECT_URL` | OIDC callback URL |
 | `OIDC_HTTP_TIMEOUT` | discovery等のHTTP timeout |
 
-`OIDC_ISSUER`、`OIDC_CLIENT_ID`、`OIDC_CLIENT_SECRET`、`OIDC_SCOPES`は、DB-backed設定へ移行する前のlegacy sourceとして利用できます。sampleと既定値は [`.env.sample`](../.env.sample) が一次情報です。
+`OIDC_ISSUER`、`OIDC_CLIENT_ID`、`OIDC_CLIENT_SECRET`、`OIDC_SCOPES`は、DB-backed設定へ移行する前のlegacy sourceとして利用できます。設定例は [`.env.sample`](../.env.sample)、runtime parserと既定値の実装は `app/core/settings.py` を参照してください。
 
 ## OIDC configuration source
 
