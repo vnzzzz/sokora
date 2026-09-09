@@ -103,9 +103,7 @@ def test_postgresql_oidc_config_round_trip() -> None:
         database_url=database_url,
         auth_enabled=False,
         oidc_redirect_uri="https://sokora.example/auth/callback",
-        auth_config_encryption_key=(
-            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-        ),
+        auth_config_encryption_key=("MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="),
     )
     app = create_application(settings)
 
