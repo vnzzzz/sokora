@@ -261,8 +261,12 @@ async def test_auth_settings_is_admin_only_and_editable(
     monkeypatch.setenv("OIDC_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
 
-    unauthenticated = await async_client.get("/admin/auth")
-    assert unauthenticated.status_code == 401
+    unauthenticated = await async_client.get(
+        "/admin/auth",
+        follow_redirects=False,
+    )
+    assert unauthenticated.status_code == 307
+    assert unauthenticated.headers["location"].startswith("/auth/login")
 
     login_resp = await async_client.post(
         "/auth/local",
@@ -281,6 +285,43 @@ async def test_auth_settings_is_admin_only_and_editable(
     assert 'formaction="/admin/auth/oidc/test"' in settings_page.text
     assert 'action="/admin/auth/oidc/unlink"' in settings_page.text
     assert "client-secret" not in settings_page.text
+
+
+@pytest.mark.asyncio
+async def test_legacy_auth_settings_path_is_removed(async_client, monkeypatch) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "false")
+
+    response = await async_client.get("/auth/settings", follow_redirects=False)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_auth_off_local_admin_can_open_admin_tools(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "false")
+    monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    anonymous = await async_client.get("/admin/auth", follow_redirects=False)
+    assert anonymous.status_code == 403
+
+    login = await async_client.post(
+        "/auth/local",
+        data={"username": "admin", "password": "secret", "next": "/admin/auth"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+    assert login.headers["location"] == "/admin/auth"
+
+    auth_page = await async_client.get("/admin/auth")
+    assert auth_page.status_code == 200
+
+    home = await async_client.get("/")
+    assert 'href="/admin/auth"' in home.text
+    assert 'href="/admin/database"' in home.text
 
 
 @pytest.mark.asyncio
@@ -581,9 +622,10 @@ async def test_sidebar_auth_settings_visible_only_for_admin(
 
         admin_page = await async_client.get("/", follow_redirects=True)
         assert admin_page.status_code == 200
-        assert "認証設定（管理者）" not in admin_page.text
         assert "認証設定" in admin_page.text
+        assert "データベース管理" in admin_page.text
         assert 'href="/admin/auth"' in admin_page.text
+        assert 'href="/admin/database"' in admin_page.text
 
         async_client.cookies.clear()
         callback_resp = await async_client.get(
@@ -595,6 +637,7 @@ async def test_sidebar_auth_settings_visible_only_for_admin(
         user_page = await async_client.get("/", follow_redirects=True)
         assert user_page.status_code == 200
         assert "認証設定" not in user_page.text
+        assert "データベース管理" not in user_page.text
     finally:
         app.dependency_overrides.pop(get_oidc_client, None)
 
