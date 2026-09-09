@@ -46,9 +46,9 @@ help:
 	@printf "  make quality         Run lint + format-check + typecheck\n"
 	@printf "  make build           Build production image (%s) from ./Dockerfile\n" "$(IMAGE_NAME)"
 	@printf "  make dev-build       Build devcontainer image (%s) from .devcontainer/Dockerfile\n" "$(DEV_IMAGE_NAME)"
-	@printf "  make docker-build    Build production image (%s); proxy args are applied when proxy is set\n" "$(VERSION_TAG)"
-	@printf "  make closed-bundle   Build %s and package it with the current source revision\n" "$(VERSION_TAG)"
-	@printf "  make package-closed-bundle SOURCE_REVISION=<sha>  Package an already-built %s into %s\n" "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
+	@printf "  make docker-build    Build versioned production image; requires VERSION\n"
+	@printf "  make closed-bundle   Build and package versioned image; requires VERSION\n"
+	@printf "  make package-closed-bundle SOURCE_REVISION=<sha>  Package an already-built versioned image; requires VERSION\n"
 	@printf "  make docker-run      Run production container with SERVICE_PORT -> PORT and data volume mount\n"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
