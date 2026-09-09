@@ -32,7 +32,7 @@ application coreやDB access層へcloud provider固有SDK、metadata service、c
 
 SQLiteを利用する場合、database fileをcontainerのephemeral filesystemへ置かない。
 
-1. writableで永続化されるfilesystemをcontainerの `/app/data` へmountする。
+1. file lockingやatomic write等のSQLite file semanticsを満たす、writableで永続化されるfilesystemをcontainerの `/app/data` へmountする。
 2. application replicaは1つだけ起動する。
 3. `DATABASE_URL=sqlite:///data/sokora.db` を利用する。
 4. startup migration完了後、`/healthz` が200を返すことを確認する。
