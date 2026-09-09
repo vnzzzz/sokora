@@ -7,9 +7,14 @@ OIDC protocol処理そのものはauth serviceへ委譲し、このmoduleではr
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.db.session import (
+    DatabaseRuntimeUnavailableError,
+    get_app_database_runtime,
+    get_db,
+)
 from app.services.auth.config_store import resolve_auth_settings
 from app.services.auth.oidc import OIDCClient, OIDCError
 from app.services.auth.settings import AuthSettings
@@ -48,15 +53,22 @@ def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDC
     return OIDCClient(settings=settings)
 
 
-def get_optional_oidc_client(
-    settings: AuthSettings = Depends(get_auth_settings),
-) -> OIDCClient | None:
-    """logout等、OIDC連携が利用可能な場合だけclientを返す。
+def get_optional_oidc_client(request: Request) -> OIDCClient | None:
+    """logout向けにOIDC clientをbest-effortで返す。
 
-    OIDCが無効またはmetadata/client初期化に失敗しても、application sessionのlogout等
-    provider非依存の処理は継続できるためNoneへ縮退する。このdependencyを認証必須の
-    redirect/callback endpointには使用しない。
+    provider logoutはapplication logoutの付加機能であり、shared DBが停止/fenceしていても
+    session破棄を妨げてはならない。そのため通常のDB dependencyを前段に置かず、この関数内で
+    DB-backed設定を解決し、DB availability failureはNoneへ縮退する。認証必須の
+    redirect/callback endpointにはこのdependencyを使用しない。
     """
+    app_settings = request.app.state.settings_provider()
+    try:
+        runtime = get_app_database_runtime(request.app)
+        with runtime.managed_session() as db:
+            settings = resolve_auth_settings(db, app_settings)
+    except (DatabaseRuntimeUnavailableError, SQLAlchemyError):
+        return None
+
     if not settings.oidc_enabled:
         return None
     try:
