@@ -1,3 +1,4 @@
+import logging
 from logging.config import fileConfig
 
 from alembic import context
@@ -54,9 +55,26 @@ engine_url = sqlalchemy_database_url(str(database_url)).render_as_string(
 # URLs must be escaped when stored in Alembic config.
 config.set_main_option("sqlalchemy.url", engine_url.replace("%", "%%"))
 
-# Interpret the config file for Python logging.
+# Interpret the config file for Python logging. disable_existing_loggers=False
+# keeps application/uvicorn loggers (not listed in alembic.ini's [loggers]) alive;
+# fileConfig()'s default silently disables every logger it doesn't know about,
+# which otherwise mutes all app/uvicorn output for the rest of the process after
+# any migration run (e.g. every `make run` startup). fileConfig also replaces the
+# root logger's level and handlers/formatters from alembic.ini's [logger_root],
+# which would silently override the application's configured SOKORA_LOG_LEVEL and
+# swap its timestamped format for Alembic's abbreviated one; restore both so a
+# programmatic migration run (app startup) has no lasting effect on application
+# logging. A bare `alembic`/`make migrate` CLI process has no root handlers of its
+# own at this point, so skip restoring in that case and keep alembic.ini's console
+# handler installed - otherwise migration progress output would go nowhere.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    _root_logger = logging.getLogger()
+    _previous_root_level = _root_logger.level
+    _previous_root_handlers = list(_root_logger.handlers)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
+    if _previous_root_handlers:
+        _root_logger.setLevel(_previous_root_level)
+        _root_logger.handlers = _previous_root_handlers
 
 target_metadata = Base.metadata
 
