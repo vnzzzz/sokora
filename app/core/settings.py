@@ -76,6 +76,7 @@ class AppSettings:
     oidc_redirect_uri: str | None = None
     oidc_scope: str = "openid profile email"
     oidc_http_timeout: float = 3.0
+    auth_config_encryption_key: str | None = None
 
     local_admin_username: str | None = None
     local_admin_password: str | None = None
@@ -128,6 +129,9 @@ class AppSettings:
             oidc_redirect_uri=source.get("OIDC_REDIRECT_URL"),
             oidc_scope=source.get("OIDC_SCOPES", "openid profile email"),
             oidc_http_timeout=_get_float(source, "OIDC_HTTP_TIMEOUT", 3.0),
+            auth_config_encryption_key=source.get(
+                "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY"
+            ),
             local_admin_username=source.get("SOKORA_LOCAL_ADMIN_USERNAME"),
             local_admin_password=source.get("SOKORA_LOCAL_ADMIN_PASSWORD"),
         )
