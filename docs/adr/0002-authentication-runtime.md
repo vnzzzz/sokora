@@ -21,7 +21,7 @@
   - rowあり + disabled: OIDCを明示無効化し、legacy environmentへfallbackしない。
 - `OIDC_REDIRECT_URL`とHTTP timeoutはdeployment固有runtime propertyとしてenvironmentへ残す。
 - client secretはFernetで暗号化してDBへ保存する。暗号鍵`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`はDB/imageへ保存せず、全replicaへ同じruntime secretを注入する。暗号鍵不一致時はOIDCをfail-closedとし、legacy secretへfallbackしない。
-- `/auth/settings`はlocal admin専用のeditable OIDC管理画面とする。source/state表示、enable/disable、issuer/client ID/scope、secret更新、unlink、standard discovery接続確認を提供する。OIDCをenabledで保存する場合はdiscovery取得とmetadata issuer一致を必須とし、失敗したcandidateを有効設定として永続化しない。
+- `/auth/settings`はlocal admin専用のeditable OIDC管理画面とする。source/state表示、enable/disable、issuer/client ID/scope、secret更新、unlink、standard discovery接続確認を提供する。管理POSTはsession-backed CSRF tokenを必須とする。OIDCをenabledで保存する場合は`openid` scope、discovery取得、metadata issuer一致を必須とし、失敗したcandidateを有効設定として永続化しない。
 - 保存済みclient secretはHTML/form/sessionへ再表示しない。設定確認・validation errorへsecretを含めない。
 - unlinkは`auth_config` rowを削除せずdisabled rowとして残す。row削除はlegacy fallbackを再開してしまうため、通常UI operationにはしない。
 - DB由来OIDC設定をprocess-global mutable cacheへ保持しない。shared PostgreSQLを利用するmulti-replicaはrequestごとに同じDB stateを観測する。
