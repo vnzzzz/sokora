@@ -432,6 +432,15 @@ async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
 
     monkeypatch.setattr(auth_router, "check_oidc_discovery", reject_discovery)
 
+    def db_runtime_must_not_be_requested(_app):
+        raise AssertionError("DB runtime must be acquired after discovery succeeds")
+
+    monkeypatch.setattr(
+        auth_router,
+        "get_app_database_runtime",
+        db_runtime_must_not_be_requested,
+    )
+
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
