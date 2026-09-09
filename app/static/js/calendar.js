@@ -34,7 +34,6 @@
       cell.classList.add('selected-column')
     })
 
-    localStorage.setItem('selectedDate', date)
     loadDayDetail(date)
   }
 
