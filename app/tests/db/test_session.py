@@ -1,6 +1,8 @@
 from pathlib import Path
 from urllib.parse import quote
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -10,6 +12,8 @@ import app.models  # noqa: F401 - register model metadata for schema tests
 from app.core.settings import AppSettings
 from app.db.session import (
     Base,
+    _ALEMBIC_CONFIG_PATH,
+    _ALEMBIC_SCRIPT_PATH,
     SessionLocal,
     clear_database_runtime_cache,
     create_database_runtime,
@@ -248,32 +252,32 @@ def test_migrate_database_adopts_pre_custom_holidays_schema(tmp_path: Path) -> N
         runtime.dispose()
 
 
-def test_pre_111_database_upgrade_preserves_legacy_oidc_fallback(
+def test_closed_custom_holiday_database_upgrade_preserves_legacy_oidc_fallback(
     tmp_path: Path,
 ) -> None:
-    database_path = tmp_path / "pre-111.db"
+    database_path = tmp_path / "closed-custom-holiday.db"
     runtime = create_database_runtime(f"sqlite:///{database_path}")
     try:
-        Base.metadata.create_all(bind=runtime.engine)
+        migrate_database(runtime)
+
+        config = Config(str(_ALEMBIC_CONFIG_PATH))
+        config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
+        config.attributes["database_url"] = runtime.database_url
         with runtime.engine.begin() as connection:
-            connection.execute(text("drop table auth_config"))
-            connection.execute(
-                text(
-                    "create table alembic_version ("
-                    "version_num varchar(32) not null primary key)"
-                )
-            )
-            connection.execute(
-                text(
-                    "insert into alembic_version(version_num) "
-                    "values ('4a9c1d2e3f04')"
-                )
-            )
+            config.attributes["connection"] = connection
+            command.downgrade(config, "6b8f3dbe1e1a")
             connection.execute(
                 text(
                     'insert into groups (id, name, "order") '
-                    "values (901, 'pre-111 group', 3)"
+                    "values (901, 'closed legacy group', 3)"
                 )
+            )
+
+        assert "auth_config" not in inspect(runtime.engine).get_table_names()
+        with runtime.session_factory() as db:
+            assert (
+                db.scalar(text("select version_num from alembic_version"))
+                == "6b8f3dbe1e1a"
             )
 
         migrate_database(runtime)
@@ -283,7 +287,7 @@ def test_pre_111_database_upgrade_preserves_legacy_oidc_fallback(
             assert db.scalar(text("select count(*) from auth_config")) == 0
             assert (
                 db.scalar(text("select name from groups where id = 901"))
-                == "pre-111 group"
+                == "closed legacy group"
             )
             resolved = resolve_auth_settings(
                 db,
