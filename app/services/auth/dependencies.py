@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.exc import SQLAlchemyError
+
 from app.db.session import DatabaseRuntimeUnavailableError, get_app_database_runtime
 from app.services.auth.config_store import resolve_auth_settings
 from app.services.auth.oidc import OIDCClient, OIDCError
