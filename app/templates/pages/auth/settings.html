@@ -58,6 +58,7 @@
       </div>
 
       <form method="post" action="/auth/settings/oidc" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <label class="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -114,6 +115,9 @@
             class="input input-bordered w-full"
             value="{{ form_values.scope }}"
           />
+          <span class="text-xs text-base-content/60 mt-1">
+            OIDCを有効にする場合は openid scope が必須です。
+          </span>
         </label>
 
         <div class="flex flex-wrap gap-2">
@@ -131,6 +135,7 @@
       <div class="divider"></div>
 
       <form method="post" action="/auth/settings/oidc/unlink">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <button type="submit" class="btn btn-error btn-outline btn-sm">
           OIDC連携を解除
         </button>
