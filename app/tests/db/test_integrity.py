@@ -242,9 +242,7 @@ def test_sqlite_migration_rolls_back_when_foreign_key_check_fails(
             )
 
         with runtime.engine.begin() as connection:
-            connection.exec_driver_sql(
-                "UPDATE attendance SET user_id='u1' WHERE id=1"
-            )
+            connection.exec_driver_sql("UPDATE attendance SET user_id='u1' WHERE id=1")
 
         migrate_database(runtime)
 
