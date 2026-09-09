@@ -233,10 +233,10 @@ async def test_oidc_callback_rejects_invalid_state(async_client, monkeypatch) ->
 
 
 @pytest.mark.asyncio
-async def test_auth_settings_is_admin_only_and_read_only(
+async def test_auth_settings_is_admin_only_and_editable(
     async_client, monkeypatch
 ) -> None:
-    """認証設定はlocal adminだけが参照でき、runtime toggleを提供しないこと。"""
+    """認証設定の参照・更新UIはlocal adminだけに公開すること。"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
@@ -262,8 +262,10 @@ async def test_auth_settings_is_admin_only_and_read_only(
 
     settings_page = await async_client.get("/auth/settings")
     assert settings_page.status_code == 200
-    assert "環境変数/secret" in settings_page.text
-    assert "/auth/settings/oidc/toggle" not in settings_page.text
+    assert 'action="/auth/settings/oidc"' in settings_page.text
+    assert 'formaction="/auth/settings/oidc/test"' in settings_page.text
+    assert 'action="/auth/settings/oidc/unlink"' in settings_page.text
+    assert "client-secret" not in settings_page.text
 
 
 @pytest.mark.asyncio
