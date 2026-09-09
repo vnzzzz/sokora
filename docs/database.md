@@ -105,7 +105,6 @@ flowchart LR
     Adapter["Page / API adapter"] --> Service["Service / use case"]
     Service --> CRUD["CRUD / data access"]
     CRUD --> DB[("Database")]
-    Service -. "commit / rollback" .-> DB
 ```
 
 write use caseのtransaction ownerは`app/services/`です。`app/crud/`はquery / flush等のdatabase operationを担当し、use case単位のcommit / rollbackを所有しません。
