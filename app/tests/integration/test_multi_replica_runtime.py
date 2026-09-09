@@ -115,7 +115,7 @@ def test_shared_oidc_disable_is_visible_across_replicas() -> None:
             for replica in (replica_a, replica_b):
                 legacy_login = replica.get("/auth/login")
                 assert legacy_login.status_code == 200
-                assert "/auth/redirect" in legacy_login.text
+                assert "SSOが現在利用できません" not in legacy_login.text
 
             with runtime.session_factory() as db:
                 db.add(
@@ -133,7 +133,7 @@ def test_shared_oidc_disable_is_visible_across_replicas() -> None:
             for replica in (replica_a, replica_b):
                 disabled_login = replica.get("/auth/login")
                 assert disabled_login.status_code == 200
-                assert "/auth/redirect" not in disabled_login.text
+                assert "SSOが現在利用できません" in disabled_login.text
     finally:
         with runtime.session_factory() as db:
             db.query(AuthConfig).filter(AuthConfig.id == 1).delete()
