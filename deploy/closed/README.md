@@ -41,6 +41,20 @@ sudo install -m 0640 -o "$operator_user" -g "$operator_group" compose.env.exampl
 
 Edit `/etc/sokora/runtime.env` and set the required authentication/OIDC/database/proxy values. `SOKORA_AUTH_SESSION_SECRET` must be a strong shared secret when authentication is enabled. If operations are intentionally performed as root or by a dedicated service account instead, give that operator equivalent read access and run all Compose commands consistently as that identity.
 
+### OIDC settings migration
+
+Existing deployments can keep their current `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `OIDC_SCOPES` values during the image/database upgrade. The new `auth_config` table is added without creating a row, so those legacy environment values remain effective immediately after upgrade.
+
+Before an administrator saves OIDC settings from `/auth/settings`, set `SOKORA_AUTH_CONFIG_ENCRYPTION_KEY` in `/etc/sokora/runtime.env`. Generate a Fernet key outside the image, for example:
+
+```bash
+python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
+Keep that key outside database backups and use the same value on every replica. When the first DB-backed save keeps the same issuer/client ID, sokora can encrypt the existing legacy client secret without displaying it. If the client identity changes, enter the corresponding new secret.
+
+Once `/auth/settings` has saved, disabled, or unlinked OIDC, the database row becomes authoritative. A disabled/unlinked row does **not** fall back to the legacy `OIDC_*` environment values. Local administrator credentials remain runtime-only and should stay configured as the break-glass recovery path.
+
 For SQLite, also create persistent host storage:
 
 ```bash
