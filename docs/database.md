@@ -1,6 +1,6 @@
 # Database
 
-sokoraはSQLiteとPostgreSQLを同じSQLAlchemy model / Alembic migration chainで扱います。schemaの一次情報は`app/models/`と`scripts/migration/`です。
+sokoraはSQLiteとPostgreSQLを同じSQLAlchemy model / Alembic migration chainで扱います。
 
 ## Data model
 
@@ -70,7 +70,7 @@ erDiagram
 | SQLite | local / standalone / closed-network | 1 |
 | PostgreSQL | external / managed DB、multi-replica | 1..N |
 
-接続先のSSoTは`DATABASE_URL`です。未指定時は:
+接続先は`DATABASE_URL`で指定します。未指定時は:
 
 ```text
 sqlite:///data/sokora.db
