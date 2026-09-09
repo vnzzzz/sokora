@@ -2,8 +2,8 @@ import base64
 import json
 from pathlib import Path
 
-from itsdangerous import TimestampSigner
 import pytest
+from itsdangerous import TimestampSigner
 from sqlalchemy import inspect, text
 
 from app.db.session import create_database_runtime, initialize_database
