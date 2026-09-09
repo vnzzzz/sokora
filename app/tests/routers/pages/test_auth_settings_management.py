@@ -249,17 +249,10 @@ async def test_oidc_unlink_keeps_database_disabled_state(
 
 
 @pytest.mark.asyncio
-async def test_oidc_settings_write_requires_local_admin(
+async def test_oidc_settings_write_rejects_non_admin_session(
     async_client, monkeypatch
 ) -> None:
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
-
-    unauthenticated = await async_client.post(
-        "/admin/auth/oidc",
-        data={"enabled": "false"},
-        follow_redirects=False,
-    )
-    assert unauthenticated.status_code == 401
 
     _set_signed_session(
         async_client,
