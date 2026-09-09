@@ -1,52 +1,51 @@
 # SQLite database management
 
-`/admin/database` は、ファイルベースSQLiteで稼働するsokora向けの管理者専用backup/restore入口です。
+`/admin/database`はfile-backed SQLite向けのadmin-only backup / restore UIです。PostgreSQLとin-memory SQLiteでは操作できません。
 
-## Access boundary
+## Backup
 
-- `require_admin` を利用し、`role=admin` のsigned sessionだけを許可する。
-- 現行のadmin identityはlocal admin loginで付与される。
-- PostgreSQLおよびin-memory SQLiteではbackup/restore操作を無効化する。
-- 操作結果はapplication logへactorと共に記録する。DB内容やsecretはlogへ出力しない。
+稼働中DB fileを直接copyせず、SQLite backup APIでconsistent snapshotを作成し、integrity check後にdownloadします。
 
-## Backup contract
+download fileは通常のSQLite DBで、WAL / SHM sidecarを別途必要としません。
 
-稼働中のDBファイルを直接copyしない。Python標準`sqlite3.Connection.backup()`で一時DBへconsistent snapshotを作成し、SQLite `integrity_check`後にdownloadする。
+## Restore acceptance
 
-downloadしたDBは通常のSQLite fileであり、`-wal` / `-shm` sidecarを必要としない。
+restore candidateはlive DBを変更する前に次を検証します。
 
-## Restore validation
+| Check | Requirement |
+| --- | --- |
+| file | valid SQLite header |
+| integrity | `PRAGMA integrity_check` success |
+| foreign keys | `PRAGMA foreign_key_check` success |
+| migration | `alembic_version`がcurrent headと完全一致 |
+| schema | table / column / FK / index / view / triggerがcurrent schemaと互換 |
 
-uploadはlive DBと同じdirectoryのtemporary fileへstageし、live DBを変更する前に次をすべて確認する。
+restoreはmigration手段ではありません。古いrevisionのDBをrestoreしてstartup migrationへ委ねる運用は拒否します。
 
-1. SQLite file header
-2. `PRAGMA integrity_check`
-3. `PRAGMA foreign_key_check`
-4. `alembic_version` が現在のAlembic headと完全一致
-5. table / column / foreign key / index / view / trigger schemaが稼働中DBと一致
+## Restore flow
 
-revisionやschemaが古いDBをuploadしてapplication startup migrationへ暗黙に委ねることはしない。restoreは「現在のversionでそのまま利用できるDB」の置換操作に限定する。
+```mermaid
+flowchart TD
+    Upload["Upload candidate"] --> Validate["Validate file / integrity / revision / schema"]
+    Validate -->|invalid| Reject["Reject without changing live DB"]
+    Validate -->|valid| Maintenance["Enter DB maintenance"]
+    Maintenance --> Drain["Drain active DB sessions"]
+    Drain --> Backup["Create rollback snapshot"]
+    Backup --> Replace["Replace live DB"]
+    Replace --> Reinit["Reinitialize DB runtime"]
+    Reinit --> Verify["Verify revision / readiness"]
+    Verify -->|success| Resume["Resume requests"]
+    Verify -->|failure| Rollback["Restore rollback snapshot"]
+    Rollback -->|success| Resume
+    Rollback -->|failure| Fence["Fail closed + manual recovery"]
+```
 
-## Restore transaction boundary
+maintenance中は新しいDB sessionを開始しません。replacement後の再初期化・revision確認まで成功してからrequestを再開します。
 
-restore時はapplication DB runtimeをmaintenance modeへ切り替える。
+automatic rollbackにも失敗した場合、runtimeをunavailableへfenceし、残存rollback snapshotを保持します。operatorはserviceを停止してsnapshotまたは運用backupから復旧し、processを再起動します。
 
-1. 新しいrequest DB sessionの開始を停止
-2. 既存request DB sessionがcloseするまで待機
-3. live DBのconsistent rollback backupを作成
-4. SQLAlchemy poolをdispose
-5. staged DBを同一filesystem内で`os.replace()`してatomic replacement
-6. 置換前DBに属する古い`-wal` / `-shm` / `-journal` sidecarを除去
-7. engine / session factoryを再生成
-8. Alembic revisionを再確認
-9. 成功後にrequest DB sessionを再開
+DB contentやsecretはlogへ出しません。admin操作はactorと結果をapplication logへ記録します。
 
-sidecarはmain DBの`os.replace()`が成功した後、新しいSQLite connectionを開く前に除去する。置換前に削除すると、WAL modeでlive DBにまだcheckpointされていないcommitted frameを失う可能性があるため禁止する。
+## Closed-network upgrade
 
-replacement後に失敗した場合は、maintenance modeを解除する前にpre-restore rollback backupから自動復旧を試みる。rollback・connection再初期化・revision再検証が完了してからrequest DB sessionを再開する。
-
-自動rollback自体が失敗した場合はfail-closedとし、そのprocessのDB runtimeをunavailable状態へ遷移させる。以後のrequest DB sessionはDBへ接続せず失敗する。pre-restore rollback snapshotがまだ残っている場合は削除せずlive DBと同じdirectoryへ保持し、その絶対pathをcritical logと管理者向けerrorへ記録する。serviceを停止して保持snapshotまたは運用backupから手動復旧し、その後processを再起動する。
-
-## Closed deploymentとの関係
-
-`deploy/closed` のupgrade/rollback手順で要求しているSQLite backup APIの考え方と同じです。GUI backupは日常運用向けですが、image/schema upgrade前の運用backupを置き換えるものではありません。schema-changing rollbackでは引き続きupgrade前backupを明示的に保持します。
+GUI backupは日常運用向けです。schema-changing image upgrade前には [Closed-network deployment](closed-deployment.md) のoperator backupを別途保持し、rollback時にimageとDB stateをセットで戻せるようにします。

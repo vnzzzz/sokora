@@ -1,83 +1,86 @@
-# Deployment guide
+# Deployment
 
-sokoraのproduction artifactは、root `Dockerfile`から生成するprovider非依存OCI image 1種類とする。
+sokoraは同じproduction OCI imageを一般的なcontainer runtimeで実行します。特定cloud provider向けadapter / IaC / support matrixはrepositoryで管理しません。
 
-この文書は、特定cloud providerのdeploy手順やsupport statusではなく、一般的なcontainer runtimeへsokoraを配置するときに必要な共通条件と、SQLite / external PostgreSQLの構成判断を記載する。runtime内部の詳細contractは [runtime.md](runtime.md)、architecture decisionは [ADR 0005](adr/0005-provider-neutral-deployment-contract.md) を参照する。
+## Topology
 
-実装済みの閉域Dockerサーバー向けdeploymentは、bundle生成、Compose、upgrade/rollback、proxy、validationまで [closed-deployment.md](closed-deployment.md) に記載する。今回の共通化でもこの手順は維持する。
+```mermaid
+flowchart LR
+    Image["sokora OCI image"]
 
-## Container runtime requirements
+    Image --> Single["Single container"]
+    Single --> Volume["Durable filesystem<br/>/app/data"]
+    Volume --> SQLite[("SQLite")]
 
-sokoraを実行するcontainer環境は、最低限次を満たす。
+    Image --> Replicas["1..N containers"]
+    Replicas --> PostgreSQL[("External / managed PostgreSQL")]
+```
 
-- OCI imageを実行できる
-- containerが `0.0.0.0:$PORT` でHTTPをlistenできる
-- `PORT`、`DATABASE_URL`、`SOKORA_*`、`OIDC_*` 等をenvironment / secretとして注入できる
-- 選択したDBへnetwork到達できる
-- `GET /healthz` をreadiness checkとして利用できる
-- 外部公開する場合はruntime側でHTTPS ingress / TLSを構成できる
+## Runtime requirements
 
-image registry、container service、network、ingress/TLS、identity、secret store、managed DBそのものの作成、provider固有CLI/IaCはsokora repositoryの管理対象外とする。
+container environmentには次が必要です。
 
-application coreやDB access層へcloud provider固有SDK、metadata service、credential discovery、provider abstractionを追加しない。
+| Requirement | Contract |
+| --- | --- |
+| image | OCI imageを実行できる |
+| network | containerが`0.0.0.0:$PORT`でlistenできる |
+| config | environment / secret injection |
+| database | selected DBへ到達できる |
+| readiness | `GET /healthz`をprobeできる |
+| public access | 必要ならHTTPS ingress / TLSをruntime側で終端 |
 
-## Database selection
+registry、VPC/VNet、load balancer、TLS certificate、secret store、managed DBそのもののprovisioningはsokoraの責務外です。
 
-| Backend | 想定topology | Persistent state | Replica |
-| --- | --- | --- | --- |
-| SQLite | standalone / single-instance container | `/app/data` をdurable filesystemへmount | 1 |
-| PostgreSQL | external / managed PostgreSQL | DB service側 | 1..N |
+## Choose a database
+
+| | SQLite | PostgreSQL |
+| --- | --- | --- |
+| application replica | 1 | 1..N |
+| persistent state | `/app/data` filesystem | DB service |
+| suitable for | standalone / small closed runtime | managed DB / multi-replica |
+| backup | sokora SQLite backup / operator backup | DB platform |
+| `DATABASE_URL` | `sqlite:///data/sokora.db` | standard PostgreSQL URL |
 
 ### SQLite
 
-SQLiteを利用する場合、database fileをcontainerのephemeral filesystemへ置かない。
+1. file locking / atomic write等のSQLite semanticsを満たすdurable filesystemを`/app/data`へmount
+2. application replicaを1つに固定
+3. `DATABASE_URL=sqlite:///data/sokora.db`を設定
+4. startup後に`/healthz`を確認
+5. backup / restoreは [SQLite database management](sqlite-database-management.md) に従う
 
-1. file lockingやatomic write等のSQLite file semanticsを満たす、writableで永続化されるfilesystemをcontainerの `/app/data` へmountする。
-2. application replicaは1つだけ起動する。
-3. `DATABASE_URL=sqlite:///data/sokora.db` を利用する。
-4. startup migration完了後、`/healthz` が200を返すことを確認する。
-5. backup/restoreは [SQLite database management](sqlite-database-management.md) の手順を利用する。
-
-SQLite fileは通常のfilesystem上でfile locking等を利用する。object storage bucketをSQLite DB fileの直接配置先として扱わない。
-
-container platformがSQLiteに必要なdurable filesystemを提供できない場合は、external PostgreSQLを利用する。
+containerのephemeral filesystemやobject storage bucketをSQLite DB fileの直接配置先にしません。適切なfilesystemを提供できないruntimeではPostgreSQLを選択します。
 
 ### External / managed PostgreSQL
 
-externalまたはmanaged PostgreSQLも、sokoraからは標準PostgreSQLとして扱う。
+providerに関係なく、applicationからはstandard PostgreSQLとして扱います。
 
-概念上の手順はproviderに依存しない。
-
-1. PostgreSQL databaseとapplication用credentialを用意する。
-2. sokora containerからDB endpointへ到達できるnetworkを構成する。
-3. DB側でTLSが必要な場合は接続URLのoptionを設定する。
-4. credentialをsourceやimageへ埋め込まず、runtime secretとして `DATABASE_URL` を注入する。
-5. sokora containerを起動する。
-6. startupでAlembic migrationがheadまで完了することを確認する。
-7. `/healthz` が200を返すことを確認する。
-8. backup/restoreはPostgreSQL運用基盤側の標準手段を利用する。
-
-例:
+1. PostgreSQL databaseとapplication credentialを用意
+2. containerからDB endpointへのnetwork pathを構成
+3. 必要ならTLS optionを接続URLへ設定
+4. `DATABASE_URL`をruntime secretとして注入
+5. containerを起動
+6. startup migrationと`/healthz`を確認
+7. backup / restoreはDB platform側で構成
 
 ```text
-DATABASE_URL=postgresql://user:password@db.example:5432/sokora
 DATABASE_URL=postgresql://user:password@db.example:5432/sokora?sslmode=require
 ```
 
-複数replicaで実行する場合は、全replicaが同じexternal PostgreSQLと同じruntime secret/configを利用する。consistency contractは [ADR 0003](adr/0003-multi-replica-runtime.md) を参照する。
+multi-replicaでは全replicaが同じDBとruntime secret/configを利用します。
 
-## Startup and health
+## Startup
 
-application startupはbackend共通でAlembic migrationを適用し、失敗時はstartupをabortする。fresh file-backed SQLiteだけinitial seedを作成し、PostgreSQLでは自動seedしない。
+schema lifecycleはapplication startupが所有します。Alembic migrationがheadまで到達しない場合、applicationはtrafficを受けません。
 
-readiness endpointは認証不要の `GET /healthz`。DBへ到達でき、applicationが必要なschemaを確認できる場合だけ200を返す。詳細は [runtime.md](runtime.md) を参照する。
+runtime詳細は [Runtime](runtime.md)、schema詳細は [Database](database.md) を参照してください。
 
-## Closed-network Docker deployment
+## Closed network
 
-閉域Dockerサーバー向けには、repository-free bundleとSQLite/PostgreSQL用Compose定義を実装済み。
+閉域Dockerサーバー向けにはrepository-owned bundle / Compose / operator workflowを用意しています。
 
 ```bash
 VERSION=<version> make closed-bundle
 ```
 
-imageの搬入、manifest/checksum検証、runtime env、persistent storage、upgrade/rollback、proxy、CI validationを含む正式手順は [Closed-network deployment](closed-deployment.md) を参照する。generic deploymentのためにこのclosed-network手順やartifactを削除・置換しない。
+搬入、image検証、persistent config、SQLite/PostgreSQL選択、upgrade/rollbackは [Closed-network deployment](closed-deployment.md) を参照してください。

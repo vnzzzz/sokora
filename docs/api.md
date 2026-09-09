@@ -1,100 +1,62 @@
-# API requirements
+# API
 
-この文書は、FastAPI JSON APIのpublic HTTP contractと、JSON API / page-HTMX adapterの責務境界をSSoTとする。data modelは [Database requirements](database.md)、UI behaviorは [UI requirements](ui.md) を参照する。
+JSON APIは`/api/v1`配下で提供します。request/response schemaはgenerated OpenAPIと`app/schemas/`に対応します。
 
-## Adapter boundary
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+- page / HTMX routeはOpenAPIへ含めません
 
-- JSON APIは`app/routers/api/v1/`配下、prefixは`/api/v1`。
-- `/api/v1/*`はJSON request/responseを担当し、HTML fragment、Form adapter、`HX-*` response headerを持たない。
-- page/HTMX endpointは`app/routers/pages/`配下に置き、OpenAPIへ含めない。Form inputをapplication inputへ変換し、service/use caseを直接利用する。JSON APIへの内部HTTP委譲は行わない。
-- write use caseのtransaction ownerはservice層。CRUD層はuse case単位のcommit/rollbackを所有しない。
-- application-side validationに加え、UNIQUE/FK等のDB constraintを最終的な整合性保証とする。
-- DB integrity race等はapplication errorへ変換し、DB例外文字列を外部へ直接公開しない。
-- OpenAPI UIは`/docs`、`/redoc`で公開する。
+## Endpoints
 
-## Authentication guard
+| Resource | Method / path | Purpose |
+| --- | --- | --- |
+| Attendance | `GET /api/v1/attendances` | 一覧 |
+|  | `GET /api/v1/attendances/day/{day}` | 日別projection |
+|  | `POST /api/v1/attendances` | 作成 |
+|  | `PUT /api/v1/attendances/{attendance_id}` | 更新 |
+|  | `DELETE /api/v1/attendances/{attendance_id}` | ID指定削除 |
+|  | `DELETE /api/v1/attendances?user_id=...&date=...` | user/date指定削除 |
+| Users | `GET /api/v1/users` | 一覧 |
+|  | `GET /api/v1/users/{user_id}` | 1件取得 |
+|  | `POST /api/v1/users` | 作成 |
+|  | `PUT /api/v1/users/{user_id}` | 更新 |
+|  | `DELETE /api/v1/users/{user_id}` | 削除 |
+| Locations | `GET/POST /api/v1/locations` | 一覧 / 作成 |
+|  | `PUT/DELETE /api/v1/locations/{location_id}` | 更新 / 削除 |
+| Groups | `GET/POST /api/v1/groups` | 一覧 / 作成 |
+|  | `PUT/DELETE /api/v1/groups/{group_id}` | 更新 / 削除 |
+| User types | `GET/POST /api/v1/user_types` | 一覧 / 作成 |
+|  | `PUT/DELETE /api/v1/user_types/{user_type_id}` | 更新 / 削除 |
+| CSV | `GET /api/v1/csv/download` | 月次勤怠CSV |
 
-`SOKORA_AUTH_ENABLED=true`の場合、UIと`/api`にsigned session guardを適用する。
+custom holidayはJSON APIを持たず、page / HTMX routeからserviceを利用します。APIの対称性だけを理由に未使用endpointを追加しません。
 
-- unauthenticated UI request: `/auth/login`へredirect。
-- unauthenticated API request: HTTP 401 JSONを返す。
-- authentication flow、static asset、OpenAPI等のpublic入口はguard対象外。
-- admin-only pageは共通authorization dependencyで`role=admin`を要求する。
-- `POST /auth/logout`はshared DB / IdP lookupを行わず、最初のresponseでauthenticated session identityを除去する。OIDC sessionの場合だけ`GET /auth/logout/provider`へ進み、provider logoutをbest-effortで実行する。
-- `GET /healthz`はplatform probe用で認証を要求しない。
-- OIDC管理はOpenAPI外のpage/Form adapterとしてlocal adminだけに提供する。
-  - `GET /auth/settings`: effective source/stateと非secret設定を表示。
-  - `POST /auth/settings/oidc`: issuer/client ID/scope/enable state/client secret更新をshared DBへ保存。session-backed CSRF tokenを必須とし、enabledで保存する場合は`openid` scope、standard discovery取得、metadata issuer一致を必須検証する。失敗時は有効設定を保存しない。
-  - `POST /auth/settings/oidc/test`: 入力中issuerのstandard discovery接続確認。session-backed CSRF tokenを必須とし、DB保存は行わない。
-  - `POST /auth/settings/oidc/unlink`: session-backed CSRF tokenを必須とする。DB rowをexplicit disabledとして残し、legacy environment fallbackを再開しない。
-- OIDC client secretはpublic response、HTML、session、logへ平文を出さない。
+## Adapter rules
 
-認証方式、cookie、OIDC discovery、local admin fallbackのarchitectureは [ADR 0002](adr/0002-authentication-runtime.md)、runtime設定contractは [Production runtime](runtime.md) を参照する。この文書ではOIDC library内部処理やcookie implementationを重複して保守しない。
+JSON APIとpage / HTMX adapterはtransportを分離します。
 
-## Error contract
+- JSON API: JSON input/output
+- page / HTMX: Form input、HTML fragment、`HX-*` response
+- business rule / write transaction: shared service
+- DB constraint: 最終的な整合性保証
+- page adapterからJSON APIへの内部HTTP delegationは行わない
 
-- request schema/format errorはFastAPI/Pydantic contractに従う。
-- domain/application側で事前判定できる入力不備、not found、重複等は適切な4xxへ変換する。
-- concurrent write等でDB constraintへ競合した場合は409等のapplication errorへ変換する。
-- verified DB disconnect / connection acquisition timeout / fail-closed runtimeは503へ変換する。SQL statement / transaction rollback / constraint / authentication / unexpected internal errorをavailability failureへ誤分類しない。
-- internal DB exception text、credential、filesystem path等をpublic API errorへ露出しない。
-- page/HTMX adapterのvalidation/application errorはJSON responseを再利用せず、UIが扱えるHTML fragmentとして返す。
+## Authentication
 
-## v1 endpoints
+`SOKORA_AUTH_ENABLED=true`では、sessionのないAPI requestへ401を返します。authentication flow、OpenAPI、static asset、`/healthz`はpublicです。
 
-### Attendance
+認証方式とadmin routeは [Authentication](authentication.md) を参照してください。
 
-- `GET /api/v1/attendances`: 勤怠一覧。
-- `GET /api/v1/attendances/day/{day}`: `YYYY-MM-DD`の日付別勤怠detail。不正な日付pathはrequest validationで422。
-- `POST /api/v1/attendances`: `AttendanceCreate` JSONから作成し201を返す。`user_id + date`は一意。
-- `PUT /api/v1/attendances/{attendance_id}`: `AttendanceUpdate` JSONから更新。
-- `DELETE /api/v1/attendances/{attendance_id}`: ID指定削除、204。
-- `DELETE /api/v1/attendances?user_id=...&date=...`: user/date指定削除、204。
+## Errors
 
-### Users
+| Condition | Response |
+| --- | --- |
+| request schema / type error | FastAPI / Pydanticのvalidation response |
+| invalid domain input / not found | 適切な4xx |
+| concurrent write等のconstraint conflict | 409等のapplication error |
+| verified DB unavailable / acquisition timeout | 503 |
+| unexpected internal failure | 500 |
 
-- `GET /api/v1/users`
-- `GET /api/v1/users/{user_id}`
-- `POST /api/v1/users`
-- `PUT /api/v1/users/{user_id}`
-- `DELETE /api/v1/users/{user_id}`
+DB exception文字列、credential、filesystem path等の内部情報をpublic responseへ露出しません。
 
-user create/updateではgroup/user typeの参照整合性を検証する。user deleteは関連attendance削除と同一transactionで処理し、途中失敗時に一部だけを確定しない。
-
-### Locations
-
-- `GET /api/v1/locations`
-- `POST /api/v1/locations`
-- `PUT /api/v1/locations/{location_id}`
-- `DELETE /api/v1/locations/{location_id}`
-
-利用中locationの削除はapplication checkとDB FKで拒否する。
-
-### Groups
-
-- `GET /api/v1/groups`
-- `POST /api/v1/groups`
-- `PUT /api/v1/groups/{group_id}`
-- `DELETE /api/v1/groups/{group_id}`
-
-### User types
-
-- `GET /api/v1/user_types`
-- `POST /api/v1/user_types`
-- `PUT /api/v1/user_types/{user_type_id}`
-- `DELETE /api/v1/user_types/{user_type_id}`
-
-### CSV
-
-- `GET /api/v1/csv/download?month=YYYY-MM&encoding=utf-8|sjis`: 月次勤怠CSVを返す。month/encodingを検証し、CSV生成とencodeが成功した後にdownload responseを開始する。invalid requestは400、DB/runtime unavailableは503、unexpected internal failureは500とし、failureをCSV本文へ埋め込んだ200 responseにはしない。正常時はdownload filenameを`Content-Disposition`で指定する。
-
-custom holidayのCRUDは現時点でJSON APIを持たず、page/HTMX adapter + serviceで提供する。APIの対称性だけを理由に未使用endpointを追加しない。
-
-## UI integration boundary
-
-- attendance modal writeは`/attendance/entries`等のpage/HTMX adapterを利用し、成功時の`HX-Trigger`をUI eventとして返す。
-- refresh対象month/weekは変更対象dateから導出し、`Referer`等を表示stateのSSoTにしない。
-- CSV pageはdownload時だけJSON API側のCSV endpointをbrowser navigationとして利用する。
-- APIが扱うfield/type/constraintは [Database requirements](database.md) に従う。
-
-endpointの詳細schemaはOpenAPIと`app/schemas/`を一次情報とし、private field一覧をこの文書へ複製しない。
+CSVはmonthとencoding（`utf-8` / `sjis`）を検証し、file生成が成功してからdownload responseを開始します。生成failureを200 responseのCSV本文へ埋め込みません。
