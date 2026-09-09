@@ -52,11 +52,16 @@ def decrypt_client_secret(ciphertext: str, encryption_key: str | None) -> str:
     """Decrypt a persisted OIDC client secret using the deployment-provided key."""
     try:
         plaintext = _fernet(encryption_key).decrypt(ciphertext.encode("ascii"))
-    except InvalidToken as exc:
+    except (InvalidToken, UnicodeError) as exc:
         raise AuthConfigValidationError(
-            "OIDC client secretを復号できません。暗号鍵を確認してください。"
+            "OIDC client secretを復号できません。暗号鍵または保存値を確認してください。"
         ) from exc
-    return plaintext.decode("utf-8")
+    try:
+        return plaintext.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise AuthConfigValidationError(
+            "OIDC client secretを復号できません。暗号鍵または保存値を確認してください。"
+        ) from exc
 
 
 def resolve_auth_settings(db: Session, app_settings: AppSettings) -> AuthSettings:
