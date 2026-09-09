@@ -689,6 +689,28 @@ async def test_sidebar_shown_when_auth_not_required(async_client, monkeypatch) -
 
 
 @pytest.mark.asyncio
+async def test_local_admin_rejects_non_ascii_tampered_credentials(
+    async_client, monkeypatch
+) -> None:
+    """non-ASCII入力も500にせず通常のcredential mismatchとして扱うこと。"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    resp = await async_client.post(
+        "/auth/local",
+        data={"username": "管理者", "password": "秘密", "next": "/"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"].startswith("/auth/login/admin?")
+    protected = await async_client.get("/api/v1/groups")
+    assert protected.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_local_admin_disabled_when_flag_off(async_client, monkeypatch) -> None:
     """local auth flagがfalseならcredentialがあってもlogin不可であること。"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
