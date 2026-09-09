@@ -13,7 +13,7 @@ portable PostgreSQL backend導入後も、application replicaごとにDB由来�
 - 標準祝日はproduction imageへbuildされたimmutable assetとしてprocess-localに保持してよい。同一imageを実行するreplica間で内容が一致し、runtime writeでは変更されないためである。
 - custom holidayはprocess-global cacheへ保持しない。holidayを描画するrequestの開始時に共有DBから読み、request-local `ContextVar` snapshotへ束縛する。既存calendar builderはそのrequest-local snapshotを標準祝日より優先して解決する。
 - custom holiday writeは共有DBへのtransaction commitだけを行い、特定replicaのcache invalidationを必要としない。commit完了後に開始した別replicaのholiday-sensitive readは共有DBから新しい値を取得する。
-- 認証設定はenvironment/secret injectionをSSoTとし、replica-local mutable fileを持たない。署名付きclient-side session cookieを全replicaで検証できるよう、`SOKORA_AUTH_SESSION_SECRET` と認証/OIDC設定はreplica間で同一値を注入する。
+- 認証の共有stateはshared DBの`auth_config`とruntime-injected config/secretへ限定し、replica-local mutable fileを持たない。署名付きclient-side session cookieを全replicaで検証できるよう、`SOKORA_AUTH_SESSION_SECRET`やOIDC設定暗号鍵等のruntime secretはreplica間で同一値を注入する。
 - PostgreSQL migrationは既存のadvisory lock contractで同時startupを直列化する。
 
 ## Consistency contract
@@ -31,6 +31,6 @@ portable PostgreSQL backend導入後も、application replicaごとにDB由来�
 
 ## 影響
 
-- GCP/AWS/Azureのmanaged container deployment adapterは、external PostgreSQLと共通runtime secret/configを利用する場合に複数replicaを許可できる。
+- container runtimeは、全replicaが同じexternal PostgreSQLと共通runtime secret/configを利用する場合に複数replicaを許可できる。
 - SQLite deploymentは引き続きreplica数1を前提とする。
 - Redis等のdistributed cache/invalidation基盤は現時点では不要。将来performance上の理由でcacheを導入する場合は、このconsistency contractを満たす共有cacheまたは明示的version/invalidation設計が必要になる。

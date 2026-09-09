@@ -16,7 +16,8 @@ ADRは、sokoraの重要なarchitecture decisionについて「なぜその選�
 | [0001](0001-authentication.md) | Superseded | Keycloak固定・server-side session等の初期認証案 |
 | [0002](0002-authentication-runtime.md) | Accepted | provider-neutral OIDC + signed client-side session |
 | [0003](0003-multi-replica-runtime.md) | Accepted | shared PostgreSQL + request-local derived state |
-| [0004](0004-provider-neutral-oci-deployment.md) | Accepted | provider-neutral OCI image + deployment adapter boundary |
+| [0004](0004-provider-neutral-oci-deployment.md) | Superseded | provider-neutral OCI image + deployment adapter boundary |
+| [0005](0005-provider-neutral-deployment-contract.md) | Accepted | provider-neutral deployment contract without cloud-specific adapters |
 
 ## ADRを追加する基準
 

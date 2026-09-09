@@ -59,13 +59,13 @@ HTTP adapters
 
 - production artifactはroot `Dockerfile`から生成するprovider非依存OCI image 1種類とする。
 - containerは`PORT`でlistenし、DB/auth/config/secretはruntime injectionする。mutable DBやsecretをimageへ埋め込まない。
-- provider固有のregistry、network、identity、secret injection、managed PostgreSQL接続、probe、scaling、IaCはdeployment adapterへ閉じ込める。
-- application coreやDB access層へGCP/AWS/Azure固有SDKを追加しない。
+- image registry、container platform、network、ingress/TLS、identity、secret injection、managed PostgreSQL provisioning、probe、scaling、provider固有CLI/IaCはdeployment environment側の責務とする。
+- application coreやDB access層へcloud provider固有SDKやprovider abstractionを追加しない。
 - health checkは認証不要の`GET /healthz`を共通readiness入口とする。application runtimeが利用可能でDBへのlightweight queryが成功した場合だけ200を返し、maintenance/fence/DB unavailableでは503を返す。
 
-共通contractは [runtime.md](runtime.md)、providerごとの実装statusは [deployment.md](deployment.md)、architecture decisionは [ADR 0004](adr/0004-provider-neutral-oci-deployment.md) を参照する。
+共通runtime contractは [runtime.md](runtime.md)、generic container配置とSQLite/PostgreSQLの構成判断は [deployment.md](deployment.md)、architecture decisionは [ADR 0005](adr/0005-provider-neutral-deployment-contract.md) を参照する。
 
-現時点ではclosed-network adapterが実装済みで、GCP Cloud Run / AWS managed container / Azure managed containerは #57 / #70 / #71 で未実装である。未実装targetをsupport済みとして扱わない。
+特定cloud provider向けのadapterやsupport statusは管理しない。閉域Docker deploymentだけは実装済みdistribution targetとして [closed-deployment.md](closed-deployment.md) にbundle/Compose/operator手順を維持する。
 
 ## Operations
 

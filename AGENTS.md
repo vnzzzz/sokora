@@ -27,7 +27,7 @@ sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケ
 - API要件: `docs/api.md`
 - UI要件: `docs/ui.md`
 - template構成: `docs/templates.md`
-- deployment入口 / support status: `docs/deployment.md`
+- generic deployment / DB構成: `docs/deployment.md`
 - production runtime contract: `docs/runtime.md`
 - closed-network運用: `docs/closed-deployment.md`
 - SQLite backup/restore運用: `docs/sqlite-database-management.md`
@@ -35,7 +35,7 @@ sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケ
 - 依存関係・tool設定: `pyproject.toml`, `uv.lock`
 - 開発command: `Makefile`, `scripts/`
 
-Issueや実装とdocsが食い違う場合は、推測で合わせず、taskの完了条件へ影響する差異を確認して必要なSSoTを同じ変更で更新する。未実装の機能やdeployment adapterを実装済みとして扱わない。
+Issueや実装とdocsが食い違う場合は、推測で合わせず、taskの完了条件へ影響する差異を確認して必要なSSoTを同じ変更で更新する。特定cloud provider向けのdeployment adapterやsupport statusを前提にしない。
 
 ## Architecture map
 
@@ -77,7 +77,7 @@ writeのtransaction/business ruleはservice境界を優先する。readは画面
 - UI変更では既存のJinja/HTMX/Alpine patternと`docs/ui.md`を確認する。
 - API変更では`docs/api.md`とpage側への影響を確認する。
 - DB変更では`docs/database.md`、model、migration、seed、testの整合を確認する。
-- production/deployment変更では`docs/deployment.md`と`docs/runtime.md`を確認し、provider固有処理をapplication coreへ持ち込まない。
+- production/deployment変更では`docs/deployment.md`と`docs/runtime.md`を確認し、provider固有処理やprovider abstractionをapplication coreへ持ち込まない。closed-network固有assetsを変更する場合は`docs/closed-deployment.md`も同期する。
 - 横断的なarchitecture判断は既存`docs/adr/`を確認し、必要ならADRを追加する。
 - comment/docstringは処理の言い換えではなく、codeだけでは失われる判断理由、制約、不変条件、resource lifetimeを残す。公開関数・型ではcallerが守る条件やfailure boundaryが重要なら明示する。
 

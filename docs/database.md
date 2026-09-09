@@ -23,7 +23,7 @@ DB constraintを最終的な整合性保証とし、application側の事前チ�
 - 未指定時は`sqlite:///data/sokora.db`。
 - PostgreSQL application contractは標準的な`postgresql://user:password@host:port/database` URL。bare `postgresql://` / `postgres://` はPsycopg 3へ内部正規化する。
 - TLS等のPostgreSQL connection optionはURL queryで渡せる。credentialをsource/imageへ埋め込まない。
-- Cloud SQL for PostgreSQL、Amazon RDS/Aurora PostgreSQL、Azure Database for PostgreSQL等もapplicationからは標準PostgreSQL接続として扱う。provider SDK、metadata service、proxy processの起動をDB access層へ持ち込まない。
+- external / managed PostgreSQLもapplicationからは標準PostgreSQL接続として扱う。provider固有SDK、metadata service、proxy processの起動をDB access層へ持ち込まない。
 
 SQLite固有のconnection設定はDB runtimeへ閉じ込め、PostgreSQLへ適用しない。`sqlite:///:memory:`はtest/application単位で同一connection-backed DBを共有できるように扱う。
 
@@ -76,4 +76,4 @@ file-backed SQLiteではadmin UI `/admin/database`からconsistent backup/restor
 
 通常test/E2EはSQLite contractを検証する。CIのPostgreSQL jobはreal PostgreSQLに対してmigration/startup、主要CRUD、constraint、multi-replica consistency、production image connectionを検証する。
 
-provider固有のnetwork/identity/managed DB接続はDB contractではなくdeployment adapterの責務とする。
+network、identity、managed DB provisioning等はDB contractではなくdeployment environment側の責務とする。
