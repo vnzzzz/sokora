@@ -76,6 +76,24 @@ async def test_get_user_types_with_data(
     assert data["user_types"][1]["id"] == user_type1.id
 
 
+async def test_get_user_types_is_not_truncated_at_default_page_size(
+    async_client: AsyncClient, db: Session
+) -> None:
+    db.add_all(
+        [
+            UserType(name=f"API User Type {index:03d}", order=index)
+            for index in range(101)
+        ]
+    )
+    db.commit()
+
+    response = await async_client.get("/api/v1/user_types")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.json()["user_types"]) == 101
+    assert response.json()["user_types"][-1]["name"] == "API User Type 100"
+
+
 # --- POST /api/v1/user_types Tests ---
 
 
