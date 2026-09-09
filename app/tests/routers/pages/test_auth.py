@@ -336,8 +336,20 @@ async def test_oidc_logout_uses_absolute_callback(async_client, monkeypatch) -> 
 
         logout_resp = await async_client.post("/auth/logout", follow_redirects=False)
         assert logout_resp.status_code == 303
+        assert logout_resp.headers["location"] == "/auth/logout/provider"
+
+        protected = await async_client.get("/api/v1/locations")
+        assert protected.status_code == 401
+
+        provider_resp = await async_client.get(
+            "/auth/logout/provider",
+            follow_redirects=False,
+        )
+        assert provider_resp.status_code == 303
         assert recorder.last_logout_redirect == "http://test/auth/logout/callback"
-        assert logout_resp.headers["location"].startswith("https://idp.example/logout?")
+        assert provider_resp.headers["location"].startswith(
+            "https://idp.example/logout?"
+        )
 
         completed = await async_client.get(
             "/auth/logout/callback?state=logout-state",
@@ -347,6 +359,40 @@ async def test_oidc_logout_uses_absolute_callback(async_client, monkeypatch) -> 
         assert completed.headers["location"].startswith("/auth/login?")
     finally:
         app.dependency_overrides.pop(get_oidc_client, None)
+        app.dependency_overrides.pop(get_optional_oidc_client, None)
+
+
+@pytest.mark.asyncio
+async def test_oidc_logout_commits_local_logout_before_provider_lookup(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    _set_signed_session(
+        async_client,
+        {
+            "auth": {
+                "method": "oidc",
+                "subject": "user-1",
+                "username": "user-1",
+            }
+        },
+    )
+
+    def provider_lookup_must_not_run():
+        raise AssertionError("provider lookup must happen after local logout response")
+
+    app.dependency_overrides[get_optional_oidc_client] = provider_lookup_must_not_run
+    try:
+        logout_resp = await async_client.post(
+            "/auth/logout",
+            follow_redirects=False,
+        )
+        assert logout_resp.status_code == 303
+        assert logout_resp.headers["location"] == "/auth/logout/provider"
+
+        protected = await async_client.get("/api/v1/locations")
+        assert protected.status_code == 401
+    finally:
         app.dependency_overrides.pop(get_optional_oidc_client, None)
 
 
