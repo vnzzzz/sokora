@@ -282,4 +282,3 @@ async def oidc_logout_callback(
         _login_url(reason="logout"),
         status_code=status.HTTP_303_SEE_OTHER,
     )
-
