@@ -44,7 +44,7 @@ rootや専用service accountで運用する場合も、Compose実行identityへ�
 
 `/etc/sokora/runtime.env`へauthentication / OIDC / DB / proxy設定、`/etc/sokora/deployment.env`へimage tag / port / pathを設定します。
 
-authenticationを有効にする場合、`SOKORA_AUTH_SESSION_SECRET`へstrong secretを設定します。
+authentication guard(`SOKORA_AUTH_ENABLED=true`)を有効にする場合、またはguardが無効でも`SOKORA_LOCAL_AUTH_ENABLED=true`かつlocal admin username/passwordを設定してlocal admin loginを使う場合は、`SOKORA_AUTH_SESSION_SECRET`へstrong secretを設定します。空欄のままlocal admin credentialだけ設定するとstartupで拒否されます。
 
 DB-backed OIDC設定を利用する場合は`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`も設定します。
 

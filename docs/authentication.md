@@ -27,7 +27,7 @@ authentication guardが有効な場合、未認証のUI requestは`/auth/login`�
 | Setting | Purpose |
 | --- | --- |
 | `SOKORA_AUTH_ENABLED` | application authentication guard。既定`false` |
-| `SOKORA_AUTH_SESSION_SECRET` | signed session secret。auth有効時はdefault/空値を拒否 |
+| `SOKORA_AUTH_SESSION_SECRET` | signed session secret。auth guard有効時、またはlocal admin credential設定済み時はdefault/空値を拒否 |
 | `SOKORA_AUTH_SESSION_TTL_SECONDS` | session lifetime |
 | `SOKORA_AUTH_SESSION_HTTPS_ONLY` | Secure cookie。HTTPS productionでは`true` |
 | `SOKORA_LOCAL_AUTH_ENABLED` | local admin経路のenable flag |
@@ -70,7 +70,7 @@ state-changing operationはsession-backed CSRF tokenを要求します。OIDCを
 
 ## Local admin
 
-local adminはbreak-glass管理経路です。`SOKORA_LOCAL_AUTH_ENABLED=true`かつusername/passwordが揃う場合だけ利用できます。
+local adminはbreak-glass管理経路です。`SOKORA_LOCAL_AUTH_ENABLED=true`かつusername/passwordが揃う場合だけ利用できます。この条件ではglobal auth guardが無効でもadmin sessionを発行できるため、`SOKORA_AUTH_SESSION_SECRET`へ明示的なランダム値を設定します。例えば `openssl rand -hex 32` で生成した値を使い、再起動やmulti-replica間で同じ値を維持します。
 
 OIDC設定、shared DB上のOIDC secret、IdP discoveryに問題があってもlocal admin credential照合自体はそれらへ依存しません。OIDC failureからlocal adminへ自動failoverはせず、利用者がlogin経路を選択します。
 
