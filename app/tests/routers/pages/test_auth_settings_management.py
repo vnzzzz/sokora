@@ -10,8 +10,6 @@ from app.db.session import create_database_runtime, initialize_database
 from app.main import app
 
 
-
-
 def _set_signed_session(async_client, session: dict[str, object]) -> None:
     session_secret = next(
         middleware
