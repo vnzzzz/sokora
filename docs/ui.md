@@ -21,12 +21,18 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
 
 ## Authentication / login
 
-- `/auth/login`は、OIDCが有効な場合の「SSOでログイン」と、local admin loginへの明示的な入口を提供する。自動failoverは行わない。
-- SSO buttonは`/auth/redirect`からOIDC Authorization Code flowを開始する。OIDC設定が不足している場合はbuttonを無効化し、利用不可であることを表示する。
-- local admin loginは`/auth/login/admin`で行い、`SOKORA_LOCAL_AUTH_ENABLED=true`かつadmin credentialが設定されている場合だけ利用できる。
-- unauthenticated page accessは`/auth/login?next=...`へredirectする。`next`はserver側でsame-origin pathへ制限する。
+- `/auth/login`は、effective OIDC設定が有効な場合の「SSOでログイン」と、local admin loginへの明示的な入口を提供する。自動failoverは行わない。
+- SSO buttonは`/auth/redirect`からOIDC Authorization Code flowを開始する。DBで明示disabled、設定不備、secret復号不能の場合はSSOを利用可能として表示しない。
+- local admin loginは`/auth/login/admin`で行い、runtimeの`SOKORA_LOCAL_AUTH_ENABLED=true`かつadmin credentialが設定されている場合だけ利用できる。
+- unauthenticated page accessは`/auth/login?next=...`へredirectする。nextはserver側でsame-origin pathへ制限する。
 - `/auth/logout`はapplication sessionを破棄し、OIDC providerがend-session endpointを提供する場合だけprovider logoutへ連携する。
-- `/auth/settings`はlocal admin向けread-only diagnostics。認証guard、OIDC、local admin、session cookieのruntime設定状態を確認できるが、runtime toggleは提供しない。
+- `/auth/settings`はlocal admin専用のOIDC管理画面。
+  - effective config source（`legacy_environment` / `database`）とOIDC/local admin状態を表示する。
+  - issuer、client ID、scope、enable/disableを編集できる。
+  - client secretはpassword inputから更新できるが、保存済み値をHTMLへ再表示しない。
+  - Discovery接続確認は入力中issuerのstandard `/.well-known/openid-configuration`を検証し、保存を伴わない。
+  - 「OIDC連携を解除」はDB rowを削除せずdisabled stateを残し、legacy environmentへのfallbackを防ぐ。
+- DB rowがまだ存在しないupgrade直後だけlegacy `OIDC_*` environmentを利用する。最初にDB設定を保存/無効化した後はshared DBがOIDC stateのSSoTになる。
 
 認証のsecurity/runtime contractは [API requirements](api.md) と [ADR 0002](adr/0002-authentication-runtime.md) を参照する。
 
@@ -57,7 +63,7 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
 
 ## Admin diagnostics and SQLite database management
 
-- `/auth/settings`はlocal admin向けauthentication diagnostics。
+- `/auth/settings`はlocal admin向けOIDC settings / diagnostics。shared DB設定の保存・無効化・unlink・discovery確認を提供する。
 - `/admin/database`はadmin-only database management page。
 - file-backed SQLiteではconsistent backup downloadと、明示確認付きrestoreを提供する。
 - PostgreSQLおよびin-memory SQLiteではfile backup/restore操作を無効化し、利用できない理由を表示する。
