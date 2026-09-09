@@ -315,6 +315,7 @@ def test_migration_rejects_existing_duplicate_usernames_without_deleting_data(
             migrate_database(runtime)
 
         with runtime.session_factory() as db:
+            assert db.scalar(text("PRAGMA foreign_keys")) == 1
             assert db.scalar(text("select count(*) from users")) == 2
             assert (
                 db.scalar(text("select version_num from alembic_version"))
