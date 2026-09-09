@@ -152,7 +152,7 @@ async def test_db_disabled_oidc_never_falls_back_to_legacy_environment(
     async_client.cookies.clear()
     login_page = await async_client.get("/auth/login")
     assert login_page.status_code == 200
-    assert "/auth/redirect" not in login_page.text
+    assert "SSOが現在利用できません" in login_page.text
     assert "/auth/login/admin" in login_page.text
 
     local_login = await async_client.post(
@@ -284,7 +284,9 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
     settings_page = await async_client.get("/auth/settings")
     assert settings_page.status_code == 200
     assert "client secretを復号できません" in settings_page.text
-    assert "/auth/redirect" not in (await async_client.get("/auth/login")).text
+    assert "SSOが現在利用できません" in (
+        await async_client.get("/auth/login")
+    ).text
 
 
 @pytest.mark.asyncio
