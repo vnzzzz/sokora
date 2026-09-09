@@ -18,7 +18,8 @@ browser UIはJinja2によるSSRを基本に、HTMXでpartial update、Alpine.js�
 | `/holidays` | custom holiday master |
 | `/csv` | CSV download UI |
 | `/analysis` | monthly / yearly aggregation |
-| `/auth/*` | login / OIDC settings |
+| `/auth/*` | login / logout / OIDC protocol flow |
+| `/admin/auth` | OIDC / authentication settings |
 | `/admin/database` | SQLite backup / restore |
 
 認証画面のbehaviorは [Authentication](authentication.md)、SQLite管理画面は [SQLite database management](sqlite-database-management.md) を参照してください。
@@ -45,14 +46,15 @@ refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等か
 | --- | --- |
 | Jinja2 | full page / partial / reusable componentのrender |
 | HTMX | server request、partial replacement、custom event |
-| Alpine.js | sidebar等の局所UI state |
+| Alpine.js | sidebar / theme等の局所UI state |
 | `ui-events.js` | modal / message / page refresh等の共通event |
-| `attendance-interactions.js` | attendance固有interaction |
-| `calendar.js` | top calendarの日付選択 / detail取得 |
+| `attendance-interactions.js` | attendance/register画面固有interaction。対象pageだけでload |
+| `calendar.js` | top calendarの日付選択 / detail取得。topだけでload |
 | `analysis.js` | analysis画面固有interaction |
-| `main.js` | theme / shell / HTMX共通設定 |
 
 DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持ちません。
+server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
+HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
 ## Template layout
 
