@@ -43,11 +43,8 @@ async def create_test_user_via_api(
             "user_type_id": user_type_id,
         },
     )
-    assert response.status_code in {
-        status.HTTP_200_OK,
-        status.HTTP_201_CREATED,
-        status.HTTP_204_NO_CONTENT,
-    }
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["id"] == user_id
     return user_id
 
 
