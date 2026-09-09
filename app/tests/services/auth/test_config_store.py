@@ -3,6 +3,7 @@ import pytest
 
 from app.core.settings import AppSettings
 from app.services.auth.config_store import (
+    AuthConfigValidationError,
     OIDCDiscoveryError,
     check_oidc_discovery,
     resolve_auth_settings,
@@ -117,8 +118,6 @@ def test_first_db_save_requires_secret_when_client_identity_changes(db) -> None:
             "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
         ),
     )
-
-    from app.services.auth.config_store import AuthConfigValidationError
 
     with pytest.raises(AuthConfigValidationError, match="client secret"):
         save_oidc_config(
