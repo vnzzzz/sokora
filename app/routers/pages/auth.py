@@ -215,8 +215,12 @@ async def local_login(
 
     expected_user = settings.local_admin_username or ""
     expected_password = settings.local_admin_password or ""
-    if secrets.compare_digest(username, expected_user) and secrets.compare_digest(
-        password, expected_password
+    if secrets.compare_digest(
+        username.encode("utf-8"),
+        expected_user.encode("utf-8"),
+    ) and secrets.compare_digest(
+        password.encode("utf-8"),
+        expected_password.encode("utf-8"),
     ):
         request.session["auth"] = {
             "method": "local_admin",
