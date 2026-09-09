@@ -188,14 +188,23 @@ def unlink_oidc_config(db: Session) -> AuthConfig:
     return config
 
 
-async def check_oidc_discovery(issuer: str, timeout: float) -> dict[str, Any]:
+async def check_oidc_discovery(
+    issuer: str,
+    timeout: float,
+    *,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> dict[str, Any]:
     """Fetch standard OIDC discovery metadata for an unsaved issuer candidate."""
     normalized_issuer = issuer.strip()
     if not normalized_issuer:
         raise OIDCDiscoveryError("issuerを入力してください。")
 
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            follow_redirects=True,
+            transport=transport,
+        ) as client:
             response = await client.get(oidc_discovery_url(normalized_issuer))
             response.raise_for_status()
             metadata = response.json()
