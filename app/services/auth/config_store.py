@@ -36,15 +36,11 @@ def get_auth_config(db: Session) -> AuthConfig | None:
 
 def _fernet(encryption_key: str | None) -> Fernet:
     if not encryption_key:
-        raise AuthConfigValidationError(
-            "OIDC設定暗号鍵がruntimeに設定されていません。"
-        )
+        raise AuthConfigValidationError("OIDC設定暗号鍵がruntimeに設定されていません。")
     try:
         return Fernet(encryption_key.encode("utf-8"))
     except (TypeError, ValueError) as exc:
-        raise AuthConfigValidationError(
-            "OIDC設定暗号鍵の形式が不正です。"
-        ) from exc
+        raise AuthConfigValidationError("OIDC設定暗号鍵の形式が不正です。") from exc
 
 
 def encrypt_client_secret(secret: str, encryption_key: str | None) -> str:
@@ -149,9 +145,7 @@ def save_oidc_config(
             missing_fields.append("client secret")
         if missing_fields:
             raise AuthConfigValidationError(
-                "OIDCを有効化するには "
-                + ", ".join(missing_fields)
-                + " が必要です。"
+                "OIDCを有効化するには " + ", ".join(missing_fields) + " が必要です。"
             )
 
         # Re-enabling with a preserved ciphertext must prove that this replica has
@@ -212,7 +206,10 @@ async def check_oidc_discovery(issuer: str, timeout: float) -> dict[str, Any]:
         raise OIDCDiscoveryError("OIDC discovery metadataの形式が不正です。")
 
     required = ("issuer", "authorization_endpoint", "token_endpoint", "jwks_uri")
-    if any(not isinstance(metadata.get(name), str) or not metadata[name] for name in required):
+    if any(
+        not isinstance(metadata.get(name), str) or not metadata[name]
+        for name in required
+    ):
         raise OIDCDiscoveryError("OIDC discovery metadataに必須項目がありません。")
 
     return metadata
