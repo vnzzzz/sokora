@@ -14,11 +14,12 @@ Dev Containerを開いた後、repository rootで:
 cp .env.sample .env
 ```
 
-`Makefile`は`VERSION`を必須とし、sampleの`SERVICE_PORT`は空なので、local起動では最低限次を設定します。
+sampleはlocal開発用の `SERVICE_PORT=8000` を含み、`make run` / `make test` / `make quality` 等のdevelopment targetでは `VERSION` は不要です。
+
+`VERSION` はversioned production image/packageを扱うtargetでだけ必須です。
 
 ```dotenv
 VERSION=dev
-SERVICE_PORT=8000
 ```
 
 依存関係とfrontend assetを準備して起動します。
