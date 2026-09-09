@@ -5,7 +5,6 @@
 .vscode
 AGENTS.md
 CLAUDE.md
-README.md
 docs
 deploy
 app/tests
