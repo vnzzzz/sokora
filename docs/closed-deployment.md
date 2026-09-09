@@ -2,7 +2,7 @@
 
 閉域Dockerサーバー向けには、production imageと実行に必要な最小assetだけをまとめたrepository-free bundleを提供します。runtime hostへsource repositoryやbuild toolingを持ち込む必要はありません。
 
-具体的なoperator commandはbundleへ同梱される [`deploy/closed/README.md`](../deploy/closed/README.md) が正本です。この文書ではdelivery / state / upgrade boundaryを説明します。
+runtime hostで使う具体的なoperator commandはbundleへ同梱される [`deploy/closed/README.md`](../deploy/closed/README.md) にあります。
 
 ## Delivery flow
 
