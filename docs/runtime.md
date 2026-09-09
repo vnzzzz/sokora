@@ -48,7 +48,7 @@ session signing、authentication guard、local admin credentialはdeployment run
 - `OIDC_REDIRECT_URL`と`OIDC_HTTP_TIMEOUT`はdeployment/runtime propertyとしてenvironmentに残す。
 - DB-backed client secretはFernetで暗号化し、暗号鍵`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`はDB/imageへ保存せずruntime secretとして全replicaへ同一値を注入する。鍵は`python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'`等で生成できる。
 - DB-backed OIDCを有効化する場合、暗号鍵未設定・不正・不一致はOIDCを利用不可とし、legacy secretへfallbackしない。
-- `/auth/settings`はlocal adminだけが利用できる。OIDC設定の保存・明示無効化・連携解除・standard discovery接続確認を提供する。これらのPOSTはsession-backed CSRF tokenを必須とする。OIDCをenabledで保存する場合は`openid` scope、discovery取得、metadata issuer一致を必須検証し、失敗時は有効設定をDBへ保存しない。保存済みclient secretは画面へ再表示しない。
+- `/auth/settings`はlocal adminだけが利用できる。OIDC設定の保存・明示無効化・連携解除・standard discovery接続確認を提供する。これらのPOSTはsession-backed CSRF tokenを必須とする。OIDCをenabledで保存する場合は`openid` scope、discovery取得、metadata issuerの末尾slashを含むexact一致を必須検証し、失敗時は有効設定をDBへ保存しない。保存済みclient secretは画面へ再表示しない。
 - application logoutはprovider logoutより優先する。`POST /auth/logout`はshared DB / IdPへアクセスせず、最初のresponseでauthenticated identityをsession cookieから除去する。OIDC sessionの場合だけ、その後の別requestでprovider logoutをbest-effort実行するため、DB接続black-holeやshared DB unavailableでもlocal logout完了をblockしない。
 - Authlibがissuerの`/.well-known/openid-configuration`からauthorization/token/JWKS/end-session metadataを取得し、Keycloak固有endpointをapplicationで組み立てない。
 - sessionはStarlette `SessionMiddleware`のsigned client-side cookie。persistent sessionへOIDC access/refresh/ID tokenを保持しない。
