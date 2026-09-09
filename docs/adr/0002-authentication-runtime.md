@@ -26,7 +26,7 @@
 - unlinkは`auth_config` rowを削除せずdisabled rowとして残す。row削除はlegacy fallbackを再開してしまうため、通常UI operationにはしない。
 - DB由来OIDC設定をprocess-global mutable cacheへ保持しない。shared PostgreSQLを利用するmulti-replicaはrequestごとに同じDB stateを観測する。
 - 認証後の`next`はsame-origin absolute pathだけに制限する。
-- logoutはapplication sessionを必ず破棄する。provider logoutが利用可能な場合だけRP-Initiated Logoutを追加実行する。shared DB unavailable等でprovider logout用OIDC設定を解決できない場合はprovider logoutを省略し、application logoutを失敗させない。
+- logoutはapplication sessionを必ず先に破棄する。`POST /auth/logout`の最初のresponseはshared DB / IdPへ依存せずauthenticated identityをcookieから除去し、OIDC sessionの場合だけ別requestでRP-Initiated Logoutをbest-effort実行する。shared DB unavailableやDB接続black-holeでもprovider logoutがapplication logout完了を遅延・失敗させない。
 
 ## 移行
 
