@@ -63,7 +63,9 @@ class TestCreateApplication:
         with pytest.raises(ValueError, match="SOKORA_AUTH_SESSION_SECRET"):
             create_application(settings)
 
-    def test_auth_off_without_local_admin_credentials_keeps_dev_default_secret(self) -> None:
+    def test_auth_off_without_local_admin_credentials_keeps_dev_default_secret(
+        self,
+    ) -> None:
         settings = AppSettings(
             auth_enabled=False,
             session_secret=DEFAULT_SESSION_SECRET,
