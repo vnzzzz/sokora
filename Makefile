@@ -13,9 +13,6 @@ PORT ?= 8000
 IMAGE_NAME ?= sokora
 DEV_IMAGE_NAME ?= sokora-dev
 VERSION ?=
-ifndef VERSION
-$(error VERSION is not set. Define VERSION in .env)
-endif
 VERSION_TAG := $(IMAGE_NAME):$(VERSION)
 CONTAINER_NAME ?= sokora
 DEV_CONTAINER_NAME ?= sokora-dev
@@ -26,8 +23,10 @@ SEED_DAYS_FORWARD ?= 60
 NO_PROXY_VALUE := $(if $(NO_PROXY),$(NO_PROXY),$(no_proxy))
 DOCKER_BUILD_PROXY_ARGS := $(if $(proxy),--build-arg http_proxy=$(proxy) --build-arg https_proxy=$(proxy) --build-arg HTTP_PROXY=$(proxy) --build-arg HTTPS_PROXY=$(proxy),) $(if $(NO_PROXY_VALUE),--build-arg no_proxy=$(NO_PROXY_VALUE) --build-arg NO_PROXY=$(NO_PROXY_VALUE),)
 DOCKER_PROXY_ENV := $(if $(proxy),-e proxy=$(proxy) -e http_proxy=$(proxy) -e https_proxy=$(proxy) -e HTTP_PROXY=$(proxy) -e HTTPS_PROXY=$(proxy),) $(if $(NO_PROXY_VALUE),-e no_proxy=$(NO_PROXY_VALUE) -e NO_PROXY=$(NO_PROXY_VALUE),)
+DOCKER_APPLICATION_ENV_VARS := SOKORA_LOG_LEVEL DATABASE_URL SOKORA_AUTH_SESSION_SECRET SOKORA_AUTH_ENABLED SOKORA_AUTH_SESSION_TTL_SECONDS SOKORA_AUTH_SESSION_HTTPS_ONLY SOKORA_LOCAL_AUTH_ENABLED SOKORA_LOCAL_ADMIN_USERNAME SOKORA_LOCAL_ADMIN_PASSWORD SOKORA_AUTH_CONFIG_ENCRYPTION_KEY OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_REDIRECT_URL OIDC_SCOPES OIDC_HTTP_TIMEOUT
+DOCKER_APPLICATION_ENV_ARGS := $(foreach var,$(DOCKER_APPLICATION_ENV_VARS),-e $(var))
 
-.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build docker-build closed-bundle package-closed-bundle dev-build docker-run docker-stop
+.PHONY: help sync install run dev-shell seed test assets prepare-dev-assets holiday-cache migrate lint format format-check typecheck quality build require-version docker-build closed-bundle package-closed-bundle dev-build docker-run docker-stop
 
 help:
 	@printf "\nSokora make targets (devcontainer aware):\n"
@@ -103,13 +102,19 @@ quality: lint format-check typecheck
 build:
 	docker build $(DOCKER_BUILD_PROXY_ARGS) -t $(IMAGE_NAME) .
 
-docker-build:
+require-version:
+	@if [ -z "$(strip $(VERSION))" ]; then \
+		echo "VERSION is required for versioned image/package targets; set VERSION=<version> or define it in .env" >&2; \
+		exit 2; \
+	fi
+
+docker-build: require-version
 	docker build $(DOCKER_BUILD_PROXY_ARGS) -t $(VERSION_TAG) .
 
 closed-bundle: docker-build
 	SOURCE_REVISION="$$(git rev-parse HEAD)" bash ./scripts/deployment/package_closed_bundle.sh "$(VERSION_TAG)" "$(CLOSED_BUNDLE_DIR)"
 
-package-closed-bundle:
+package-closed-bundle: require-version
 	@if [ -z "$(SOURCE_REVISION)" ]; then \
 		echo "SOURCE_REVISION is required for an already-built image; set it to the commit used to build $(VERSION_TAG)" >&2; \
 		exit 2; \
@@ -121,12 +126,7 @@ dev-build:
 
 docker-run: docker-build
 	mkdir -p data
-	@ENV_FILE_ARG=""; \
-	if [ -f "$(ENV_FILE_PATH)" ]; then \
-		echo "loading env from $(ENV_FILE_PATH)"; \
-		ENV_FILE_ARG="--env-file $(ENV_FILE_PATH)"; \
-	fi; \
-	docker run -d --name $(CONTAINER_NAME) $$ENV_FILE_ARG $(DOCKER_PROXY_ENV) --rm \
+	docker run -d --name $(CONTAINER_NAME) $(DOCKER_APPLICATION_ENV_ARGS) $(DOCKER_PROXY_ENV) --rm \
 		-e PORT="$(PORT)" \
 		-p "$(SERVICE_PORT):$(PORT)" \
 		-v $(abspath data):/app/data \
