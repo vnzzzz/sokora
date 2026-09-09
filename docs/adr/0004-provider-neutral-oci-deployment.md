@@ -1,6 +1,6 @@
 # 0004: Provider-neutral OCI image + deployment adapter boundary
 
-**Status:** Accepted
+**Status:** Superseded by [ADR 0005](0005-provider-neutral-deployment-contract.md)
 
 ## 背景
 
