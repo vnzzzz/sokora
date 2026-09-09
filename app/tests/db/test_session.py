@@ -1,6 +1,8 @@
 from pathlib import Path
 from urllib.parse import quote
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -9,6 +11,8 @@ from sqlalchemy.pool import StaticPool
 import app.models  # noqa: F401 - register model metadata for schema tests
 from app.core.settings import AppSettings
 from app.db.session import (
+    _ALEMBIC_CONFIG_PATH,
+    _ALEMBIC_SCRIPT_PATH,
     Base,
     SessionLocal,
     clear_database_runtime_cache,
@@ -18,6 +22,7 @@ from app.db.session import (
     migrate_database,
     sqlite_database_path,
 )
+from app.services.auth.config_store import resolve_auth_settings
 
 
 def test_create_database_runtime_uses_supplied_database_url(tmp_path: Path) -> None:
@@ -157,6 +162,8 @@ def test_migrate_database_adopts_unversioned_current_schema(tmp_path: Path) -> N
     try:
         # Reproduce a database created by the pre-#54 create_all lifecycle.
         Base.metadata.create_all(bind=runtime.engine)
+        with runtime.engine.begin() as connection:
+            connection.execute(text("drop table auth_config"))
         assert "alembic_version" not in inspect(runtime.engine).get_table_names()
         custom_holiday_columns = {
             column["name"]: column
@@ -217,6 +224,7 @@ def test_migrate_database_adopts_pre_custom_holidays_schema(tmp_path: Path) -> N
         # did not exist yet and there was no Alembic version marker.
         Base.metadata.create_all(bind=runtime.engine)
         with runtime.engine.begin() as connection:
+            connection.execute(text("drop table auth_config"))
             connection.execute(text("drop table custom_holidays"))
             connection.execute(
                 text(
@@ -240,6 +248,60 @@ def test_migrate_database_adopts_pre_custom_holidays_schema(tmp_path: Path) -> N
                 db.scalar(text("select name from groups where id = 101"))
                 == "legacy group"
             )
+    finally:
+        runtime.dispose()
+
+
+def test_closed_custom_holiday_database_upgrade_preserves_legacy_oidc_fallback(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "closed-custom-holiday.db"
+    runtime = create_database_runtime(f"sqlite:///{database_path}")
+    try:
+        migrate_database(runtime)
+
+        config = Config(str(_ALEMBIC_CONFIG_PATH))
+        config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
+        config.attributes["database_url"] = runtime.database_url
+        with runtime.engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.downgrade(config, "6b8f3dbe1e1a")
+            connection.execute(
+                text(
+                    'insert into groups (id, name, "order") '
+                    "values (901, 'closed legacy group', 3)"
+                )
+            )
+
+        assert "auth_config" not in inspect(runtime.engine).get_table_names()
+        with runtime.session_factory() as db:
+            assert (
+                db.scalar(text("select version_num from alembic_version"))
+                == "6b8f3dbe1e1a"
+            )
+
+        migrate_database(runtime)
+
+        assert "auth_config" in inspect(runtime.engine).get_table_names()
+        with runtime.session_factory() as db:
+            assert db.scalar(text("select count(*) from auth_config")) == 0
+            assert (
+                db.scalar(text("select name from groups where id = 901"))
+                == "closed legacy group"
+            )
+            resolved = resolve_auth_settings(
+                db,
+                AppSettings(
+                    oidc_issuer="https://legacy.example/realms/sokora",
+                    oidc_client_id="legacy-client",
+                    oidc_client_secret="legacy-secret",
+                    oidc_redirect_uri="https://sokora.example/auth/callback",
+                ),
+            )
+
+        assert resolved.oidc_source == "legacy_environment"
+        assert resolved.oidc_enabled is True
+        assert resolved.oidc_client_secret == "legacy-secret"
     finally:
         runtime.dispose()
 

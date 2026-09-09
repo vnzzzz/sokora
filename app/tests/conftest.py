@@ -9,12 +9,12 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 # 同期エンジン作成用の create_engine と StaticPool をインポート
-from sqlalchemy import StaticPool, create_engine
+from sqlalchemy import Engine, StaticPool, create_engine
 from sqlalchemy.orm import Session, sessionmaker  # Session をインポート
 
 # from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker # 不要
 # --- アプリケーションとDB設定のインポート ---
-from app.db.session import Base, get_db  # get_db と Base をインポート
+from app.db.session import Base, DatabaseRuntime, get_db  # get_db と Base をインポート
 from app.main import app as main_app
 
 # トップレベルでモデルをインポート
@@ -167,11 +167,28 @@ def db_with_data(db: Session, test_data_tracker: dict) -> Session:
 def test_app(
     db: Session,
 ) -> Generator[FastAPI, None, None]:  # db フィクスチャを引数で受け取る
-    """依存関係をオーバーライドしたテスト用FastAPIアプリケーションインスタンス"""
-    # override_get_db を使わず、dbフィクスチャのセッションを直接返すようにlambdaで上書き
+    """依存関係とapplication-owned DB runtimeを同じテストDBへbindする。"""
+    # routeのrequest-scoped get_dbと、short-lived managed sessionを使うserviceの双方が
+    # 同じfixture DBを参照するようapplication runtimeも明示的に差し替える。
+    engine = db.get_bind()
+    assert isinstance(engine, Engine)
+    test_runtime = DatabaseRuntime(
+        database_url="sqlite:///:memory:",
+        engine=engine,
+        session_factory=sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=engine,
+        ),
+    )
+    previous_runtime = getattr(main_app.state, "database_runtime", None)
+    main_app.state.database_runtime = test_runtime
     main_app.dependency_overrides[get_db] = lambda: db
-    yield main_app
-    main_app.dependency_overrides.clear()
+    try:
+        yield main_app
+    finally:
+        main_app.dependency_overrides.clear()
+        main_app.state.database_runtime = previous_runtime
 
 
 # --- 非同期テストクライアント (変更なし、test_app に依存) ---

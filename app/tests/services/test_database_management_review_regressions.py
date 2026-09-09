@@ -188,6 +188,8 @@ def test_restore_accepts_equivalent_adopted_create_all_schema(tmp_path: Path) ->
         # path. SQLite batch migration retains quoting around custom_holidays
         # even though the resulting structure and constraints match fresh DBs.
         Base.metadata.create_all(bind=legacy_runtime.engine)
+        with legacy_runtime.engine.begin() as connection:
+            connection.execute(text("drop table auth_config"))
         migrate_database(legacy_runtime)
 
         with (

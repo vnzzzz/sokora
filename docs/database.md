@@ -12,6 +12,7 @@ SQLAlchemy model (`app/models/`) とAlembic revisionがschemaの一次情報で�
 - `users`: `id` (string PK), `username` (unique, not null), `group_id` (FK → `groups.id`), `user_type_id` (FK → `user_types.id`)。
 - `attendance`: `id` (PK), `user_id` (FK → `users.id`), `date` (Date), `location_id` (FK → `locations.id`), `note` (nullable)。`UNIQUE(user_id, date)`で1ユーザー1日1レコードを保証する。
 - `custom_holidays`: `id` (PK), `date` (Date, unique, not null), `name` (not null), `created_at`, `updated_at`。画面から追加する祝日を保持する。
+- `auth_config`: singleton `id=1`、`oidc_enabled`、`oidc_issuer`、`oidc_client_id`、`oidc_client_secret_encrypted`、`oidc_scope`。DB-backed OIDC設定をreplica間で共有する。client secret平文は保存しない。
 
 DB constraintを最終的な整合性保証とし、application側の事前チェックは利用者向けerrorを早く返すために併用する。
 
@@ -31,7 +32,9 @@ SQLite固有のconnection設定はDB runtimeへ閉じ込め、PostgreSQLへ適�
 - file-backed SQLiteはsingle-instance runtime用。複数application replicaから同じSQLite fileを共有しない。
 - horizontal multi-replicaはshared external PostgreSQLを利用する。
 - DB由来のmutable read stateをprocess-global cacheへ共有状態として保持しない。
-- custom holidayはrequest開始時に共有DBから読み、request-local snapshotとしてcalendar renderingへ渡す。multi-replica consistencyの詳細は [ADR 0003](adr/0003-multi-replica-runtime.md) を参照する。
+- custom holidayはrequest開始時に共有DBから読み、request-local snapshotとしてcalendar renderingへ渡す。
+- `auth_config`もrequest時にshared DBから解決し、OIDC設定のprocess-global mutable cacheを持たない。rowなしだけlegacy environment互換、rowありはenabled/disabledを含めDBがauthoritativeとなる。
+- multi-replica consistencyの詳細は [ADR 0003](adr/0003-multi-replica-runtime.md) を参照する。
 
 ## Schema lifecycle
 

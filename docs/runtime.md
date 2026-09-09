@@ -34,20 +34,27 @@ local Make targetの`SERVICE_PORT`はhost側publish portであり、container li
 
 ## Authentication runtime
 
-認証設定はenvironment/secret injectionをSSoTとし、replica-local mutable fileを共有stateとして利用しない。
+session signing、authentication guard、local admin credentialはdeployment runtime secret/configをSSoTとする。OIDC client設定はshared DBへ移行可能で、replica-local mutable fileは利用しない。
 
-- `SOKORA_AUTH_ENABLED`の既定値は`false`。未設定のままではUI/APIのauthentication guardは無効で、signed sessionを要求しない。productionで認証を必要とする場合は明示的に`true`へ設定する。
-- `SOKORA_AUTH_ENABLED=true`では、`SOKORA_AUTH_SESSION_SECRET`に空値や既定の`dev-session-secret`を利用できない。十分な強度の非default secretをruntime secretとして明示設定しない場合、startup validationは失敗する。
-- OIDCは`OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URL`等のruntime設定を利用する。
-- Authlibがissuer discoveryからauthorization/token/JWKS/end-session metadataを取得し、provider固有endpoint pathをapplicationで組み立てない。
+- `SOKORA_AUTH_ENABLED`の既定値は`false`。productionで認証を必要とする場合は明示的に`true`へ設定する。
+- `SOKORA_AUTH_ENABLED=true`では、`SOKORA_AUTH_SESSION_SECRET`に空値や既定の`dev-session-secret`を利用できない。
+- local adminはbreak-glass管理経路としてruntime設定を維持する。
+  - `SOKORA_LOCAL_AUTH_ENABLED=true`かつ`SOKORA_LOCAL_ADMIN_USERNAME` / `SOKORA_LOCAL_ADMIN_PASSWORD`が揃う場合だけ有効。
+  - OIDCのDB設定、暗号鍵、discoveryに問題があってもlocal admin login自体はDB-backed OIDC resolverへ依存しない。
+- OIDC設定sourceは次の3状態。
+  1. `auth_config` rowなし: 既存deploymentとの互換性のため`OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_SCOPES`をlegacy sourceとして利用する。
+  2. `auth_config` rowあり + enabled: issuer / client ID / encrypted client secret / scopeはshared DBをSSoTとする。
+  3. `auth_config` rowあり + disabled: OIDCを明示無効化し、legacy environmentへfallbackしない。
+- `OIDC_REDIRECT_URL`と`OIDC_HTTP_TIMEOUT`はdeployment/runtime propertyとしてenvironmentに残す。
+- DB-backed client secretはFernetで暗号化し、暗号鍵`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`はDB/imageへ保存せずruntime secretとして全replicaへ同一値を注入する。鍵は`python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'`等で生成できる。
+- DB-backed OIDCを有効化する場合、暗号鍵未設定・不正・不一致はOIDCを利用不可とし、legacy secretへfallbackしない。
+- `/auth/settings`はlocal adminだけが利用できる。OIDC設定の保存・明示無効化・連携解除・standard discovery接続確認を提供する。これらのPOSTはsession-backed CSRF tokenを必須とする。OIDCをenabledで保存する場合は`openid` scope、discovery取得、metadata issuerの末尾slashを含むexact一致を必須検証し、失敗時は有効設定をDBへ保存しない。保存済みclient secretは画面へ再表示しない。
+- application logoutはprovider logoutより優先する。`POST /auth/logout`はshared DB / IdPへアクセスせず、最初のresponseでauthenticated identityをsession cookieから除去する。OIDC sessionの場合だけ、その後の別requestでprovider logoutをbest-effort実行するため、DB接続black-holeやshared DB unavailableでもlocal logout完了をblockしない。
+- Authlibがissuerの`/.well-known/openid-configuration`からauthorization/token/JWKS/end-session metadataを取得し、Keycloak固有endpointをapplicationで組み立てない。
 - sessionはStarlette `SessionMiddleware`のsigned client-side cookie。persistent sessionへOIDC access/refresh/ID tokenを保持しない。
 - OAuth state / OIDC nonceはauthentication flow中だけsessionへ一時保持する。
 - cookieはHttpOnly + SameSite=Lax。HTTPS productionでは`SOKORA_AUTH_SESSION_HTTPS_ONLY=true`を必須とする。
-- multi-replicaでは`SOKORA_AUTH_SESSION_SECRET`と認証/OIDC設定を全replicaへ同一値で注入する。
-- local admin loginは管理用fallbackで、自動failoverではない。
-  - `SOKORA_LOCAL_AUTH_ENABLED`の既定値は`true`だが、このflagだけではlocal admin loginは有効にならない。
-  - `SOKORA_LOCAL_AUTH_ENABLED=true` かつ `SOKORA_LOCAL_ADMIN_USERNAME` と `SOKORA_LOCAL_ADMIN_PASSWORD` の両方が設定されている場合だけlocal admin loginを有効化する。
-  - credentialが不足している場合、applicationは起動できるがlocal admin loginは利用できない。`/auth/settings`、`/admin/database`等のadmin-only operationを利用するdeploymentでは、username/passwordをruntime secret/configとして明示設定する。
+- multi-replicaではshared PostgreSQLの`auth_config`をrequest時に参照し、process-local OIDC settings cacheを共有stateとして持たない。OIDC redirect/callback用の設定読取はshort-lived DB session内で完了・closeしてからIdP HTTP処理へ進む。管理画面でenabled設定を保存する場合もDiscoveryをDB session取得前に完了させる。いずれも外部I/O待ち中にchecked-out DB connectionを保持しない。
 
 認証architectureの理由とsecurity boundaryは [ADR 0002](adr/0002-authentication-runtime.md)、HTTP guard behaviorは [API requirements](api.md) を参照する。
 

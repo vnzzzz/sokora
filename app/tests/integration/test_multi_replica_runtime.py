@@ -7,6 +7,9 @@ from uuid import uuid4
 import httpx
 import pytest
 
+from app.db.session import create_database_runtime
+from app.models.auth_config import AuthConfig
+
 REPLICA_A_URL = os.getenv("SOKORA_REPLICA_A_URL")
 REPLICA_B_URL = os.getenv("SOKORA_REPLICA_B_URL")
 
@@ -89,3 +92,49 @@ def test_shared_postgresql_state_is_visible_across_replicas() -> None:
         assert day_read.status_code == 200, day_read.text
         assert user_name in day_read.text
         assert location_name in day_read.text
+
+
+def test_shared_oidc_disable_is_visible_across_replicas() -> None:
+    """DB-backed OIDC state must be observed by every PostgreSQL replica."""
+    assert REPLICA_A_URL is not None
+    assert REPLICA_B_URL is not None
+    database_url = os.getenv("DATABASE_URL")
+    assert database_url is not None
+
+    runtime = create_database_runtime(database_url)
+    try:
+        with runtime.session_factory() as db:
+            db.query(AuthConfig).filter(AuthConfig.id == 1).delete()
+            db.commit()
+
+        with (
+            httpx.Client(base_url=REPLICA_A_URL, timeout=10.0) as replica_a,
+            httpx.Client(base_url=REPLICA_B_URL, timeout=10.0) as replica_b,
+        ):
+            for replica in (replica_a, replica_b):
+                legacy_login = replica.get("/auth/login")
+                assert legacy_login.status_code == 200
+                assert "SSOが現在利用できません" not in legacy_login.text
+
+            with runtime.session_factory() as db:
+                db.add(
+                    AuthConfig(
+                        id=1,
+                        oidc_enabled=False,
+                        oidc_issuer=None,
+                        oidc_client_id=None,
+                        oidc_client_secret_encrypted=None,
+                        oidc_scope="openid profile email",
+                    )
+                )
+                db.commit()
+
+            for replica in (replica_a, replica_b):
+                disabled_login = replica.get("/auth/login")
+                assert disabled_login.status_code == 200
+                assert "SSOが現在利用できません" in disabled_login.text
+    finally:
+        with runtime.session_factory() as db:
+            db.query(AuthConfig).filter(AuthConfig.id == 1).delete()
+            db.commit()
+        runtime.dispose()

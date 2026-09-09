@@ -7,13 +7,28 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from itsdangerous import TimestampSigner
 
+import app.services.auth.dependencies as auth_dependencies
 from app.core.settings import AppSettings
+from app.db.session import DatabaseRuntimeUnavailableError
 from app.main import app, create_application
 from app.services.auth.dependencies import (
     get_oidc_client,
     get_optional_oidc_client,
 )
 from app.services.auth.oidc import OIDCError, OIDCStateError
+
+
+def _set_signed_session(async_client, session: dict[str, object]) -> None:
+    session_secret = next(
+        middleware
+        for middleware in app.user_middleware
+        if middleware.cls.__name__ == "SessionMiddleware"
+    ).options["secret_key"]
+    payload = base64.b64encode(json.dumps(session).encode("utf-8"))
+    async_client.cookies.set(
+        "session",
+        TimestampSigner(session_secret).sign(payload).decode("utf-8"),
+    )
 
 
 class DummyOIDCResult:
@@ -233,10 +248,10 @@ async def test_oidc_callback_rejects_invalid_state(async_client, monkeypatch) ->
 
 
 @pytest.mark.asyncio
-async def test_auth_settings_is_admin_only_and_read_only(
+async def test_auth_settings_is_admin_only_and_editable(
     async_client, monkeypatch
 ) -> None:
-    """認証設定はlocal adminだけが参照でき、runtime toggleを提供しないこと。"""
+    """認証設定の参照・更新UIはlocal adminだけに公開すること。"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
     monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
@@ -262,8 +277,10 @@ async def test_auth_settings_is_admin_only_and_read_only(
 
     settings_page = await async_client.get("/auth/settings")
     assert settings_page.status_code == 200
-    assert "環境変数/secret" in settings_page.text
-    assert "/auth/settings/oidc/toggle" not in settings_page.text
+    assert 'action="/auth/settings/oidc"' in settings_page.text
+    assert 'formaction="/auth/settings/oidc/test"' in settings_page.text
+    assert 'action="/auth/settings/oidc/unlink"' in settings_page.text
+    assert "client-secret" not in settings_page.text
 
 
 @pytest.mark.asyncio
@@ -332,8 +349,20 @@ async def test_oidc_logout_uses_absolute_callback(async_client, monkeypatch) -> 
 
         logout_resp = await async_client.post("/auth/logout", follow_redirects=False)
         assert logout_resp.status_code == 303
+        assert logout_resp.headers["location"] == "/auth/logout/provider"
+
+        protected = await async_client.get("/api/v1/locations")
+        assert protected.status_code == 401
+
+        provider_resp = await async_client.get(
+            "/auth/logout/provider",
+            follow_redirects=False,
+        )
+        assert provider_resp.status_code == 303
         assert recorder.last_logout_redirect == "http://test/auth/logout/callback"
-        assert logout_resp.headers["location"].startswith("https://idp.example/logout?")
+        assert provider_resp.headers["location"].startswith(
+            "https://idp.example/logout?"
+        )
 
         completed = await async_client.get(
             "/auth/logout/callback?state=logout-state",
@@ -344,6 +373,94 @@ async def test_oidc_logout_uses_absolute_callback(async_client, monkeypatch) -> 
     finally:
         app.dependency_overrides.pop(get_oidc_client, None)
         app.dependency_overrides.pop(get_optional_oidc_client, None)
+
+
+@pytest.mark.asyncio
+async def test_oidc_logout_commits_local_logout_before_provider_lookup(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    _set_signed_session(
+        async_client,
+        {
+            "auth": {
+                "method": "oidc",
+                "subject": "user-1",
+                "username": "user-1",
+            }
+        },
+    )
+
+    def provider_lookup_must_not_run():
+        raise AssertionError("provider lookup must happen after local logout response")
+
+    app.dependency_overrides[get_optional_oidc_client] = provider_lookup_must_not_run
+    try:
+        logout_resp = await async_client.post(
+            "/auth/logout",
+            follow_redirects=False,
+        )
+        assert logout_resp.status_code == 303
+        assert logout_resp.headers["location"] == "/auth/logout/provider"
+
+        protected = await async_client.get("/api/v1/locations")
+        assert protected.status_code == 401
+    finally:
+        app.dependency_overrides.pop(get_optional_oidc_client, None)
+
+
+@pytest.mark.asyncio
+async def test_logout_succeeds_when_shared_db_is_unavailable(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    login = await async_client.post(
+        "/auth/local",
+        data={"username": "admin", "password": "secret", "next": "/"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+
+    def unavailable_runtime(_app):
+        raise DatabaseRuntimeUnavailableError("database unavailable")
+
+    monkeypatch.setattr(
+        auth_dependencies,
+        "get_app_database_runtime",
+        unavailable_runtime,
+    )
+
+    logout_resp = await async_client.post("/auth/logout", follow_redirects=False)
+    assert logout_resp.status_code == 303
+    assert logout_resp.headers["location"].startswith("/auth/login?")
+
+    protected = await async_client.get("/api/v1/locations")
+    assert protected.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_logout_callback_succeeds_when_shared_db_is_unavailable(
+    async_client, monkeypatch
+) -> None:
+    def unavailable_runtime(_app):
+        raise DatabaseRuntimeUnavailableError("database unavailable")
+
+    monkeypatch.setattr(
+        auth_dependencies,
+        "get_app_database_runtime",
+        unavailable_runtime,
+    )
+
+    callback = await async_client.get(
+        "/auth/logout/callback?state=stale-provider-state",
+        follow_redirects=False,
+    )
+    assert callback.status_code == 303
+    assert callback.headers["location"].startswith("/auth/login?")
 
 
 @pytest.mark.asyncio
@@ -569,6 +686,28 @@ async def test_sidebar_shown_when_auth_not_required(async_client, monkeypatch) -
     assert "<aside" in resp.text
     assert 'data-testid="user-menu"' not in resp.text
     assert "ゲスト" not in resp.text
+
+
+@pytest.mark.asyncio
+async def test_local_admin_rejects_non_ascii_tampered_credentials(
+    async_client, monkeypatch
+) -> None:
+    """non-ASCII入力も500にせず通常のcredential mismatchとして扱うこと。"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    resp = await async_client.post(
+        "/auth/local",
+        data={"username": "管理者", "password": "秘密", "next": "/"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["location"].startswith("/auth/login/admin?")
+    protected = await async_client.get("/api/v1/groups")
+    assert protected.status_code == 401
 
 
 @pytest.mark.asyncio

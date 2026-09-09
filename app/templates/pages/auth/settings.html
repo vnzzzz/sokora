@@ -5,32 +5,144 @@
   <div>
     <h1 class="text-xl font-semibold">認証設定</h1>
     <p class="text-sm text-base-content/70 mt-1">
-      認証設定は全instanceで共通になる環境変数/secretから読み込みます。この画面からruntime変更は行いません。
+      local adminはruntime secretを維持し、OIDC設定だけをshared DBで管理します。
     </p>
   </div>
 
+  {% if notice %}
+  <div class="alert alert-success text-sm">{{ notice }}</div>
+  {% endif %}
+  {% if error_message %}
+  <div class="alert alert-error text-sm">{{ error_message }}</div>
+  {% endif %}
+  {% if settings.oidc_configuration_error %}
+  <div class="alert alert-warning text-sm">{{ settings.oidc_configuration_error }}</div>
+  {% endif %}
+
   <div class="card bg-base-200 shadow-sm">
     <div class="card-body gap-3 text-sm">
+      <div class="flex justify-between gap-4">
+        <span>設定元</span>
+        <span class="font-medium" data-testid="oidc-config-source">{{ settings.oidc_source }}</span>
+      </div>
       <div class="flex justify-between gap-4">
         <span>認証ガード</span>
         <span class="font-medium">{{ "有効" if settings.auth_enabled else "無効" }}</span>
       </div>
       <div class="flex justify-between gap-4">
         <span>OIDC</span>
-        <span class="font-medium">{{ "設定済み" if settings.oidc_enabled else "未設定" }}</span>
+        <span class="font-medium">{{ "有効" if settings.oidc_enabled else "無効" }}</span>
       </div>
       <div class="flex justify-between gap-4">
         <span>ローカル管理者</span>
         <span class="font-medium">{{ "有効" if settings.local_admin_enabled else "無効" }}</span>
       </div>
       <div class="flex justify-between gap-4">
-        <span>セッション有効期限</span>
-        <span class="font-medium">{{ settings.session_ttl_seconds }} 秒</span>
+        <span>Client secret</span>
+        <span class="font-medium">{{ "設定済み" if settings.oidc_secret_configured else "未設定" }}</span>
       </div>
       <div class="flex justify-between gap-4">
-        <span>Secure cookie</span>
-        <span class="font-medium">{{ "有効" if settings.session_https_only else "無効" }}</span>
+        <span>Redirect URI</span>
+        <span class="font-medium">{{ settings.oidc_redirect_uri or "runtime未設定" }}</span>
       </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body gap-4">
+      <div>
+        <h2 class="font-semibold">OIDC / Keycloak</h2>
+        <p class="text-sm text-base-content/70 mt-1">
+          issuerは標準OIDC issuerを指定します。Keycloakの場合はrealm issuerを指定してください。
+        </p>
+      </div>
+
+      <form method="post" action="/auth/settings/oidc" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="enabled"
+            value="true"
+            class="checkbox checkbox-sm"
+            {% if form_values.enabled %}checked{% endif %}
+          />
+          <span class="text-sm font-medium">OIDCを有効にする</span>
+        </label>
+
+        <label class="form-control">
+          <span class="label-text mb-1">Issuer</span>
+          <input
+            type="url"
+            name="issuer"
+            class="input input-bordered w-full"
+            value="{{ form_values.issuer }}"
+            placeholder="https://keycloak.example/realms/sokora"
+          />
+        </label>
+
+        <label class="form-control">
+          <span class="label-text mb-1">Client ID</span>
+          <input
+            type="text"
+            name="client_id"
+            class="input input-bordered w-full"
+            value="{{ form_values.client_id }}"
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="form-control">
+          <span class="label-text mb-1">Client secret</span>
+          <input
+            type="password"
+            name="client_secret"
+            class="input input-bordered w-full"
+            value=""
+            autocomplete="new-password"
+            placeholder="{{ '変更する場合だけ入力' if settings.oidc_secret_configured else 'client secretを入力' }}"
+          />
+          <span class="text-xs text-base-content/60 mt-1">
+            保存済みsecretは再表示しません。
+          </span>
+        </label>
+
+        <label class="form-control">
+          <span class="label-text mb-1">Scope</span>
+          <input
+            type="text"
+            name="scope"
+            class="input input-bordered w-full"
+            value="{{ form_values.scope }}"
+          />
+          <span class="text-xs text-base-content/60 mt-1">
+            OIDCを有効にする場合は openid scope が必須です。
+          </span>
+        </label>
+
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">保存</button>
+          <button
+            type="submit"
+            formaction="/auth/settings/oidc/test"
+            class="btn btn-outline btn-sm"
+          >
+            Discovery接続確認
+          </button>
+        </div>
+      </form>
+
+      <div class="divider"></div>
+
+      <form method="post" action="/auth/settings/oidc/unlink">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button type="submit" class="btn btn-error btn-outline btn-sm">
+          OIDC連携を解除
+        </button>
+        <p class="text-xs text-base-content/60 mt-2">
+          DBにdisabled状態を残すため、legacy environment設定へは戻りません。
+        </p>
+      </form>
     </div>
   </div>
 

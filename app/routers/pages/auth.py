@@ -5,11 +5,22 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
+from app.db.session import get_app_database_runtime, get_db
+from app.services.auth.config_store import (
+    AuthConfigError,
+    OIDCDiscoveryError,
+    check_oidc_discovery,
+    save_oidc_config,
+    unlink_oidc_config,
+    validate_oidc_scope_for_enable,
+)
 from app.services.auth.dependencies import (
     get_auth_settings,
     get_oidc_client,
     get_optional_oidc_client,
+    get_runtime_auth_settings,
     require_admin,
 )
 from app.services.auth.oidc import OIDCClient, OIDCError, OIDCStateError
@@ -18,6 +29,35 @@ from app.services.auth.settings import AuthSettings
 router = APIRouter(prefix="/auth", tags=["Auth"], include_in_schema=False)
 templates = Jinja2Templates(directory="app/templates")
 logger = logging.getLogger(__name__)
+
+
+_AUTH_SETTINGS_CSRF_SESSION_KEY = "auth_settings_csrf_token"
+
+
+def _auth_settings_csrf_token(request: Request) -> str:
+    """Return a stable per-session CSRF token for admin OIDC settings forms."""
+    token = request.session.get(_AUTH_SETTINGS_CSRF_SESSION_KEY)
+    if not isinstance(token, str) or not token:
+        token = secrets.token_urlsafe(32)
+        request.session[_AUTH_SETTINGS_CSRF_SESSION_KEY] = token
+    return token
+
+
+def _require_auth_settings_csrf(request: Request, submitted_token: str) -> None:
+    """Reject state-changing auth-settings requests without the session token."""
+    expected_token = request.session.get(_AUTH_SETTINGS_CSRF_SESSION_KEY)
+    if (
+        not isinstance(expected_token, str)
+        or not submitted_token
+        or not secrets.compare_digest(
+            submitted_token.encode("utf-8"),
+            expected_token.encode("utf-8"),
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
+        )
 
 
 def _safe_next_path(next_path: str | None) -> str:
@@ -76,7 +116,7 @@ async def login_page(
 async def admin_login_page(
     request: Request,
     next: str = "/",
-    settings: AuthSettings = Depends(get_auth_settings),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
     context = {
         "request": request,
@@ -159,7 +199,7 @@ async def local_login(
     username: str = Form(...),
     password: str = Form(...),
     next: str = Form("/"),
-    settings: AuthSettings = Depends(get_auth_settings),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
     """configured local admin credentialを照合し、admin role付きsessionを発行する。
 
@@ -175,8 +215,12 @@ async def local_login(
 
     expected_user = settings.local_admin_username or ""
     expected_password = settings.local_admin_password or ""
-    if secrets.compare_digest(username, expected_user) and secrets.compare_digest(
-        password, expected_password
+    if secrets.compare_digest(
+        username.encode("utf-8"),
+        expected_user.encode("utf-8"),
+    ) and secrets.compare_digest(
+        password.encode("utf-8"),
+        expected_password.encode("utf-8"),
     ):
         request.session["auth"] = {
             "method": "local_admin",
@@ -196,26 +240,44 @@ async def local_login(
 
 
 @router.post("/logout")
-async def logout(
+async def logout(request: Request) -> Response:
+    """application sessionを最初のresponseで破棄し、その後だけprovider logoutへ進む。
+
+    shared DB / IdPはapplication logoutのcritical pathへ置かない。OIDC sessionの場合も、
+    authenticated identityを含まないcookieをclientへ返してから別requestでprovider logoutを
+    best-effort実行する。これによりDB接続がblack-holeしてもlocal logout完了をblockしない。
+    """
+    auth_session = request.session.get("auth")
+    was_oidc = isinstance(auth_session, dict) and auth_session.get("method") == "oidc"
+
+    request.session.clear()
+    if was_oidc:
+        request.session["logout_pending"] = True
+        return RedirectResponse(
+            "/auth/logout/provider",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    return RedirectResponse(
+        _login_url(reason="logout"),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/logout/provider")
+async def oidc_provider_logout(
     request: Request,
     oidc_client: OIDCClient | None = Depends(get_optional_oidc_client),
 ) -> Response:
-    """application sessionを破棄し、可能ならOIDC provider logoutも開始する。
+    """local logout完了後にだけprovider logoutをbest-effortで開始する。"""
+    if request.session.pop("logout_pending", None) is not True:
+        request.session.clear()
+        return RedirectResponse(
+            _login_url(reason="logout"),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
-    provider logoutはOIDCでloginしたsessionかつdiscovered end-session endpointが利用可能な
-    場合だけ追加実行する。provider logoutが失敗/未対応でもapplication側identityを残さず、
-    local logoutを成立させる。persistent ID tokenを保持しないためprovider redirectには
-    registered callbackとclient IDを利用する。
-    """
-    auth_session = request.session.pop("auth", None)
-    request.session.pop("auth_error", None)
-    request.session.pop("auth_next", None)
-
-    if (
-        isinstance(auth_session, dict)
-        and auth_session.get("method") == "oidc"
-        and oidc_client is not None
-    ):
+    if oidc_client is not None:
         callback_url = str(request.url_for("oidc_logout_callback"))
         try:
             logout_url = await oidc_client.get_logout_url(
@@ -262,12 +324,144 @@ async def oidc_logout_callback(
     )
 
 
+def _settings_form_values(
+    request: Request,
+    settings: AuthSettings,
+) -> dict[str, object]:
+    """Return non-secret form values, preserving a failed/tested candidate once."""
+    pending = request.session.pop("auth_settings_form", None)
+    if isinstance(pending, dict):
+        return pending
+    configured_enabled = (
+        settings.oidc_enabled
+        if settings.oidc_enabled_override is None
+        else settings.oidc_enabled_override
+    )
+    return {
+        "enabled": configured_enabled,
+        "issuer": settings.oidc_issuer or "",
+        "client_id": settings.oidc_client_id or "",
+        "scope": settings.oidc_scope,
+    }
+
+
+def _remember_settings_form(
+    request: Request,
+    *,
+    enabled: bool,
+    issuer: str,
+    client_id: str,
+    scope: str,
+) -> None:
+    """Persist only non-secret candidate fields across a redirect."""
+    request.session["auth_settings_form"] = {
+        "enabled": enabled,
+        "issuer": issuer,
+        "client_id": client_id,
+        "scope": scope,
+    }
+
+
 @router.get("/settings", response_class=HTMLResponse)
 async def auth_settings_page(
     request: Request,
     _admin: dict[str, object] = Depends(require_admin),
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Response:
-    """Show shared, read-only authentication diagnostics to administrators."""
-    context = {"request": request, "settings": settings}
+    """Show and edit shared OIDC settings for local administrators."""
+    context = {
+        "request": request,
+        "settings": settings,
+        "form_values": _settings_form_values(request, settings),
+        "notice": request.session.pop("auth_settings_notice", None),
+        "error_message": request.session.pop("auth_settings_error", None),
+        "csrf_token": _auth_settings_csrf_token(request),
+    }
     return templates.TemplateResponse("pages/auth/settings.html", context)
+
+
+@router.post("/settings/oidc")
+async def save_auth_oidc_settings(
+    request: Request,
+    enabled: bool = Form(False),
+    issuer: str = Form(""),
+    client_id: str = Form(""),
+    client_secret: str = Form(""),
+    scope: str = Form("openid profile email"),
+    csrf_token: str = Form(""),
+    _admin: dict[str, object] = Depends(require_admin),
+) -> Response:
+    """Validate external discovery first, then persist through a short DB session."""
+    _require_auth_settings_csrf(request, csrf_token)
+    app_settings = request.app.state.settings_provider()
+    try:
+        if enabled:
+            validate_oidc_scope_for_enable(scope)
+            await check_oidc_discovery(issuer, app_settings.oidc_http_timeout)
+        runtime = get_app_database_runtime(request.app)
+        with runtime.managed_session() as db:
+            save_oidc_config(
+                db,
+                app_settings,
+                enabled=enabled,
+                issuer=issuer,
+                client_id=client_id,
+                client_secret=client_secret,
+                scope=scope,
+            )
+    except AuthConfigError as exc:
+        _remember_settings_form(
+            request,
+            enabled=enabled,
+            issuer=issuer,
+            client_id=client_id,
+            scope=scope,
+        )
+        request.session["auth_settings_error"] = str(exc)
+    else:
+        request.session["auth_settings_notice"] = "OIDC設定を保存しました。"
+    return RedirectResponse("/auth/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/oidc/test")
+async def test_auth_oidc_settings(
+    request: Request,
+    enabled: bool = Form(False),
+    issuer: str = Form(""),
+    client_id: str = Form(""),
+    scope: str = Form("openid profile email"),
+    csrf_token: str = Form(""),
+    _admin: dict[str, object] = Depends(require_admin),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
+) -> Response:
+    """Check standard OIDC discovery for an unsaved issuer candidate."""
+    _require_auth_settings_csrf(request, csrf_token)
+    _remember_settings_form(
+        request,
+        enabled=enabled,
+        issuer=issuer,
+        client_id=client_id,
+        scope=scope,
+    )
+    try:
+        await check_oidc_discovery(issuer, settings.oidc_http_timeout)
+    except OIDCDiscoveryError as exc:
+        request.session["auth_settings_error"] = str(exc)
+    else:
+        request.session["auth_settings_notice"] = "OIDC discoveryへ接続できました。"
+    return RedirectResponse("/auth/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/oidc/unlink")
+async def unlink_auth_oidc_settings(
+    request: Request,
+    csrf_token: str = Form(""),
+    _admin: dict[str, object] = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Explicitly disable and clear DB OIDC settings without env fallback."""
+    _require_auth_settings_csrf(request, csrf_token)
+    unlink_oidc_config(db)
+    request.session["auth_settings_notice"] = "OIDC連携を解除しました。"
+    request.session.pop("auth_settings_form", None)
+    return RedirectResponse("/auth/settings", status_code=status.HTTP_303_SEE_OTHER)

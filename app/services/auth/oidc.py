@@ -75,7 +75,7 @@ class OIDCClient:
                 redirect_uri or self.settings.oidc_redirect_uri,
             )
         except Exception as exc:
-            raise OIDCError(f"OIDC authorization discovery failed: {exc}") from exc
+            raise OIDCError("OIDC authorization discovery failed") from exc
         return response.headers["location"]
 
     async def exchange_code(self, *, request: Request) -> OIDCLoginResult:
@@ -90,9 +90,9 @@ class OIDCClient:
         except MismatchingStateError as exc:
             raise OIDCStateError("OIDC state validation failed") from exc
         except OAuthError as exc:
-            raise OIDCError(f"OIDC token exchange failed: {exc}") from exc
+            raise OIDCError("OIDC token exchange failed") from exc
         except Exception as exc:
-            raise OIDCError(f"OIDC token validation failed: {exc}") from exc
+            raise OIDCError("OIDC token validation failed") from exc
 
         userinfo = token.get("userinfo")
         if not isinstance(userinfo, Mapping):
@@ -129,9 +129,9 @@ class OIDCClient:
         except RuntimeError as exc:
             if "end_session_endpoint" in str(exc):
                 return None
-            raise OIDCError(f"OIDC logout discovery failed: {exc}") from exc
+            raise OIDCError("OIDC logout discovery failed") from exc
         except Exception as exc:
-            raise OIDCError(f"OIDC logout failed: {exc}") from exc
+            raise OIDCError("OIDC logout failed") from exc
         return response.headers["location"]
 
     async def validate_logout_response(self, request: Request) -> None:
@@ -141,4 +141,4 @@ class OIDCClient:
         except OAuthError as exc:
             raise OIDCStateError("OIDC logout state validation failed") from exc
         except Exception as exc:
-            raise OIDCError(f"OIDC logout callback failed: {exc}") from exc
+            raise OIDCError("OIDC logout callback failed") from exc

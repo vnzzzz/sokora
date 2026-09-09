@@ -7,24 +7,35 @@ OIDC protocol処理そのものはauth serviceへ委譲し、このmoduleではr
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.db.session import DatabaseRuntimeUnavailableError, get_app_database_runtime
+from app.services.auth.config_store import resolve_auth_settings
 from app.services.auth.oidc import OIDCClient, OIDCError
 from app.services.auth.settings import AuthSettings
 
 
-def get_auth_settings(request: Request) -> AuthSettings:
-    """applicationのsettings providerからrequest用認証設定を構築する。
+def get_runtime_auth_settings(request: Request) -> AuthSettings:
+    """Return deployment/runtime auth settings without consulting the shared DB.
 
-    dependency自身は``os.environ``を直接参照せず、application factoryが選んだproviderを
-    経由する。default providerは呼び出し時にenvironmentから新しいAppSettingsを構築し得るが、
-    このdependencyはrequestごとにstartup security validationを再実行しない。
-
-    SessionMiddleware等にはapplication作成時に固定される設定もあるため、running processの
-    environment変更を認証設定のhot-reload手段として扱わない。runtime config変更はprocess
-    restartで一貫して適用する。
+    The auth guard and local-admin break-glass path use this dependency so OIDC
+    database configuration errors cannot disable local administrator access.
     """
     settings = request.app.state.settings_provider()
     return AuthSettings.from_app_settings(settings)
+
+
+def get_auth_settings(request: Request) -> AuthSettings:
+    """Resolve effective OIDC settings and release the DB session before returning.
+
+    OIDC redirect/callback handlers may await slow provider I/O after this dependency
+    completes. Keep the shared-DB read in a short-lived managed session so those
+    awaits never retain a checked-out SQLAlchemy connection.
+    """
+    app_settings = request.app.state.settings_provider()
+    runtime = get_app_database_runtime(request.app)
+    with runtime.managed_session() as db:
+        return resolve_auth_settings(db, app_settings)
 
 
 def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient:
@@ -41,15 +52,22 @@ def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDC
     return OIDCClient(settings=settings)
 
 
-def get_optional_oidc_client(
-    settings: AuthSettings = Depends(get_auth_settings),
-) -> OIDCClient | None:
-    """logout等、OIDC連携が利用可能な場合だけclientを返す。
+def get_optional_oidc_client(request: Request) -> OIDCClient | None:
+    """logout向けにOIDC clientをbest-effortで返す。
 
-    OIDCが無効またはmetadata/client初期化に失敗しても、application sessionのlogout等
-    provider非依存の処理は継続できるためNoneへ縮退する。このdependencyを認証必須の
-    redirect/callback endpointには使用しない。
+    provider logoutはapplication logoutの付加機能であり、shared DBが停止/fenceしていても
+    session破棄を妨げてはならない。そのため通常のDB dependencyを前段に置かず、この関数内で
+    DB-backed設定を解決し、DB availability failureはNoneへ縮退する。認証必須の
+    redirect/callback endpointにはこのdependencyを使用しない。
     """
+    app_settings = request.app.state.settings_provider()
+    try:
+        runtime = get_app_database_runtime(request.app)
+        with runtime.managed_session() as db:
+            settings = resolve_auth_settings(db, app_settings)
+    except (DatabaseRuntimeUnavailableError, SQLAlchemyError):
+        return None
+
     if not settings.oidc_enabled:
         return None
     try:
@@ -60,7 +78,7 @@ def get_optional_oidc_client(
 
 def require_session_user(
     request: Request,
-    settings: AuthSettings = Depends(get_auth_settings),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Dict[str, Any] | None:
     """signed session identityを返し、認証guard有効時は匿名requestを401で拒否する。
 

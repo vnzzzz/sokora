@@ -20,7 +20,14 @@
 - unauthenticated API request: HTTP 401 JSONを返す。
 - authentication flow、static asset、OpenAPI等のpublic入口はguard対象外。
 - admin-only pageは共通authorization dependencyで`role=admin`を要求する。
+- `POST /auth/logout`はshared DB / IdP lookupを行わず、最初のresponseでauthenticated session identityを除去する。OIDC sessionの場合だけ`GET /auth/logout/provider`へ進み、provider logoutをbest-effortで実行する。
 - `GET /healthz`はplatform probe用で認証を要求しない。
+- OIDC管理はOpenAPI外のpage/Form adapterとしてlocal adminだけに提供する。
+  - `GET /auth/settings`: effective source/stateと非secret設定を表示。
+  - `POST /auth/settings/oidc`: issuer/client ID/scope/enable state/client secret更新をshared DBへ保存。session-backed CSRF tokenを必須とし、enabledで保存する場合は`openid` scope、standard discovery取得、metadata issuer一致を必須検証する。失敗時は有効設定を保存しない。
+  - `POST /auth/settings/oidc/test`: 入力中issuerのstandard discovery接続確認。session-backed CSRF tokenを必須とし、DB保存は行わない。
+  - `POST /auth/settings/oidc/unlink`: session-backed CSRF tokenを必須とする。DB rowをexplicit disabledとして残し、legacy environment fallbackを再開しない。
+- OIDC client secretはpublic response、HTML、session、logへ平文を出さない。
 
 認証方式、cookie、OIDC discovery、local admin fallbackのarchitectureは [ADR 0002](adr/0002-authentication-runtime.md)、runtime設定contractは [Production runtime](runtime.md) を参照する。この文書ではOIDC library内部処理やcookie implementationを重複して保守しない。
 
