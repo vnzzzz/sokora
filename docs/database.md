@@ -1,79 +1,129 @@
-# Database requirements
+# Database
 
-この文書は、sokoraのdata model、DB backend、schema lifecycle、transaction contractのSSoTとする。private helperやSQLAlchemy内部実装の逐次処理は記載しない。
+sokoraはSQLiteとPostgreSQLを同じSQLAlchemy model / Alembic migration chainで扱います。schemaの一次情報は`app/models/`と`scripts/migration/`です。
 
 ## Data model
 
-SQLAlchemy model (`app/models/`) とAlembic revisionがschemaの一次情報である。
+```mermaid
+erDiagram
+    GROUPS ||--o{ USERS : contains
+    USER_TYPES ||--o{ USERS : classifies
+    USERS ||--o{ ATTENDANCE : has
+    LOCATIONS ||--o{ ATTENDANCE : categorizes
 
-- `groups`: `id` (PK), `name` (unique, not null), `order` (nullable)。ユーザー所属グループ。
-- `user_types`: `id` (PK), `name` (unique, not null), `order` (nullable)。社員種別。
-- `locations`: `id` (PK), `name` (unique, not null), `category` (nullable), `order` (nullable)。勤怠種別/勤務場所。
-- `users`: `id` (string PK), `username` (unique, not null), `group_id` (FK → `groups.id`), `user_type_id` (FK → `user_types.id`)。
-- `attendance`: `id` (PK), `user_id` (FK → `users.id`), `date` (Date), `location_id` (FK → `locations.id`), `note` (nullable)。`UNIQUE(user_id, date)`で1ユーザー1日1レコードを保証する。
-- `custom_holidays`: `id` (PK), `date` (Date, unique, not null), `name` (not null), `created_at`, `updated_at`。画面から追加する祝日を保持する。
-- `auth_config`: singleton `id=1`、`oidc_enabled`、`oidc_issuer`、`oidc_client_id`、`oidc_client_secret_encrypted`、`oidc_scope`。DB-backed OIDC設定をreplica間で共有する。client secret平文は保存しない。
+    GROUPS {
+        int id PK
+        string name UK
+        int order
+    }
+    USER_TYPES {
+        int id PK
+        string name UK
+        int order
+    }
+    LOCATIONS {
+        int id PK
+        string name UK
+        string category
+        int order
+    }
+    USERS {
+        string id PK
+        string username UK
+        int group_id FK
+        int user_type_id FK
+    }
+    ATTENDANCE {
+        int id PK
+        string user_id FK
+        date date
+        int location_id FK
+        string note
+    }
+    CUSTOM_HOLIDAYS {
+        int id PK
+        date date UK
+        string name
+    }
+    AUTH_CONFIG {
+        int id PK
+        boolean oidc_enabled
+        string oidc_issuer
+        string oidc_client_id
+        text oidc_client_secret_encrypted
+        string oidc_scope
+    }
+```
 
-DB constraintを最終的な整合性保証とし、application側の事前チェックは利用者向けerrorを早く返すために併用する。
+主要constraint:
 
-## Database URL and supported backends
+- `users.username`はunique
+- `attendance(user_id, date)`はunique
+- `custom_holidays.date`はunique
+- `auth_config`は`id = 1`のsingleton
+- userはgroup / user type、attendanceはuser / locationへFKを持つ
 
-- DB接続先のSSoTは`DATABASE_URL`。
-- supported backendはSQLiteとPostgreSQL。
-- 未指定時は`sqlite:///data/sokora.db`。
-- PostgreSQL application contractは標準的な`postgresql://user:password@host:port/database` URL。bare `postgresql://` / `postgres://` はPsycopg 3へ内部正規化する。
-- TLS等のPostgreSQL connection optionはURL queryで渡せる。credentialをsource/imageへ埋め込まない。
-- external / managed PostgreSQLもapplicationからは標準PostgreSQL接続として扱う。provider固有SDK、metadata service、proxy processの起動をDB access層へ持ち込まない。
+## Backends
 
-SQLite固有のconnection設定はDB runtimeへ閉じ込め、PostgreSQLへ適用しない。`sqlite:///:memory:`はtest/application単位で同一connection-backed DBを共有できるように扱う。
+| Backend | Usage | Replica |
+| --- | --- | --- |
+| SQLite | local / standalone / closed-network | 1 |
+| PostgreSQL | external / managed DB、multi-replica | 1..N |
 
-## Runtime topology
+接続先のSSoTは`DATABASE_URL`です。未指定時は:
 
-- file-backed SQLiteはsingle-instance runtime用。複数application replicaから同じSQLite fileを共有しない。
-- horizontal multi-replicaはshared external PostgreSQLを利用する。
-- DB由来のmutable read stateをprocess-global cacheへ共有状態として保持しない。
-- custom holidayはrequest開始時に共有DBから読み、request-local snapshotとしてcalendar renderingへ渡す。
-- `auth_config`もrequest時にshared DBから解決し、OIDC設定のprocess-global mutable cacheを持たない。rowなしだけlegacy environment互換、rowありはenabled/disabledを含めDBがauthoritativeとなる。
-- multi-replica consistencyの詳細は [ADR 0003](adr/0003-multi-replica-runtime.md) を参照する。
+```text
+sqlite:///data/sokora.db
+```
+
+PostgreSQL:
+
+```text
+postgresql://user:password@db.example:5432/sokora
+postgresql://user:password@db.example:5432/sokora?sslmode=require
+```
+
+bare `postgresql://` / `postgres://` はPsycopg 3へ内部正規化します。managed PostgreSQLもstandard PostgreSQLとして接続し、provider SDKやDB proxy processをdata-access layerへ組み込みません。
+
+deployment上の選択は [Deployment](deployment.md) を参照してください。
 
 ## Schema lifecycle
 
-- schema lifecycleのSSoTはAlembic。production schemaを`Base.metadata.create_all()`で生成しない。
-- SQLite/PostgreSQLともapplication startupでAlembic headまでmigrationする。migration失敗時はstartupをabortする。
-- PostgreSQLのonline migrationはadvisory lockでsokora migration process間を直列化する。
-- explicit migrationは`make migrate`を利用する。
-- 既存Alembic revisionは履歴として変更せず、新しいmodel/schema変更はcurrent headへrevisionを追加する。
-- pristine DBと、Alembic導入前のsupported SQLite DBを同じrevision chainへ移行できるようbaseline/adoption contractを維持する。
-- `uq_attendance_user_date`追加時のように既存data conflictがある場合、migrationは任意にdataを削除せず明示的に失敗させる。
+1. application startupでAlembicをheadまで適用
+2. migration failureならstartupをabort
+3. fresh file-backed SQLiteだけinitial seedを作成
+4. PostgreSQL / in-memory SQLiteはauto-seedしない
+
+PostgreSQLの同時startup migrationはadvisory lockで直列化します。既存revisionは履歴として変更せず、schema変更は新しいrevisionを追加します。
+
+migrationは既存data conflictを任意に削除して通しません。解決が必要なconflictは明示的にfailureとして扱います。
 
 ## Transaction ownership
 
-- `app/crud/` のwriteはdatabase operationのstaging/flushを担当し、use case単位の`commit()` / `rollback()`を所有しない。
-- write transaction ownerは`app/services/`。
-- 複数tableを更新するuse caseは同一transactionで完結させ、一部だけをcommitしない。
-- concurrent writeでDB constraintに競合した`IntegrityError`はservice境界でapplication errorへ変換し、adapterからDB例外文字列を直接公開しない。
+```mermaid
+flowchart LR
+    Adapter["Page / API adapter"] --> Service["Service / use case"]
+    Service --> CRUD["CRUD / data access"]
+    CRUD --> DB[("Database")]
+    Service -. "commit / rollback" .-> DB
+```
 
-## Initialization and seed
+write use caseのtransaction ownerは`app/services/`です。`app/crud/`はquery / flush等のdatabase operationを担当し、use case単位のcommit / rollbackを所有しません。
 
-- migrationとseedは別責務。
-- startupはmigration完了後、fresh file-backed SQLiteの場合だけinitial seedを作成する。
-- PostgreSQLとin-memory SQLiteはstartupで自動seedしない。
-- seed sourceは`scripts/seeding/`。
+DB constraint raceはservice境界でapplication errorへ変換します。
 
-## SQLite backup / restore
+## Shared state
 
-file-backed SQLiteではadmin UI `/admin/database`からconsistent backup/restoreを利用できる。
+multi-replicaではshared PostgreSQLを利用し、DB由来のmutable stateをprocess-global cacheやreplica-local fileへ共有状態として保持しません。
 
-- live DB fileの単純copy/overwriteは行わない。
-- restore candidateはSQLite integrity、foreign key、current Alembic revision、current schema compatibilityを事前検証する。
-- restoreはmigration手段ではなく、現在のapplication versionでそのまま利用できるDBだけを対象とする。
-- PostgreSQLとin-memory SQLiteではfile backup/restore UIを無効化する。
-- replacement/recoveryはrequest session drainとfail-closed boundaryを含む。
+- custom holiday: request開始時にshared DBから取得
+- editable OIDC config: shared DBの`auth_config`
+- immutable holiday asset: 同一image内でprocess-local保持可
 
-操作・failure recoveryの正本は [SQLite database management](sqlite-database-management.md) を参照する。
+consistency semanticsは [ADR 0003](adr/0003-multi-replica-runtime.md) を参照してください。
 
-## Validation
+## Backup and restore
 
-通常test/E2EはSQLite contractを検証する。CIのPostgreSQL jobはreal PostgreSQLに対してmigration/startup、主要CRUD、constraint、multi-replica consistency、production image connectionを検証する。
+file-backed SQLiteのadmin backup / restoreは [SQLite database management](sqlite-database-management.md) を参照してください。
 
-network、identity、managed DB provisioning等はDB contractではなくdeployment environment側の責務とする。
+PostgreSQL backup / restoreはDB運用基盤側で行い、application GUIでは扱いません。
