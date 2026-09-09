@@ -118,7 +118,7 @@ def save_oidc_config(
     normalized_issuer = issuer.strip() or None
     normalized_client_id = client_id.strip() or None
     normalized_scope = scope.strip() or DEFAULT_OIDC_SCOPE
-    new_secret = client_secret.strip()
+    new_secret = client_secret
 
     existing = get_auth_config(db)
     encrypted_secret = (
