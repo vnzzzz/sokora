@@ -54,9 +54,13 @@ engine_url = sqlalchemy_database_url(str(database_url)).render_as_string(
 # URLs must be escaped when stored in Alembic config.
 config.set_main_option("sqlalchemy.url", engine_url.replace("%", "%%"))
 
-# Interpret the config file for Python logging.
+# Interpret the config file for Python logging. disable_existing_loggers=False
+# keeps application/uvicorn loggers (not listed in alembic.ini's [loggers]) alive;
+# fileConfig()'s default silently disables every logger it doesn't know about,
+# which otherwise mutes all app/uvicorn output for the rest of the process after
+# any migration run (e.g. every `make run` startup).
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
