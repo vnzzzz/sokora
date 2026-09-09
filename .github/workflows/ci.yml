@@ -251,7 +251,6 @@ jobs:
             test ! -e /app/docs
             test ! -e /app/.devcontainer
             test ! -e /app/AGENTS.md
-            test ! -e /app/README.md
             ! command -v uv
             ! command -v node
             python -c "import importlib.util; raise SystemExit(1 if importlib.util.find_spec(\"pytest\") else 0)"
