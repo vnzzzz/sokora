@@ -76,6 +76,7 @@ jobs:
           grep -Fx "SOURCE_REVISION=${GITHUB_SHA}" "$BUNDLE/manifest.env"
           grep -Fx "SOKORA_IMAGE=sokora:${VERSION}" "$BUNDLE/compose.env.example"
           grep -Fx 'DATABASE_URL=' "$BUNDLE/runtime.env.example"
+          grep -Fx 'SOKORA_AUTH_CONFIG_ENCRYPTION_KEY=' "$BUNDLE/runtime.env.example"
 
           for forbidden in app docs tests .git .github .devcontainer AGENTS.md CLAUDE.md; do
             test ! -e "$BUNDLE/$forbidden"
