@@ -5,6 +5,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+
 from app.services.auth.dependencies import (
     get_auth_settings,
     get_oidc_client,
