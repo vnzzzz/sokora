@@ -16,7 +16,7 @@ from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
 from sqlalchemy import Engine, create_engine, event, text
-from sqlalchemy.engine import URL, make_url
+from sqlalchemy.engine import Connection, URL, make_url
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -461,6 +461,42 @@ def alembic_heads() -> tuple[str, ...]:
     return tuple(ScriptDirectory.from_config(config).get_heads())
 
 
+def _migration_is_pending(connection: Connection, config: Any) -> bool:
+    """DB revisionがsource treeのAlembic headと異なる場合だけtrueを返す。"""
+    from alembic.runtime.migration import MigrationContext
+    from alembic.script import ScriptDirectory
+
+    current_heads = set(MigrationContext.configure(connection).get_current_heads())
+    target_heads = set(ScriptDirectory.from_config(config).get_heads())
+    return current_heads != target_heads
+
+
+def _set_sqlite_foreign_keys(connection: Connection, *, enabled: bool) -> None:
+    """SQLite FK pragmaをtransaction外で切り替える。"""
+    dbapi_connection = connection.connection.driver_connection
+    if not isinstance(dbapi_connection, sqlite3.Connection):
+        raise RuntimeError("SQLite migration requires the sqlite3 DB-API driver")
+
+    previous_autocommit = dbapi_connection.autocommit
+    dbapi_connection.autocommit = True
+    try:
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute(f"PRAGMA foreign_keys={'ON' if enabled else 'OFF'}")
+        finally:
+            cursor.close()
+    finally:
+        dbapi_connection.autocommit = previous_autocommit
+
+
+def _assert_sqlite_foreign_key_integrity(connection: Connection) -> None:
+    """FKを一時停止したmigration後に参照整合性違反が無いことを確認する。"""
+    violations = connection.exec_driver_sql("PRAGMA foreign_key_check").all()
+    connection.rollback()
+    if violations:
+        raise RuntimeError("SQLite foreign key check failed after migration")
+
+
 def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
     """指定runtimeのschemaをcurrent Alembic headまでupgradeする。
 
@@ -484,9 +520,29 @@ def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
     config.set_main_option("script_location", str(_ALEMBIC_SCRIPT_PATH))
     config.attributes["database_url"] = runtime.database_url
 
-    with runtime.engine.begin() as connection:
-        config.attributes["connection"] = connection
-        command.upgrade(config, "head")
+    with runtime.engine.connect() as connection:
+        migration_pending = _migration_is_pending(connection, config)
+        if connection.in_transaction():
+            connection.rollback()
+
+        suspend_sqlite_foreign_keys = (
+            connection.dialect.name == "sqlite" and migration_pending
+        )
+        if suspend_sqlite_foreign_keys:
+            _set_sqlite_foreign_keys(connection, enabled=False)
+
+        try:
+            with connection.begin():
+                config.attributes["connection"] = connection
+                command.upgrade(config, "head")
+
+            if suspend_sqlite_foreign_keys:
+                _assert_sqlite_foreign_key_integrity(connection)
+        finally:
+            if connection.in_transaction():
+                connection.rollback()
+            if suspend_sqlite_foreign_keys:
+                _set_sqlite_foreign_keys(connection, enabled=True)
 
 
 def init_db(runtime: DatabaseRuntime | None = None) -> None:
