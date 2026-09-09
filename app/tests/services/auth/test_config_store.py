@@ -129,3 +129,33 @@ def test_first_db_save_requires_secret_when_client_identity_changes(db) -> None:
             client_secret="",
             scope="openid profile email",
         )
+
+
+
+def test_db_client_identity_change_requires_new_secret(db) -> None:
+    settings = AppSettings(
+        oidc_redirect_uri="https://sokora.example/auth/callback",
+        auth_config_encryption_key=(
+            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+        ),
+    )
+    save_oidc_config(
+        db,
+        settings,
+        enabled=True,
+        issuer="https://idp.example/realms/sokora",
+        client_id="client-a",
+        client_secret="secret-a",
+        scope="openid profile email",
+    )
+
+    with pytest.raises(AuthConfigValidationError, match="client secret"):
+        save_oidc_config(
+            db,
+            settings,
+            enabled=True,
+            issuer="https://idp.example/realms/other",
+            client_id="client-b",
+            client_secret="",
+            scope="openid profile email",
+        )
