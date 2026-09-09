@@ -284,6 +284,29 @@ async def test_auth_settings_is_admin_only_and_editable(
 
 
 @pytest.mark.asyncio
+async def test_forged_admin_session_rejected_without_local_admin_configured(
+    async_client, monkeypatch
+) -> None:
+    """local admin未設定runtimeでは、role=adminを名乗るforged sessionでも管理操作を拒否すること。
+
+    `local_login`はlocal adminが未設定なら`role=admin`を発行しないため、そのsessionは
+    signed cookieのforgeryでしか作れない。secretがpublicなdevelopment defaultのままでも
+    admin-only routeを保護できることを確認する。local dev用`.env`が既定credentialを
+    設定し得るため、未設定状態はここで明示的に作る。
+    """
+    monkeypatch.delenv("SOKORA_LOCAL_ADMIN_USERNAME", raising=False)
+    monkeypatch.delenv("SOKORA_LOCAL_ADMIN_PASSWORD", raising=False)
+    _set_signed_session(
+        async_client,
+        {"auth": {"method": "local_admin", "username": "forged", "role": "admin"}},
+    )
+
+    resp = await async_client.get("/auth/settings")
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_session_cookie_contains_identity_only(async_client, monkeypatch) -> None:
     """OIDC tokenを永続cookieへ保持せず最小identityだけを保持すること。"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")

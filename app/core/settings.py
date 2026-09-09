@@ -84,20 +84,24 @@ class AppSettings:
     def validate_runtime(self) -> None:
         """startup前にsecurity contractを弱める設定組合せを拒否する。
 
-        認証guardを有効にした場合、signed sessionはauthorization境界の一部になるため、
-        空secretやrepository既定のdevelopment secretを許可しない。認証を無効にした
-        development runtimeまで同じsecret要件で起動不能にはしない。
+        認証guardを有効にした場合、またはlocal admin credentialが設定済みでadmin sessionを
+        発行できる場合、signed sessionはauthorization境界の一部になるため、空secretや
+        repository既定のdevelopment secretを許可しない。認証guardが無効かつlocal admin
+        credential未設定のdevelopment runtimeまでは同じsecret要件で起動不能にはしない。
 
-        OIDC/local admin credentialの完全性は、それぞれの経路を「利用可能」と判定する
-        auth settings側で扱う。
+        OIDC credentialの完全性はauth settings側で扱う。local adminについては、実際にsessionを
+        発行できる既存contract（enable flag + username/password）と同じ条件だけをここで見る。
         """
         normalized_secret = self.session_secret.strip()
-        if self.auth_enabled and (
+        local_admin_configured = self.local_auth_enabled and bool(
+            self.local_admin_username and self.local_admin_password
+        )
+        if (self.auth_enabled or local_admin_configured) and (
             not normalized_secret or normalized_secret == DEFAULT_SESSION_SECRET
         ):
             raise ValueError(
                 "SOKORA_AUTH_SESSION_SECRET must be explicitly configured "
-                "when SOKORA_AUTH_ENABLED=true"
+                "when authentication or local admin sessions are enabled"
             )
 
     @classmethod

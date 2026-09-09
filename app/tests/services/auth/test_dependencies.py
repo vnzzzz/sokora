@@ -1,6 +1,9 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
+
 import app.services.auth.dependencies as auth_dependencies
 from app.core.settings import AppSettings
 from app.services.auth.settings import AuthSettings
@@ -43,3 +46,33 @@ def test_get_auth_settings_closes_db_session_before_return(monkeypatch) -> None:
 
     assert result is resolved
     assert events == ["opened", "resolved", "closed"]
+
+
+def test_require_admin_rejects_role_admin_when_local_admin_not_configured() -> None:
+    """local admin未設定runtimeでは、正規発行され得ない`role=admin`を拒否すること。
+
+    `local_login`はlocal admin未設定なら`role=admin`を発行しないため、この状態で
+    `role=admin`を名乗るsessionはforged cookie以外にあり得ない。publicなdevelopment
+    default secretのままでもadmin-only routeを保護できることを確認する回帰test。
+    """
+    settings = AuthSettings.from_app_settings(
+        AppSettings(local_admin_username=None, local_admin_password=None)
+    )
+    forged_user = {"method": "local_admin", "username": "forged", "role": "admin"}
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth_dependencies.require_admin(user=forged_user, settings=settings)
+
+    assert exc_info.value.status_code == 403
+
+
+def test_require_admin_allows_role_admin_when_local_admin_configured() -> None:
+    """local adminが設定済みのruntimeでは、正規発行された`role=admin` sessionを許可すること。"""
+    settings = AuthSettings.from_app_settings(
+        AppSettings(local_admin_username="admin", local_admin_password="secret")
+    )
+    admin_user = {"method": "local_admin", "username": "admin", "role": "admin"}
+
+    result = auth_dependencies.require_admin(user=admin_user, settings=settings)
+
+    assert result == admin_user
