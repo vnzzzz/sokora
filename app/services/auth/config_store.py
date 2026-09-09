@@ -109,6 +109,16 @@ def resolve_auth_settings(db: Session, app_settings: AppSettings) -> AuthSetting
     )
 
 
+def validate_oidc_scope_for_enable(scope: str) -> str:
+    """Return normalized OIDC scope and require the protocol-defining openid scope."""
+    normalized_scope = scope.strip() or DEFAULT_OIDC_SCOPE
+    if "openid" not in normalized_scope.split():
+        raise AuthConfigValidationError(
+            "OIDCを有効化するには scope に openid が必要です。"
+        )
+    return normalized_scope
+
+
 def save_oidc_config(
     db: Session,
     app_settings: AppSettings,
@@ -123,6 +133,8 @@ def save_oidc_config(
     normalized_issuer = issuer.strip() or None
     normalized_client_id = client_id.strip() or None
     normalized_scope = scope.strip() or DEFAULT_OIDC_SCOPE
+    if enabled:
+        normalized_scope = validate_oidc_scope_for_enable(normalized_scope)
     new_secret = client_secret
 
     existing = get_auth_config(db)
