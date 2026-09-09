@@ -68,7 +68,7 @@ closed-network向けには同じimageからrepository-free bundleを生成でき
 make closed-bundle
 ```
 
-現時点でclosed-network deployment adapterは実装済み。GCP Cloud Run / AWS managed container / Azure managed containerはplannedで、詳細なsupport statusは [Deployment guide](docs/deployment.md) を参照する。
+一般的なcontainer環境への配置条件とSQLite/PostgreSQLの構成判断は [Deployment guide](docs/deployment.md) を参照する。特定cloud provider向けのadapterやsupport matrixは提供しない。閉域Dockerサーバー向けのbundle/Compose/operator手順は [Closed-network deployment](docs/closed-deployment.md) に維持する。
 
 ## Documentation
 
