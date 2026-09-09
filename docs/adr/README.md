@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-ADRは、重要なarchitecture decisionの**理由とtrade-off**を記録します。現在の設定値・route一覧・運用手順は各topic documentを正本とします。
+ADRは、重要なarchitecture decisionの理由とtrade-offを記録します。
 
 ## Records
 
@@ -17,4 +17,3 @@ ADRは、重要なarchitecture decisionの**理由とtrade-off**を記録しま�
 - **Accepted**: 現在のarchitecture decision
 - **Superseded**: 後続ADRで置き換え済み。historical contextとしてのみ参照
 
-新しいADRは、複数componentへ影響する責務境界、security、persistence、consistency等、codeだけでは採用理由が失われるdecisionに限定します。既存decisionを変更するときは過去ADRを書き換えず、新しいADRでsupersedeします。
