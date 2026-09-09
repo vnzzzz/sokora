@@ -22,6 +22,7 @@ def test_app_settings_can_be_built_from_explicit_mapping() -> None:
             "SOKORA_LOCAL_AUTH_ENABLED": "false",
             "OIDC_ISSUER": "https://issuer.example",
             "OIDC_HTTP_TIMEOUT": "5.5",
+            "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY": "fernet-key",
         }
     )
 
@@ -33,3 +34,4 @@ def test_app_settings_can_be_built_from_explicit_mapping() -> None:
     assert settings.local_auth_enabled is False
     assert settings.oidc_issuer == "https://issuer.example"
     assert settings.oidc_http_timeout == 5.5
+    assert settings.auth_config_encryption_key == "fernet-key"
