@@ -8,8 +8,6 @@ from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401 - register model metadata for schema tests
 from app.core.settings import AppSettings
-from app.services.auth.config_store import resolve_auth_settings
-
 from app.db.session import (
     Base,
     SessionLocal,
@@ -20,6 +18,7 @@ from app.db.session import (
     migrate_database,
     sqlite_database_path,
 )
+from app.services.auth.config_store import resolve_auth_settings
 
 
 def test_create_database_runtime_uses_supplied_database_url(tmp_path: Path) -> None:
