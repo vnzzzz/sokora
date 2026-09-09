@@ -14,6 +14,7 @@ from app.services.auth.config_store import (
     check_oidc_discovery,
     save_oidc_config,
     unlink_oidc_config,
+    validate_oidc_scope_for_enable,
 )
 from app.services.auth.dependencies import (
     get_auth_settings,
@@ -28,6 +29,32 @@ from app.services.auth.settings import AuthSettings
 router = APIRouter(prefix="/auth", tags=["Auth"], include_in_schema=False)
 templates = Jinja2Templates(directory="app/templates")
 logger = logging.getLogger(__name__)
+
+
+_AUTH_SETTINGS_CSRF_SESSION_KEY = "auth_settings_csrf_token"
+
+
+def _auth_settings_csrf_token(request: Request) -> str:
+    """Return a stable per-session CSRF token for admin OIDC settings forms."""
+    token = request.session.get(_AUTH_SETTINGS_CSRF_SESSION_KEY)
+    if not isinstance(token, str) or not token:
+        token = secrets.token_urlsafe(32)
+        request.session[_AUTH_SETTINGS_CSRF_SESSION_KEY] = token
+    return token
+
+
+def _require_auth_settings_csrf(request: Request, submitted_token: str) -> None:
+    """Reject state-changing auth-settings requests without the session token."""
+    expected_token = request.session.get(_AUTH_SETTINGS_CSRF_SESSION_KEY)
+    if (
+        not isinstance(expected_token, str)
+        or not submitted_token
+        or not secrets.compare_digest(submitted_token, expected_token)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
+        )
 
 
 def _safe_next_path(next_path: str | None) -> str:
@@ -341,6 +368,7 @@ async def auth_settings_page(
         "form_values": _settings_form_values(request, settings),
         "notice": request.session.pop("auth_settings_notice", None),
         "error_message": request.session.pop("auth_settings_error", None),
+        "csrf_token": _auth_settings_csrf_token(request),
     }
     return templates.TemplateResponse("pages/auth/settings.html", context)
 
@@ -353,13 +381,16 @@ async def save_auth_oidc_settings(
     client_id: str = Form(""),
     client_secret: str = Form(""),
     scope: str = Form("openid profile email"),
+    csrf_token: str = Form(""),
     _admin: dict[str, object] = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Response:
     """Persist OIDC configuration without ever echoing the client secret."""
+    _require_auth_settings_csrf(request, csrf_token)
     app_settings = request.app.state.settings_provider()
     try:
         if enabled:
+            validate_oidc_scope_for_enable(scope)
             await check_oidc_discovery(issuer, app_settings.oidc_http_timeout)
         save_oidc_config(
             db,
@@ -391,10 +422,12 @@ async def test_auth_oidc_settings(
     issuer: str = Form(""),
     client_id: str = Form(""),
     scope: str = Form("openid profile email"),
+    csrf_token: str = Form(""),
     _admin: dict[str, object] = Depends(require_admin),
     settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
     """Check standard OIDC discovery for an unsaved issuer candidate."""
+    _require_auth_settings_csrf(request, csrf_token)
     _remember_settings_form(
         request,
         enabled=enabled,
@@ -414,10 +447,12 @@ async def test_auth_oidc_settings(
 @router.post("/settings/oidc/unlink")
 async def unlink_auth_oidc_settings(
     request: Request,
+    csrf_token: str = Form(""),
     _admin: dict[str, object] = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Response:
     """Explicitly disable and clear DB OIDC settings without env fallback."""
+    _require_auth_settings_csrf(request, csrf_token)
     unlink_oidc_config(db)
     request.session["auth_settings_notice"] = "OIDC連携を解除しました。"
     request.session.pop("auth_settings_form", None)
