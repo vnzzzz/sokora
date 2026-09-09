@@ -261,7 +261,7 @@ async def test_auth_settings_is_admin_only_and_editable(
     monkeypatch.setenv("OIDC_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
 
-    unauthenticated = await async_client.get("/auth/settings")
+    unauthenticated = await async_client.get("/admin/auth")
     assert unauthenticated.status_code == 401
 
     login_resp = await async_client.post(
@@ -269,17 +269,17 @@ async def test_auth_settings_is_admin_only_and_editable(
         data={
             "username": "admin",
             "password": "secret",
-            "next": "/auth/settings",
+            "next": "/admin/auth",
         },
         follow_redirects=False,
     )
     assert login_resp.status_code == 303
 
-    settings_page = await async_client.get("/auth/settings")
+    settings_page = await async_client.get("/admin/auth")
     assert settings_page.status_code == 200
-    assert 'action="/auth/settings/oidc"' in settings_page.text
-    assert 'formaction="/auth/settings/oidc/test"' in settings_page.text
-    assert 'action="/auth/settings/oidc/unlink"' in settings_page.text
+    assert 'action="/admin/auth/oidc"' in settings_page.text
+    assert 'formaction="/admin/auth/oidc/test"' in settings_page.text
+    assert 'action="/admin/auth/oidc/unlink"' in settings_page.text
     assert "client-secret" not in settings_page.text
 
 
@@ -583,7 +583,7 @@ async def test_sidebar_auth_settings_visible_only_for_admin(
         assert admin_page.status_code == 200
         assert "認証設定（管理者）" not in admin_page.text
         assert "認証設定" in admin_page.text
-        assert 'href="/auth/settings"' in admin_page.text
+        assert 'href="/admin/auth"' in admin_page.text
 
         async_client.cookies.clear()
         callback_resp = await async_client.get(
