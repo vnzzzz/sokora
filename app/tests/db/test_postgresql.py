@@ -118,7 +118,9 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
         } <= tables
         assert any(
             constraint["name"] == "ck_auth_config_singleton"
-            for constraint in inspect(runtime.engine).get_check_constraints("auth_config")
+            for constraint in inspect(runtime.engine).get_check_constraints(
+                "auth_config"
+            )
         )
         with runtime.session_factory() as db:
             assert db.scalar(text("select version_num from alembic_version"))
