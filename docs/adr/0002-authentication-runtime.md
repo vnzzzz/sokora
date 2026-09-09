@@ -21,12 +21,12 @@
   - rowあり + disabled: OIDCを明示無効化し、legacy environmentへfallbackしない。
 - `OIDC_REDIRECT_URL`とHTTP timeoutはdeployment固有runtime propertyとしてenvironmentへ残す。
 - client secretはFernetで暗号化してDBへ保存する。暗号鍵`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`はDB/imageへ保存せず、全replicaへ同じruntime secretを注入する。暗号鍵不一致時はOIDCをfail-closedとし、legacy secretへfallbackしない。
-- `/auth/settings`はlocal admin専用のeditable OIDC管理画面とする。source/state表示、enable/disable、issuer/client ID/scope、secret更新、unlink、standard discovery接続確認を提供する。
+- `/auth/settings`はlocal admin専用のeditable OIDC管理画面とする。source/state表示、enable/disable、issuer/client ID/scope、secret更新、unlink、standard discovery接続確認を提供する。OIDCをenabledで保存する場合はdiscovery取得とmetadata issuer一致を必須とし、失敗したcandidateを有効設定として永続化しない。
 - 保存済みclient secretはHTML/form/sessionへ再表示しない。設定確認・validation errorへsecretを含めない。
 - unlinkは`auth_config` rowを削除せずdisabled rowとして残す。row削除はlegacy fallbackを再開してしまうため、通常UI operationにはしない。
 - DB由来OIDC設定をprocess-global mutable cacheへ保持しない。shared PostgreSQLを利用するmulti-replicaはrequestごとに同じDB stateを観測する。
 - 認証後の`next`はsame-origin absolute pathだけに制限する。
-- logoutはapplication sessionを必ず破棄する。provider logoutが利用可能な場合だけRP-Initiated Logoutを追加実行する。
+- logoutはapplication sessionを必ず破棄する。provider logoutが利用可能な場合だけRP-Initiated Logoutを追加実行する。shared DB unavailable等でprovider logout用OIDC設定を解決できない場合はprovider logoutを省略し、application logoutを失敗させない。
 
 ## 移行
 
