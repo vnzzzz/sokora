@@ -16,5 +16,7 @@ class AuthConfig(Base):  # type: ignore
     oidc_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     oidc_issuer: Mapped[str | None] = mapped_column(String, nullable=True)
     oidc_client_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    oidc_client_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oidc_client_secret_encrypted: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     oidc_scope: Mapped[str] = mapped_column(String, nullable=False)
