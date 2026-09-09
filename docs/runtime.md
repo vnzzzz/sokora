@@ -55,8 +55,10 @@ production schemaを`Base.metadata.create_all()`で作成しません。
 
 | Status | Meaning |
 | --- | --- |
-| `200 {"status":"ok"}` | DB runtimeがrequest処理可能で、current Alembic schemaを確認できる |
-| `503 {"status":"unavailable"}` | runtime未初期化、maintenance/fenced、DB unavailable、schema確認不可 |
+| `200 {"status":"ok"}` | DB runtimeがrequest処理可能で、`alembic_version`へのreadiness queryが成功する |
+| `503 {"status":"unavailable"}` | runtime未初期化、maintenance/fenced、DB unavailable、readiness query failure |
+
+`/healthz`はAlembic revisionがapplicationのcurrent headと一致することまでは検証しません。schema migrationはstartupで`alembic upgrade head`を完了させる前提です。
 
 health responseへexception、credential、filesystem pathを露出しません。
 
