@@ -24,7 +24,7 @@
 - `/auth/settings`はlocal admin専用のeditable OIDC管理画面とする。source/state表示、enable/disable、issuer/client ID/scope、secret更新、unlink、standard discovery接続確認を提供する。管理POSTはsession-backed CSRF tokenを必須とする。OIDCをenabledで保存する場合は`openid` scope、discovery取得、metadata issuer一致を必須とし、失敗したcandidateを有効設定として永続化しない。
 - 保存済みclient secretはHTML/form/sessionへ再表示しない。設定確認・validation errorへsecretを含めない。
 - unlinkは`auth_config` rowを削除せずdisabled rowとして残す。row削除はlegacy fallbackを再開してしまうため、通常UI operationにはしない。
-- DB由来OIDC設定をprocess-global mutable cacheへ保持しない。shared PostgreSQLを利用するmulti-replicaはrequestごとに同じDB stateを観測する。
+- DB由来OIDC設定をprocess-global mutable cacheへ保持しない。shared PostgreSQLを利用するmulti-replicaはrequestごとに同じDB stateを観測する。OIDC redirect/callback用の設定解決はshort-lived DB sessionで完結させ、IdP discovery/token/JWKS等の外部I/Oをawaitする前にDB connectionを返却する。
 - 認証後の`next`はsame-origin absolute pathだけに制限する。
 - logoutはapplication sessionを必ず先に破棄する。`POST /auth/logout`の最初のresponseはshared DB / IdPへ依存せずauthenticated identityをcookieから除去し、OIDC sessionの場合だけ別requestでRP-Initiated Logoutをbest-effort実行する。shared DB unavailableやDB接続black-holeでもprovider logoutがapplication logout完了を遅延・失敗させない。
 
