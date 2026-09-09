@@ -48,6 +48,32 @@ class TestCreateApplication:
         with pytest.raises(ValueError, match="SOKORA_AUTH_SESSION_SECRET"):
             create_application(settings)
 
+    @pytest.mark.parametrize("session_secret", ["", "   ", DEFAULT_SESSION_SECRET])
+    def test_create_application_rejects_insecure_session_secret_for_local_admin(
+        self, session_secret: str
+    ) -> None:
+        settings = AppSettings(
+            auth_enabled=False,
+            session_secret=session_secret,
+            local_auth_enabled=True,
+            local_admin_username="admin",
+            local_admin_password="secret",
+        )
+
+        with pytest.raises(ValueError, match="SOKORA_AUTH_SESSION_SECRET"):
+            create_application(settings)
+
+    def test_auth_off_without_local_admin_credentials_keeps_dev_default_secret(self) -> None:
+        settings = AppSettings(
+            auth_enabled=False,
+            session_secret=DEFAULT_SESSION_SECRET,
+            local_auth_enabled=True,
+        )
+
+        app_instance = create_application(settings)
+
+        assert isinstance(app_instance, FastAPI)
+
     def test_create_application_includes_routers(self) -> None:
         """create_application関数がルーターを含むことを確認"""
         app_instance = create_application()
