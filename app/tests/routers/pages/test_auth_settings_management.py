@@ -263,7 +263,7 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
     async_client.cookies.clear()
     monkeypatch.setenv(
         "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
-        "MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=",
+        "MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=",
     )
 
     login_page = await async_client.get("/auth/login/admin")
