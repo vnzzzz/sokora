@@ -11,9 +11,9 @@ from sqlalchemy.pool import StaticPool
 import app.models  # noqa: F401 - register model metadata for schema tests
 from app.core.settings import AppSettings
 from app.db.session import (
-    Base,
     _ALEMBIC_CONFIG_PATH,
     _ALEMBIC_SCRIPT_PATH,
+    Base,
     SessionLocal,
     clear_database_runtime_cache,
     create_database_runtime,
