@@ -97,14 +97,20 @@ def require_session_user(
 
 def require_admin(
     user: Dict[str, Any] | None = Depends(require_session_user),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Dict[str, Any]:
-    """local-admin-only操作に共通の`role=admin` authorizationを強制する。
+    """current runtimeで有効なlocal-admin sessionだけを管理操作へ許可する。
 
-    OIDC sessionは一般ユーザーidentityとして扱い、現行contractでは自動的にadminへ
-    昇格させない。SQLite backup/restoreや認証diagnostics等の管理操作は、このdependency
-    を通じてlocal admin sessionだけに限定する。
+    signed sessionのroleだけを信頼すると、local admin credential未設定のauth-off runtimeで
+    development default secretを知るclientがadmin cookieを偽造できる。current runtimeでも
+    local admin経路が有効で、session自体もlocal_admin method + admin roleであることを要求する。
     """
-    if not user or user.get("role") != "admin":
+    if (
+        not settings.local_admin_enabled
+        or not user
+        or user.get("method") != "local_admin"
+        or user.get("role") != "admin"
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin authorization required",
