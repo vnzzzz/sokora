@@ -13,8 +13,8 @@ JSON APIは`/api/v1`配下で提供します。request/response schemaはgenerat
 | Attendance | `GET /api/v1/attendances` | 一覧 |
 |  | `GET /api/v1/attendances/day/{day}` | 日別projection |
 |  | `POST /api/v1/attendances` | 作成 |
-|  | `PUT /api/v1/attendances/{id}` | 更新 |
-|  | `DELETE /api/v1/attendances/{id}` | ID指定削除 |
+|  | `PUT /api/v1/attendances/{attendance_id}` | 更新 |
+|  | `DELETE /api/v1/attendances/{attendance_id}` | ID指定削除 |
 |  | `DELETE /api/v1/attendances?user_id=...&date=...` | user/date指定削除 |
 | Users | `GET /api/v1/users` | 一覧 |
 |  | `GET /api/v1/users/{user_id}` | 1件取得 |
