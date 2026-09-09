@@ -114,6 +114,7 @@ def test_postgresql_startup_migration_and_major_crud() -> None:
             "users",
             "attendance",
             "custom_holidays",
+            "auth_config",
         } <= tables
         with runtime.session_factory() as db:
             assert db.scalar(text("select version_num from alembic_version"))
