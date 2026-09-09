@@ -208,9 +208,7 @@ async def test_oidc_unlink_keeps_database_disabled_state(
 
     async_client.cookies.clear()
     login_page = await async_client.get("/auth/login")
-    assert "/auth/redirect" not in login_page.text
-
-
+    assert "SSOが現在利用できません" in login_page.text
 
 
 @pytest.mark.asyncio
@@ -282,9 +280,7 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
     settings_page = await async_client.get("/auth/settings")
     assert settings_page.status_code == 200
     assert "client secretを復号できません" in settings_page.text
-    assert "SSOが現在利用できません" in (
-        await async_client.get("/auth/login")
-    ).text
+    assert "SSOが現在利用できません" in (await async_client.get("/auth/login")).text
 
 
 @pytest.mark.asyncio
