@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from app.core.settings import AppSettings
+from app.models.auth_config import AuthConfig
 from app.services.auth.config_store import (
     AuthConfigValidationError,
     OIDCDiscoveryError,
@@ -151,3 +152,28 @@ def test_db_client_identity_change_requires_new_secret(db) -> None:
             client_secret="",
             scope="openid profile email",
         )
+
+
+
+def test_corrupt_db_ciphertext_disables_oidc_without_raising(db) -> None:
+    settings = AppSettings(
+        oidc_redirect_uri="https://sokora.example/auth/callback",
+        auth_config_encryption_key=("MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="),
+    )
+    db.add(
+        AuthConfig(
+            id=1,
+            oidc_enabled=True,
+            oidc_issuer="https://idp.example/realms/sokora",
+            oidc_client_id="client",
+            oidc_client_secret_encrypted="破損ciphertext",
+            oidc_scope="openid profile email",
+        )
+    )
+    db.commit()
+
+    resolved = resolve_auth_settings(db, settings)
+
+    assert resolved.oidc_enabled is False
+    assert resolved.oidc_configuration_error is not None
+    assert "復号できません" in resolved.oidc_configuration_error
