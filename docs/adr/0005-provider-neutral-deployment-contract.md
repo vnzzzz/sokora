@@ -6,7 +6,7 @@
 
 ADR 0004では共通OCI imageとprovider別deployment adapterを分離する方針を採用した。
 
-その後、sokora自体がGCP/AWS/Azure等を個別supportし、provider別script / IaC / validationを継続保守する必要はないと判断した。application側に必要なのはportable runtime contractであり、cloud infrastructureのprovisioningではない。
+その後、sokora自体が各public cloudを個別supportし、provider別script / IaC / validationを継続保守する必要はないと判断した。application側に必要なのはportable runtime contractであり、cloud infrastructureのprovisioningではない。
 
 ## Decision
 
