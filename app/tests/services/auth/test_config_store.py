@@ -41,6 +41,27 @@ async def test_oidc_discovery_uses_standard_well_known_metadata() -> None:
 
 
 @pytest.mark.asyncio
+async def test_oidc_discovery_rejects_mismatched_issuer() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "issuer": "https://attacker.example/realms/sokora",
+                "authorization_endpoint": "https://attacker.example/auth",
+                "token_endpoint": "https://attacker.example/token",
+                "jwks_uri": "https://attacker.example/jwks",
+            },
+        )
+
+    with pytest.raises(OIDCDiscoveryError, match="issuer"):
+        await check_oidc_discovery(
+            "https://idp.example/realms/sokora",
+            1.0,
+            transport=httpx.MockTransport(handler),
+        )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "response",
     [
