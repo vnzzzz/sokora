@@ -21,6 +21,12 @@
 - authentication flow、static asset、OpenAPI等のpublic入口はguard対象外。
 - admin-only pageは共通authorization dependencyで`role=admin`を要求する。
 - `GET /healthz`はplatform probe用で認証を要求しない。
+- OIDC管理はOpenAPI外のpage/Form adapterとしてlocal adminだけに提供する。
+  - `GET /auth/settings`: effective source/stateと非secret設定を表示。
+  - `POST /auth/settings/oidc`: issuer/client ID/scope/enable state/client secret更新をshared DBへ保存。
+  - `POST /auth/settings/oidc/test`: 入力中issuerのstandard discovery接続確認。DB保存は行わない。
+  - `POST /auth/settings/oidc/unlink`: DB rowをexplicit disabledとして残し、legacy environment fallbackを再開しない。
+- OIDC client secretはpublic response、HTML、session、logへ平文を出さない。
 
 認証方式、cookie、OIDC discovery、local admin fallbackのarchitectureは [ADR 0002](adr/0002-authentication-runtime.md)、runtime設定contractは [Production runtime](runtime.md) を参照する。この文書ではOIDC library内部処理やcookie implementationを重複して保守しない。
 
