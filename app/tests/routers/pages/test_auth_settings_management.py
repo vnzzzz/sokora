@@ -153,6 +153,12 @@ async def test_db_disabled_oidc_never_falls_back_to_legacy_environment(
     assert "SSOが現在利用できません" in login_page.text
     assert "/auth/login/admin" in login_page.text
 
+    direct_redirect = await async_client.get(
+        "/auth/redirect",
+        follow_redirects=False,
+    )
+    assert direct_redirect.status_code == 400
+
     local_login = await async_client.post(
         "/auth/local",
         data={"username": "admin", "password": "secret", "next": "/"},
