@@ -54,7 +54,7 @@ session signing、authentication guard、local admin credentialはdeployment run
 - sessionはStarlette `SessionMiddleware`のsigned client-side cookie。persistent sessionへOIDC access/refresh/ID tokenを保持しない。
 - OAuth state / OIDC nonceはauthentication flow中だけsessionへ一時保持する。
 - cookieはHttpOnly + SameSite=Lax。HTTPS productionでは`SOKORA_AUTH_SESSION_HTTPS_ONLY=true`を必須とする。
-- multi-replicaではshared PostgreSQLの`auth_config`をrequest時に参照し、process-local OIDC settings cacheを共有stateとして持たない。OIDC redirect/callback用の設定読取はshort-lived DB session内で完了・closeしてからIdP HTTP処理へ進み、外部I/O待ち中にchecked-out DB connectionを保持しない。
+- multi-replicaではshared PostgreSQLの`auth_config`をrequest時に参照し、process-local OIDC settings cacheを共有stateとして持たない。OIDC redirect/callback用の設定読取はshort-lived DB session内で完了・closeしてからIdP HTTP処理へ進む。管理画面でenabled設定を保存する場合もDiscoveryをDB session取得前に完了させる。いずれも外部I/O待ち中にchecked-out DB connectionを保持しない。
 
 認証architectureの理由とsecurity boundaryは [ADR 0002](adr/0002-authentication-runtime.md)、HTTP guard behaviorは [API requirements](api.md) を参照する。
 
