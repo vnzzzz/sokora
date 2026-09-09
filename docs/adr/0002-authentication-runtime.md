@@ -1,30 +1,47 @@
-# 0002: Provider-neutral OIDC + signed client-side session
+# 0002: Provider-neutral OIDC + signed client-side session + shared DB OIDC settings
 
 **Status:** Accepted
 
 ## 背景
 
-ADR 0001 では Keycloak 固定、server-side session、file-backed runtime toggle を前提としていた。しかし、production runtime を provider 非依存に保ち、複数 replica 間で共有できない mutable auth state を排除しつつ、標準 OIDC provider へ適用できる認証境界が必要になった。
+認証runtimeはprovider非依存かつmulti-replicaで一貫している必要がある。一般ユーザーは標準OIDCを利用し、管理者にはOIDC設定障害から独立したbreak-glass経路が必要である。
+
+当初はOIDC client設定もenvironment / secret injectionをSSoTとしていたが、運用者がlocal admin画面からKeycloak等のissuer/client設定を変更し、全replicaへ即時反映できるshared configurationが必要になった。一方で、既存deploymentをDB migrationだけで突然無効化せず段階移行できなければならない。
 
 ## 決定
 
-- 一般ユーザーの一次認証経路は標準 OIDC Authorization Code flow とする。local login は管理者専用 fallback とし、自動 failover は行わない。
-- OIDC client は Authlib を使用し、`OIDC_ISSUER` の OpenID Provider Configuration から authorization / token / JWKS / end-session metadata を discovery する。Keycloak 固有 endpoint path を application で組み立てない。
-- OIDC 設定は environment / secret injection を SSoT とする。`auth_state.json` 等の replica-local mutable file や runtime OIDC toggle は共有設定として利用しない。
-- `/auth/settings` は local admin 向けの read-only diagnostics とし、認証方式を runtime 変更する UI は提供しない。
-- session は Starlette `SessionMiddleware` の署名付き client-side cookie とする。永続 cookie には認証方式、OIDC `sub`、表示 username、admin role 等の最小 identity だけを保持し、OIDC access token / refresh token / ID tokenは保持しない。
-- OAuth state / OIDC nonce は認証 flow 中だけ session に一時保持し、callback で state と ID token を検証する。OIDC identity は検証済み `userinfo` の `sub` を基準とし、現時点では application の `users` table と紐付けない。
-- session cookie は HttpOnly + SameSite=Lax を基本とし、HTTPS production では `SOKORA_AUTH_SESSION_HTTPS_ONLY=true` にして Secure 属性を必須とする。既定 TTL は 1 時間とする。
-- 認証後の `next` は same-origin absolute path のみに制限し、外部 URL や scheme-relative URL 等は `/` へ fallback する。
-- logout は application session を必ず破棄する。discovery metadata に `end_session_endpoint` がある場合は RP-Initiated Logout を利用し、provider logout が無い・失敗した場合も local session logout は成立させる。
-- local admin は `SOKORA_LOCAL_AUTH_ENABLED=true` かつ username/password が設定されている場合だけ有効化し、admin-only route は共通 authorization dependency で保護する。
+- 一般ユーザーの一次認証経路は標準OIDC Authorization Code flowとする。Keycloakは利用可能なOIDC providerの一つであり、provider固有endpoint pathをapplicationで組み立てない。
+- OIDC clientはAuthlibを利用し、issuerのOpenID Provider Configurationからauthorization/token/JWKS/end-session metadataをdiscoveryする。state、nonce、ID token検証等のprotocol boundaryは維持する。
+- sessionはStarlette `SessionMiddleware`のsigned client-side cookieとし、persistent cookieには最小identityだけを保持する。access token / refresh token / ID tokenは保存しない。
+- authentication guard、session signing secret、local admin credentialはdeployment runtime secret/configをSSoTとする。
+- local adminはbreak-glass経路としてOIDC DB設定から切り離す。`SOKORA_LOCAL_AUTH_ENABLED=true`かつusername/passwordが設定されている場合だけ有効とし、OIDC設定や暗号鍵の不備でlogin不能にしない。
+- OIDC client設定はsingleton `auth_config` rowでshared DB管理へ移行する。
+  - rowなし: legacy `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_SCOPES`を利用する。
+  - rowあり + enabled: DBのissuer/client ID/encrypted client secret/scopeを利用する。
+  - rowあり + disabled: OIDCを明示無効化し、legacy environmentへfallbackしない。
+- `OIDC_REDIRECT_URL`とHTTP timeoutはdeployment固有runtime propertyとしてenvironmentへ残す。
+- client secretはFernetで暗号化してDBへ保存する。暗号鍵`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`はDB/imageへ保存せず、全replicaへ同じruntime secretを注入する。暗号鍵不一致時はOIDCをfail-closedとし、legacy secretへfallbackしない。
+- `/auth/settings`はlocal admin専用のeditable OIDC管理画面とする。source/state表示、enable/disable、issuer/client ID/scope、secret更新、unlink、standard discovery接続確認を提供する。
+- 保存済みclient secretはHTML/form/sessionへ再表示しない。設定確認・validation errorへsecretを含めない。
+- unlinkは`auth_config` rowを削除せずdisabled rowとして残す。row削除はlegacy fallbackを再開してしまうため、通常UI operationにはしない。
+- DB由来OIDC設定をprocess-global mutable cacheへ保持しない。shared PostgreSQLを利用するmulti-replicaはrequestごとに同じDB stateを観測する。
+- 認証後の`next`はsame-origin absolute pathだけに制限する。
+- logoutはapplication sessionを必ず破棄する。provider logoutが利用可能な場合だけRP-Initiated Logoutを追加実行する。
+
+## 移行
+
+既存deploymentはAlembic migrationで空の`auth_config` tableを追加するだけで、rowを自動作成しない。そのためupgrade直後は従来の`OIDC_*` runtime設定がそのまま有効である。
+
+local adminが初めてOIDC設定を保存・無効化・unlinkした時点でsingleton rowが作成され、その後はDBがOIDC stateのSSoTとなる。legacy environmentへ戻すためにrowを自動削除する挙動は提供しない。
 
 ## 影響
 
-- Keycloak は利用可能な OIDC provider の一つであり、application architecture上の必須 provider ではない。
-- 認証設定変更は environment / secret の更新と application 再起動・再デプロイを通じて行う。application 内の file-backed toggle は持たない。
-- 認証済み session は各 replica のローカルファイルに依存しない。multi-replica runtimeでは全replicaへ同じsession signing secretと認証/OIDC設定を注入する。application全体の共有状態contractは [ADR 0003](0003-multi-replica-runtime.md) に従う。
-- 詳細な runtime/API/UI contract は [requirements.md](../requirements.md)、[api.md](../api.md)、[ui.md](../ui.md)、[runtime.md](../runtime.md) を SSoT とする。
+- OIDC設定変更にapplication restartは不要で、shared DBを通じてreplica間へ反映される。
+- session signing/local admin credential/DB secret暗号鍵は引き続きdeployment secret managementの責務である。
+- DB backupには暗号化済みOIDC client secretが含まれる。復号鍵はbackup外で別管理する必要がある。
+- Keycloak固有設定画面ではなく標準OIDC issuerを入力するUIとする。
+- application全体の共有状態contractは [ADR 0003](0003-multi-replica-runtime.md) に従う。
+- runtime/API/UI/data modelの詳細contractは [runtime.md](../runtime.md)、[api.md](../api.md)、[ui.md](../ui.md)、[database.md](../database.md) をSSoTとする。
 
 ## Supersedes
 
