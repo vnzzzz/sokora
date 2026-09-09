@@ -21,7 +21,7 @@ async def test_oidc_discovery_uses_standard_well_known_metadata() -> None:
         return httpx.Response(
             200,
             json={
-                "issuer": "https://idp.example/realms/sokora",
+                "issuer": "https://idp.example/realms/sokora/",
                 "authorization_endpoint": "https://idp.example/auth",
                 "token_endpoint": "https://idp.example/token",
                 "jwks_uri": "https://idp.example/jwks",
@@ -37,7 +37,28 @@ async def test_oidc_discovery_uses_standard_well_known_metadata() -> None:
     assert seen_urls == [
         "https://idp.example/realms/sokora/.well-known/openid-configuration"
     ]
-    assert metadata["issuer"] == "https://idp.example/realms/sokora"
+    assert metadata["issuer"] == "https://idp.example/realms/sokora/"
+
+
+@pytest.mark.asyncio
+async def test_oidc_discovery_rejects_trailing_slash_mismatch() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "issuer": "https://idp.example/realms/sokora",
+                "authorization_endpoint": "https://idp.example/auth",
+                "token_endpoint": "https://idp.example/token",
+                "jwks_uri": "https://idp.example/jwks",
+            },
+        )
+
+    with pytest.raises(OIDCDiscoveryError, match="issuer"):
+        await check_oidc_discovery(
+            "https://idp.example/realms/sokora/",
+            1.0,
+            transport=httpx.MockTransport(handler),
+        )
 
 
 @pytest.mark.asyncio
