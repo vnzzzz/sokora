@@ -36,9 +36,16 @@
     window.setTimeout(() => closingModalIds.delete(modalId), 1000)
 
     const modal = document.getElementById(modalId)
-    if (modal && typeof modal.close === 'function' && modal.open) {
+    if (!modal) return
+
+    if (typeof modal.close === 'function' && modal.open) {
       modal.close()
     }
+
+    // HX-Triggerは同一responseの複数eventを連続dispatchする。
+    // targetを即removeするとrefreshPage/refreshAttendance等の後続eventを阻害するため、
+    // cleanupだけ次tickへ遅延する。
+    window.setTimeout(() => modal.remove(), 0)
   }
 
   function storeFlashMessage(message) {
