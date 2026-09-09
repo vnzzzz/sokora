@@ -22,6 +22,8 @@ from app.db.session import (
     sqlalchemy_database_url,
 )
 from app.main import create_application
+from app.models.auth_config import AuthConfig
+from app.services.auth.config_store import resolve_auth_settings, save_oidc_config
 
 
 def test_bare_postgresql_url_uses_psycopg3() -> None:
@@ -90,6 +92,58 @@ def test_postgresql_readiness_requires_application_schema() -> None:
         assert runtime.probe_readiness() is False
     finally:
         runtime.dispose()
+
+
+def test_postgresql_oidc_config_round_trip() -> None:
+    database_url = os.getenv("SOKORA_TEST_POSTGRES_URL")
+    if not database_url:
+        pytest.skip("SOKORA_TEST_POSTGRES_URL is not configured")
+
+    settings = AppSettings(
+        database_url=database_url,
+        auth_enabled=False,
+        oidc_redirect_uri="https://sokora.example/auth/callback",
+        auth_config_encryption_key=(
+            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+        ),
+    )
+    app = create_application(settings)
+
+    with TestClient(app):
+        runtime = app.state.database_runtime
+        try:
+            with runtime.session_factory() as db:
+                db.query(AuthConfig).filter(AuthConfig.id == 1).delete()
+                db.commit()
+
+                save_oidc_config(
+                    db,
+                    settings,
+                    enabled=True,
+                    issuer="https://idp.example/realms/sokora",
+                    client_id="postgres-client",
+                    client_secret="postgres-secret",
+                    scope="openid profile email",
+                )
+
+                encrypted = db.scalar(
+                    text(
+                        "select oidc_client_secret_encrypted "
+                        "from auth_config where id = 1"
+                    )
+                )
+                assert isinstance(encrypted, str)
+                assert encrypted != "postgres-secret"
+                assert "postgres-secret" not in encrypted
+
+                resolved = resolve_auth_settings(db, settings)
+                assert resolved.oidc_source == "database"
+                assert resolved.oidc_enabled is True
+                assert resolved.oidc_client_secret == "postgres-secret"
+        finally:
+            with runtime.session_factory() as db:
+                db.query(AuthConfig).filter(AuthConfig.id == 1).delete()
+                db.commit()
 
 
 def test_postgresql_startup_migration_and_major_crud() -> None:
