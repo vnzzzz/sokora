@@ -103,6 +103,26 @@ def test_oidc_client_secret_is_preserved_as_opaque_value(db) -> None:
     assert resolved.oidc_client_secret == secret
 
 
+def test_enabled_oidc_requires_openid_scope(db) -> None:
+    settings = AppSettings(
+        oidc_redirect_uri="https://sokora.example/auth/callback",
+        auth_config_encryption_key=(
+            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+        ),
+    )
+
+    with pytest.raises(AuthConfigValidationError, match="openid"):
+        save_oidc_config(
+            db,
+            settings,
+            enabled=True,
+            issuer="https://idp.example/realms/sokora",
+            client_id="sokora-web",
+            client_secret="secret",
+            scope="profile email",
+        )
+
+
 def test_first_db_save_can_encrypt_matching_legacy_secret(db) -> None:
     settings = AppSettings(
         oidc_issuer="https://legacy.example/realms/sokora",
