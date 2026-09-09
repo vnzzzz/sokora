@@ -78,3 +78,55 @@ def test_oidc_client_secret_is_preserved_as_opaque_value(db) -> None:
 
     resolved = resolve_auth_settings(db, settings)
     assert resolved.oidc_client_secret == secret
+
+
+
+def test_first_db_save_can_encrypt_matching_legacy_secret(db) -> None:
+    settings = AppSettings(
+        oidc_issuer="https://legacy.example/realms/sokora",
+        oidc_client_id="legacy-client",
+        oidc_client_secret="legacy-secret",
+        oidc_redirect_uri="https://sokora.example/auth/callback",
+        auth_config_encryption_key=(
+            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+        ),
+    )
+
+    save_oidc_config(
+        db,
+        settings,
+        enabled=True,
+        issuer="https://legacy.example/realms/sokora",
+        client_id="legacy-client",
+        client_secret="",
+        scope="openid profile email",
+    )
+
+    resolved = resolve_auth_settings(db, settings)
+    assert resolved.oidc_source == "database"
+    assert resolved.oidc_client_secret == "legacy-secret"
+
+
+def test_first_db_save_requires_secret_when_client_identity_changes(db) -> None:
+    settings = AppSettings(
+        oidc_issuer="https://legacy.example/realms/sokora",
+        oidc_client_id="legacy-client",
+        oidc_client_secret="legacy-secret",
+        oidc_redirect_uri="https://sokora.example/auth/callback",
+        auth_config_encryption_key=(
+            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+        ),
+    )
+
+    from app.services.auth.config_store import AuthConfigValidationError
+
+    with pytest.raises(AuthConfigValidationError, match="client secret"):
+        save_oidc_config(
+            db,
+            settings,
+            enabled=True,
+            issuer="https://new.example/realms/sokora",
+            client_id="new-client",
+            client_secret="",
+            scope="openid profile email",
+        )
