@@ -10,6 +10,22 @@ from app.db.session import create_database_runtime, initialize_database
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def _stub_oidc_discovery(monkeypatch) -> None:
+    import app.routers.pages.auth as auth_router
+
+    async def fake_check(issuer: str, _timeout: float) -> dict[str, str]:
+        normalized = issuer.rstrip("/")
+        return {
+            "issuer": normalized,
+            "authorization_endpoint": f"{normalized}/authorize",
+            "token_endpoint": f"{normalized}/token",
+            "jwks_uri": f"{normalized}/jwks",
+        }
+
+    monkeypatch.setattr(auth_router, "check_oidc_discovery", fake_check)
+
+
 def _set_signed_session(async_client, session: dict[str, object]) -> None:
     session_secret = next(
         middleware
@@ -287,6 +303,46 @@ async def test_local_admin_break_glass_survives_wrong_db_secret_key(
     assert settings_page.status_code == 200
     assert "client secretを復号できません" in settings_page.text
     assert "SSOが現在利用できません" in (await async_client.get("/auth/login")).text
+
+
+@pytest.mark.asyncio
+async def test_enabled_oidc_save_rejects_failed_discovery_without_persisting(
+    async_client, db, monkeypatch
+) -> None:
+    import app.routers.pages.auth as auth_router
+    from app.services.auth.config_store import OIDCDiscoveryError
+
+    monkeypatch.setenv("OIDC_REDIRECT_URL", "http://test/auth/callback")
+    monkeypatch.setenv(
+        "SOKORA_AUTH_CONFIG_ENCRYPTION_KEY",
+        "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+    )
+    await _login_admin(async_client, monkeypatch)
+
+    async def reject_discovery(_issuer: str, _timeout: float):
+        raise OIDCDiscoveryError(
+            "OIDC discovery metadataのissuerが入力値と一致しません。"
+        )
+
+    monkeypatch.setattr(auth_router, "check_oidc_discovery", reject_discovery)
+
+    save = await async_client.post(
+        "/auth/settings/oidc",
+        data={
+            "enabled": "true",
+            "issuer": "https://db.example/realms/sokora",
+            "client_id": "db-client",
+            "client_secret": "db-secret",
+            "scope": "openid profile email",
+        },
+        follow_redirects=False,
+    )
+
+    assert save.status_code == 303
+    assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
+    page = await async_client.get("/auth/settings")
+    assert "issuerが入力値と一致しません" in page.text
+    assert "db-secret" not in page.text
 
 
 @pytest.mark.asyncio
