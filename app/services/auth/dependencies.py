@@ -7,24 +7,31 @@ OIDC protocol処理そのものはauth serviceへ委譲し、このmoduleではr
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db
+from app.services.auth.config_store import resolve_auth_settings
 from app.services.auth.oidc import OIDCClient, OIDCError
 from app.services.auth.settings import AuthSettings
 
 
-def get_auth_settings(request: Request) -> AuthSettings:
-    """applicationのsettings providerからrequest用認証設定を構築する。
+def get_runtime_auth_settings(request: Request) -> AuthSettings:
+    """Return deployment/runtime auth settings without consulting the shared DB.
 
-    dependency自身は``os.environ``を直接参照せず、application factoryが選んだproviderを
-    経由する。default providerは呼び出し時にenvironmentから新しいAppSettingsを構築し得るが、
-    このdependencyはrequestごとにstartup security validationを再実行しない。
-
-    SessionMiddleware等にはapplication作成時に固定される設定もあるため、running processの
-    environment変更を認証設定のhot-reload手段として扱わない。runtime config変更はprocess
-    restartで一貫して適用する。
+    The auth guard and local-admin break-glass path use this dependency so OIDC
+    database configuration errors cannot disable local administrator access.
     """
     settings = request.app.state.settings_provider()
     return AuthSettings.from_app_settings(settings)
+
+
+def get_auth_settings(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> AuthSettings:
+    """Resolve effective OIDC settings while retaining runtime local-admin config."""
+    settings = request.app.state.settings_provider()
+    return resolve_auth_settings(db, settings)
 
 
 def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient:
@@ -60,7 +67,7 @@ def get_optional_oidc_client(
 
 def require_session_user(
     request: Request,
-    settings: AuthSettings = Depends(get_auth_settings),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Dict[str, Any] | None:
     """signed session identityを返し、認証guard有効時は匿名requestを401で拒否する。
 
