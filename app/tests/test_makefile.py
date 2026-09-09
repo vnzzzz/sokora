@@ -6,7 +6,11 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _MISSING_ENV_FILE = ".env.makefile-contract-test-missing"
 
 
-def _run_make(*args: str, dry_run: bool = False) -> subprocess.CompletedProcess[str]:
+def _run_make(
+    *args: str,
+    dry_run: bool = False,
+    env_file: str = _MISSING_ENV_FILE,
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     for name in ("VERSION", "SERVICE_PORT", "PORT", "proxy"):
         env.pop(name, None)
@@ -14,7 +18,7 @@ def _run_make(*args: str, dry_run: bool = False) -> subprocess.CompletedProcess[
     command = ["make", "--no-print-directory"]
     if dry_run:
         command.append("-n")
-    command.extend([f"ENV_FILE={_MISSING_ENV_FILE}", *args])
+    command.extend([f"ENV_FILE={env_file}", *args])
     return subprocess.run(
         command,
         cwd=_REPOSITORY_ROOT,
@@ -26,7 +30,7 @@ def _run_make(*args: str, dry_run: bool = False) -> subprocess.CompletedProcess[
 
 
 def test_development_run_does_not_require_version_and_uses_default_port() -> None:
-    result = _run_make("run", dry_run=True)
+    result = _run_make("run", dry_run=True, env_file=".env.sample")
 
     assert result.returncode == 0, result.stderr
     assert "uvicorn app.main:app" in result.stdout
@@ -42,7 +46,12 @@ def test_versioned_image_target_requires_version() -> None:
 
 
 def test_docker_run_forwards_only_explicit_application_environment() -> None:
-    result = _run_make("VERSION=test", "docker-run", dry_run=True)
+    result = _run_make(
+        "VERSION=test",
+        "docker-run",
+        dry_run=True,
+        env_file=".env.sample",
+    )
 
     assert result.returncode == 0, result.stderr
     assert "--env-file" not in result.stdout
