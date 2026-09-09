@@ -7,10 +7,10 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from itsdangerous import TimestampSigner
 
+import app.services.auth.dependencies as auth_dependencies
 from app.core.settings import AppSettings
 from app.db.session import DatabaseRuntimeUnavailableError
 from app.main import app, create_application
-import app.services.auth.dependencies as auth_dependencies
 from app.services.auth.dependencies import (
     get_oidc_client,
     get_optional_oidc_client,
