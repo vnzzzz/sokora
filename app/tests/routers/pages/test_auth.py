@@ -18,6 +18,19 @@ from app.services.auth.dependencies import (
 from app.services.auth.oidc import OIDCError, OIDCStateError
 
 
+def _set_signed_session(async_client, session: dict[str, object]) -> None:
+    session_secret = next(
+        middleware
+        for middleware in app.user_middleware
+        if middleware.cls.__name__ == "SessionMiddleware"
+    ).options["secret_key"]
+    payload = base64.b64encode(json.dumps(session).encode("utf-8"))
+    async_client.cookies.set(
+        "session",
+        TimestampSigner(session_secret).sign(payload).decode("utf-8"),
+    )
+
+
 class DummyOIDCResult:
     """テスト用のOIDC認証結果。token属性はsession非保持の確認にだけ使う。"""
 
