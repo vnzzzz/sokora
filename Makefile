@@ -93,7 +93,7 @@ format: sync
 	uv run ruff format app scripts
 
 format-check: sync
-	uv run ruff format --diff app/models/auth_config.py app/tests/db/test_postgresql.py app/tests/integration/test_multi_replica_runtime.py app/tests/routers/pages/test_auth_settings_management.py app/tests/services/auth/test_config_store.py
+	uv run ruff format --check app scripts
 
 typecheck: sync
 	uv run mypy app
