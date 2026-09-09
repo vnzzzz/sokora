@@ -1,73 +1,66 @@
 # sokora closed-network deployment bundle
 
-This directory is the runtime deployment unit for an isolated/closed network. It is generated from the same provider-neutral production image used by cloud deployments and does not require the development repository on the runtime host.
+このbundleは、閉域Docker hostでsokoraを実行するためのruntime deployment unitです。source repositoryは不要です。
 
-## Bundle contents
+## Contents
 
-- `image.tar`: production image exported by `docker save`
-- `image.tar.sha256`: transport-integrity checksum
-- `manifest.env`: packaged image reference, image ID, and the explicitly supplied source revision of that image
-- `load-image.sh`: manifest/checksum verification + `docker load` + image ID verification
-- `compose.sqlite.yaml`: single-instance SQLite runtime
-- `compose.postgresql.yaml`: external PostgreSQL runtime
-- `compose.env.example`: non-secret deployment values
-- `runtime.env.example`: application/runtime settings and secret placeholders
+| File | Purpose |
+| --- | --- |
+| `image.tar` | production OCI image |
+| `image.tar.sha256` | checksum |
+| `manifest.env` | image reference / image ID / source revision |
+| `load-image.sh` | verify + `docker load` |
+| `compose.sqlite.yaml` | SQLite runtime |
+| `compose.postgresql.yaml` | external PostgreSQL runtime |
+| `compose.env.example` | deployment values |
+| `runtime.env.example` | application settings / secrets |
 
-Docker Engine and Docker Compose v2 are the reference runtime. The application image itself has no cloud-provider dependency.
+reference runtimeはDocker Engine + Docker Compose v2です。
 
-## 1. Load the image
+## 1. Verify and load image
 
 ```bash
 ./load-image.sh
 ```
 
-`manifest.env` is mandatory. The loader rejects an incomplete/unsupported manifest before loading the archive, verifies `image.tar.sha256`, loads the image, and then verifies that the loaded immutable image ID matches the manifest.
-
-Do not retag the image to `latest` for normal operations. Keep the immutable version tag shown by `manifest.env`; upgrade and rollback select that tag explicitly.
+loaderはmanifest、SHA-256 checksum、load後のimage IDを検証します。通常運用で`latest`へretagせず、`manifest.env`のimmutable version tagを使ってください。
 
 ## 2. Install persistent configuration
 
-Keep configuration and mutable data outside this bundle so replacing/removing a bundle cannot remove runtime state.
-
-The reference procedure assumes the same non-root operator that runs `docker compose` owns the two deployment files. This lets Compose read the secret-bearing runtime env while keeping it private from other users.
+bundleとruntime stateを分離します。
 
 ```bash
 operator_user="$(id -un)"
 operator_group="$(id -gn)"
+
 sudo install -d -m 0750 -o "$operator_user" -g "$operator_group" /etc/sokora
-sudo install -m 0600 -o "$operator_user" -g "$operator_group" runtime.env.example /etc/sokora/runtime.env
-sudo install -m 0640 -o "$operator_user" -g "$operator_group" compose.env.example /etc/sokora/deployment.env
+sudo install -m 0600 -o "$operator_user" -g "$operator_group" \
+  runtime.env.example /etc/sokora/runtime.env
+sudo install -m 0640 -o "$operator_user" -g "$operator_group" \
+  compose.env.example /etc/sokora/deployment.env
 ```
 
-Edit `/etc/sokora/runtime.env` and set the required authentication/OIDC/database/proxy values. `SOKORA_AUTH_SESSION_SECRET` must be a strong shared secret when authentication is enabled. If operations are intentionally performed as root or by a dedicated service account instead, give that operator equivalent read access and run all Compose commands consistently as that identity.
+rootや専用service accountで運用する場合も、Compose実行identityへ同等のread権限を与えます。
 
-### OIDC settings migration
+`/etc/sokora/runtime.env`へauthentication / OIDC / DB / proxy設定、`/etc/sokora/deployment.env`へimage tag / port / pathを設定します。
 
-Existing deployments can keep their current `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `OIDC_SCOPES` values during the image/database upgrade. The new `auth_config` table is added without creating a row, so those legacy environment values remain effective immediately after upgrade.
+authenticationを有効にする場合、`SOKORA_AUTH_SESSION_SECRET`へstrong secretを設定します。
 
-Before an administrator saves OIDC settings from `/auth/settings`, set `SOKORA_AUTH_CONFIG_ENCRYPTION_KEY` in `/etc/sokora/runtime.env`. Generate a Fernet key outside the image, for example:
+DB-backed OIDC設定を利用する場合は`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`も設定します。
 
 ```bash
 python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
 ```
 
-Keep that key outside database backups and use the same value on every replica. When the first DB-backed save keeps the same issuer/client ID, sokora can encrypt the existing legacy client secret without displaying it. If the client identity changes, enter the corresponding new secret.
+この鍵はDB backupと分離して保管し、複数replicaでは同じ値を使用します。既存deploymentで`auth_config` rowがまだない場合はlegacy `OIDC_*` environmentが引き続き有効です。admin画面からsave / disable / unlinkした後はDBがOIDC sourceになります。
 
-Once `/auth/settings` has saved, disabled, or unlinked OIDC, the database row becomes authoritative. A disabled/unlinked row does **not** fall back to the legacy `OIDC_*` environment values. Local administrator credentials remain runtime-only and should stay configured as the break-glass recovery path.
+## 3A. Start with SQLite
 
-For SQLite, also create persistent host storage:
+SQLiteはsingle-instanceです。
 
 ```bash
 sudo install -d -m 0750 /var/lib/sokora
-```
 
-`/etc/sokora/deployment.env` contains `SOKORA_IMAGE`, host/container ports, the SQLite data directory, and the path to the runtime env file. Update it when those deployment values differ from the examples.
-
-## 3A. Start SQLite
-
-SQLite is supported only for one application instance. `compose.sqlite.yaml` fixes `DATABASE_URL` to `sqlite:///data/sokora.db` and mounts `SOKORA_DATA_DIR` at `/app/data`; the blank `DATABASE_URL` in `runtime.env.example` is intentionally overridden in this mode.
-
-```bash
 docker compose \
   --env-file /etc/sokora/deployment.env \
   -f compose.sqlite.yaml \
@@ -75,11 +68,17 @@ docker compose \
   up -d --pull never
 ```
 
-## 3B. Start PostgreSQL
+Composeはhostのpersistent data directoryを`/app/data`へmountし、`DATABASE_URL=sqlite:///data/sokora.db`を設定します。
 
-Set `DATABASE_URL` in `/etc/sokora/runtime.env` to the actual shared PostgreSQL URL before starting. The template intentionally leaves this value blank. `compose.postgresql.yaml` validates the container runtime value and exits before application startup unless it begins with a PostgreSQL scheme (`postgresql://`, `postgres://`, or an explicit `postgresql+...` SQLAlchemy driver URL). It never falls back to an unmounted SQLite database.
+## 3B. Start with PostgreSQL
 
-The application data directory is not mounted in this mode.
+先に`/etc/sokora/runtime.env`へactual PostgreSQL URLを設定します。
+
+```dotenv
+DATABASE_URL=postgresql://user:password@db.example:5432/sokora
+```
+
+起動:
 
 ```bash
 docker compose \
@@ -89,7 +88,7 @@ docker compose \
   up -d --pull never
 ```
 
-PostgreSQL can be used by multiple application replicas when the surrounding deployment platform/load balancer is configured accordingly. The Compose adapter intentionally describes one process; replica orchestration belongs to the target environment.
+PostgreSQL Composeはexplicit PostgreSQL URL以外を拒否し、default SQLiteへfallbackしません。application data volumeはmountしません。
 
 ## 4. Verify
 
@@ -103,13 +102,13 @@ docker compose \
 curl -fsS http://127.0.0.1:8000/healthz
 ```
 
-Use `compose.postgresql.yaml` in the command when PostgreSQL is selected. If `SERVICE_PORT` differs from `8000`, use that host port for the health request.
+PostgreSQLの場合は`compose.postgresql.yaml`を指定します。`SERVICE_PORT`を変更した場合はhealth requestのportも合わせます。
 
-Application startup applies Alembic migrations automatically. Fresh file-backed SQLite also receives the standard initial seed; PostgreSQL does not auto-seed.
+startupでAlembic migrationを自動適用します。fresh file-backed SQLiteだけinitial seedを作成し、PostgreSQLはauto-seedしません。
 
 ## SQLite backup before upgrade
 
-Create a consistent backup with SQLite's backup API while the current container is running:
+稼働中DBの単純copyではなくSQLite backup APIを使います。
 
 ```bash
 docker compose \
@@ -121,43 +120,50 @@ import datetime
 import pathlib
 import sqlite3
 
-source = pathlib.Path('/app/data/sokora.db')
-backup_dir = pathlib.Path('/app/data/backups')
+source = pathlib.Path("/app/data/sokora.db")
+backup_dir = pathlib.Path("/app/data/backups")
 backup_dir.mkdir(parents=True, exist_ok=True)
-timestamp = datetime.datetime.now(datetime.UTC).strftime('%Y%m%dT%H%M%SZ')
-target = backup_dir / f'sokora-pre-upgrade-{timestamp}.db'
+timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
+target = backup_dir / f"sokora-pre-upgrade-{timestamp}.db"
+
 with sqlite3.connect(source) as src, sqlite3.connect(target) as dst:
     src.backup(dst)
+
 print(target)
 PY
 ```
 
-Keep that backup until the new version has been accepted.
+new versionのacceptanceまでbackupを保持します。
 
 ## Upgrade
 
-1. Back up SQLite as above, or take the standard PostgreSQL database backup/snapshot outside sokora.
-2. Copy in the new bundle and run its `./load-image.sh`.
-3. Change `SOKORA_IMAGE` in `/etc/sokora/deployment.env` to the new immutable tag.
-4. Run the same `docker compose ... up -d --pull never` command using the new bundle's Compose file.
-5. Verify `/healthz` and the required user flows.
-6. Keep the previous image/bundle and database backup until acceptance is complete.
+1. SQLite backupまたはPostgreSQL backup / snapshotを取得
+2. new bundleを搬入し`./load-image.sh`
+3. `/etc/sokora/deployment.env`の`SOKORA_IMAGE`をnew immutable tagへ変更
+4. new bundleの同じCompose fileで`up -d --pull never`
+5. `/healthz`と必要なuser flowを確認
+6. previous image / bundle / DB backupをacceptanceまで保持
 
-Because startup owns `alembic upgrade head`, an image upgrade may also upgrade the database schema.
+startupが`alembic upgrade head`を実行するため、image upgradeでschemaも進む場合があります。
 
 ## Rollback
 
-Changing only the image tag is safe only when the old application is compatible with the already-upgraded database schema. Do not assume that compatibility.
+image tagだけを戻せるのは、previous applicationとcurrent DB schemaの互換性が確認できる場合だけです。
 
-For SQLite after a schema-changing upgrade:
+schema-changing upgrade後:
 
-1. Stop sokora with `docker compose ... down`.
-2. Restore the pre-upgrade backup to the persistent `sokora.db` path while the application is stopped; remove stale `sokora.db-wal` / `sokora.db-shm` files if present.
-3. Set `SOKORA_IMAGE` back to the previous immutable tag.
-4. Start the previous image and verify `/healthz` and application behavior.
+1. applicationを停止
+2. pre-upgrade DB stateをrestore
+3. `SOKORA_IMAGE`をprevious immutable tagへ戻す
+4. previous imageを起動
+5. `/healthz`とapplication behaviorを確認
 
-For PostgreSQL, use the environment's database backup/restore or snapshot mechanism when schema rollback is required. sokora does not automatically run Alembic downgrade during image rollback.
+SQLiteをfile restoreする場合はapplication停止中にpersistent `sokora.db`を置換し、古い`-wal` / `-shm`が残っていれば除去します。
+
+PostgreSQLはDB platformのbackup / snapshotからrestoreします。image rollback時にAlembic downgradeを自動実行しません。
 
 ## Proxy
 
-The bundle and Compose files do not contain a proxy implementation. If the runtime requires a forward proxy, set standard `HTTP_PROXY`, `HTTPS_PROXY`, lowercase variants, and `NO_PROXY`/`no_proxy` in `/etc/sokora/runtime.env`. Internal database and OIDC endpoints that must bypass the proxy belong in `NO_PROXY`.
+forward proxyが必要な場合は`/etc/sokora/runtime.env`へ標準`HTTP_PROXY` / `HTTPS_PROXY` / lowercase variants / `NO_PROXY`を設定します。
+
+internal DB / OIDC endpoint等、proxyを経由させない宛先は`NO_PROXY`へ追加してください。
