@@ -20,6 +20,7 @@
 - unauthenticated API request: HTTP 401 JSONを返す。
 - authentication flow、static asset、OpenAPI等のpublic入口はguard対象外。
 - admin-only pageは共通authorization dependencyで`role=admin`を要求する。
+- `POST /auth/logout`はshared DB / IdP lookupを行わず、最初のresponseでauthenticated session identityを除去する。OIDC sessionの場合だけ`GET /auth/logout/provider`へ進み、provider logoutをbest-effortで実行する。
 - `GET /healthz`はplatform probe用で認証を要求しない。
 - OIDC管理はOpenAPI外のpage/Form adapterとしてlocal adminだけに提供する。
   - `GET /auth/settings`: effective source/stateと非secret設定を表示。
