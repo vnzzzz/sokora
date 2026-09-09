@@ -1,6 +1,6 @@
 # API
 
-JSON APIは`/api/v1`配下で提供します。request/response schemaの一次情報はgenerated OpenAPIと`app/schemas/`です。この文書ではendpointの用途、adapter境界、共通error behaviorを扱います。
+JSON APIは`/api/v1`配下で提供します。request/response schemaはgenerated OpenAPIと`app/schemas/`に対応します。
 
 - Swagger UI: `/docs`
 - ReDoc: `/redoc`
