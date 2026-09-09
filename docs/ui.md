@@ -25,7 +25,7 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
 - SSO buttonは`/auth/redirect`からOIDC Authorization Code flowを開始する。DBで明示disabled、設定不備、secret復号不能の場合はSSOを利用可能として表示しない。
 - local admin loginは`/auth/login/admin`で行い、runtimeの`SOKORA_LOCAL_AUTH_ENABLED=true`かつadmin credentialが設定されている場合だけ利用できる。
 - unauthenticated page accessは`/auth/login?next=...`へredirectする。nextはserver側でsame-origin pathへ制限する。
-- `/auth/logout`はapplication sessionを破棄し、OIDC providerがend-session endpointを提供する場合だけprovider logoutへ連携する。
+- `/auth/logout`は最初のresponseでapplication session identityを破棄する。OIDC sessionの場合だけ、その後の別request `/auth/logout/provider` でprovider logoutをbest-effort実行するため、shared DB / IdP停止がlocal logout完了をblockしない。
 - `/auth/settings`はlocal admin専用のOIDC管理画面。
   - effective config source（`legacy_environment` / `database`）とOIDC/local admin状態を表示する。
   - issuer、client ID、scope、enable/disableを編集できる。
