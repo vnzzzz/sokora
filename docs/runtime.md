@@ -1,6 +1,6 @@
 # Runtime
 
-production artifactはroot `Dockerfile`からbuildするprovider-neutral OCI image 1種類です。この文書はimage、runtime input、startup、healthのcontractを扱います。配置方法は [Deployment](deployment.md) を参照してください。
+production artifactはroot `Dockerfile`からbuildするprovider-neutral OCI image 1種類です。配置方法は [Deployment](deployment.md) を参照してください。
 
 ## Image boundary
 
