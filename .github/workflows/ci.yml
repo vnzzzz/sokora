@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Dev Container Dockerfile
+        run: docker build --check -f .devcontainer/Dockerfile .
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -245,6 +248,7 @@ jobs:
             test ! -e /app/docs
             test ! -e /app/.devcontainer
             test ! -e /app/AGENTS.md
+            test ! -e /app/README.md
             ! command -v uv
             ! command -v node
             python -c "import importlib.util; raise SystemExit(1 if importlib.util.find_spec(\"pytest\") else 0)"
