@@ -1,3 +1,4 @@
+import logging
 from logging.config import fileConfig
 
 from alembic import context
@@ -58,9 +59,16 @@ config.set_main_option("sqlalchemy.url", engine_url.replace("%", "%%"))
 # keeps application/uvicorn loggers (not listed in alembic.ini's [loggers]) alive;
 # fileConfig()'s default silently disables every logger it doesn't know about,
 # which otherwise mutes all app/uvicorn output for the rest of the process after
-# any migration run (e.g. every `make run` startup).
+# any migration run (e.g. every `make run` startup). fileConfig also overwrites
+# the root logger's level from alembic.ini's [logger_root], which would silently
+# override the application's configured SOKORA_LOG_LEVEL for any logger that
+# inherits its effective level from root; restore the prior root level so a
+# migration run has no lasting effect on application logging verbosity.
 if config.config_file_name is not None:
+    _root_logger = logging.getLogger()
+    _previous_root_level = _root_logger.level
     fileConfig(config.config_file_name, disable_existing_loggers=False)
+    _root_logger.setLevel(_previous_root_level)
 
 target_metadata = Base.metadata
 
