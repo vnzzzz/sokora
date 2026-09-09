@@ -12,7 +12,7 @@ def test_csv_page_download_button_starts_real_download(page: Page) -> None:
     expect(page.locator("#encoding-utf8")).to_be_checked()
 
     with page.expect_download(timeout=5000) as download_info:
-        page.locator("#download-btn").click()
+        page.get_by_role("button", name="CSVをダウンロード").click()
 
     download = download_info.value
     assert download.suggested_filename.endswith(".csv")
