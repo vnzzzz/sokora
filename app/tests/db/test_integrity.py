@@ -152,9 +152,7 @@ def _legacy_runtime_with_inbound_foreign_key(tmp_path: Path):
             )
             """
         )
-        connection.exec_driver_sql(
-            "INSERT INTO groups(id, name) VALUES (1, 'Group')"
-        )
+        connection.exec_driver_sql("INSERT INTO groups(id, name) VALUES (1, 'Group')")
         connection.exec_driver_sql(
             "INSERT INTO user_types(id, name) VALUES (1, 'Type')"
         )
