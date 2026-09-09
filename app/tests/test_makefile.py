@@ -45,6 +45,16 @@ def test_versioned_image_target_requires_version() -> None:
     assert "docker build" not in result.stdout
 
 
+def test_help_states_docker_run_version_requirement() -> None:
+    result = _run_make("help")
+
+    assert result.returncode == 0, result.stderr
+    assert "make docker-run" in result.stdout
+    assert "requires VERSION" in next(
+        line for line in result.stdout.splitlines() if "make docker-run" in line
+    )
+
+
 def test_docker_run_forwards_only_explicit_application_environment() -> None:
     result = _run_make(
         "VERSION=test",
