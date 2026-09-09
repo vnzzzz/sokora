@@ -8,7 +8,9 @@ from httpx import ASGITransport, AsyncClient
 from itsdangerous import TimestampSigner
 
 from app.core.settings import AppSettings
+from app.db.session import DatabaseRuntimeUnavailableError
 from app.main import app, create_application
+import app.services.auth.dependencies as auth_dependencies
 from app.services.auth.dependencies import (
     get_oidc_client,
     get_optional_oidc_client,
@@ -346,6 +348,60 @@ async def test_oidc_logout_uses_absolute_callback(async_client, monkeypatch) -> 
     finally:
         app.dependency_overrides.pop(get_oidc_client, None)
         app.dependency_overrides.pop(get_optional_oidc_client, None)
+
+
+@pytest.mark.asyncio
+async def test_logout_succeeds_when_shared_db_is_unavailable(
+    async_client, monkeypatch
+) -> None:
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_AUTH_ENABLED", "true")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("SOKORA_LOCAL_ADMIN_PASSWORD", "secret")
+
+    login = await async_client.post(
+        "/auth/local",
+        data={"username": "admin", "password": "secret", "next": "/"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+
+    def unavailable_runtime(_app):
+        raise DatabaseRuntimeUnavailableError("database unavailable")
+
+    monkeypatch.setattr(
+        auth_dependencies,
+        "get_app_database_runtime",
+        unavailable_runtime,
+    )
+
+    logout_resp = await async_client.post("/auth/logout", follow_redirects=False)
+    assert logout_resp.status_code == 303
+    assert logout_resp.headers["location"].startswith("/auth/login?")
+
+    protected = await async_client.get("/api/v1/locations")
+    assert protected.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_logout_callback_succeeds_when_shared_db_is_unavailable(
+    async_client, monkeypatch
+) -> None:
+    def unavailable_runtime(_app):
+        raise DatabaseRuntimeUnavailableError("database unavailable")
+
+    monkeypatch.setattr(
+        auth_dependencies,
+        "get_app_database_runtime",
+        unavailable_runtime,
+    )
+
+    callback = await async_client.get(
+        "/auth/logout/callback?state=stale-provider-state",
+        follow_redirects=False,
+    )
+    assert callback.status_code == 303
+    assert callback.headers["location"].startswith("/auth/login?")
 
 
 @pytest.mark.asyncio
