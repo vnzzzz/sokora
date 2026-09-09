@@ -342,6 +342,10 @@ def test_migration_adds_auth_config_without_replacing_existing_data(
             "oidc_client_secret_encrypted",
             "oidc_scope",
         } == {column["name"] for column in inspector.get_columns("auth_config")}
+        assert any(
+            constraint["name"] == "ck_auth_config_singleton"
+            for constraint in inspector.get_check_constraints("auth_config")
+        )
 
         with runtime.session_factory() as db:
             assert db.scalar(text("SELECT COUNT(*) FROM groups")) > 0
