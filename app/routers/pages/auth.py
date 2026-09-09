@@ -49,7 +49,10 @@ def _require_auth_settings_csrf(request: Request, submitted_token: str) -> None:
     if (
         not isinstance(expected_token, str)
         or not submitted_token
-        or not secrets.compare_digest(submitted_token, expected_token)
+        or not secrets.compare_digest(
+            submitted_token.encode("utf-8"),
+            expected_token.encode("utf-8"),
+        )
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
