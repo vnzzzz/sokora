@@ -37,7 +37,7 @@ write成功時はcustom eventで必要なUIだけを更新します。代表例:
 
 validation / application errorは対象modalやfragmentへHTMLとして返し、success eventを送信しません。JSON API error responseをHTML targetへ流用しません。
 
-refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等をUI stateのSSoTにはしません。
+refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等から推測しません。
 
 ## Frontend responsibilities
 
