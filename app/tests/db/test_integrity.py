@@ -106,25 +106,21 @@ def test_sqlite_migration_handles_existing_rows_with_inbound_foreign_keys(
                 text(
                     "create table groups ("
                     "id integer primary key, "
-                    "name varchar not null unique, "
-                    "\"order\" integer)"
+                    "name varchar not null unique)"
                 )
             )
             connection.execute(
                 text(
                     "create table user_types ("
                     "id integer primary key, "
-                    "name varchar not null unique, "
-                    "\"order\" integer)"
+                    "name varchar not null unique)"
                 )
             )
             connection.execute(
                 text(
                     "create table locations ("
                     "id integer primary key, "
-                    "name varchar not null unique, "
-                    "category varchar, "
-                    "\"order\" integer)"
+                    "name varchar not null unique)"
                 )
             )
             connection.execute(
@@ -153,7 +149,9 @@ def test_sqlite_migration_handles_existing_rows_with_inbound_foreign_keys(
                     "version_num varchar(32) not null primary key)"
                 )
             )
-            connection.execute(text("insert into groups(id, name) values (1, 'Group')"))
+            connection.execute(
+                text("insert into groups(id, name) values (1, 'Group')")
+            )
             connection.execute(
                 text("insert into user_types(id, name) values (1, 'Type')")
             )
