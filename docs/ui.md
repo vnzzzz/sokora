@@ -30,7 +30,7 @@ Jinja2 + HTMX/Alpine.jsによるSSR UIの利用者向けbehaviorとpage adapter 
   - effective config source（`legacy_environment` / `database`）とOIDC/local admin状態を表示する。
   - issuer、client ID、scope、enable/disableを編集できる。
   - client secretはpassword inputから更新できるが、保存済み値をHTMLへ再表示しない。
-  - Discovery接続確認は入力中issuerのstandard `/.well-known/openid-configuration`を検証し、保存を伴わない。
+  - Discovery接続確認は入力中issuerのstandard `/.well-known/openid-configuration`を検証し、保存を伴わない。OIDCを有効化して保存する場合も同じdiscovery検証を必須とし、metadataのissuer不一致や取得失敗ではDBへ有効設定を保存しない。
   - 「OIDC連携を解除」はDB rowを削除せずdisabled stateを残し、legacy environmentへのfallbackを防ぐ。
 - DB rowがまだ存在しないupgrade直後だけlegacy `OIDC_*` environmentを利用する。最初にDB設定を保存/無効化した後はshared DBがOIDC stateのSSoTになる。
 
