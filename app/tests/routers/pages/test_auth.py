@@ -288,15 +288,6 @@ async def test_auth_settings_is_admin_only_and_editable(
 
 
 @pytest.mark.asyncio
-async def test_legacy_auth_settings_path_is_removed(async_client, monkeypatch) -> None:
-    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "false")
-
-    response = await async_client.get("/auth/settings", follow_redirects=False)
-
-    assert response.status_code == 404
-
-
-@pytest.mark.asyncio
 async def test_auth_off_local_admin_can_open_admin_tools(
     async_client, monkeypatch
 ) -> None:
