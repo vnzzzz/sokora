@@ -490,9 +490,8 @@ def _set_sqlite_foreign_keys(connection: Connection, *, enabled: bool) -> None:
 
 
 def _assert_sqlite_foreign_key_integrity(connection: Connection) -> None:
-    """FKを一時停止したmigration後に参照整合性違反が無いことを確認する。"""
+    """FKを一時停止したmigration transactionをcommitする前に整合性を確認する。"""
     violations = connection.exec_driver_sql("PRAGMA foreign_key_check").all()
-    connection.rollback()
     if violations:
         raise RuntimeError("SQLite foreign key check failed after migration")
 
@@ -535,9 +534,8 @@ def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
             with connection.begin():
                 config.attributes["connection"] = connection
                 command.upgrade(config, "head")
-
-            if suspend_sqlite_foreign_keys:
-                _assert_sqlite_foreign_key_integrity(connection)
+                if suspend_sqlite_foreign_keys:
+                    _assert_sqlite_foreign_key_integrity(connection)
         finally:
             if connection.in_transaction():
                 connection.rollback()
