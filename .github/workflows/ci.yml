@@ -16,7 +16,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check Dev Container Dockerfile
-        run: docker build --check -f .devcontainer/Dockerfile .
+        run: |
+          docker build --check \
+            --build-arg 'BUILDKIT_DOCKERFILE_CHECK=experimental=CopyIgnoredFile;error=true' \
+            -f .devcontainer/Dockerfile .
 
       - name: Set up Python
         uses: actions/setup-python@v5
