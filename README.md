@@ -17,12 +17,8 @@ reference development environmentはVS Code Dev Containerです。containerを�
 cp .env.sample .env
 ```
 
-`.env` に最低限次を設定します。
-
-```dotenv
-VERSION=dev
-SERVICE_PORT=8000
-```
+sampleはlocal開発用の `SERVICE_PORT=8000` を含むため、そのまま起動できます。
+`VERSION` は `docker-build` / `docker-run` / `closed-bundle` 等のversioned image/package targetを使う場合だけ設定します。
 
 起動:
 
