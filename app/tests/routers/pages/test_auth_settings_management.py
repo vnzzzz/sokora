@@ -356,6 +356,34 @@ async def test_oidc_settings_mutations_require_valid_csrf_token(
     )
     assert wrong.status_code == 403
 
+    non_ascii_save = await async_client.post(
+        "/auth/settings/oidc",
+        data={
+            "csrf_token": "é",
+            "enabled": "false",
+        },
+        follow_redirects=False,
+    )
+    assert non_ascii_save.status_code == 403
+
+    non_ascii_test = await async_client.post(
+        "/auth/settings/oidc/test",
+        data={
+            "csrf_token": "é",
+            "issuer": "https://candidate.example/realms/sokora",
+        },
+        follow_redirects=False,
+    )
+    assert non_ascii_test.status_code == 403
+
+    non_ascii_unlink = await async_client.post(
+        "/auth/settings/oidc/unlink",
+        data={"csrf_token": "é"},
+        follow_redirects=False,
+    )
+    assert non_ascii_unlink.status_code == 403
+    assert db.scalar(text("SELECT COUNT(*) FROM auth_config")) == 0
+
     save = await async_client.post(
         "/auth/settings/oidc",
         data={
