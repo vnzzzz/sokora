@@ -1,110 +1,36 @@
 # sokora
 
-![image](docs/images/image1.png)
+![sokora](docs/images/image1.png)
 
-勤怠種別・勤務場所をカレンダーUIで可視化・編集するWeb application。FastAPI + SQLAlchemyをbackend、Jinja2 + HTMX/Alpine.jsをSSR UIに利用し、SQLite / PostgreSQLをsupportする。
+勤怠種別と勤務場所をカレンダーで可視化・編集する、シンプルな勤怠管理Webアプリケーションです。
 
-## Features
-
-- 月次/週次カレンダー、日別詳細、勤怠CRUD
-- ユーザー / グループ / 勤怠種別 / 社員種別 / カスタム祝日の管理
-- 月次勤怠CSVのダウンロード、月次・年度別の集計
-- optionalなOIDC認証 + 管理者向けlocal login
-- file-backed SQLiteの管理者向けbackup/restore
-- SQLiteのstandalone runtimeと、PostgreSQLを使うmulti-replica runtime
-- 共通production OCI imageとclosed-network deployment bundle
-
-## Stack
-
-- Python 3.13
-- FastAPI / Jinja2
-- HTMX / Alpine.js
-- SQLAlchemy / Alembic
-- SQLite / PostgreSQL (Psycopg 3)
-- Authlib / OpenID Connect
-- Tailwind CSS / daisyUI
-- uv / Ruff / mypy / pytest / Playwright
+- 月次 / 週次カレンダーと日別勤怠
+- ユーザー・グループ・勤怠種別・社員種別・祝日の管理
+- CSV出力と月次 / 年次集計
+- optional OIDC認証、SQLite / PostgreSQL対応
 
 ## Quick start
 
-`.env.sample`を`.env`へcopyし、`VERSION`と`SERVICE_PORT`を設定する。`.env.sample`では`SERVICE_PORT`が空なので、local起動では明示的にportを指定する。通常は`8000`でよい。必要に応じて`DATABASE_URL`等も変更する。
+reference development environmentはVS Code Dev Containerです。containerを開いた状態で:
 
 ```bash
 cp .env.sample .env
-# .env に以下を設定
-# VERSION=<version>
-# SERVICE_PORT=8000
+```
+
+`.env` に最低限次を設定します。
+
+```dotenv
+VERSION=dev
+SERVICE_PORT=8000
+```
+
+起動:
+
+```bash
 make install
 make run
 ```
 
-既定のlocal DBは`sqlite:///data/sokora.db`。application startup時にAlembic migrationを適用し、新規file-backed SQLiteだけinitial seedを作成する。
+http://localhost:8000 を開きます。
 
-主なdevelopment command:
-
-```bash
-make run          # development server
-make test         # test suite
-make quality      # Ruff + format check + mypy
-make format       # Ruff format/import fix
-make assets       # frontend assets build
-make migrate      # Alembic upgrade head
-```
-
-commandの正確な定義と追加targetは`Makefile`を参照する。
-
-## Production
-
-root `Dockerfile`から生成する1種類のprovider非依存OCI imageをproduction artifactとする。runtimeは`PORT`、`DATABASE_URL`、`SOKORA_*`、`OIDC_*`等をenvironment/secretとして受け取る。
-
-```bash
-make docker-build
-make docker-run
-```
-
-closed-network向けには同じimageからrepository-free bundleを生成できる。
-
-```bash
-make closed-bundle
-```
-
-一般的なcontainer環境への配置条件とSQLite/PostgreSQLの構成判断は [Deployment guide](docs/deployment.md) を参照する。特定cloud provider向けのadapterやsupport matrixは提供しない。閉域Dockerサーバー向けのbundle/Compose/operator手順は [Closed-network deployment](docs/closed-deployment.md) に維持する。
-
-## Documentation
-
-最初に [Documentation guide](docs/README.md) を参照する。ADRと画像を除き、主要文書は`docs/`直下へ集約している。
-
-- [Cross-cutting requirements](docs/requirements.md)
-- [API requirements](docs/api.md)
-- [Database requirements](docs/database.md)
-- [UI requirements](docs/ui.md)
-- [Template/static layout](docs/templates.md)
-- [Deployment guide](docs/deployment.md)
-- [Production runtime](docs/runtime.md)
-- [Closed-network deployment](docs/closed-deployment.md)
-- [SQLite database management](docs/sqlite-database-management.md)
-- [Architecture Decision Records](docs/adr/README.md)
-
-READMEはproject入口に限定し、DB/auth/deployment等の詳細contractは各SSoTへ集約する。
-
-## Repository layout
-
-```text
-app/
-  routers/pages/    HTML / HTMX adapters
-  routers/api/v1/  JSON API adapters
-  services/        use case / transaction coordination
-  crud/            database access
-  models/ + db/    persistence model/runtime
-  templates/       Jinja templates
-  static/          application static source
-scripts/
-  migration/       Alembic
-  seeding/         seed
-  testing/         test runner
-deploy/closed/     closed-network adapter assets
-docs/              requirements / runtime / operations / ADR
-builder/           Tailwind build source
-```
-
-Coding agent向けのrepository固有ruleは [AGENTS.md](AGENTS.md) を参照する。
+セットアップ、architecture、認証、API、deployment等の詳細は **[Documentation](docs/README.md)** を参照してください。
