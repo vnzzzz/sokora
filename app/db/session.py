@@ -532,6 +532,11 @@ def migrate_database(runtime: DatabaseRuntime | None = None) -> None:
 
         try:
             with connection.begin():
+                if suspend_sqlite_foreign_keys:
+                    # sqlite3 legacy transaction control does not BEGIN for DDL.
+                    # Alembic batch mode must be inside one real transaction so a
+                    # failed FK check rolls back temp-table DDL as well.
+                    connection.exec_driver_sql("BEGIN")
                 config.attributes["connection"] = connection
                 command.upgrade(config, "head")
                 if suspend_sqlite_foreign_keys:
