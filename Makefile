@@ -49,7 +49,7 @@ help:
 	@printf "  make docker-build    Build versioned production image; requires VERSION\n"
 	@printf "  make closed-bundle   Build and package versioned image; requires VERSION\n"
 	@printf "  make package-closed-bundle SOURCE_REVISION=<sha>  Package an already-built versioned image; requires VERSION\n"
-	@printf "  make docker-run      Run production container with SERVICE_PORT -> PORT and data volume mount\n"
+	@printf "  make docker-run      Run versioned production image locally; requires VERSION\n"
 	@printf "  make docker-stop     Stop and remove the production container\n\n"
 
 sync:
