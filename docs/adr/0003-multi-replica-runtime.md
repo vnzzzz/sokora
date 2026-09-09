@@ -2,35 +2,32 @@
 
 **Status:** Accepted
 
-## 背景
+## Context
 
-portable PostgreSQL backend導入後も、application replicaごとにDB由来のmutable cacheを保持すると、replica Aでwriteした直後にreplica Bへrouteされたreadが古い状態を返し得る。attendance/calendarのprocess-local cacheとauthのfile-backed runtime stateは先行Issueで除去したが、custom holidayはbuild-time祝日cacheと同じmodule-global dictionaryへDB内容をmergeしていたため、writeを処理したprocessだけが更新される状態だった。
+複数application replicaがDB由来のmutable stateをprocess-local cacheへ保持すると、writeを処理したreplicaと別replicaのreadで状態がずれる。
 
-## 決定
+SQLite fileを複数replicaで共有する方式も、sokoraのruntime contractとして扱わない。
 
-- horizontal multi-replica runtimeは、全replicaが同じexternal PostgreSQL databaseを共有する構成で保証する。SQLiteはsingle-instance/standalone用途とし、複数replicaで同じSQLite fileを共有する構成はサポートしない。
-- DB由来のattendance/calendar read resultはprocess-global cacheへ保持しない。各requestは共有DBから現在の状態を読む。
-- 標準祝日はproduction imageへbuildされたimmutable assetとしてprocess-localに保持してよい。同一imageを実行するreplica間で内容が一致し、runtime writeでは変更されないためである。
-- custom holidayはprocess-global cacheへ保持しない。holidayを描画するrequestの開始時に共有DBから読み、request-local `ContextVar` snapshotへ束縛する。既存calendar builderはそのrequest-local snapshotを標準祝日より優先して解決する。
-- custom holiday writeは共有DBへのtransaction commitだけを行い、特定replicaのcache invalidationを必要としない。commit完了後に開始した別replicaのholiday-sensitive readは共有DBから新しい値を取得する。
-- 認証の共有stateはshared DBの`auth_config`とruntime-injected config/secretへ限定し、replica-local mutable fileを持たない。署名付きclient-side session cookieを全replicaで検証できるよう、`SOKORA_AUTH_SESSION_SECRET`やOIDC設定暗号鍵等のruntime secretはreplica間で同一値を注入する。
-- PostgreSQL migrationは既存のadvisory lock contractで同時startupを直列化する。
+## Decision
 
-## Consistency contract
+- horizontal multi-replicaは全replicaが同じexternal PostgreSQLを共有する構成
+- SQLiteはsingle-instance
+- attendance、calendar、custom holiday、editable auth config等のDB由来mutable stateをprocess-global shared cacheへ保持しない
+- requestで必要なderived stateはshared DBから取得し、request-localに扱う
+- 同一imageに含まれるimmutable assetはprocess-localに保持してよい
+- session secret等のruntime config / secretはreplica間で同じ値を注入する
+- PostgreSQL startup migrationはadvisory lockで直列化する
 
-- write transactionがcommitした後に開始したread requestは、どのreplicaへrouteされてもそのcommitted stateを観測する。
-- PostgreSQLの通常readはdefaultのREAD COMMITTEDを前提とし、複数SQL statementで構築する1 requestがsingle database snapshotを持つことまでは保証しない。各statementは実行時点までにcommit済みの異なるstateを観測し得る。
-- analysisのようにmasterとtransaction rowを別queryで読むread modelでは、先に観測したmaster集合をそのresponseのprojection boundaryとする。後続queryだけが新しいmaster参照rowを観測した場合、そのrowは現在responseから除外し、後続readのmaster queryもそのrowを観測した時点で反映する。これによりmixed read stateを500や不整合なview-model shapeへ変換しない。
-- write commit前から進行中のread requestは、request中に各queryが観測したcommitted stateに基づく結果を返し得る。linearizableな全request直列化は要求しない。
-- application runtimeが共有状態として依存してよいのは共有DB、runtime-injected config/secret、同一OCI imageに含まれるimmutable assetである。replica-local filesystemやmodule-global mutable DB cacheは共有stateとして利用しない。
+## Consistency
 
-## 検証
+write commit後に開始したreadは、どのreplicaでもshared PostgreSQLのcommitted stateを取得する。
 
-- CIのPostgreSQL jobで同じdatabaseを参照する2つのlive Uvicorn processを起動し、replica Aでcustom holiday/attendanceを書き込んだ後、replica Bのcalendar readがその内容を返すことをintegration testで検証する。
-- analysis readは、先行master queryには存在せず後続attendance queryだけが観測するrowをdeterministicなservice regression testで再現し、500にせず現在responseから除外することと、後続master readがそのrowを観測した後は通常どおり集計することを検証する。
+通常readはPostgreSQLのREAD COMMITTEDを前提とし、1 request全体をsingle snapshotとしてlinearizableにすることまでは要求しない。複数queryでview modelを作る場合は、mixed committed stateを500やinvalid shapeへ変換しないprojection boundaryを持つ。
 
-## 影響
+## Consequences
 
-- container runtimeは、全replicaが同じexternal PostgreSQLと共通runtime secret/configを利用する場合に複数replicaを許可できる。
-- SQLite deploymentは引き続きreplica数1を前提とする。
-- Redis等のdistributed cache/invalidation基盤は現時点では不要。将来performance上の理由でcacheを導入する場合は、このconsistency contractを満たす共有cacheまたは明示的version/invalidation設計が必要になる。
+- distributed cache / invalidation infrastructureは現時点では不要
+- future cacheを導入する場合、このconsistency contractを満たす共有cacheまたは明示的invalidation設計が必要
+- multi-replica deploymentはshared PostgreSQLと共通runtime secretsを前提とする
+
+current state modelは [Architecture](../architecture.md)、DB topologyは [Database](../database.md) を参照する。
