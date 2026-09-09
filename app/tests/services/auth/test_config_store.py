@@ -106,9 +106,7 @@ def test_oidc_client_secret_is_preserved_as_opaque_value(db) -> None:
 def test_enabled_oidc_requires_openid_scope(db) -> None:
     settings = AppSettings(
         oidc_redirect_uri="https://sokora.example/auth/callback",
-        auth_config_encryption_key=(
-            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-        ),
+        auth_config_encryption_key=("MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="),
     )
 
     with pytest.raises(AuthConfigValidationError, match="openid"):
