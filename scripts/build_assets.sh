@@ -30,6 +30,7 @@ fi
 
 echo "[css] Building Tailwind CSS -> ${CSS_OUT}"
 (cd "${BUILDER_DIR}" && npx tailwindcss -i input.css -o "${CSS_OUT}" --minify)
+echo "[css-size] $(wc -c < "${CSS_OUT}") bytes"
 
 echo "[js] Copying vendor bundles -> ${JS_DIR}"
 cp "${BUILDER_DIR}/node_modules/htmx.org/dist/htmx.min.js" "${JS_DIR}/htmx.min.js"
