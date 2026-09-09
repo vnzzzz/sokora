@@ -96,6 +96,107 @@ def test_migration_rejects_existing_duplicates_without_deleting_data(
         runtime.dispose()
 
 
+def test_sqlite_migration_handles_existing_rows_with_inbound_foreign_keys(
+    tmp_path: Path,
+) -> None:
+    runtime = create_database_runtime(f"sqlite:///{tmp_path / 'legacy-with-fks.db'}")
+    try:
+        with runtime.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "create table groups ("
+                    "id integer primary key, "
+                    "name varchar not null unique, "
+                    "\"order\" integer)"
+                )
+            )
+            connection.execute(
+                text(
+                    "create table user_types ("
+                    "id integer primary key, "
+                    "name varchar not null unique, "
+                    "\"order\" integer)"
+                )
+            )
+            connection.execute(
+                text(
+                    "create table locations ("
+                    "id integer primary key, "
+                    "name varchar not null unique, "
+                    "category varchar, "
+                    "\"order\" integer)"
+                )
+            )
+            connection.execute(
+                text(
+                    "create table users ("
+                    "id varchar primary key, "
+                    "username varchar not null, "
+                    "group_id integer not null references groups(id), "
+                    "user_type_id integer not null references user_types(id))"
+                )
+            )
+            connection.execute(
+                text(
+                    "create table attendance ("
+                    "id integer primary key, "
+                    "user_id varchar not null references users(id), "
+                    "date date not null, "
+                    "location_id integer not null references locations(id), "
+                    "note varchar, "
+                    "constraint uq_attendance_user_date unique(user_id, date))"
+                )
+            )
+            connection.execute(
+                text(
+                    "create table alembic_version ("
+                    "version_num varchar(32) not null primary key)"
+                )
+            )
+            connection.execute(text("insert into groups(id, name) values (1, 'Group')"))
+            connection.execute(
+                text("insert into user_types(id, name) values (1, 'Type')")
+            )
+            connection.execute(
+                text("insert into locations(id, name) values (1, 'Office')")
+            )
+            connection.execute(
+                text(
+                    "insert into users(id, username, group_id, user_type_id) "
+                    "values ('u1', 'Legacy User', 1, 1)"
+                )
+            )
+            connection.execute(
+                text(
+                    "insert into attendance(id, user_id, date, location_id) "
+                    "values (1, 'u1', '2030-01-01', 1)"
+                )
+            )
+            connection.execute(
+                text(
+                    "insert into alembic_version(version_num) "
+                    "values ('7c4a1b2d3e5f')"
+                )
+            )
+
+        migrate_database(runtime)
+
+        with runtime.engine.connect() as connection:
+            assert connection.scalar(text("PRAGMA foreign_keys")) == 1
+            assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+            assert connection.scalar(text("select count(*) from users")) == 1
+            assert connection.scalar(text("select count(*) from attendance")) == 1
+
+        constraints = inspect(runtime.engine).get_unique_constraints("users")
+        assert any(
+            constraint["name"] == "uq_users_username"
+            and set(constraint["column_names"]) == {"username"}
+            for constraint in constraints
+        )
+    finally:
+        runtime.dispose()
+
+
 def test_sqlite_runtime_enforces_foreign_keys(tmp_path: Path) -> None:
     runtime = _migrated_runtime(tmp_path)
     try:
