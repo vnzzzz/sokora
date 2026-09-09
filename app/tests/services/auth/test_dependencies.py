@@ -22,9 +22,7 @@ def test_get_auth_settings_closes_db_session_before_return(monkeypatch) -> None:
             finally:
                 events.append("closed")
 
-    app = SimpleNamespace(
-        state=SimpleNamespace(settings_provider=lambda: app_settings)
-    )
+    app = SimpleNamespace(state=SimpleNamespace(settings_provider=lambda: app_settings))
     request = SimpleNamespace(app=app)
 
     monkeypatch.setattr(
