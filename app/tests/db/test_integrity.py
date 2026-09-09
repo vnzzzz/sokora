@@ -102,79 +102,85 @@ def test_sqlite_migration_handles_existing_rows_with_inbound_foreign_keys(
     runtime = create_database_runtime(f"sqlite:///{tmp_path / 'legacy-with-fks.db'}")
     try:
         with runtime.engine.begin() as connection:
-            connection.execute(
-                text(
-                    "create table groups ("
-                    "id integer primary key, "
-                    "name varchar not null unique)"
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE groups (
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR NOT NULL UNIQUE
                 )
+                """
             )
-            connection.execute(
-                text(
-                    "create table user_types ("
-                    "id integer primary key, "
-                    "name varchar not null unique)"
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE user_types (
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR NOT NULL UNIQUE
                 )
+                """
             )
-            connection.execute(
-                text(
-                    "create table locations ("
-                    "id integer primary key, "
-                    "name varchar not null unique)"
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE locations (
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR NOT NULL UNIQUE
                 )
+                """
             )
-            connection.execute(
-                text(
-                    "create table users ("
-                    "id varchar primary key, "
-                    "username varchar not null, "
-                    "group_id integer not null references groups(id), "
-                    "user_type_id integer not null references user_types(id))"
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE users (
+                    id VARCHAR PRIMARY KEY,
+                    username VARCHAR NOT NULL,
+                    group_id INTEGER NOT NULL REFERENCES groups(id),
+                    user_type_id INTEGER NOT NULL REFERENCES user_types(id)
                 )
+                """
             )
-            connection.execute(
-                text(
-                    "create table attendance ("
-                    "id integer primary key, "
-                    "user_id varchar not null references users(id), "
-                    "date date not null, "
-                    "location_id integer not null references locations(id), "
-                    "note varchar, "
-                    "constraint uq_attendance_user_date unique(user_id, date))"
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE attendance (
+                    id INTEGER PRIMARY KEY,
+                    user_id VARCHAR NOT NULL REFERENCES users(id),
+                    date DATE NOT NULL,
+                    location_id INTEGER NOT NULL REFERENCES locations(id),
+                    note VARCHAR,
+                    CONSTRAINT uq_attendance_user_date UNIQUE(user_id, date)
                 )
+                """
             )
-            connection.execute(
-                text(
-                    "create table alembic_version ("
-                    "version_num varchar(32) not null primary key)"
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE alembic_version (
+                    version_num VARCHAR(32) NOT NULL PRIMARY KEY
                 )
+                """
             )
-            connection.execute(
-                text("insert into groups(id, name) values (1, 'Group')")
+            connection.exec_driver_sql(
+                "INSERT INTO groups(id, name) VALUES (1, 'Group')"
             )
-            connection.execute(
-                text("insert into user_types(id, name) values (1, 'Type')")
+            connection.exec_driver_sql(
+                "INSERT INTO user_types(id, name) VALUES (1, 'Type')"
             )
-            connection.execute(
-                text("insert into locations(id, name) values (1, 'Office')")
+            connection.exec_driver_sql(
+                "INSERT INTO locations(id, name) VALUES (1, 'Office')"
             )
-            connection.execute(
-                text(
-                    "insert into users(id, username, group_id, user_type_id) "
-                    "values ('u1', 'Legacy User', 1, 1)"
-                )
+            connection.exec_driver_sql(
+                """
+                INSERT INTO users(id, username, group_id, user_type_id)
+                VALUES ('u1', 'Legacy User', 1, 1)
+                """
             )
-            connection.execute(
-                text(
-                    "insert into attendance(id, user_id, date, location_id) "
-                    "values (1, 'u1', '2030-01-01', 1)"
-                )
+            connection.exec_driver_sql(
+                """
+                INSERT INTO attendance(id, user_id, date, location_id)
+                VALUES (1, 'u1', '2030-01-01', 1)
+                """
             )
-            connection.execute(
-                text(
-                    "insert into alembic_version(version_num) "
-                    "values ('7c4a1b2d3e5f')"
-                )
+            connection.exec_driver_sql(
+                """
+                INSERT INTO alembic_version(version_num)
+                VALUES ('7c4a1b2d3e5f')
+                """
             )
 
         migrate_database(runtime)
@@ -182,8 +188,8 @@ def test_sqlite_migration_handles_existing_rows_with_inbound_foreign_keys(
         with runtime.engine.connect() as connection:
             assert connection.scalar(text("PRAGMA foreign_keys")) == 1
             assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
-            assert connection.scalar(text("select count(*) from users")) == 1
-            assert connection.scalar(text("select count(*) from attendance")) == 1
+            assert connection.scalar(text("SELECT COUNT(*) FROM users")) == 1
+            assert connection.scalar(text("SELECT COUNT(*) FROM attendance")) == 1
 
         constraints = inspect(runtime.engine).get_unique_constraints("users")
         assert any(
