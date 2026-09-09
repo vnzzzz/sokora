@@ -94,7 +94,6 @@ def test_shared_postgresql_state_is_visible_across_replicas() -> None:
         assert location_name in day_read.text
 
 
-
 def test_shared_oidc_disable_is_visible_across_replicas() -> None:
     """DB-backed OIDC state must be observed by every PostgreSQL replica."""
     assert REPLICA_A_URL is not None
