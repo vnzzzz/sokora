@@ -81,16 +81,13 @@ def test_oidc_client_secret_is_preserved_as_opaque_value(db) -> None:
     assert resolved.oidc_client_secret == secret
 
 
-
 def test_first_db_save_can_encrypt_matching_legacy_secret(db) -> None:
     settings = AppSettings(
         oidc_issuer="https://legacy.example/realms/sokora",
         oidc_client_id="legacy-client",
         oidc_client_secret="legacy-secret",
         oidc_redirect_uri="https://sokora.example/auth/callback",
-        auth_config_encryption_key=(
-            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-        ),
+        auth_config_encryption_key=("MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="),
     )
 
     save_oidc_config(
@@ -129,7 +126,6 @@ def test_first_db_save_requires_secret_when_client_identity_changes(db) -> None:
             client_secret="",
             scope="openid profile email",
         )
-
 
 
 def test_db_client_identity_change_requires_new_secret(db) -> None:
