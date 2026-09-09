@@ -1,118 +1,93 @@
 # sokora repository guide
 
-このファイルは、sokoraで作業するcoding agent向けの**リポジトリ固有情報**だけを扱う。
-一般的なIssue駆動、変更計画、実装原則、テスト設計、command実行、debugging、報告方法は、Dev Containerの`agent-dev` Featureが導入する`vnzzzz/agent-skills`を利用する。リポジトリ固有ルールとtask/user instructionを優先し、一般ルールをこのファイルへ重複記載しない。
+このファイルはcoding agent向けの**repository固有情報**だけを扱います。一般的なIssue workflow、planning、testing、technical writing、reportingはDev Containerの`vnzzzz/agent-skills`を利用し、user instructionとrepository固有ruleを優先してください。
 
 ## Project
 
-sokoraは勤怠種別・勤務場所をカレンダーUIで扱うWebアプリケーション。
+sokoraは勤怠種別・勤務場所をカレンダーUIで扱うFastAPI applicationです。
 
-- Python 3.13
-- FastAPI / Jinja2
-- HTMX / Alpine.js
+- Python 3.13 / uv
+- FastAPI / Jinja2 / HTMX / Alpine.js
 - SQLAlchemy / Alembic
-- SQLite（既定runtime。接続先は`DATABASE_URL`で設定）
-- PostgreSQL
-- uv
-- pytest / pytest-playwright / Ruff / mypy
-- Tailwind CSS
+- SQLite / PostgreSQL
+- Tailwind CSS / daisyUI
+- Ruff / mypy / pytest / Playwright
 
 ## Source of truth
 
-変更前にtaskに関係する一次情報を読む。文書の責務分担は最初に`docs/README.md`を確認する。主要文書はADRと画像を除いて`docs/`直下へ集約する。
+taskに関係する一次情報を実装前に確認します。
 
-- docs入口 / SSoT map: `docs/README.md`
-- 全体要件: `docs/requirements.md`
-- DB要件: `docs/database.md`
-- API要件: `docs/api.md`
-- UI要件: `docs/ui.md`
-- template構成: `docs/templates.md`
-- generic deployment / DB構成: `docs/deployment.md`
-- production runtime contract: `docs/runtime.md`
+- documentation入口: `docs/README.md`
+- local setup: `docs/getting-started.md`
+- architecture / state boundary: `docs/architecture.md`
+- authentication: `docs/authentication.md`
+- JSON API: `docs/api.md`
+- DB / migration / transaction: `docs/database.md`
+- SSR / HTMX / templates: `docs/ui.md`
+- production runtime: `docs/runtime.md`
+- generic deployment: `docs/deployment.md`
 - closed-network運用: `docs/closed-deployment.md`
-- SQLite backup/restore運用: `docs/sqlite-database-management.md`
-- architecture decision: `docs/adr/`
-- 依存関係・tool設定: `pyproject.toml`, `uv.lock`
-- 開発command: `Makefile`, `scripts/`
+- SQLite backup / restore: `docs/sqlite-database-management.md`
+- architecture decisions: `docs/adr/`
+- dependencies / tool config: `pyproject.toml`, `uv.lock`
+- commands: `Makefile`, `scripts/`
 
-Issueや実装とdocsが食い違う場合は、推測で合わせず、taskの完了条件へ影響する差異を確認して必要なSSoTを同じ変更で更新する。特定cloud provider向けのdeployment adapterやsupport statusを前提にしない。
+docsと実装が食い違う場合は推測で合わせず、live implementationを確認して同じ変更で正本を更新します。
 
-## Architecture map
+## Code responsibilities
 
-主な責務は次のとおり。
-
-```text
-app/main.py
-  ├─ app/routers/pages/   -> HTML / HTMX adapter
-  └─ app/routers/api/v1/ -> JSON API adapter
-          │
-          ├─ write use cases -> app/services/ -> app/crud/
-          └─ read paths      -> read service / app/crud/ / view helper
-                                      └─ app/models/ + app/db/
-
-app/templates/
-  ├─ layout/
-  ├─ pages/
-  └─ components/
-```
-
-- `app/schemas/`: API等のPydantic schema
-- `app/core/`: application設定
-- `app/utils/`: 特定domainへ閉じない共通処理
-- `app/tests/`: unit / API / page / E2E tests
+- `app/routers/pages/`: HTML / HTMX adapters
+- `app/routers/api/v1/`: JSON API adapters
+- `app/services/`: business rule / transaction coordination / read model
+- `app/crud/`: data access
+- `app/models/`, `app/db/`: persistence model / runtime
+- `app/templates/`: Jinja templates
+- `app/static/`: application static source
 - `scripts/migration/`: Alembic
-- `scripts/seeding/`: seed data
-- `builder/`: Tailwind build source
-- `deploy/closed/`: closed-network deployment adapter assets
+- `scripts/seeding/`: seed
+- `builder/`: frontend asset build source
+- `deploy/closed/`: closed-network distribution assets
 
-writeのtransaction/business ruleはservice境界を優先する。readは画面/集計の複雑さに応じてdedicated read serviceまたは既存CRUD/helperを利用する。既存の責務分離を確認せず新しいlayerやpatternを追加しない。
+既存責務を確認せず新しいlayer / abstractionを追加しません。
 
 ## Repository-specific constraints
 
-- Tailwind等の生成物を直接編集しない。sourceを変更して既存build flowを使う。
-- DB modelを変更する場合、既存Alembic versionを書き換えず、新しいmigrationを追加する。
-- `.env`、credential、token等のsecretをcommitしない。`.env.sample`にはsample値だけを置く。
-- `DATABASE_URL`の既定値は`sqlite:///data/sokora.db`。`data/sokora.db`はruntime dataとして扱い、sourceとしてcommitしない。
-- SQLiteはsingle-instance runtime用。horizontal multi-replicaはshared PostgreSQLを利用する。
-- UI変更では既存のJinja/HTMX/Alpine patternと`docs/ui.md`を確認する。
-- API変更では`docs/api.md`とpage側への影響を確認する。
-- DB変更では`docs/database.md`、model、migration、seed、testの整合を確認する。
-- production/deployment変更では`docs/deployment.md`と`docs/runtime.md`を確認し、provider固有処理やprovider abstractionをapplication coreへ持ち込まない。closed-network固有assetsを変更する場合は`docs/closed-deployment.md`も同期する。
-- 横断的なarchitecture判断は既存`docs/adr/`を確認し、必要ならADRを追加する。
-- comment/docstringは処理の言い換えではなく、codeだけでは失われる判断理由、制約、不変条件、resource lifetimeを残す。公開関数・型ではcallerが守る条件やfailure boundaryが重要なら明示する。
+- generated Tailwind/vendor assetを直接編集せず、sourceと既存build flowを変更する
+- DB model変更では既存Alembic revisionを書き換えず、新しいmigrationを追加する
+- `.env`、credential、token等のsecretをcommitしない
+- `DATABASE_URL`の既定は`sqlite:///data/sokora.db`
+- SQLiteはsingle-instance。horizontal multi-replicaはshared PostgreSQL
+- page/HTMXとJSON APIのtransport責務を混ぜない
+- write transaction / business ruleはservice境界を優先する
+- provider固有SDK / deployment abstractionをapplication coreへ持ち込まない
+- closed-network asset変更時はoperator guideと`docs/closed-deployment.md`を同期する
+- architecture decisionを変更するときは既存ADRを確認し、必要なら新しいADRでsupersedeする
+- comment/docstringは処理の言い換えではなく、codeだけでは失われる理由・制約・不変条件・resource lifetimeを残す
 
 ## Common commands
 
-Dev Containerのworkspaceは`/app`。
+Dev Container workspaceは`/app`です。
 
 ```bash
-uv sync --locked
 make run
 make test
-make seed
-make assets
 make quality
 make format
+make seed
+make assets
 ```
 
-Pythonの品質ゲートはRuff（lint / import sorting / format）とmypy（typecheck）に統一する。個別確認が必要な場合は`make lint` / `make format-check` / `make typecheck`を使う。
-
-変更範囲に直接関係するtest/checkを先に実行し、PR前にはrepositoryの標準CIで成立する状態にする。
+必要な個別checkは`make lint`、`make format-check`、`make typecheck`。PR前はrepository標準CIで成立する状態にします。
 
 ## GitHub workflow
 
-- base branchは`main`。
-- 原則 **1 Issue = 1 PR**。ただし変更が強く結合し、分割すると実装・検証が重複するIssueは、レビュー性・ロールバック性を損なわない範囲で1 PRにまとめてよい。
-- short-lived branchを`main`から作成する。
-- PR本文に対応する`Closes #<issue>`をすべて記載する。
-- unrelated cleanupを同じPRへ混ぜない。
-- mainへの統合は**squash mergeを基本**とし、履歴上の理由がある場合だけrebaseを検討する。
-- userから明示的な依頼がない限り、agentはmergeしない。
-- CIとreview feedbackを確認し、actionableな指摘は修正・再検証する。
+- baseは`main`
+- short-lived branchを最新`main`から作成
+- 原則1 Issue = 1 PR。強く結合した変更だけreviewabilityを損なわない範囲でまとめる
+- PR本文に`Closes #<issue>`
+- unrelated cleanupを混ぜない
+- mainへの統合はsquash mergeを基本とする
+- userから明示的な依頼がない限りmergeしない
+- CIとreview feedbackを確認し、actionable findingを修正・再検証する
 
-## Agent instructions
-
-- Codexはこの`AGENTS.md`をrepo-local instructionとして利用する。
-- Claude Codeはrootの`CLAUDE.md`からこのファイルをimportする。
-- tool固有のpromptへsokoraの一般workflowを複製しない。
-- `agent-skills`で扱える一般的な手順はそちらへ委譲し、このファイルにはsokora固有の事実・制約・入口だけを残す。
+Codexはこの`AGENTS.md`、Claude Codeはroot `CLAUDE.md`からこのファイルを参照します。
