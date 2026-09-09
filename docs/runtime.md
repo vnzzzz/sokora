@@ -27,6 +27,16 @@ mutable DBやsecretをimage layerへ埋め込みません。
 
 local Make targetの`SERVICE_PORT`はhost publish portで、container内部の`PORT`とは別です。
 
+root `.env` はlocal Make workflowとapplication runtimeの入力を同じfileで管理しますが、責務は分かれています。
+
+| Scope | Variables |
+| --- | --- |
+| Make workflow only | `SERVICE_PORT`, `VERSION`, `proxy` |
+| Container/application runtime | `PORT`, `DATABASE_URL`, `SOKORA_*`, `OIDC_*` |
+| Proxy runtime/build | `proxy`から展開するHTTP(S) proxy、`NO_PROXY` / `no_proxy` |
+
+`make docker-run` はroot `.env` を `--env-file` で丸ごとcontainerへ渡しません。既知のapplication runtime変数だけを明示的にforwardし、`VERSION`や`SERVICE_PORT`などMake専用値をcontainer environmentへ混入させません。
+
 authentication settingの意味とprecedenceは [Authentication](authentication.md)、DB URLは [Database](database.md) を参照してください。
 
 ## Startup
