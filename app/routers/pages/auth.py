@@ -5,11 +5,21 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db
+from app.services.auth.config_store import (
+    AuthConfigError,
+    OIDCDiscoveryError,
+    check_oidc_discovery,
+    save_oidc_config,
+    unlink_oidc_config,
+)
 from app.services.auth.dependencies import (
     get_auth_settings,
     get_oidc_client,
     get_optional_oidc_client,
+    get_runtime_auth_settings,
     require_admin,
 )
 from app.services.auth.oidc import OIDCClient, OIDCError, OIDCStateError
@@ -76,7 +86,7 @@ async def login_page(
 async def admin_login_page(
     request: Request,
     next: str = "/",
-    settings: AuthSettings = Depends(get_auth_settings),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
     context = {
         "request": request,
@@ -159,7 +169,7 @@ async def local_login(
     username: str = Form(...),
     password: str = Form(...),
     next: str = Form("/"),
-    settings: AuthSettings = Depends(get_auth_settings),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
     """configured local admin credentialを照合し、admin role付きsessionを発行する。
 
@@ -262,12 +272,133 @@ async def oidc_logout_callback(
     )
 
 
+def _settings_form_values(
+    request: Request,
+    settings: AuthSettings,
+) -> dict[str, object]:
+    """Return non-secret form values, preserving a failed/tested candidate once."""
+    pending = request.session.pop("auth_settings_form", None)
+    if isinstance(pending, dict):
+        return pending
+    configured_enabled = (
+        settings.oidc_enabled
+        if settings.oidc_enabled_override is None
+        else settings.oidc_enabled_override
+    )
+    return {
+        "enabled": configured_enabled,
+        "issuer": settings.oidc_issuer or "",
+        "client_id": settings.oidc_client_id or "",
+        "scope": settings.oidc_scope,
+    }
+
+
+def _remember_settings_form(
+    request: Request,
+    *,
+    enabled: bool,
+    issuer: str,
+    client_id: str,
+    scope: str,
+) -> None:
+    """Persist only non-secret candidate fields across a redirect."""
+    request.session["auth_settings_form"] = {
+        "enabled": enabled,
+        "issuer": issuer,
+        "client_id": client_id,
+        "scope": scope,
+    }
+
+
 @router.get("/settings", response_class=HTMLResponse)
 async def auth_settings_page(
     request: Request,
     _admin: dict[str, object] = Depends(require_admin),
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Response:
-    """Show shared, read-only authentication diagnostics to administrators."""
-    context = {"request": request, "settings": settings}
+    """Show and edit shared OIDC settings for local administrators."""
+    context = {
+        "request": request,
+        "settings": settings,
+        "form_values": _settings_form_values(request, settings),
+        "notice": request.session.pop("auth_settings_notice", None),
+        "error_message": request.session.pop("auth_settings_error", None),
+    }
     return templates.TemplateResponse("pages/auth/settings.html", context)
+
+
+@router.post("/settings/oidc")
+async def save_auth_oidc_settings(
+    request: Request,
+    enabled: bool = Form(False),
+    issuer: str = Form(""),
+    client_id: str = Form(""),
+    client_secret: str = Form(""),
+    scope: str = Form("openid profile email"),
+    _admin: dict[str, object] = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Persist OIDC configuration without ever echoing the client secret."""
+    app_settings = request.app.state.settings_provider()
+    try:
+        save_oidc_config(
+            db,
+            app_settings,
+            enabled=enabled,
+            issuer=issuer,
+            client_id=client_id,
+            client_secret=client_secret,
+            scope=scope,
+        )
+    except AuthConfigError as exc:
+        _remember_settings_form(
+            request,
+            enabled=enabled,
+            issuer=issuer,
+            client_id=client_id,
+            scope=scope,
+        )
+        request.session["auth_settings_error"] = str(exc)
+    else:
+        request.session["auth_settings_notice"] = "OIDC設定を保存しました。"
+    return RedirectResponse("/auth/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/oidc/test")
+async def test_auth_oidc_settings(
+    request: Request,
+    enabled: bool = Form(False),
+    issuer: str = Form(""),
+    client_id: str = Form(""),
+    scope: str = Form("openid profile email"),
+    _admin: dict[str, object] = Depends(require_admin),
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
+) -> Response:
+    """Check standard OIDC discovery for an unsaved issuer candidate."""
+    _remember_settings_form(
+        request,
+        enabled=enabled,
+        issuer=issuer,
+        client_id=client_id,
+        scope=scope,
+    )
+    try:
+        await check_oidc_discovery(issuer, settings.oidc_http_timeout)
+    except OIDCDiscoveryError as exc:
+        request.session["auth_settings_error"] = str(exc)
+    else:
+        request.session["auth_settings_notice"] = "OIDC discoveryへ接続できました。"
+    return RedirectResponse("/auth/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/oidc/unlink")
+async def unlink_auth_oidc_settings(
+    request: Request,
+    _admin: dict[str, object] = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Explicitly disable and clear DB OIDC settings without env fallback."""
+    unlink_oidc_config(db)
+    request.session["auth_settings_notice"] = "OIDC連携を解除しました。"
+    request.session.pop("auth_settings_form", None)
+    return RedirectResponse("/auth/settings", status_code=status.HTTP_303_SEE_OTHER)
