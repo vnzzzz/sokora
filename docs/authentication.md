@@ -48,7 +48,7 @@ authentication guardが有効な場合、未認証のUI requestは`/auth/login`�
 | rowあり + enabled | shared DB |
 | rowあり + disabled | OIDC disabled。environmentへfallbackしない |
 
-最初に`/auth/settings`から保存・disable・unlinkした時点でDB rowが作成され、その後はDBがOIDC stateのSSoTです。
+最初に`/auth/settings`から保存・disable・unlinkした時点でDB rowが作成され、その後はDBのOIDC設定がenvironment設定より優先されます。
 
 client secretはDBへFernet暗号化して保存します。暗号鍵はDB/imageへ保存せず、`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`としてruntimeから渡します。multi-replicaでは全replicaへ同じ鍵を設定します。
 
