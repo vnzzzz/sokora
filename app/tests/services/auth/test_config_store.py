@@ -154,7 +154,6 @@ def test_db_client_identity_change_requires_new_secret(db) -> None:
         )
 
 
-
 def test_corrupt_db_ciphertext_disables_oidc_without_raising(db) -> None:
     settings = AppSettings(
         oidc_redirect_uri="https://sokora.example/auth/callback",
