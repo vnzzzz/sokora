@@ -8,13 +8,7 @@ from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
-
-from app.db.session import (
-    DatabaseRuntimeUnavailableError,
-    get_app_database_runtime,
-    get_db,
-)
+from app.db.session import DatabaseRuntimeUnavailableError, get_app_database_runtime
 from app.services.auth.config_store import resolve_auth_settings
 from app.services.auth.oidc import OIDCClient, OIDCError
 from app.services.auth.settings import AuthSettings
@@ -30,13 +24,17 @@ def get_runtime_auth_settings(request: Request) -> AuthSettings:
     return AuthSettings.from_app_settings(settings)
 
 
-def get_auth_settings(
-    request: Request,
-    db: Session = Depends(get_db),
-) -> AuthSettings:
-    """Resolve effective OIDC settings while retaining runtime local-admin config."""
-    settings = request.app.state.settings_provider()
-    return resolve_auth_settings(db, settings)
+def get_auth_settings(request: Request) -> AuthSettings:
+    """Resolve effective OIDC settings and release the DB session before returning.
+
+    OIDC redirect/callback handlers may await slow provider I/O after this dependency
+    completes. Keep the shared-DB read in a short-lived managed session so those
+    awaits never retain a checked-out SQLAlchemy connection.
+    """
+    app_settings = request.app.state.settings_provider()
+    runtime = get_app_database_runtime(request.app)
+    with runtime.managed_session() as db:
+        return resolve_auth_settings(db, app_settings)
 
 
 def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient:
