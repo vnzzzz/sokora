@@ -49,7 +49,12 @@ authenticationを有効にする場合、`SOKORA_AUTH_SESSION_SECRET`へstrong s
 DB-backed OIDC設定を利用する場合は`SOKORA_AUTH_CONFIG_ENCRYPTION_KEY`も設定します。
 
 ```bash
-python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+set -a
+. ./manifest.env
+set +a
+
+docker run --rm "$IMAGE_REF" \
+  python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
 ```
 
 この鍵はDB backupと分離して保管し、複数replicaでは同じ値を使用します。既存deploymentで`auth_config` rowがまだない場合はlegacy `OIDC_*` environmentが引き続き有効です。admin画面からsave / disable / unlinkした後はDBがOIDC sourceになります。
