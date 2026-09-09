@@ -129,9 +129,7 @@ def test_first_db_save_requires_secret_when_client_identity_changes(db) -> None:
 def test_db_client_identity_change_requires_new_secret(db) -> None:
     settings = AppSettings(
         oidc_redirect_uri="https://sokora.example/auth/callback",
-        auth_config_encryption_key=(
-            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-        ),
+        auth_config_encryption_key=("MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="),
     )
     save_oidc_config(
         db,
