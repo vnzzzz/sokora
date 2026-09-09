@@ -111,9 +111,7 @@ def test_first_db_save_requires_secret_when_client_identity_changes(db) -> None:
         oidc_client_id="legacy-client",
         oidc_client_secret="legacy-secret",
         oidc_redirect_uri="https://sokora.example/auth/callback",
-        auth_config_encryption_key=(
-            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-        ),
+        auth_config_encryption_key=("MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="),
     )
 
     with pytest.raises(AuthConfigValidationError, match="client secret"):
