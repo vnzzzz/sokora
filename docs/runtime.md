@@ -1,6 +1,6 @@
 # Production container runtime contract
 
-sokoraのproduction artifactは、deployment targetに依存しない共通OCI imageとする。この文書は**image/runtimeが満たすprovider非依存contract**のSSoTであり、providerごとの実装statusと入口は [Deployment guide](deployment.md) を参照する。共通imageとdeployment adapterを分離する判断理由は [ADR 0004](adr/0004-provider-neutral-oci-deployment.md) に記録する。
+sokoraのproduction artifactは、deployment targetに依存しない共通OCI imageとする。この文書は**image/runtimeが満たすprovider非依存contract**のSSoTである。一般的なcontainer環境への配置条件とDB構成は [Deployment guide](deployment.md)、provider別adapterを持たない現在の判断は [ADR 0005](adr/0005-provider-neutral-deployment-contract.md) を参照する。
 
 ## Artifact boundary
 
@@ -77,7 +77,7 @@ postgresql://user:password@db.example:5432/sokora
 postgresql://user:password@db.example:5432/sokora?sslmode=require
 ```
 
-bare `postgresql://` / `postgres://`はproduction dependencyのPsycopg 3へ内部正規化する。Cloud SQL for PostgreSQL、Amazon RDS/Aurora PostgreSQL、Azure Database for PostgreSQL等の差分はdeployment adapter側のnetwork、identity、TLS、secret injection等で吸収し、application/DB access層へprovider SDKを追加しない。
+bare `postgresql://` / `postgres://`はproduction dependencyのPsycopg 3へ内部正規化する。external / managed PostgreSQLもapplicationからは標準PostgreSQL接続として扱う。network、TLS、credential/secret injection等はdeployment environment側で構成し、application/DB access層へprovider固有SDKやDB proxy processを追加しない。
 
 ### Horizontal multi-replica consistency
 
@@ -127,16 +127,20 @@ local Make contract:
 
 Docker client自身のproxy configurationが別途適用される場合があるため、Makefileの`proxy`設定とDocker daemon/client設定を混同しない。
 
-## Deployment adapter boundary
+## Deployment environment boundary
 
-provider adapterは、共通image/runtime contractを変更せず次を所有する。
+sokora repositoryが所有するのは、共通image/runtime contractと、SQLite / PostgreSQLのapplication-level contractまでとする。
 
-- registry / image delivery
+deployment environment側で構成するもの:
+
+- image registry / image delivery
 - service/container platform configuration
 - network / ingress / TLS
 - workload identity / secret injection
-- external PostgreSQLへのprovider固有接続
+- external / managed PostgreSQLのprovisioningと接続network
 - platform probe / scaling
 - provider固有CLI、config、IaC
 
-現時点でclosed-network adapterは実装済み。GCP/AWS/Azure adapterは #57 / #70 / #71 でplannedであり、未実装targetをdeploy support済みとは扱わない。statusと入口は [Deployment guide](deployment.md) を参照する。
+特定cloud provider向けのadapter、deploy script、IaC、support matrixはrepositoryで提供しない。一般的な配置条件は [Deployment guide](deployment.md) を参照する。
+
+closed-network Docker deploymentは実装済みのdistribution targetとして例外的にrepository-owned assetsを持つ。bundle、Compose、operator手順、upgrade/rollback、validationは [Closed-network deployment](closed-deployment.md) を参照する。
