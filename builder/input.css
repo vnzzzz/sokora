@@ -68,6 +68,10 @@
 }
 
 /* Shared application shell */
+html {
+  scrollbar-gutter: stable;
+}
+
 .app-shell {
   --sidebar-width: 200px;
   width: 100%;
@@ -81,19 +85,14 @@ html[data-sidebar-open="false"] .app-shell {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   max-width: var(--sidebar-width);
-  transition:
-    width 0.3s ease-in-out,
-    min-width 0.3s ease-in-out,
-    max-width 0.3s ease-in-out;
+  overflow-x: hidden;
+  transition: none;
 }
 
 .app-main {
-  width: calc(100% - var(--sidebar-width));
   min-width: 0;
   margin-left: var(--sidebar-width);
-  transition:
-    width 0.3s ease-in-out,
-    margin-left 0.3s ease-in-out;
+  transition: none;
 }
 
 .sidebar-nav-link {
@@ -112,8 +111,35 @@ html[data-sidebar-open="false"] .sidebar-label {
   display: none;
 }
 
+.sidebar-toggle {
+  transition: none;
+}
+
 html[data-sidebar-open="false"] .sidebar-toggle {
   transform: rotate(180deg);
+}
+
+html.sidebar-animating .sidebar-panel {
+  transition:
+    width 0.3s ease-in-out,
+    min-width 0.3s ease-in-out,
+    max-width 0.3s ease-in-out;
+}
+
+html.sidebar-animating .app-main {
+  transition: margin-left 0.3s ease-in-out;
+}
+
+html.sidebar-animating .sidebar-toggle {
+  transition: transform 0.3s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.sidebar-animating .sidebar-panel,
+  html.sidebar-animating .app-main,
+  html.sidebar-animating .sidebar-toggle {
+    transition-duration: 0s;
+  }
 }
 
 html,
