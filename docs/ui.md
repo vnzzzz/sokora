@@ -99,3 +99,7 @@ generated assetを直接編集せず、次の既存flowを利用します。
 ```bash
 make assets
 ```
+
+local build、production image、Dev Containerはいずれも `scripts/build_assets.sh` を共通の
+asset build boundaryとして利用します。Tailwind content scanやvendor bundle取得を各Dockerfileへ
+重複実装しません。
