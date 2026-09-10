@@ -9,8 +9,7 @@
 
     {% set current_path = request.url.path if request else "" %}
     {% set auth_enabled = request.app.state.auth_enabled if request and request.app else True %}
-    {% set runtime_settings = request.app.state.settings_provider() if request and request.app else None %}
-    {% set local_admin_enabled = runtime_settings and runtime_settings.local_auth_enabled and runtime_settings.local_admin_username and runtime_settings.local_admin_password %}
+    {% set local_admin_enabled = request.app.state.local_admin_enabled if request and request.app else False %}
     {% set auth_session = request.session.get("auth") if request and request.session else None %}
     {% set is_admin = auth_session and auth_session.get("role") == "admin" %}
     {% set auth_username = auth_session.get("username") if auth_session else None %}
@@ -36,56 +35,59 @@
             'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen
           }"
         >
-          {% if show_user_menu or show_admin_login_entry %}
+          {% if show_user_menu %}
             <header
               class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
               data-testid="user-menu-wrapper"
             >
-              {% if show_user_menu %}
-                <div class="pointer-events-auto flex items-center gap-2" data-testid="user-menu">
-                  <div class="flex items-center gap-2 px-2.5 py-1.5 bg-base-200 rounded-full shadow-sm">
-                    <div class="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs">
-                      {{ (auth_username | first | upper) if auth_username else "U" }}
-                    </div>
-                    <span class="text-xs font-semibold text-base-content">
-                      {{ auth_username or "ログインユーザー" }}
-                    </span>
+              <div class="pointer-events-auto flex items-center gap-2" data-testid="user-menu">
+                <div class="flex items-center gap-2 px-2.5 py-1.5 bg-base-200 rounded-full shadow-sm">
+                  <div class="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs">
+                    {{ (auth_username | first | upper) if auth_username else "U" }}
                   </div>
-                  <form action="/auth/logout" method="post">
-                    <button
-                      type="submit"
-                      class="btn btn-ghost btn-circle btn-xs"
-                      title="ログアウト"
-                      aria-label="ログアウト"
-                      data-testid="logout-button"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="w-4 h-4"
-                        data-testid="logout-icon"
-                      >
-                        <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15" />
-                        <path d="M9.75 12h9" />
-                        <path d="m18 15 2.75-3L18 9" />
-                      </svg>
-                    </button>
-                  </form>
+                  <span class="text-xs font-semibold text-base-content">
+                    {{ auth_username or "ログインユーザー" }}
+                  </span>
                 </div>
-              {% else %}
-                <a
-                  href="/auth/login/admin?next={{ current_path }}"
-                  class="pointer-events-auto btn btn-ghost btn-sm"
-                  data-testid="admin-login-entry"
-                >
-                  管理者ログイン
-                </a>
-              {% endif %}
+                <form action="/auth/logout" method="post">
+                  <button
+                    type="submit"
+                    class="btn btn-ghost btn-circle btn-xs"
+                    title="ログアウト"
+                    aria-label="ログアウト"
+                    data-testid="logout-button"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="w-4 h-4"
+                      data-testid="logout-icon"
+                    >
+                      <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15" />
+                      <path d="M9.75 12h9" />
+                      <path d="m18 15 2.75-3L18 9" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </header>
+          {% elif show_admin_login_entry %}
+            <header
+              class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
+              data-testid="admin-login-entry-wrapper"
+            >
+              <a
+                href="/auth/login/admin?next={{ current_path | urlencode }}"
+                class="pointer-events-auto btn btn-ghost btn-sm"
+                data-testid="admin-login-entry"
+              >
+                管理者ログイン
+              </a>
             </header>
           {% endif %}
           <div class="space-y-4">
