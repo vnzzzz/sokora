@@ -59,7 +59,8 @@ HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加
 analysis画面は `#analysis-view` をHTMX replacement boundaryとし、期間変更はbrowser historyへ
 URLをpushします。勤怠種別filterは同じpage adapterへGETしてserver-sideでtable projectionを
 再renderしますが、選択状態はURL/historyへ残しません。history restore requestではfull pageを
-返し、通常のHTMX requestだけfragment responseにします。
+返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけ
+fragment responseにします。
 
 ### Styling boundary
 
