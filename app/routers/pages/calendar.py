@@ -45,15 +45,9 @@ def get_calendar(
         month=current_month,
     )
 
-    headers = (
-        {"HX-Reswap": "innerHTML"}
-        if request.headers.get("HX-Request") == "true"
-        else {}
-    )
     return templates.TemplateResponse(
         "components/top/summary_calendar.html",
         {"request": request, **view_model},
-        headers=headers,
     )
 
 
