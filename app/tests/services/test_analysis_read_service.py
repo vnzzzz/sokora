@@ -171,3 +171,40 @@ def test_fiscal_year_view_model_uses_april_to_march_period(
     assert period["label"] == "2031年度"
     assert period["start"] == date(2031, 4, 1)
     assert period["end"] == date(2032, 3, 31)
+
+
+def test_location_selection_filters_user_totals_and_date_groups(
+    db_with_data: Session,
+) -> None:
+    _add_reference_data(db_with_data)
+    selected_location = (
+        db_with_data.query(models.Location)
+        .filter(models.Location.name == "Analysis Office Later")
+        .one()
+    )
+    assert selected_location.id is not None
+
+    view_model = analysis_read_service.get_analysis_page_view_model(
+        db_with_data,
+        month="2031-05",
+        selected_location_ids=[int(selected_location.id)],
+        today=date(2031, 5, 15),
+    )
+
+    later_group = next(
+        section
+        for section in view_model["group_sections"]
+        if section["name"] == "Analysis Group Later"
+    )
+    alpha = next(
+        user
+        for user_type in later_group["user_types"]
+        for user in user_type["users"]
+        if user["user_id"] == "analysis-alpha"
+    )
+
+    assert view_model["selected_location_ids"] == [int(selected_location.id)]
+    assert alpha["total_days"] == 1
+    assert [group["location_name"] for group in alpha["date_groups"]] == [
+        "Analysis Office Later"
+    ]
