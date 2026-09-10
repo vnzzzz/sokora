@@ -1,10 +1,10 @@
-{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', user_id=None, class='') -%}
+{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', user_id=None, class='', swap='outerHTML') -%}
 <div class="btn-group shadow-sm {{ class }}">
   <button
     class="btn btn-sm btn-outline"
     hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}?month={{ prev_month }}"
     hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
+    hx-swap="{{ swap }}"
   >
     ◀︎
   </button>
@@ -13,7 +13,7 @@
     class="btn btn-sm btn-neutral"
     hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}"
     hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
+    hx-swap="{{ swap }}"
   >
     今月
   </button>
@@ -22,7 +22,7 @@
     class="btn btn-sm btn-outline"
     hx-get="{{ url_base }}{% if user_id %}/{{ user_id }}{% endif %}?month={{ next_month }}"
     hx-target="#{{ target_id }}"
-    hx-swap="outerHTML"
+    hx-swap="{{ swap }}"
   >
     ▶︎
   </button>
