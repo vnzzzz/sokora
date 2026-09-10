@@ -34,7 +34,9 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
 
     page.go_back()
     expect(page).to_have_url(ANALYSIS_URL, timeout=5000)
-    expect(page.locator(".analysis-period-label")).to_have_text(initial_label, timeout=5000)
+    expect(page.locator(".analysis-period-label")).to_have_text(
+        initial_label, timeout=5000
+    )
 
 
 def test_analysis_period_mode_switch_uses_htmx_navigation(page: Page) -> None:
@@ -59,7 +61,9 @@ def test_analysis_period_mode_switch_uses_htmx_navigation(page: Page) -> None:
     expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
 
 
-def test_analysis_location_filter_updates_table_without_changing_url(page: Page) -> None:
+def test_analysis_location_filter_updates_table_without_changing_url(
+    page: Page,
+) -> None:
     page.goto(ANALYSIS_URL)
 
     checkbox = page.locator(".location-checkbox").first
