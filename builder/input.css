@@ -243,12 +243,11 @@ body {
 }
 
 /* Calendar state follows the active Sokora theme, not OS dark-mode state. */
-.calendar-day-surface[data-day-kind="holiday"],
-.calendar-day-surface[data-day-kind="sunday"] {
+.calendar-day-surface:where([data-day-kind="holiday"], [data-day-kind="sunday"]) {
   background-color: rgb(var(--calendar-sunday-surface) / 0.1);
 }
 
-.calendar-day-surface[data-day-kind="saturday"] {
+.calendar-day-surface:where([data-day-kind="saturday"]) {
   background-color: rgb(var(--calendar-saturday-surface) / 0.1);
 }
 
