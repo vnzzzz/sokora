@@ -40,6 +40,12 @@
   function initializeCalendar() {
     if (!calendarArea.querySelector('#calendar-metadata')) return
 
+    const selectedTarget = calendarArea.querySelector('th.selected-date[data-date]')
+    if (selectedTarget) {
+      loadDayDetail(selectedTarget.dataset.date)
+      return
+    }
+
     const todayDate = getTodayDate()
     const target =
       calendarArea.querySelector(`th.calendar-cell[data-date="${todayDate}"]`) ||
