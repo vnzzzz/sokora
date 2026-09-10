@@ -25,9 +25,10 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
     OpenAPI等の明示prefixはsessionなしで到達可能にし、それ以外はsessionの ``auth``
     identityを要求する。
 
-    未認証APIはredirectせず401 JSONを返し、browser pageは元のrelative path/queryを
-    ``next`` としてloginへ307 redirectする。ここではadmin role等のauthorizationまでは
-    判定せず、admin-only policyはdependency側へ分離する。
+    未認証APIはredirectせず401 JSONを返す。通常のbrowser pageは元のrelative path/queryを
+    ``next`` としてloginへ307 redirectし、HTMX requestはbrowserのpage-level URLを戻り先に
+    した ``HX-Redirect`` でtop-level navigationさせる。ここではadmin role等のauthorization
+    までは判定せず、admin-only policyはdependency側へ分離する。
     """
 
     def __init__(
