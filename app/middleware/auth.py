@@ -82,6 +82,8 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
 
         next_path = self._build_next_path(request)
         login_url = f"/auth/login?next={urllib.parse.quote(next_path)}&reason=reauth"
+        if request.headers.get("HX-Request") == "true":
+            return Response(status_code=200, headers={"HX-Redirect": login_url})
         return RedirectResponse(url=login_url, status_code=307)
 
     def _build_next_path(self, request: Request) -> str:
