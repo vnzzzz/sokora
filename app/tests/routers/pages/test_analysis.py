@@ -92,7 +92,6 @@ async def test_htmx_location_filter_returns_table_fragment(
     assert 'id="analysis-view"' not in response.text
 
 
-
 async def test_htmx_history_restore_returns_full_page(
     async_client: AsyncClient,
     db_with_data: Session,
@@ -110,7 +109,6 @@ async def test_htmx_history_restore_returns_full_page(
     assert response.status_code == status.HTTP_200_OK
     assert "<!DOCTYPE html>" in response.text
     assert 'id="analysis-view"' in response.text
-
 
 
 async def test_fiscal_year_analysis_preserves_period_contract(
