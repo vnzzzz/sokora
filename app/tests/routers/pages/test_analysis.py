@@ -73,6 +73,26 @@ async def test_htmx_analysis_returns_fragment(
     assert "<html" not in response.text
 
 
+async def test_htmx_location_filter_returns_table_fragment(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis?month=2031-05",
+        headers={
+            "HX-Request": "true",
+            "HX-Target": "analysis-table-region",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'id="analysis-table-region"' in response.text
+    assert 'id="analysis-view"' not in response.text
+
+
+
 async def test_htmx_history_restore_returns_full_page(
     async_client: AsyncClient,
     db_with_data: Session,
