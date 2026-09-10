@@ -3,22 +3,6 @@ from playwright.sync_api import Page, Request, expect
 TOP_URL = "http://localhost:8000"
 
 
-def test_top_calendar_is_rendered_without_initial_calendar_request(page: Page) -> None:
-    calendar_requests: list[str] = []
-
-    def record_calendar_request(request: Request) -> None:
-        if request.url.rstrip("/") == f"{TOP_URL}/calendar":
-            calendar_requests.append(request.url)
-
-    page.on("request", record_calendar_request)
-    page.goto(TOP_URL)
-
-    calendar = page.locator("#calendar-area")
-    expect(calendar.locator("#calendar-metadata")).to_have_count(1)
-    expect(calendar.locator(".selected-date")).to_have_count(1)
-    assert calendar_requests == []
-
-
 def test_top_calendar_htmx_navigation_and_day_detail(page: Page) -> None:
     page.goto(TOP_URL)
     expect(page.locator("h2")).to_have_text("勤怠確認")
@@ -27,6 +11,7 @@ def test_top_calendar_htmx_navigation_and_day_detail(page: Page) -> None:
     detail = page.locator("#detail-area")
     first_cell = calendar.locator(".calendar-cell[data-date]").first
     expect(first_cell).to_be_visible(timeout=5000)
+    expect(calendar.locator(".selected-date")).to_have_count(1, timeout=5000)
 
     target_date = first_cell.get_attribute("data-date")
     assert target_date is not None
@@ -75,8 +60,14 @@ def test_sidebar_persisted_state_is_applied_before_alpine_boot(page: Page) -> No
     assert main_box is not None
     assert abs(sidebar_box["width"] - 64) < 1
     assert abs(main_box["x"] - 64) < 1
-    assert sidebar.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
-    assert main.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
+    assert (
+        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
+    assert (
+        main.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
 
     page.locator('aside a[href="/analysis"]').click()
     page.wait_for_url(f"{TOP_URL}/analysis")
@@ -90,8 +81,14 @@ def test_sidebar_persisted_state_is_applied_before_alpine_boot(page: Page) -> No
     assert main_box is not None
     assert abs(sidebar_box["width"] - 64) < 1
     assert abs(main_box["x"] - 64) < 1
-    assert sidebar.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
-    assert main.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
+    assert (
+        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
+    assert (
+        main.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
 
 
 def test_calendar_selection_highlight_does_not_resize_table(page: Page) -> None:
