@@ -121,7 +121,7 @@
               {% set day_kind = item.day_kind %}
 
               <td
-                class="location-tone-surface calendar-day-surface text-center hover:bg-base-300 cursor-pointer p-1 calendar-cell"
+                class="calendar-day-surface text-center hover:bg-base-300 cursor-pointer p-1 calendar-cell"
                 hx-get="/calendar/day/{{ day.date }}"
                 hx-target="#detail-area"
                 data-date="{{ day.date }}"
