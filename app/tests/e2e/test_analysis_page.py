@@ -45,7 +45,11 @@ def test_analysis_period_mode_switch_uses_htmx_navigation(page: Page) -> None:
     expect(page.locator("#period-year")).to_be_checked(timeout=5000)
     expect(page.locator("#year-selection")).to_be_visible()
     expect(page.locator(".analysis-period-label")).to_contain_text("年度")
-    expect(page).to_have_url(r"/analysis\?mode=year&year=\d{4}", timeout=5000)
+    selected_year = page.locator("#year-select").input_value()
+    expect(page).to_have_url(
+        f"{ANALYSIS_URL}?mode=year&year={selected_year}",
+        timeout=5000,
+    )
 
     current_month = date.today().strftime("%Y-%m")
     page.locator("#period-month").check()
