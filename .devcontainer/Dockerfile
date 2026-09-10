@@ -1,11 +1,10 @@
-# 1) CSS ビルド用ステージ
-FROM node:22-bookworm-slim AS css-builder
+# 1) frontend assetビルド用ステージ
+FROM node:22-bookworm-slim AS assets-builder
 WORKDIR /src
-COPY builder/package.json builder/tailwind.config.js builder/postcss.config.js ./
-COPY builder/input.css ./src/input.css
-RUN npm install
-RUN mkdir -p /build/css
-RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
+COPY builder ./builder
+COPY app ./app
+COPY scripts/build_assets.sh ./scripts/build_assets.sh
+RUN chmod +x ./scripts/build_assets.sh && ./scripts/build_assets.sh
 
 # 2) 開発コンテナ
 FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm
@@ -53,12 +52,10 @@ RUN mkdir -p \
 # 祝日データをビルド時に取得
 RUN python3 scripts/build_holiday_cache.py
 
-# CSS 成果物をコピー
-COPY --from=css-builder /build/css/main.css /app/assets/css/main.css
-
-# フロントエンドライブラリの取得
-RUN curl -Lo /app/assets/js/htmx.min.js https://unpkg.com/htmx.org/dist/htmx.min.js && \
-  curl -Lo /app/assets/js/alpine.min.js https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js
+# productionと同じbuild scriptで生成したfrontend assetsをコピー
+COPY --from=assets-builder /src/assets/css/main.css /app/assets/css/main.css
+COPY --from=assets-builder /src/assets/js/htmx.min.js /app/assets/js/htmx.min.js
+COPY --from=assets-builder /src/assets/js/alpine.min.js /app/assets/js/alpine.min.js
 
 EXPOSE 8000
 

@@ -351,19 +351,14 @@ class TestCalendarDataBuilding:
 
     @patch("app.utils.calendar_utils.is_holiday")
     @patch("app.utils.calendar_utils.get_holiday_name")
-    @patch("app.utils.calendar_utils.generate_location_data")
     def test_build_week_calendar_data(
         self,
-        mock_generate_location_data: Any,
         mock_get_holiday_name: Any,
         mock_is_holiday: Any,
     ) -> None:
         """build_week_calendar_data関数のテスト"""
         mock_is_holiday.return_value = False
         mock_get_holiday_name.return_value = None
-        mock_generate_location_data.return_value = [
-            {"id": 1, "name": "オフィス", "count": 5}
-        ]
 
         result = build_week_calendar_data(
             "2024-01-15", [self.attendance], self.attendance_counts, self.location_types
@@ -379,19 +374,14 @@ class TestCalendarDataBuilding:
 
     @patch("app.utils.calendar_utils.is_holiday")
     @patch("app.utils.calendar_utils.get_holiday_name")
-    @patch("app.utils.calendar_utils.generate_location_data")
     def test_build_calendar_data(
         self,
-        mock_generate_location_data: Any,
         mock_get_holiday_name: Any,
         mock_is_holiday: Any,
     ) -> None:
         """build_calendar_data関数のテスト"""
         mock_is_holiday.return_value = False
         mock_get_holiday_name.return_value = None
-        mock_generate_location_data.return_value = [
-            {"id": 1, "name": "オフィス", "count": 5}
-        ]
 
         result = build_calendar_data(
             "2024-01", [self.attendance], self.attendance_counts, self.location_types
@@ -413,21 +403,16 @@ class TestCalendarDataBuilding:
         mock_is_holiday.side_effect = lambda d: d.day == 1  # 1日を祝日に設定
         mock_get_holiday_name.side_effect = lambda d: "元日" if d.day == 1 else None
 
-        with patch(
-            "app.utils.calendar_utils.generate_location_data"
-        ) as mock_generate_location_data:
-            mock_generate_location_data.return_value = []
+        result = build_calendar_data("2024-01", [], {}, self.location_types)
 
-            result = build_calendar_data("2024-01", [], {}, self.location_types)
+        # 元日の情報を確認
+        new_year_day = None
+        for week in result["weeks"]:
+            for day in week:
+                if day["day"] == 1:
+                    new_year_day = day
+                    break
 
-            # 元日の情報を確認
-            new_year_day = None
-            for week in result["weeks"]:
-                for day in week:
-                    if day["day"] == 1:
-                        new_year_day = day
-                        break
-
-            assert new_year_day is not None
-            assert new_year_day["is_holiday"] is True
-            assert new_year_day["holiday_name"] == "元日"
+        assert new_year_day is not None
+        assert new_year_day["is_holiday"] is True
+        assert new_year_day["holiday_name"] == "元日"

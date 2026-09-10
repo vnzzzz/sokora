@@ -117,3 +117,125 @@ body {
   opacity: 0.8;
   transition: all 0.2s;
 }
+
+/*
+ * Semantic presentation palette
+ * -----------------------------
+ * Runtime code emits only semantic data attributes. Color choices live here and
+ * do not depend on Tailwind/daisyUI class names.
+ */
+:root,
+[data-theme="light"] {
+  --location-tone-0: 22 163 74;
+  --location-tone-1: 37 99 235;
+  --location-tone-2: 202 138 4;
+  --location-tone-3: 220 38 38;
+  --location-tone-4: 8 145 178;
+  --location-tone-5: 124 58 237;
+  --location-tone-6: 219 39 119;
+  --location-tone-7: 5 150 105;
+  --location-tone-8: 234 88 12;
+  --location-tone-9: 79 70 229;
+  --location-tone-unresolved: 100 116 139;
+
+  --calendar-sunday: 220 38 38;
+  --calendar-sunday-surface: 127 29 29;
+  --calendar-saturday: 37 99 235;
+  --calendar-saturday-surface: 30 58 138;
+}
+
+[data-theme="dark"] {
+  --location-tone-0: 74 222 128;
+  --location-tone-1: 96 165 250;
+  --location-tone-2: 250 204 21;
+  --location-tone-3: 248 113 113;
+  --location-tone-4: 34 211 238;
+  --location-tone-5: 167 139 250;
+  --location-tone-6: 244 114 182;
+  --location-tone-7: 52 211 153;
+  --location-tone-8: 251 146 60;
+  --location-tone-9: 129 140 248;
+  --location-tone-unresolved: 148 163 184;
+
+  --calendar-sunday: 248 113 113;
+  --calendar-sunday-surface: 252 165 165;
+  --calendar-saturday: 96 165 250;
+  --calendar-saturday-surface: 147 197 253;
+}
+
+.location-tone-text,
+.location-tone-surface,
+.location-tone-chip {
+  --location-tone-rgb: var(--location-tone-unresolved);
+}
+
+[data-location-tone="0"] {
+  --location-tone-rgb: var(--location-tone-0);
+}
+
+[data-location-tone="1"] {
+  --location-tone-rgb: var(--location-tone-1);
+}
+
+[data-location-tone="2"] {
+  --location-tone-rgb: var(--location-tone-2);
+}
+
+[data-location-tone="3"] {
+  --location-tone-rgb: var(--location-tone-3);
+}
+
+[data-location-tone="4"] {
+  --location-tone-rgb: var(--location-tone-4);
+}
+
+[data-location-tone="5"] {
+  --location-tone-rgb: var(--location-tone-5);
+}
+
+[data-location-tone="6"] {
+  --location-tone-rgb: var(--location-tone-6);
+}
+
+[data-location-tone="7"] {
+  --location-tone-rgb: var(--location-tone-7);
+}
+
+[data-location-tone="8"] {
+  --location-tone-rgb: var(--location-tone-8);
+}
+
+[data-location-tone="9"] {
+  --location-tone-rgb: var(--location-tone-9);
+}
+
+.location-tone-text {
+  color: rgb(var(--location-tone-rgb));
+}
+
+.location-tone-surface {
+  background-color: rgb(var(--location-tone-rgb) / 0.15);
+}
+
+.location-tone-chip {
+  color: rgb(var(--location-tone-rgb));
+  background-color: rgb(var(--location-tone-rgb) / 0.15);
+}
+
+/* Calendar state follows the active Sokora theme, not OS dark-mode state. */
+.calendar-day-surface:where([data-day-kind="holiday"], [data-day-kind="sunday"]) {
+  background-color: rgb(var(--calendar-sunday-surface) / 0.1);
+}
+
+.calendar-day-surface:where([data-day-kind="saturday"]) {
+  background-color: rgb(var(--calendar-saturday-surface) / 0.1);
+}
+
+.calendar-day-label[data-day-kind="holiday"],
+.calendar-day-label[data-day-kind="sunday"] {
+  color: rgb(var(--calendar-sunday));
+}
+
+.calendar-day-label[data-day-kind="saturday"] {
+  color: rgb(var(--calendar-saturday));
+}

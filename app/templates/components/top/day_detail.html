@@ -37,7 +37,7 @@
               {% if user.note %}
               <div class="tooltip tooltip-custom tooltip-right" data-tip="{{ user.note }}">
                 <span
-                  class="{{ user.location_text_class }} {{ user.location_bg_class }} px-2 py-1 rounded whitespace-nowrap ml-1 text-xs flex items-center"
+                  class="location-tone-chip px-2 py-1 rounded whitespace-nowrap ml-1 text-xs flex items-center" data-location-tone="{{ user.location_tone }}"
                 >
                   {{ user.location_name }}
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 ml-1">
@@ -47,7 +47,7 @@
               </div>
               {% else %}
               <span
-                class="{{ user.location_text_class }} {{ user.location_bg_class }} px-2 py-1 rounded whitespace-nowrap ml-1 text-xs"
+                class="location-tone-chip px-2 py-1 rounded whitespace-nowrap ml-1 text-xs" data-location-tone="{{ user.location_tone }}"
               >{{ user.location_name }}</span>
               {% endif %}
             </li>

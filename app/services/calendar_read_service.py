@@ -15,7 +15,7 @@ from app.utils.calendar_utils import (
     get_today_formatted,
     parse_month,
 )
-from app.utils.ui_utils import get_location_color_classes
+from app.utils.ui_utils import UNRESOLVED_LOCATION_TONE, get_location_tone
 
 
 class MonthCalendarViewModel(TypedDict):
@@ -56,7 +56,7 @@ def get_month_view_model(
     共有DBから観測できる。祝日判定はcaller側request dependencyが束縛したcustom holiday
     snapshotをcalendar utilityが参照する前提で、ここでは独自cacheを作らない。
 
-    location metadataが集計結果と対応しない場合だけneutralな表示classへfallbackし、欠落した
+    location metadataが集計結果と対応しない場合だけneutral toneへfallbackし、欠落した
     master rowを推測して作らない。
     """
     current_month = normalize_month(month)
@@ -90,19 +90,16 @@ def get_month_view_model(
         if location is None:
             location_data.update(
                 {
-                    "text_class": "text-gray",
-                    "bg_class": "bg-gray/15",
+                    "tone": UNRESOLVED_LOCATION_TONE,
                     "category": None,
                     "order": None,
                 }
             )
             continue
 
-        color_info = get_location_color_classes(int(location.id))
         location_data.update(
             {
-                "text_class": color_info["text_class"],
-                "bg_class": color_info["bg_class"],
+                "tone": get_location_tone(int(location.id)),
                 "category": location.category,
                 "order": location.order,
             }
@@ -136,7 +133,7 @@ def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
         user_type_order = (
             int(row.user_type_order) if row.user_type_order is not None else 9999
         )
-        color_info = get_location_color_classes(int(row.location_id))
+        location_tone = get_location_tone(int(row.location_id))
 
         group_data = organized_by_group.setdefault(
             group_name,
@@ -158,8 +155,7 @@ def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
                 "group_name": group_name,
                 "note": row.note,
                 "location_name": str(row.location_name),
-                "location_text_class": color_info["text_class"],
-                "location_bg_class": color_info["bg_class"],
+                "location_tone": location_tone,
             }
         )
         user_type_sort_info[user_type_name] = (

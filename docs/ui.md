@@ -56,6 +56,22 @@ DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持�
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
+### Styling boundary
+
+runtime dataからTailwind / daisyUI class名を組み立てません。
+
+- Python/serviceは `text-primary` や `bg-success/15` のようなframework classを返さない
+- Jinjaはruntime値をclass名へ埋め込まず、`data-*` attributeでsemantic stateを表現する
+- actual color / background / visual mappingは `builder/input.css` が所有する
+- Tailwind safelistをruntime presentation contractとして使わない
+- Alpine等でclassをtoggleする場合も、sourceに完全なliteral classが存在する単純なUI stateに限定する
+
+勤怠種別の色は永続 `location_id` を10個のpalette slotへ写像し、templateへは
+`data-location-tone="0..9"` だけを渡します。名称変更や表示順変更ではtoneは変わりません。
+実際の10色paletteはCSSだけで変更できます。
+
+週末/祝日も `data-day-kind` で状態を渡し、色指定をtemplateから分離します。
+
 ## Template layout
 
 ```text
@@ -83,3 +99,7 @@ generated assetを直接編集せず、次の既存flowを利用します。
 ```bash
 make assets
 ```
+
+local build、production image、Dev Containerはいずれも `scripts/build_assets.sh` を共通の
+asset build boundaryとして利用します。Tailwind content scanやvendor bundle取得を各Dockerfileへ
+重複実装しません。

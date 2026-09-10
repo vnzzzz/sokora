@@ -12,7 +12,7 @@ from app.utils.calendar_utils import (
     build_calendar_data,
     build_week_calendar_data,
 )
-from app.utils.ui_utils import get_location_color_classes
+from app.utils.ui_utils import get_location_tone
 
 UserViewRow = tuple[str, str, int, models.User]
 UserTypeSection = tuple[float, str, list[UserViewRow]]
@@ -36,7 +36,7 @@ class WeeklyAttendanceViewModel(AttendanceDirectoryViewModel):
     next_week: str
     current_week: str
     location_objects: list[models.Location]
-    location_styles: dict[str, dict[str, str]]
+    location_tones: dict[str, int]
     user_attendances: dict[str, dict[str, bool]]
     user_attendance_locations: dict[str, dict[str, str]]
     user_attendance_notes: dict[str, dict[str, Optional[str]]]
@@ -59,7 +59,7 @@ class UserMonthlyCalendarViewModel(TypedDict):
     next_month: str
     current_month: str
     user_attendances: dict[str, dict[str, Any]]
-    location_styles: dict[str, dict[str, str]]
+    location_tones: dict[str, int]
     location_objects: list[models.Location]
 
 
@@ -223,11 +223,10 @@ def _attendance_counts(rows: list[models.Attendance]) -> dict[int, int]:
     return counts
 
 
-def _location_styles(
-    locations: list[models.Location],
-) -> dict[str, dict[str, str]]:
+def _location_tones(locations: list[models.Location]) -> dict[str, int]:
+    """DB identityをpresentation-neutralなpalette slotへ射影する。"""
     return {
-        str(location.name): get_location_color_classes(int(location.id))
+        str(location.name): get_location_tone(int(location.id))
         for location in locations
     }
 
@@ -295,7 +294,7 @@ def get_weekly_page_view_model(
         "next_week": str(calendar_data["next_week"]),
         "current_week": week,
         "location_objects": locations,
-        "location_styles": _location_styles(locations),
+        "location_tones": _location_tones(locations),
         "user_attendances": user_attendances,
         "user_attendance_locations": user_attendance_locations,
         "user_attendance_notes": user_attendance_notes,
@@ -363,6 +362,6 @@ def get_user_monthly_calendar_view_model(
         "next_month": str(calendar_data["next_month"]),
         "current_month": month,
         "user_attendances": user_attendances,
-        "location_styles": _location_styles(locations),
+        "location_tones": _location_tones(locations),
         "location_objects": locations,
     }
