@@ -28,7 +28,9 @@ def _assert_shell_geometry(page: Page, expected_sidebar_width: float) -> None:
     assert abs(geometry["sidebarRight"] - geometry["mainLeft"]) < 1
 
 
-def _sample_sidebar_frames(page: Page, count: int = 6) -> list[list[dict[str, float | str]]]:
+def _sample_sidebar_frames(
+    page: Page, count: int = 6
+) -> list[list[dict[str, float | str]]]:
     return page.evaluate(
         """count => new Promise(resolve => {
           const frames = []
@@ -112,9 +114,7 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     expected_width: float,
     labels_visible: bool,
 ) -> None:
-    page.add_init_script(
-        f"localStorage.setItem('sidebarOpen', '{stored_state}')"
-    )
+    page.add_init_script(f"localStorage.setItem('sidebarOpen', '{stored_state}')")
     page.route(
         "**/assets/js/alpine.min.js",
         lambda route: route.fulfill(
@@ -132,8 +132,14 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     expect(sidebar).to_be_visible(timeout=5000)
     expect(main).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, expected_width)
-    assert sidebar.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
-    assert main.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
+    assert (
+        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
+    assert (
+        main.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
     if labels_visible:
         expect(label).to_be_visible()
     else:
@@ -146,8 +152,14 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     main = page.locator(".app-main")
     expect(sidebar).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, expected_width)
-    assert sidebar.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
-    assert main.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
+    assert (
+        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
+    assert (
+        main.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
 
 
 @pytest.mark.parametrize("stored_state", ["true", "false"])
@@ -155,9 +167,7 @@ def test_sidebar_links_remain_geometrically_stable_across_full_navigation(
     page: Page,
     stored_state: str,
 ) -> None:
-    page.add_init_script(
-        f"localStorage.setItem('sidebarOpen', '{stored_state}')"
-    )
+    page.add_init_script(f"localStorage.setItem('sidebarOpen', '{stored_state}')")
     page.goto(TOP_URL)
     page.wait_for_load_state("networkidle")
 
@@ -172,7 +182,9 @@ def test_sidebar_links_remain_geometrically_stable_across_full_navigation(
     destination_geometry = destination_frames[0]
 
     assert len(source_geometry) == len(destination_geometry)
-    for source, destination in zip(source_geometry, destination_geometry, strict=True):
+    for source, destination in zip(
+        source_geometry, destination_geometry, strict=True
+    ):
         assert source["href"] == destination["href"]
         for key in ("x", "y", "width", "height"):
             assert isinstance(source[key], float | int)
@@ -192,8 +204,14 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
     toggle = page.locator("[data-sidebar-toggle]")
     expect(toggle).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, 200)
-    assert sidebar.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
-    assert main.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
+    assert (
+        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
+    assert (
+        main.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
 
     toggle.click()
     expect(root).to_have_attribute("data-sidebar-open", "false")
@@ -213,8 +231,14 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
     page.reload()
     expect(root).to_have_attribute("data-sidebar-open", "false")
     _assert_shell_geometry(page, 64)
-    assert sidebar.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
-    assert main.evaluate("element => getComputedStyle(element).transitionProperty") == "none"
+    assert (
+        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
+    assert (
+        main.evaluate("element => getComputedStyle(element).transitionProperty")
+        == "none"
+    )
 
 
 def test_calendar_selection_highlight_does_not_resize_table(page: Page) -> None:
