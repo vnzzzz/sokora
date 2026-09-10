@@ -95,8 +95,9 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
     def _build_htmx_next_path(self, request: Request) -> str:
         """HTMX fragment requestではbrowserのpage-level URLをlogin後の戻り先にする。
 
-        ``HX-Current-URL`` はbrowser address barのURLなので、same-originを確認してから
-        relative path/queryへ落とす。headerが欠ける・不正な場合はsame-origin Refererを
+        ``HX-Current-URL`` はbrowser address barのURLなので、同一authorityを確認してから
+        relative path/queryへ落とす。TLS terminationではHTTP/HTTPS差を許容する。headerが
+        欠ける・不正な場合は同一authority Refererを
         fallbackとして使い、それも利用できなければrequest pathだけへ戻す。fragment request
         自身のqueryは一時UI stateを含み得るためfallbackへ流用しない。
         """
