@@ -1,11 +1,12 @@
 # 1) CSS ビルド用ステージ
 FROM node:22-bookworm-slim AS css-builder
 WORKDIR /src
-COPY builder/package.json builder/tailwind.config.js builder/postcss.config.js ./
-COPY builder/input.css ./src/input.css
-RUN npm install
+COPY builder/package.json builder/package-lock.json builder/tailwind.config.js builder/postcss.config.js builder/input.css ./builder/
+COPY app/templates ./app/templates
+COPY app/static/js ./app/static/js
+RUN cd builder && npm install
 RUN mkdir -p /build/css
-RUN npx tailwindcss -i src/input.css -o /build/css/main.css --minify
+RUN cd builder && npx tailwindcss -i input.css -o /build/css/main.css --minify
 
 # 2) 開発コンテナ
 FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm
