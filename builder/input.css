@@ -119,139 +119,144 @@ body {
 }
 
 /*
- * Location presentation
- * ---------------------
- * Server-side code emits only data-location-tone="-1..9".
- * Tailwind/daisyUI palette knowledge lives here so design changes remain CSS-only.
+ * Semantic presentation palette
+ * -----------------------------
+ * Runtime code emits only semantic data attributes. Color choices live here and
+ * do not depend on Tailwind/daisyUI class names.
  */
-.location-tone-text[data-location-tone="-1"] {
-  @apply text-base-content/60;
+:root,
+[data-theme="light"] {
+  --location-tone-0: 22 163 74;
+  --location-tone-1: 37 99 235;
+  --location-tone-2: 202 138 4;
+  --location-tone-3: 220 38 38;
+  --location-tone-4: 8 145 178;
+  --location-tone-5: 124 58 237;
+  --location-tone-6: 219 39 119;
+  --location-tone-7: 5 150 105;
+  --location-tone-8: 234 88 12;
+  --location-tone-9: 79 70 229;
+  --location-tone-unresolved: 100 116 139;
+
+  --calendar-sunday: 220 38 38;
+  --calendar-sunday-surface: 127 29 29;
+  --calendar-saturday: 37 99 235;
+  --calendar-saturday-surface: 30 58 138;
 }
 
-.location-tone-surface[data-location-tone="-1"] {
-  @apply bg-base-300/50;
+[data-theme="dark"] {
+  --location-tone-0: 74 222 128;
+  --location-tone-1: 96 165 250;
+  --location-tone-2: 250 204 21;
+  --location-tone-3: 248 113 113;
+  --location-tone-4: 34 211 238;
+  --location-tone-5: 167 139 250;
+  --location-tone-6: 244 114 182;
+  --location-tone-7: 52 211 153;
+  --location-tone-8: 251 146 60;
+  --location-tone-9: 129 140 248;
+  --location-tone-unresolved: 148 163 184;
+
+  --calendar-sunday: 248 113 113;
+  --calendar-sunday-surface: 252 165 165;
+  --calendar-saturday: 96 165 250;
+  --calendar-saturday-surface: 147 197 253;
 }
 
-.location-tone-chip[data-location-tone="-1"] {
-  @apply text-base-content/60 bg-base-300/50;
+.location-tone-text,
+.location-tone-surface,
+.location-tone-chip {
+  --location-tone-rgb: var(--location-tone-unresolved);
 }
 
-.location-tone-text[data-location-tone="0"] {
-  @apply text-primary;
-}
-.location-tone-surface[data-location-tone="0"] {
-  @apply bg-primary/15;
-}
+.location-tone-text[data-location-tone="0"],
+.location-tone-surface[data-location-tone="0"],
 .location-tone-chip[data-location-tone="0"] {
-  @apply text-primary bg-primary/15;
+  --location-tone-rgb: var(--location-tone-0);
 }
 
-.location-tone-text[data-location-tone="1"] {
-  @apply text-secondary;
-}
-.location-tone-surface[data-location-tone="1"] {
-  @apply bg-secondary/15;
-}
+.location-tone-text[data-location-tone="1"],
+.location-tone-surface[data-location-tone="1"],
 .location-tone-chip[data-location-tone="1"] {
-  @apply text-secondary bg-secondary/15;
+  --location-tone-rgb: var(--location-tone-1);
 }
 
-.location-tone-text[data-location-tone="2"] {
-  @apply text-accent;
-}
-.location-tone-surface[data-location-tone="2"] {
-  @apply bg-accent/15;
-}
+.location-tone-text[data-location-tone="2"],
+.location-tone-surface[data-location-tone="2"],
 .location-tone-chip[data-location-tone="2"] {
-  @apply text-accent bg-accent/15;
+  --location-tone-rgb: var(--location-tone-2);
 }
 
-.location-tone-text[data-location-tone="3"] {
-  @apply text-info;
-}
-.location-tone-surface[data-location-tone="3"] {
-  @apply bg-info/15;
-}
+.location-tone-text[data-location-tone="3"],
+.location-tone-surface[data-location-tone="3"],
 .location-tone-chip[data-location-tone="3"] {
-  @apply text-info bg-info/15;
+  --location-tone-rgb: var(--location-tone-3);
 }
 
-.location-tone-text[data-location-tone="4"] {
-  @apply text-success;
-}
-.location-tone-surface[data-location-tone="4"] {
-  @apply bg-success/15;
-}
+.location-tone-text[data-location-tone="4"],
+.location-tone-surface[data-location-tone="4"],
 .location-tone-chip[data-location-tone="4"] {
-  @apply text-success bg-success/15;
+  --location-tone-rgb: var(--location-tone-4);
 }
 
-.location-tone-text[data-location-tone="5"] {
-  @apply text-warning;
-}
-.location-tone-surface[data-location-tone="5"] {
-  @apply bg-warning/15;
-}
+.location-tone-text[data-location-tone="5"],
+.location-tone-surface[data-location-tone="5"],
 .location-tone-chip[data-location-tone="5"] {
-  @apply text-warning bg-warning/15;
+  --location-tone-rgb: var(--location-tone-5);
 }
 
-.location-tone-text[data-location-tone="6"] {
-  @apply text-error;
-}
-.location-tone-surface[data-location-tone="6"] {
-  @apply bg-error/15;
-}
+.location-tone-text[data-location-tone="6"],
+.location-tone-surface[data-location-tone="6"],
 .location-tone-chip[data-location-tone="6"] {
-  @apply text-error bg-error/15;
+  --location-tone-rgb: var(--location-tone-6);
 }
 
-.location-tone-text[data-location-tone="7"] {
-  @apply text-violet-600 dark:text-violet-400;
-}
-.location-tone-surface[data-location-tone="7"] {
-  @apply bg-violet-500/15;
-}
+.location-tone-text[data-location-tone="7"],
+.location-tone-surface[data-location-tone="7"],
 .location-tone-chip[data-location-tone="7"] {
-  @apply text-violet-600 bg-violet-500/15 dark:text-violet-400;
+  --location-tone-rgb: var(--location-tone-7);
 }
 
-.location-tone-text[data-location-tone="8"] {
-  @apply text-rose-600 dark:text-rose-400;
-}
-.location-tone-surface[data-location-tone="8"] {
-  @apply bg-rose-500/15;
-}
+.location-tone-text[data-location-tone="8"],
+.location-tone-surface[data-location-tone="8"],
 .location-tone-chip[data-location-tone="8"] {
-  @apply text-rose-600 bg-rose-500/15 dark:text-rose-400;
+  --location-tone-rgb: var(--location-tone-8);
 }
 
-.location-tone-text[data-location-tone="9"] {
-  @apply text-cyan-600 dark:text-cyan-400;
-}
-.location-tone-surface[data-location-tone="9"] {
-  @apply bg-cyan-500/15;
-}
+.location-tone-text[data-location-tone="9"],
+.location-tone-surface[data-location-tone="9"],
 .location-tone-chip[data-location-tone="9"] {
-  @apply text-cyan-600 bg-cyan-500/15 dark:text-cyan-400;
+  --location-tone-rgb: var(--location-tone-9);
 }
 
+.location-tone-text {
+  color: rgb(var(--location-tone-rgb));
+}
 
-/* Calendar date state: template emits state, CSS owns presentation. */
+.location-tone-surface {
+  background-color: rgb(var(--location-tone-rgb) / 0.15);
+}
+
+.location-tone-chip {
+  color: rgb(var(--location-tone-rgb));
+  background-color: rgb(var(--location-tone-rgb) / 0.15);
+}
+
+/* Calendar state follows the active Sokora theme, not OS dark-mode state. */
 .calendar-day-surface[data-day-kind="holiday"],
 .calendar-day-surface[data-day-kind="sunday"] {
-  @apply bg-opacity-90 bg-red-900/10 dark:bg-red-300/10;
+  background-color: rgb(var(--calendar-sunday-surface) / 0.1);
 }
 
 .calendar-day-surface[data-day-kind="saturday"] {
-  @apply bg-opacity-90 bg-blue-900/10 dark:bg-blue-300/10;
+  background-color: rgb(var(--calendar-saturday-surface) / 0.1);
 }
 
 .calendar-day-label[data-day-kind="holiday"],
 .calendar-day-label[data-day-kind="sunday"] {
-  @apply text-red-600 dark:text-red-400;
+  color: rgb(var(--calendar-sunday));
 }
 
 .calendar-day-label[data-day-kind="saturday"] {
-  @apply text-blue-600 dark:text-blue-400;
+  color: rgb(var(--calendar-saturday));
 }
