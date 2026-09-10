@@ -10,6 +10,12 @@
           value="month"
           class="radio radio-sm"
           {% if not is_year_mode %}checked{% endif %}
+          hx-get="/analysis?month={{ current_month }}"
+          hx-trigger="change"
+          hx-target="#analysis-view"
+          hx-swap="outerHTML"
+          hx-push-url="true"
+          hx-params="none"
         />
         <span class="text-sm">月別</span>
       </label>
@@ -21,6 +27,12 @@
           value="year"
           class="radio radio-sm"
           {% if is_year_mode %}checked{% endif %}
+          hx-get="/analysis?mode=year&amp;year={{ current_year }}"
+          hx-trigger="change"
+          hx-target="#analysis-view"
+          hx-swap="outerHTML"
+          hx-push-url="true"
+          hx-params="none"
         />
         <span class="text-sm">年度別</span>
       </label>
@@ -30,14 +42,29 @@
       <input
         type="month"
         id="month-input"
+        name="month"
         class="input input-bordered input-sm w-48"
         value="{{ current_month or '' }}"
+        hx-get="/analysis"
+        hx-trigger="change"
+        hx-target="#analysis-view"
+        hx-swap="outerHTML"
+        hx-push-url="true"
       />
     </div>
 
     <div id="year-selection" class="{% if not is_year_mode %}hidden{% endif %}">
       <div class="flex items-center gap-2">
-        <select id="year-select" class="select select-bordered select-sm w-32">
+        <select
+          id="year-select"
+          name="year"
+          class="select select-bordered select-sm w-32"
+          hx-get="/analysis?mode=year"
+          hx-trigger="change"
+          hx-target="#analysis-view"
+          hx-swap="outerHTML"
+          hx-push-url="true"
+        >
           {% for year_option in year_options %}
           <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
             {{ year_option }}年度
