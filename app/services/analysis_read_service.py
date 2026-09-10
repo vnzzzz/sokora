@@ -184,8 +184,7 @@ def _build_group_sections(
 
             dates = location_details.get(location_id, {}).get(user_id_str, [])
             if dates and (
-                selected_location_ids is None
-                or location_id in selected_location_ids
+                selected_location_ids is None or location_id in selected_location_ids
             ):
                 date_groups.append(
                     {
