@@ -1,4 +1,4 @@
-{% extends "layout/base.html" %} {% import "components/macros/ui.html" as ui %} {% set title_text = "勤怠確認" %} {%
+{% extends "layout/base.html" %} {% set title_text = "勤怠確認" %} {%
 block content %}
 <div class="p-4">
   <div class="flex justify-between items-center mb-4">
@@ -6,12 +6,10 @@ block content %}
       <h2 class="text-lg font-bold text-base-content">勤怠確認</h2>
     </div>
   </div>
-  <!-- カレンダーエリア -->
-  <div id="calendar-area" hx-get="/calendar" hx-trigger="load" hx-target="#calendar-area">
-    <!-- 初期ロード時に /calendar を呼び出し、結果をここに挿入 -->
+  <div id="calendar-area">
+    {% include "components/top/summary_calendar.html" %}
   </div>
 
-  <!-- 詳細表示エリア -->
   <div id="detail-area">
     <!-- calendar初期化時に選択日の詳細を1回だけ読み込みます -->
   </div>
