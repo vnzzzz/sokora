@@ -164,7 +164,6 @@ body {
 }
 
 .location-tone-text,
-.location-tone-surface,
 .location-tone-chip {
   --location-tone-rgb: var(--location-tone-unresolved);
 }
@@ -211,10 +210,6 @@ body {
 
 .location-tone-text {
   color: rgb(var(--location-tone-rgb));
-}
-
-.location-tone-surface {
-  background-color: rgb(var(--location-tone-rgb) / 0.15);
 }
 
 .location-tone-chip {
