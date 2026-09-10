@@ -50,11 +50,17 @@ refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等か
 | `ui-events.js` | modal / message / page refresh等の共通event |
 | `attendance-interactions.js` | attendance/register画面固有interaction。対象pageだけでload |
 | `calendar.js` | top calendarの日付選択 / detail取得。topだけでload |
-| `analysis.js` | analysis画面固有interaction |
+| `analysis.js` | analysis画面のsticky shadow / HTMX failure fallback。期間・location更新はHTMX + server render |
 
 DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持ちません。
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
+
+analysis画面は `#analysis-view` を期間変更のHTMX replacement boundaryとし、browser historyへ
+URLをpushします。勤怠種別filterは同じpage adapterへGETし、`#analysis-table-region` だけを
+server-sideで再renderします。選択状態はURL/historyへ残しません。history restore requestでは
+full pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX
+requestだけfragment responseにします。
 
 ### Styling boundary
 

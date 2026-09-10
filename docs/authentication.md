@@ -81,6 +81,7 @@ sessionはStarletteのsigned client-side cookieです。persistent sessionには
 - cookie: HttpOnly + SameSite=Lax
 - HTTPS production: Secure cookieを必須化
 - login後の`next`: same-origin absolute pathだけを許可
+- 未認証HTMX request: `HX-Current-URL` の同一authority page URLを`next`に使い、fragment request固有のquery stateをbrowser URLへ持ち込まない。TLSをingressで終端してASGI側がHTTPになる場合も、同一authorityのHTTP/HTTPS差は許容する
 - OAuth state / nonce: authentication flow中だけ一時保持
 
 logoutはapplication sessionを先に破棄します。OIDC sessionの場合だけ、その後の別requestでprovider logoutをbest-effort実行します。shared DBやIdPの停止でlocal logout完了をblockしません。

@@ -25,9 +25,10 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
     OpenAPI等の明示prefixはsessionなしで到達可能にし、それ以外はsessionの ``auth``
     identityを要求する。
 
-    未認証APIはredirectせず401 JSONを返し、browser pageは元のrelative path/queryを
-    ``next`` としてloginへ307 redirectする。ここではadmin role等のauthorizationまでは
-    判定せず、admin-only policyはdependency側へ分離する。
+    未認証APIはredirectせず401 JSONを返す。通常のbrowser pageは元のrelative path/queryを
+    ``next`` としてloginへ307 redirectし、HTMX requestはbrowserのpage-level URLを戻り先に
+    した ``HX-Redirect`` でtop-level navigationさせる。ここではadmin role等のauthorization
+    までは判定せず、admin-only policyはdependency側へ分離する。
     """
 
     def __init__(
@@ -80,9 +81,51 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
         if path.startswith("/api/"):
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
-        next_path = self._build_next_path(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+        next_path = (
+            self._build_htmx_next_path(request)
+            if is_htmx
+            else self._build_next_path(request)
+        )
         login_url = f"/auth/login?next={urllib.parse.quote(next_path)}&reason=reauth"
+        if is_htmx:
+            return Response(status_code=200, headers={"HX-Redirect": login_url})
         return RedirectResponse(url=login_url, status_code=307)
+
+    def _build_htmx_next_path(self, request: Request) -> str:
+        """HTMX fragment requestではbrowserのpage-level URLをlogin後の戻り先にする。
+
+        ``HX-Current-URL`` はbrowser address barのURLなので、同一authorityを確認してから
+        relative path/queryへ落とす。TLS terminationではHTTP/HTTPS差を許容する。headerが
+        欠ける・不正な場合は同一authority Refererを
+        fallbackとして使い、それも利用できなければrequest pathだけへ戻す。fragment request
+        自身のqueryは一時UI stateを含み得るためfallbackへ流用しない。
+        """
+        request_url = urllib.parse.urlsplit(str(request.url))
+        for header_name in ("HX-Current-URL", "Referer"):
+            candidate = request.headers.get(header_name)
+            if not candidate:
+                continue
+
+            try:
+                parsed = urllib.parse.urlsplit(candidate)
+            except ValueError:
+                continue
+
+            if (
+                parsed.scheme not in {"http", "https"}
+                or parsed.netloc != request_url.netloc
+                or not parsed.path.startswith("/")
+                or parsed.path.startswith("//")
+            ):
+                continue
+
+            path = parsed.path or "/"
+            if parsed.query:
+                return f"{path}?{parsed.query}"
+            return path
+
+        return request.url.path
 
     def _build_next_path(self, request: Request) -> str:
         """元requestのrelative path/queryだけからlogin後の戻り先を構成する。

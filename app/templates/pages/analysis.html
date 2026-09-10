@@ -2,50 +2,9 @@
 {% set title_text = "勤怠集計" %}
 
 {% block content %}
-<div class="p-4">
-  <div class="flex justify-between items-center mb-4">
-    <div>
-      <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
-      <div class="mt-1">
-        <span class="badge badge-outline badge-sm analysis-period-label">{{ analysis_data.period.label }}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="mt-4" id="analysis-root">
-    {% include "components/analysis/period_controls.html" %}
-    {% include "components/analysis/location_filter.html" %}
-    {% include "components/analysis/table.html" %}
-  </div>
-</div>
+  {% include "components/analysis/content.html" %}
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', path='js/analysis.js') }}"></script>
-
-<script id="analysis-config" type="application/json">
-{
-  "isDetailMode": false,
-  "locationDetails": {{ location_details|tojson|safe }},
-  "period": {
-    "mode": "{{ analysis_data.period.mode }}",
-    "label": "{{ analysis_data.period.label }}",
-    "start": {% if analysis_data.period.start %}"{{ analysis_data.period.start.strftime('%Y-%m-%d') }}"{% else %}null{% endif %},
-    "end": {% if analysis_data.period.end %}"{{ analysis_data.period.end.strftime('%Y-%m-%d') }}"{% else %}null{% endif %},
-    "fiscal_year": {% if analysis_data.period.fiscal_year is not none %}{{ analysis_data.period.fiscal_year }}{% else %}null{% endif %},
-    "month": {% if analysis_data.period.month %}"{{ analysis_data.period.month }}"{% else %}null{% endif %}
-  }
-}
-</script>
-
-<script>
-  try {
-    const configScript = document.getElementById('analysis-config');
-    const config = JSON.parse(configScript.textContent);
-    initializeAnalysisPage(config);
-  } catch (error) {
-    console.error('設定データの読み込みに失敗しました:', error);
-    initializeAnalysisPage({ isDetailMode: false, locationDetails: {}, period: {} });
-  }
-</script>
+<script src="{{ url_for('static', path='js/analysis.js') }}" defer></script>
 {% endblock %}

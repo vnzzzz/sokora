@@ -36,7 +36,8 @@
             <th
               class="bg-base-300 text-center p-0.5 whitespace-nowrap location-header"
               data-location-id="{{ location.id }}"
-              style="min-width: 70px; width: 70px; display: none"
+              style="min-width: 70px; width: 70px"
+              {% if location.id not in selected_location_ids %}hidden{% endif %}
             >
               {{ location.name }}
             </th>
@@ -75,7 +76,8 @@
               <td
                 class="bg-base-200/80 location-cell"
                 data-location-id="{{ location.id }}"
-                style="min-width: 70px; width: 70px; display: none"
+                style="min-width: 70px; width: 70px"
+                {% if location.id not in selected_location_ids %}hidden{% endif %}
               ></td>
               {% endfor %}
               <td class="bg-base-200/80" style="min-width: 80px; width: 80px"></td>
@@ -103,7 +105,8 @@
                 <td
                   class="text-center p-0.5 location-cell"
                   data-location-id="{{ cell.location_id }}"
-                  style="min-width: 70px; width: 70px; display: none"
+                  style="min-width: 70px; width: 70px"
+                  {% if cell.location_id not in selected_location_ids %}hidden{% endif %}
                 >
                   {% if cell.count > 0 %}
                   <span class="text-base font-medium text-base-content">{{ cell.count }}</span>
@@ -126,18 +129,16 @@
                   style="min-width: 400px"
                   data-user-id="{{ user.user_id }}"
                 >
-                  <div class="grid grid-cols-[140px,1fr] gap-x-2 gap-y-1 text-sm">
+                  <div class="{{ 'text-sm' if user.date_groups else 'flex flex-wrap gap-2 text-sm' }}">
                     {% if user.date_groups %}
                       {% for date_group in user.date_groups %}
-                      <div class="font-medium text-base-content whitespace-nowrap">
-                        {{ date_group.location_name }}
-                      </div>
-                      <div class="flex flex-wrap gap-1">
-                        {% for date_info in date_group.dates %}
-                        <span class="badge badge-ghost badge-sm" title="{{ date_info.date_str }}">
-                          {{ date_info.date_simple }}
-                        </span>
-                        {% endfor %}
+                      <div class="mb-2">
+                        <div class="text-sm">
+                          <span class="font-medium text-base-content">{{ date_group.location_name }}: </span>
+                          {% for date_info in date_group.dates %}
+                          <span class="text-base-content" title="{{ date_info.date_str }}">{{ date_info.date_simple }}</span>{% if not loop.last %}<span> </span>{% endif %}
+                          {% endfor %}
+                        </div>
                       </div>
                       {% endfor %}
                     {% else %}
