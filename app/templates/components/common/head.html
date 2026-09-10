@@ -19,6 +19,22 @@
     })()
   </script>
 
+  <!-- Full navigationではshell geometryをanimationさせず、scrollbar有無でもviewport幅を安定させる。 -->
+  <style>
+    html {
+      scrollbar-gutter: stable;
+    }
+
+    .app-shell > aside,
+    .app-shell > .app-main {
+      transition-property: none !important;
+    }
+
+    .app-shell aside a.btn {
+      transition-property: color, background-color, border-color !important;
+    }
+  </style>
+
   <title>Sokora - {% if title_text %}{{ title_text }}{% else %}勤怠管理システム{% endif %}</title>
   <link rel="icon" href="/static/favicon.ico" sizes="any" />
 
