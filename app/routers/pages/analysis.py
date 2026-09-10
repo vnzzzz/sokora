@@ -21,6 +21,7 @@ def get_analysis_page(
     month: Optional[str] = None,
     year: Optional[int] = Query(default=None, ge=1900, le=2100),
     mode: Optional[str] = None,
+    selected_locations: Optional[list[int]] = Query(default=None),
     db: Session = Depends(get_db),
 ) -> Any:
     """月次/年度の勤怠集計をrenderする。
@@ -43,8 +44,19 @@ def get_analysis_page(
         month=month,
         year=year,
         mode=mode,
+        selected_location_ids=selected_locations or [],
     )
+    context = {"request": request, **view_model}
+
+    is_htmx_request = request.headers.get("HX-Request") == "true"
+    is_history_restore = request.headers.get("HX-History-Restore-Request") == "true"
+    if is_htmx_request and not is_history_restore:
+        return templates.TemplateResponse(
+            "components/analysis/content.html",
+            context,
+        )
+
     return templates.TemplateResponse(
         "pages/analysis.html",
-        {"request": request, **view_model},
+        context,
     )
