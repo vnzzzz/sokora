@@ -1,4 +1,4 @@
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Request, expect
 
 TOP_URL = "http://localhost:8000"
 
@@ -90,10 +90,9 @@ def test_calendar_cell_click_requests_day_detail_once(page: Page) -> None:
 
     detail_requests: list[str] = []
 
-    def record_day_detail_request(request: object) -> None:
-        url = getattr(request, "url", "")
-        if f"/calendar/day/{target_date}" in url:
-            detail_requests.append(url)
+    def record_day_detail_request(request: Request) -> None:
+        if f"/calendar/day/{target_date}" in request.url:
+            detail_requests.append(request.url)
 
     page.on("request", record_day_detail_request)
     target.click()
