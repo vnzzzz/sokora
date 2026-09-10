@@ -112,7 +112,7 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
                 continue
 
             if (
-                parsed.scheme != request_url.scheme
+                parsed.scheme not in {"http", "https"}
                 or parsed.netloc != request_url.netloc
                 or not parsed.path.startswith("/")
                 or parsed.path.startswith("//")
