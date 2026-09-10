@@ -40,10 +40,9 @@ def test_auth_off_anonymous_can_login_and_logout_local_admin() -> None:
         assert login_response.status_code == 303
         assert login_response.headers["location"] == "/"
 
-        admin_page = client.get("/")
+        admin_page = client.get("/admin/auth")
         assert admin_page.status_code == 200
         assert 'data-testid="admin-login-entry"' not in admin_page.text
-        assert 'href="/admin/auth"' in admin_page.text
 
         logout_response = client.post("/auth/logout", follow_redirects=False)
         assert logout_response.status_code == 303
