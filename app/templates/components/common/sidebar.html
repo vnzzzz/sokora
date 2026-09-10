@@ -2,27 +2,19 @@
   {% set is_active = current_path == href or (href != "/" and current_path.startswith(href ~ "/")) %}
   <a
     href="{{ href }}"
-    class="btn hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs {{ 'bg-base-300 font-medium' if is_active else 'btn-ghost' }}"
-    x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+    class="sidebar-nav-link btn hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full flex items-center text-xs transition-colors {{ 'bg-base-300 font-medium' if is_active else 'btn-ghost' }}"
     title="{{ title }}"
   >
     {{ caller() }}
-    <span
-      x-show="isSidebarOpen"
-      class="transition-opacity duration-200 text-xs"
-      x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
-    >{{ title }}</span>
+    <span class="sidebar-label text-xs">{{ title }}</span>
   </a>
 {%- endmacro %}
 
-<aside
-  x-bind:class="{'w-16': !isSidebarOpen, 'min-w-[200px] max-w-[200px]': isSidebarOpen}"
-  class="bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20 transition-all duration-300 ease-in-out"
->
+<aside class="sidebar-panel bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20">
   <button
-    @click="isSidebarOpen = !isSidebarOpen"
-    class="absolute top-2 -right-3 bg-base-300 text-base-content rounded-full p-1 shadow-md z-10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-200 transition-transform duration-300"
-    x-bind:class="{ 'rotate-180': !isSidebarOpen }"
+    type="button"
+    data-sidebar-toggle
+    class="sidebar-toggle absolute top-2 -right-3 bg-base-300 text-base-content rounded-full p-1 shadow-md z-10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-200 transition-transform duration-300"
     aria-label="サイドバーを開閉"
   >
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
@@ -31,7 +23,7 @@
   </button>
 
   <div class="mb-6 mt-8 overflow-hidden">
-    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+    <h3 class="sidebar-label text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
       一般機能
     </h3>
 
@@ -62,7 +54,7 @@
   </div>
 
   <div class="mb-6 overflow-hidden">
-    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+    <h3 class="sidebar-label text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
       管理機能
     </h3>
 
@@ -112,13 +104,13 @@
   </div>
 
   <div class="mb-6 overflow-hidden">
-    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+    <h3 class="sidebar-label text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
       その他
     </h3>
 
     {% call nav_link("/csv", "CSV") %}
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.125-3.75H3.375m0 0h1.125m0 0h7.5c.621 0 1.125.504 1.125 1.125m0 0h-7.5m7.5 0c-.621 0-1.125.504-1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 13.125v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 13.125c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 15.375v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 15.375c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125-.504 1.125-1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.125-3.75H3.375m0 0h1.125m0 0h7.5c.621 0 1.125.504 1.125 1.125m0 0h-7.5m7.5 0c-.621 0-1.125.504-1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 13.125v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 13.125c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 15.375v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 15.375c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125" />
       </svg>
     {% endcall %}
 
