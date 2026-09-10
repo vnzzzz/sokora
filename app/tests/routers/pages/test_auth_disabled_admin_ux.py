@@ -1,3 +1,4 @@
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.settings import AppSettings
@@ -9,7 +10,7 @@ def _create_auth_app(
     auth_enabled: bool,
     local_admin_username: str | None = "admin",
     local_admin_password: str | None = "secret",
-):
+) -> FastAPI:
     return create_application(
         AppSettings(
             database_url="sqlite:///:memory:",
