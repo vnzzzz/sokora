@@ -35,6 +35,8 @@ async def test_month_calendar_preserves_htmx_fragment_contract(
     assert 'id="calendar-metadata"' in response.text
     assert 'hx-target="#calendar-area"' in response.text
     assert 'hx-swap="innerHTML"' in response.text
+    assert "selected-date" in response.text
+    assert "selected-column" in response.text
     assert "2031-05" in response.text
 
 
