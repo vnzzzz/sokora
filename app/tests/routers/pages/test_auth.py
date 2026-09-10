@@ -213,16 +213,19 @@ async def test_guard_blocks_when_not_authenticated(async_client, monkeypatch) ->
 
 
 @pytest.mark.asyncio
-async def test_guard_uses_full_page_redirect_for_unauthenticated_htmx(
+async def test_guard_uses_browser_url_for_unauthenticated_htmx(
     async_client,
     monkeypatch,
 ) -> None:
-    """未認証HTMX requestはlogin HTMLをpartial swapせずtop-level navigationさせる。"""
+    """HTMX reauthはfragment queryではなくbrowserのpage-level URLへ戻す。"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
 
     resp = await async_client.get(
-        "/analysis?month=2031-05",
-        headers={"HX-Request": "true"},
+        "/analysis?month=2031-05&selected_locations=7&selected_locations=9",
+        headers={
+            "HX-Request": "true",
+            "HX-Current-URL": "http://test/analysis?month=2031-05",
+        },
         follow_redirects=False,
     )
 
@@ -230,7 +233,32 @@ async def test_guard_uses_full_page_redirect_for_unauthenticated_htmx(
     assert resp.headers["HX-Redirect"] == (
         "/auth/login?next=/analysis%3Fmonth%3D2031-05&reason=reauth"
     )
+    assert "selected_locations" not in resp.headers["HX-Redirect"]
     assert "location" not in resp.headers
+
+
+@pytest.mark.asyncio
+async def test_guard_rejects_cross_origin_htmx_current_url(
+    async_client,
+    monkeypatch,
+) -> None:
+    """HX-Current-URLがcross-originならsame-origin Refererへfallbackする。"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+
+    resp = await async_client.get(
+        "/analysis?month=2031-05&selected_locations=7",
+        headers={
+            "HX-Request": "true",
+            "HX-Current-URL": "https://evil.example/phishing?selected_locations=7",
+            "Referer": "http://test/analysis?month=2031-05",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["HX-Redirect"] == (
+        "/auth/login?next=/analysis%3Fmonth%3D2031-05&reason=reauth"
+    )
 
 
 @pytest.mark.asyncio
