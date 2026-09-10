@@ -106,7 +106,11 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
             if not candidate:
                 continue
 
-            parsed = urllib.parse.urlsplit(candidate)
+            try:
+                parsed = urllib.parse.urlsplit(candidate)
+            except ValueError:
+                continue
+
             if (
                 parsed.scheme != request_url.scheme
                 or parsed.netloc != request_url.netloc
