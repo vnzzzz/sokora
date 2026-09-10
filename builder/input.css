@@ -169,63 +169,43 @@ body {
   --location-tone-rgb: var(--location-tone-unresolved);
 }
 
-.location-tone-text[data-location-tone="0"],
-.location-tone-surface[data-location-tone="0"],
-.location-tone-chip[data-location-tone="0"] {
+[data-location-tone="0"] {
   --location-tone-rgb: var(--location-tone-0);
 }
 
-.location-tone-text[data-location-tone="1"],
-.location-tone-surface[data-location-tone="1"],
-.location-tone-chip[data-location-tone="1"] {
+[data-location-tone="1"] {
   --location-tone-rgb: var(--location-tone-1);
 }
 
-.location-tone-text[data-location-tone="2"],
-.location-tone-surface[data-location-tone="2"],
-.location-tone-chip[data-location-tone="2"] {
+[data-location-tone="2"] {
   --location-tone-rgb: var(--location-tone-2);
 }
 
-.location-tone-text[data-location-tone="3"],
-.location-tone-surface[data-location-tone="3"],
-.location-tone-chip[data-location-tone="3"] {
+[data-location-tone="3"] {
   --location-tone-rgb: var(--location-tone-3);
 }
 
-.location-tone-text[data-location-tone="4"],
-.location-tone-surface[data-location-tone="4"],
-.location-tone-chip[data-location-tone="4"] {
+[data-location-tone="4"] {
   --location-tone-rgb: var(--location-tone-4);
 }
 
-.location-tone-text[data-location-tone="5"],
-.location-tone-surface[data-location-tone="5"],
-.location-tone-chip[data-location-tone="5"] {
+[data-location-tone="5"] {
   --location-tone-rgb: var(--location-tone-5);
 }
 
-.location-tone-text[data-location-tone="6"],
-.location-tone-surface[data-location-tone="6"],
-.location-tone-chip[data-location-tone="6"] {
+[data-location-tone="6"] {
   --location-tone-rgb: var(--location-tone-6);
 }
 
-.location-tone-text[data-location-tone="7"],
-.location-tone-surface[data-location-tone="7"],
-.location-tone-chip[data-location-tone="7"] {
+[data-location-tone="7"] {
   --location-tone-rgb: var(--location-tone-7);
 }
 
-.location-tone-text[data-location-tone="8"],
-.location-tone-surface[data-location-tone="8"],
-.location-tone-chip[data-location-tone="8"] {
+[data-location-tone="8"] {
   --location-tone-rgb: var(--location-tone-8);
 }
 
-.location-tone-text[data-location-tone="9"],
-.location-tone-surface[data-location-tone="9"],
-.location-tone-chip[data-location-tone="9"] {
+[data-location-tone="9"] {
   --location-tone-rgb: var(--location-tone-9);
 }
 
