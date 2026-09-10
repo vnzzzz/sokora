@@ -304,9 +304,7 @@ async def test_guard_falls_back_to_request_path_when_htmx_url_headers_are_malfor
     )
 
     assert resp.status_code == 200
-    assert resp.headers["HX-Redirect"] == (
-        "/auth/login?next=/analysis&reason=reauth"
-    )
+    assert resp.headers["HX-Redirect"] == "/auth/login?next=/analysis&reason=reauth"
 
 
 @pytest.mark.asyncio
