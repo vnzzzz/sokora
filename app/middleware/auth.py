@@ -80,11 +80,46 @@ class AuthRequiredMiddleware(BaseHTTPMiddleware):
         if path.startswith("/api/"):
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
-        next_path = self._build_next_path(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+        next_path = (
+            self._build_htmx_next_path(request)
+            if is_htmx
+            else self._build_next_path(request)
+        )
         login_url = f"/auth/login?next={urllib.parse.quote(next_path)}&reason=reauth"
-        if request.headers.get("HX-Request") == "true":
+        if is_htmx:
             return Response(status_code=200, headers={"HX-Redirect": login_url})
         return RedirectResponse(url=login_url, status_code=307)
+
+    def _build_htmx_next_path(self, request: Request) -> str:
+        """HTMX fragment requestではbrowserのpage-level URLをlogin後の戻り先にする。
+
+        ``HX-Current-URL`` はbrowser address barのURLなので、same-originを確認してから
+        relative path/queryへ落とす。headerが欠ける・不正な場合はsame-origin Refererを
+        fallbackとして使い、それも利用できなければrequest pathだけへ戻す。fragment request
+        自身のqueryは一時UI stateを含み得るためfallbackへ流用しない。
+        """
+        request_url = urllib.parse.urlsplit(str(request.url))
+        for header_name in ("HX-Current-URL", "Referer"):
+            candidate = request.headers.get(header_name)
+            if not candidate:
+                continue
+
+            parsed = urllib.parse.urlsplit(candidate)
+            if (
+                parsed.scheme != request_url.scheme
+                or parsed.netloc != request_url.netloc
+                or not parsed.path.startswith("/")
+                or parsed.path.startswith("//")
+            ):
+                continue
+
+            path = parsed.path or "/"
+            if parsed.query:
+                return f"{path}?{parsed.query}"
+            return path
+
+        return request.url.path
 
     def _build_next_path(self, request: Request) -> str:
         """元requestのrelative path/queryだけからlogin後の戻り先を構成する。
