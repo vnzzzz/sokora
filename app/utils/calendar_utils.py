@@ -18,7 +18,6 @@ from fastapi import Request
 
 from app.models.attendance import Attendance  # Attendancesの型ヒント用に必要
 from app.utils.holiday_cache import get_holiday_name, is_holiday
-from app.utils.ui_utils import generate_location_data
 
 # --- 設定 ---
 
@@ -411,7 +410,7 @@ def build_week_calendar_data(
     return {
         "week_name": week_name,
         "weeks": [week_data],
-        "locations": generate_location_data(location_types),
+        "locations": [{"name": name, "key": name} for name in location_types],
         "prev_week": format_date(get_prev_week_date(monday)),
         "next_week": format_date(get_next_week_date(monday)),
     }
@@ -475,7 +474,7 @@ def build_calendar_data(
     return {
         "month_name": month_name,
         "weeks": weeks,
-        "locations": generate_location_data(location_types),
+        "locations": [{"name": name, "key": name} for name in location_types],
         "prev_month": f"{prev_month_date.year}-{prev_month_date.month:02d}",
         "next_month": f"{next_month_date.year}-{next_month_date.month:02d}",
     }
