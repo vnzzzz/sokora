@@ -19,7 +19,7 @@ function analysisFallbackUrl(element) {
     return element.getAttribute('hx-get')
   }
 
-  if (element.id === 'analysis-location-filter') {
+  if (element.closest('#analysis-location-filter')) {
     return window.location.href
   }
 
