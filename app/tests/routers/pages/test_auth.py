@@ -233,8 +233,6 @@ async def test_guard_uses_full_page_redirect_for_unauthenticated_htmx(
     assert "location" not in resp.headers
 
 
-
-
 @pytest.mark.asyncio
 async def test_missing_oidc_config_returns_400(async_client, monkeypatch) -> None:
     """OIDC必須設定が無い状態ではOIDCフローを開始しないこと。"""
