@@ -6,7 +6,7 @@
   <div class="flex items-center justify-start space-x-4 mb-2">
     <span class="text-xl font-bold">{{ current_month }}</span>
     {{ ui.month_switcher( prev_month=calendar.prev_month, next_month=calendar.next_month, current_month=current_month,
-    use_htmx=true, target_id="calendar-area", url_base="/calendar" ) }}
+    use_htmx=true, target_id="calendar-area", url_base="/calendar", swap="innerHTML" ) }}
   </div>
 
   {# 勤怠種別をカテゴリごとにグルーピング #}
