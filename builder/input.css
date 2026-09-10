@@ -117,3 +117,121 @@ body {
   opacity: 0.8;
   transition: all 0.2s;
 }
+
+/*
+ * Location presentation
+ * ---------------------
+ * Server-side code emits only data-location-tone="-1..9".
+ * Tailwind/daisyUI palette knowledge lives here so design changes remain CSS-only.
+ */
+.location-tone-text[data-location-tone="-1"] {
+  @apply text-base-content/60;
+}
+
+.location-tone-surface[data-location-tone="-1"] {
+  @apply bg-base-300/50;
+}
+
+.location-tone-chip[data-location-tone="-1"] {
+  @apply text-base-content/60 bg-base-300/50;
+}
+
+.location-tone-text[data-location-tone="0"] {
+  @apply text-primary;
+}
+.location-tone-surface[data-location-tone="0"] {
+  @apply bg-primary/15;
+}
+.location-tone-chip[data-location-tone="0"] {
+  @apply text-primary bg-primary/15;
+}
+
+.location-tone-text[data-location-tone="1"] {
+  @apply text-secondary;
+}
+.location-tone-surface[data-location-tone="1"] {
+  @apply bg-secondary/15;
+}
+.location-tone-chip[data-location-tone="1"] {
+  @apply text-secondary bg-secondary/15;
+}
+
+.location-tone-text[data-location-tone="2"] {
+  @apply text-accent;
+}
+.location-tone-surface[data-location-tone="2"] {
+  @apply bg-accent/15;
+}
+.location-tone-chip[data-location-tone="2"] {
+  @apply text-accent bg-accent/15;
+}
+
+.location-tone-text[data-location-tone="3"] {
+  @apply text-info;
+}
+.location-tone-surface[data-location-tone="3"] {
+  @apply bg-info/15;
+}
+.location-tone-chip[data-location-tone="3"] {
+  @apply text-info bg-info/15;
+}
+
+.location-tone-text[data-location-tone="4"] {
+  @apply text-success;
+}
+.location-tone-surface[data-location-tone="4"] {
+  @apply bg-success/15;
+}
+.location-tone-chip[data-location-tone="4"] {
+  @apply text-success bg-success/15;
+}
+
+.location-tone-text[data-location-tone="5"] {
+  @apply text-warning;
+}
+.location-tone-surface[data-location-tone="5"] {
+  @apply bg-warning/15;
+}
+.location-tone-chip[data-location-tone="5"] {
+  @apply text-warning bg-warning/15;
+}
+
+.location-tone-text[data-location-tone="6"] {
+  @apply text-error;
+}
+.location-tone-surface[data-location-tone="6"] {
+  @apply bg-error/15;
+}
+.location-tone-chip[data-location-tone="6"] {
+  @apply text-error bg-error/15;
+}
+
+.location-tone-text[data-location-tone="7"] {
+  @apply text-violet-600 dark:text-violet-400;
+}
+.location-tone-surface[data-location-tone="7"] {
+  @apply bg-violet-500/15;
+}
+.location-tone-chip[data-location-tone="7"] {
+  @apply text-violet-600 bg-violet-500/15 dark:text-violet-400;
+}
+
+.location-tone-text[data-location-tone="8"] {
+  @apply text-rose-600 dark:text-rose-400;
+}
+.location-tone-surface[data-location-tone="8"] {
+  @apply bg-rose-500/15;
+}
+.location-tone-chip[data-location-tone="8"] {
+  @apply text-rose-600 bg-rose-500/15 dark:text-rose-400;
+}
+
+.location-tone-text[data-location-tone="9"] {
+  @apply text-cyan-600 dark:text-cyan-400;
+}
+.location-tone-surface[data-location-tone="9"] {
+  @apply bg-cyan-500/15;
+}
+.location-tone-chip[data-location-tone="9"] {
+  @apply text-cyan-600 bg-cyan-500/15 dark:text-cyan-400;
+}
