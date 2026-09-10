@@ -8,11 +8,15 @@
     {% include "components/common/theme_switcher.html" %}
 
     {% set current_path = request.url.path if request else "" %}
+    {% set current_query = request.url.query if request else "" %}
+    {% set current_page_url = current_path ~ ("?" ~ current_query if current_query else "") %}
     {% set auth_enabled = request.app.state.auth_enabled if request and request.app else True %}
+    {% set local_admin_enabled = request.app.state.local_admin_enabled if request and request.app else False %}
     {% set auth_session = request.session.get("auth") if request and request.session else None %}
     {% set is_admin = auth_session and auth_session.get("role") == "admin" %}
     {% set auth_username = auth_session.get("username") if auth_session else None %}
     {% set show_user_menu = auth_session %}
+    {% set show_admin_login_entry = (not auth_enabled) and (not auth_session) and local_admin_enabled %}
     {% set show_sidebar = (not current_path.startswith("/auth")) and (not auth_enabled or auth_session) %}
     {% set body_content %}{% block content %}{% endblock %}{% endset %}
     {% if show_sidebar %}
@@ -73,6 +77,19 @@
                   </button>
                 </form>
               </div>
+            </header>
+          {% elif show_admin_login_entry %}
+            <header
+              class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
+              data-testid="admin-login-entry-wrapper"
+            >
+              <a
+                href="/auth/login/admin?next={{ current_page_url | urlencode }}"
+                class="pointer-events-auto btn btn-ghost btn-sm"
+                data-testid="admin-login-entry"
+              >
+                管理者ログイン
+              </a>
             </header>
           {% endif %}
           <div class="space-y-4">

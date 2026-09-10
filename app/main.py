@@ -200,6 +200,7 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
 
     auth_settings = AuthSettings.from_app_settings(initial_settings)
     app.state.auth_enabled = auth_settings.auth_enabled
+    app.state.local_admin_enabled = auth_settings.local_admin_enabled
     app.add_middleware(
         AuthRequiredMiddleware,
         settings_provider=lambda: AuthSettings.from_app_settings(settings_provider()),

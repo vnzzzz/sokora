@@ -200,15 +200,22 @@ async def local_login(
 
 
 @router.post("/logout")
-async def logout(request: Request) -> Response:
+async def logout(
+    request: Request,
+    settings: AuthSettings = Depends(get_runtime_auth_settings),
+) -> Response:
     """application sessionを最初のresponseで破棄し、その後だけprovider logoutへ進む。
 
     shared DB / IdPはapplication logoutのcritical pathへ置かない。OIDC sessionの場合も、
     authenticated identityを含まないcookieをclientへ返してから別requestでprovider logoutを
     best-effort実行する。これによりDB接続がblack-holeしてもlocal logout完了をblockしない。
+    auth guard無効時のlocal adminは、session破棄後にanonymous topへ戻す。
     """
     auth_session = request.session.get("auth")
     was_oidc = isinstance(auth_session, dict) and auth_session.get("method") == "oidc"
+    was_local_admin = (
+        isinstance(auth_session, dict) and auth_session.get("method") == "local_admin"
+    )
 
     request.session.clear()
     if was_oidc:
@@ -217,6 +224,8 @@ async def logout(request: Request) -> Response:
             "/auth/logout/provider",
             status_code=status.HTTP_303_SEE_OTHER,
         )
+    if was_local_admin and not settings.auth_enabled:
+        return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
 
     return RedirectResponse(
         _login_url(reason="logout"),
