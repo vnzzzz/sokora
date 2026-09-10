@@ -308,6 +308,7 @@ async def test_guard_falls_back_to_request_path_when_htmx_url_headers_are_malfor
         "/auth/login?next=/analysis&reason=reauth"
     )
 
+
 @pytest.mark.asyncio
 async def test_missing_oidc_config_returns_400(async_client, monkeypatch) -> None:
     """OIDC必須設定が無い状態ではOIDCフローを開始しないこと。"""
