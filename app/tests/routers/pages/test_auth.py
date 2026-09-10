@@ -260,6 +260,7 @@ async def test_guard_preserves_browser_url_behind_tls_terminating_proxy(
         "/auth/login?next=/analysis%3Fmonth%3D2031-05&reason=reauth"
     )
 
+
 @pytest.mark.asyncio
 async def test_guard_rejects_cross_origin_htmx_current_url(
     async_client,
