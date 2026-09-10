@@ -67,21 +67,20 @@
 
           <!-- 日付ヘッダー -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
-          loop.index0 %} {% set is_weekend = weekday_index == 5 or weekday_index == 6 %} {% set is_holiday =
-          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
-          if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
-          %}
+          loop.index0 %} {% set is_holiday = day.is_holiday|default(false) %} {% set day_kind =
+          "holiday" if is_holiday else "sunday" if weekday_index == 6 else "saturday" if weekday_index == 5 else "weekday" %}
 
           <th
-            class="bg-base-300 text-center p-0.5 whitespace-nowrap {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
+            class="calendar-day-surface bg-base-300 text-center p-0.5 whitespace-nowrap"
             data-date="{{ day.date }}"
             data-day="{{ day.day }}"
             data-is-holiday="{{ is_holiday|lower }}"
+            data-day-kind="{{ day_kind }}"
             data-holiday-name="{{ day.holiday_name|default('') }}"
             style="min-width: 70px; width: 70px"
           >
             <div
-              class="font-bold text-sm {% if is_holiday or weekday_index == 6 %}text-red-600 dark:text-red-400{% elif weekday_index == 5 %}text-blue-600 dark:text-blue-400{% endif %}"
+              class="calendar-day-label font-bold text-sm" data-day-kind="{{ day_kind }}"
             >
               {{ day.day }}
             </div>
@@ -157,21 +156,21 @@
 
           <!-- 日付ごとのセル -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
-          loop.index0 %} {% set is_weekend = weekday_index == 5 or weekday_index == 6 %} {% set is_holiday =
-          day.is_holiday|default(false) %} {% set weekend_class = "bg-opacity-90 " ~ ("bg-red-900/10 dark:bg-red-300/10"
-          if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
-          %}           {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
+          loop.index0 %} {% set is_holiday = day.is_holiday|default(false) %} {% set day_kind =
+          "holiday" if is_holiday else "sunday" if weekday_index == 6 else "saturday" if weekday_index == 5 else "weekday" %}
+          {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
           user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set note =
           user_attendance_notes[user_id][day.date]|default('') if has_data else '' %} {% set location_tone =
           location_tones.get(location_name, -1) if location_name else -1 %}
 
           <td
-            class="text-center p-0.5 cursor-pointer attendance-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
+            class="calendar-day-surface text-center p-0.5 cursor-pointer attendance-cell"
             data-date="{{ day.date }}"
             data-user-id="{{ user_id }}"
             data-user-name="{{ user_name }}"
             data-has-data="{{ has_data|lower }}"
             data-location="{{ location_name }}"
+            data-day-kind="{{ day_kind }}"
             style="min-width: 70px; width: 70px"
             hx-get="/attendance/modals/{{ user_id }}/{{ day.date }}"
             hx-target="#modal-container"
