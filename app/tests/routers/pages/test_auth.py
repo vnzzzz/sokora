@@ -238,6 +238,29 @@ async def test_guard_uses_browser_url_for_unauthenticated_htmx(
 
 
 @pytest.mark.asyncio
+async def test_guard_preserves_browser_url_behind_tls_terminating_proxy(
+    async_client,
+    monkeypatch,
+) -> None:
+    """ASGIがhttpでも同じauthorityのHTTPS browser URLはreauth先として保持する。"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+
+    resp = await async_client.get(
+        "/analysis?month=2031-05&selected_locations=7",
+        headers={
+            "HX-Request": "true",
+            "HX-Current-URL": "https://test/analysis?month=2031-05",
+            "Referer": "https://test/analysis?month=2031-05",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["HX-Redirect"] == (
+        "/auth/login?next=/analysis%3Fmonth%3D2031-05&reason=reauth"
+    )
+
+@pytest.mark.asyncio
 async def test_guard_rejects_cross_origin_htmx_current_url(
     async_client,
     monkeypatch,
