@@ -74,6 +74,8 @@ local adminはbreak-glass管理経路です。`SOKORA_LOCAL_AUTH_ENABLED=true`�
 
 OIDC設定、shared DB上のOIDC secret、IdP discoveryに問題があってもlocal admin credential照合自体はそれらへ依存しません。OIDC failureからlocal adminへ自動failoverはせず、利用者がlogin経路を選択します。
 
+`SOKORA_AUTH_ENABLED=false`で匿名利用している場合も、local adminが設定済みならapplication shell右上に「管理者ログイン」を表示します。導線は既存の`/auth/login/admin`を使い、local admin sessionを取得した後だけ`/admin/*`の管理機能へアクセスできます。local adminが未設定の場合は無効なログイン導線を表示しません。
+
 ## Session and logout
 
 sessionはStarletteのsigned client-side cookieです。persistent sessionには最小限のidentityだけを保持し、OIDC access token / refresh token / ID tokenは保存しません。
@@ -85,6 +87,8 @@ sessionはStarletteのsigned client-side cookieです。persistent sessionには
 - OAuth state / nonce: authentication flow中だけ一時保持
 
 logoutはapplication sessionを先に破棄します。OIDC sessionの場合だけ、その後の別requestでprovider logoutをbest-effort実行します。shared DBやIdPの停止でlocal logout完了をblockしません。
+
+`SOKORA_AUTH_ENABLED=false`の状態でlocal admin sessionからlogoutした場合は、sessionを破棄した後に匿名利用可能なtop `/` へ戻します。authentication guardが有効な場合のlocal admin logoutと、OIDC provider logout flowは従来どおりlogin flowへ戻ります。
 
 ## Multi-replica
 
