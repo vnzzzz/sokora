@@ -26,7 +26,8 @@
           <!-- 曜日ヘッダー -->
           {% set weekdays = ["日", "月", "火", "水", "木", "金", "土"] %}
           {% for day in weekdays %}
-            <th class="text-center w-1/7 {% if loop.first %}text-red-600 dark:text-red-400{% elif loop.last %}text-blue-600 dark:text-blue-400{% endif %}">
+            {% set header_day_kind = "sunday" if loop.first else "saturday" if loop.last else "weekday" %}
+            <th class="calendar-day-label text-center w-1/7" data-day-kind="{{ header_day_kind }}">
               {{ day }}
             </th>
           {% endfor %}
@@ -66,7 +67,7 @@
                   
                   <!-- 祝日情報 -->
                   {% if day.holiday_name|default('') %}
-                    <div class="text-xs text-red-600 dark:text-red-400 mb-1">
+                    <div class="calendar-day-label text-xs mb-1" data-day-kind="holiday">
                       {{ day.holiday_name }}
                     </div>
                   {% endif %}
