@@ -2,6 +2,10 @@ import pytest
 from playwright.sync_api import Page, Request, expect
 
 TOP_URL = "http://localhost:8000"
+TRANSITION_PROPERTY = "element => getComputedStyle(element).transitionProperty"
+
+SidebarLinkGeometry = dict[str, float | str]
+SidebarFrame = list[SidebarLinkGeometry]
 
 
 def _shell_geometry(page: Page) -> dict[str, float]:
@@ -28,9 +32,7 @@ def _assert_shell_geometry(page: Page, expected_sidebar_width: float) -> None:
     assert abs(geometry["sidebarRight"] - geometry["mainLeft"]) < 1
 
 
-def _sample_sidebar_frames(
-    page: Page, count: int = 6
-) -> list[list[dict[str, float | str]]]:
+def _sample_sidebar_frames(page: Page, count: int = 6) -> list[SidebarFrame]:
     return page.evaluate(
         """count => new Promise(resolve => {
           const frames = []
@@ -55,9 +57,7 @@ def _sample_sidebar_frames(
     )
 
 
-def _assert_sidebar_frames_stable(
-    frames: list[list[dict[str, float | str]]],
-) -> None:
+def _assert_sidebar_frames_stable(frames: list[SidebarFrame]) -> None:
     assert frames
     baseline = frames[0]
     assert baseline
@@ -132,14 +132,8 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     expect(sidebar).to_be_visible(timeout=5000)
     expect(main).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, expected_width)
-    assert (
-        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
-    assert (
-        main.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
+    assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
+    assert main.evaluate(TRANSITION_PROPERTY) == "none"
     if labels_visible:
         expect(label).to_be_visible()
     else:
@@ -152,14 +146,8 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     main = page.locator(".app-main")
     expect(sidebar).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, expected_width)
-    assert (
-        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
-    assert (
-        main.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
+    assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
+    assert main.evaluate(TRANSITION_PROPERTY) == "none"
 
 
 @pytest.mark.parametrize("stored_state", ["true", "false"])
@@ -182,9 +170,7 @@ def test_sidebar_links_remain_geometrically_stable_across_full_navigation(
     destination_geometry = destination_frames[0]
 
     assert len(source_geometry) == len(destination_geometry)
-    for source, destination in zip(
-        source_geometry, destination_geometry, strict=True
-    ):
+    for source, destination in zip(source_geometry, destination_geometry, strict=True):
         assert source["href"] == destination["href"]
         for key in ("x", "y", "width", "height"):
             assert isinstance(source[key], float | int)
@@ -204,26 +190,14 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
     toggle = page.locator("[data-sidebar-toggle]")
     expect(toggle).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, 200)
-    assert (
-        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
-    assert (
-        main.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
+    assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
+    assert main.evaluate(TRANSITION_PROPERTY) == "none"
 
     toggle.click()
     expect(root).to_have_attribute("data-sidebar-open", "false")
-    assert root.evaluate(
-        "element => element.classList.contains('sidebar-animating')"
-    )
-    assert "width" in sidebar.evaluate(
-        "element => getComputedStyle(element).transitionProperty"
-    )
-    assert "margin-left" in main.evaluate(
-        "element => getComputedStyle(element).transitionProperty"
-    )
+    assert root.evaluate("element => element.classList.contains('sidebar-animating')")
+    assert "width" in sidebar.evaluate(TRANSITION_PROPERTY)
+    assert "margin-left" in main.evaluate(TRANSITION_PROPERTY)
     page.wait_for_function(
         "!document.documentElement.classList.contains('sidebar-animating')"
     )
@@ -233,14 +207,8 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
     page.reload()
     expect(root).to_have_attribute("data-sidebar-open", "false")
     _assert_shell_geometry(page, 64)
-    assert (
-        sidebar.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
-    assert (
-        main.evaluate("element => getComputedStyle(element).transitionProperty")
-        == "none"
-    )
+    assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
+    assert main.evaluate(TRANSITION_PROPERTY) == "none"
 
 
 def test_calendar_selection_highlight_does_not_resize_table(page: Page) -> None:
