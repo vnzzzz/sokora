@@ -56,11 +56,11 @@ DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持�
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
-analysis画面は `#analysis-view` をHTMX replacement boundaryとし、期間変更はbrowser historyへ
-URLをpushします。勤怠種別filterは同じpage adapterへGETしてserver-sideでtable projectionを
-再renderしますが、選択状態はURL/historyへ残しません。history restore requestではfull pageを
-返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけ
-fragment responseにします。
+analysis画面は `#analysis-view` を期間変更のHTMX replacement boundaryとし、browser historyへ
+URLをpushします。勤怠種別filterは同じpage adapterへGETし、`#analysis-table-region` だけを
+server-sideで再renderします。選択状態はURL/historyへ残しません。history restore requestでは
+full pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX
+requestだけfragment responseにします。
 
 ### Styling boundary
 
