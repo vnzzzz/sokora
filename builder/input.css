@@ -72,6 +72,47 @@
   display: none !important;
 }
 
+.app-shell > aside {
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+}
+
+.app-shell > .app-main {
+  margin-left: 200px;
+  max-width: calc(100vw - 200px - 1.5rem);
+}
+
+html[data-sidebar-open="false"] .app-shell > aside {
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+}
+
+html[data-sidebar-open="false"] .app-shell > .app-main {
+  margin-left: 64px;
+  max-width: calc(100vw - 64px - 1.5rem);
+}
+
+html[data-sidebar-open="true"] .app-shell aside a.btn {
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+html[data-sidebar-open="false"] .app-shell aside a.btn {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+html[data-sidebar-open="false"] .app-shell [x-show="isSidebarOpen"] {
+  display: none !important;
+}
+
+html[data-sidebar-open="false"] .app-shell button[aria-label="サイドバーを開閉"] {
+  transform: rotate(180deg);
+}
+
 html,
 body {
   transition: background-color 0.3s ease, color 0.3s ease;
