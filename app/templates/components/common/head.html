@@ -4,11 +4,15 @@
   <meta name="format-detection" content="telephone=no, email=no, address=no" />
   <meta name="htmx-config" content='{"historyCacheSize":0}' />
 
-  <!-- theme flashを避けるため初回描画前の属性設定だけinlineで行う -->
+  <!-- theme/sidebar flashを避けるため初回描画前の属性設定だけinlineで行う -->
   <script>
     ;(function () {
       const savedTheme = localStorage.getItem('theme') || 'light'
+      const savedSidebar = localStorage.getItem('sidebarOpen')
+      const isSidebarOpen = savedSidebar === null || savedSidebar === 'true'
+
       document.documentElement.setAttribute('data-theme', savedTheme)
+      document.documentElement.setAttribute('data-sidebar-open', String(isSidebarOpen))
       document.addEventListener('DOMContentLoaded', () => {
         document.body.setAttribute('data-theme', savedTheme)
       })
