@@ -4,36 +4,28 @@
   <meta name="format-detection" content="telephone=no, email=no, address=no" />
   <meta name="htmx-config" content='{"historyCacheSize":0}' />
 
-  <!-- theme/sidebar flashを避けるため初回描画前の属性設定だけinlineで行う -->
+  <!-- theme/sidebarの保存stateをCSS読込前に反映し、初回paintを安定させる。 -->
   <script>
     ;(function () {
-      const savedTheme = localStorage.getItem('theme') || 'light'
-      const savedSidebar = localStorage.getItem('sidebarOpen')
-      const isSidebarOpen = savedSidebar === null || savedSidebar === 'true'
+      let savedTheme = 'light'
+      let savedSidebar = null
 
+      try {
+        savedTheme = localStorage.getItem('theme') || 'light'
+        savedSidebar = localStorage.getItem('sidebarOpen')
+      } catch (_error) {
+        // Storageが利用できない環境ではdefault stateで表示する。
+      }
+
+      const isSidebarOpen = savedSidebar === null || savedSidebar === 'true'
       document.documentElement.setAttribute('data-theme', savedTheme)
       document.documentElement.setAttribute('data-sidebar-open', String(isSidebarOpen))
+
       document.addEventListener('DOMContentLoaded', () => {
         document.body.setAttribute('data-theme', savedTheme)
       })
     })()
   </script>
-
-  <!-- Full navigationではshell geometryをanimationさせず、scrollbar有無でもviewport幅を安定させる。 -->
-  <style>
-    html {
-      scrollbar-gutter: stable;
-    }
-
-    .app-shell > aside,
-    .app-shell > .app-main {
-      transition-property: none !important;
-    }
-
-    .app-shell aside a.btn {
-      transition-property: color, background-color, border-color !important;
-    }
-  </style>
 
   <title>Sokora - {% if title_text %}{{ title_text }}{% else %}勤怠管理システム{% endif %}</title>
   <link rel="icon" href="/static/favicon.ico" sizes="any" />
