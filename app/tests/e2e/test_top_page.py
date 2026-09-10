@@ -67,11 +67,16 @@ def test_calendar_selection_highlight_does_not_resize_table(page: Page) -> None:
     expect(calendar.locator(".selected-date")).to_have_count(1, timeout=5000)
     expect(table).to_be_visible(timeout=5000)
 
-    selected_height = table.evaluate("element => element.getBoundingClientRect().height")
-    calendar.locator(".selected-date, .selected-column").evaluate_all(
-        "elements => elements.forEach(element => element.classList.remove('selected-date', 'selected-column'))"
+    selected_height = table.evaluate(
+        "element => element.getBoundingClientRect().height"
     )
-    unselected_height = table.evaluate("element => element.getBoundingClientRect().height")
+    calendar.locator(".selected-date, .selected-column").evaluate_all(
+        "elements => elements.forEach("
+        "element => element.classList.remove('selected-date', 'selected-column'))"
+    )
+    unselected_height = table.evaluate(
+        "element => element.getBoundingClientRect().height"
+    )
 
     assert abs(selected_height - unselected_height) < 0.5
 
