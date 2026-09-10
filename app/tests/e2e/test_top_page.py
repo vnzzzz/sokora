@@ -215,7 +215,9 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
 
     toggle.click()
     expect(root).to_have_attribute("data-sidebar-open", "false")
-    expect(root).to_have_class("sidebar-animating")
+    assert root.evaluate(
+        "element => element.classList.contains('sidebar-animating')"
+    )
     assert "width" in sidebar.evaluate(
         "element => getComputedStyle(element).transitionProperty"
     )
