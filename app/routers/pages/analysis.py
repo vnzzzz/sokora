@@ -51,8 +51,13 @@ def get_analysis_page(
     is_htmx_request = request.headers.get("HX-Request") == "true"
     is_history_restore = request.headers.get("HX-History-Restore-Request") == "true"
     if is_htmx_request and not is_history_restore:
+        template_name = (
+            "components/analysis/table_region.html"
+            if request.headers.get("HX-Target") == "analysis-table-region"
+            else "components/analysis/content.html"
+        )
         return templates.TemplateResponse(
-            "components/analysis/content.html",
+            template_name,
             context,
         )
 
