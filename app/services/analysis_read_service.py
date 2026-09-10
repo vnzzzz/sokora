@@ -75,7 +75,6 @@ class AnalysisPageViewModel(TypedDict):
     location_categories: List[LocationCategory]
     group_sections: List[GroupSection]
     selected_location_ids: List[int]
-    location_details: Dict[int, Dict[str, List[Dict[str, Any]]]]
     empty_message: str
 
 
@@ -311,6 +310,5 @@ def get_analysis_page_view_model(
         "location_categories": location_categories,
         "group_sections": group_sections,
         "selected_location_ids": normalized_selected_location_ids,
-        "location_details": analysis_data.get("location_details", {}),
         "empty_message": empty_message,
     }
