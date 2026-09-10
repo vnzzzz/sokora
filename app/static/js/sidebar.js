@@ -4,7 +4,10 @@
 
   const root = document.documentElement
   const toggle = document.querySelector('[data-sidebar-toggle]')
-  if (!toggle) return
+  const sidebar = document.querySelector('.sidebar-panel')
+  if (!toggle || !sidebar) return
+
+  let animationTimer = null
 
   function persistState(value) {
     try {
@@ -14,10 +17,24 @@
     }
   }
 
+  function scheduleAnimationCleanup() {
+    if (animationTimer !== null) window.clearTimeout(animationTimer)
+    animationTimer = window.setTimeout(() => {
+      root.classList.remove('sidebar-animating')
+      animationTimer = null
+    }, 350)
+  }
+
   toggle.addEventListener('click', () => {
     const isOpen = root.dataset.sidebarOpen !== 'false'
     const nextState = String(!isOpen)
+
+    root.classList.add('sidebar-animating')
+    // transitionを有効にした初期geometryを確定してからstateを切り替える。
+    void sidebar.offsetWidth
+
     root.dataset.sidebarOpen = nextState
     persistState(nextState)
+    scheduleAnimationCleanup()
   })
 })()
