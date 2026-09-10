@@ -1,5 +1,6 @@
 {% import "components/macros/ui.html" as ui %}
 <section>
+  {# JavaScriptに渡すためのメタデータ #}
   <div id="calendar-metadata" data-today-date="{{ today_date }}" class="hidden"></div>
 
   <div class="flex items-center justify-start space-x-4 mb-2">
@@ -8,6 +9,7 @@
     use_htmx=true, target_id="calendar-area", url_base="/calendar", swap="innerHTML" ) }}
   </div>
 
+  {# 勤怠種別をカテゴリごとにグルーピング #}
   {% set categories = {} %}
   {% for loc in calendar.locations %}
     {% set category = loc.category or '未分類' %}
@@ -17,6 +19,7 @@
     {% set _ = categories[category].append(loc) %}
   {% endfor %}
 
+  {# カテゴリをソート（未分類は最後に表示） #}
   {% set sorted_categories = [] %}
   {% for category_name in categories.keys()|sort %}
     {% if category_name != '未分類' %}
@@ -27,14 +30,17 @@
     {% set _ = sorted_categories.append('未分類') %}
   {% endif %}
 
+  {# 日付データを前処理して配列に格納 - パフォーマンス最適化 #}
   {% set day_data_array = [] %}
+  {% set weekday_array = [] %}
   {% for week in calendar.weeks %}
     {% for day_idx in range(7) %}
       {% if week[day_idx] and week[day_idx].day != 0 %}
         {% set day = week[day_idx] %}
+        {% set day_idx_val = day_idx %}
         {% set is_holiday = day.is_holiday|default(false) %}
         {% set day_kind = "holiday" if is_holiday else "sunday" if day_idx == 0 else "saturday" if day_idx == 6 else "weekday" %}
-        {% set _ = day_data_array.append({ 'day': day, 'day_idx': day_idx, 'day_kind': day_kind }) %}
+        {% set _ = day_data_array.append({ 'day': day, 'day_idx': day_idx_val, 'day_kind': day_kind }) %}
       {% endif %}
     {% endfor %}
   {% endfor %}
@@ -53,6 +59,7 @@
           <th class="text-left sticky left-0 z-10 w-20" style="width: 80px; min-width: 80px">分類</th>
           <th class="text-left sticky left-[80px] z-10 w-28" style="width: 110px; min-width: 110px">勤怠種別</th>
 
+          {# 日付ヘッダーを効率的に出力 #}
           {% for item in day_data_array %}
             {% set day = item.day %}
             {% set day_idx = item.day_idx %}
@@ -67,7 +74,9 @@
               data-day-kind="{{ day_kind }}"
               style="width: 20px; min-width: 20px; max-width: 20px"
             >
-              <div class="calendar-day-label font-bold text-sm" data-day-kind="{{ day_kind }}">
+              <div
+                class="calendar-day-label font-bold text-sm" data-day-kind="{{ day_kind }}"
+              >
                 {{ day.day }}
               </div>
               {% if day.holiday_name|default('') %}
@@ -87,11 +96,13 @@
         </tr>
       </thead>
       <tbody>
+        {# カテゴリごとに勤怠種別を表示 #}
         {% for category in sorted_categories %}
           {% set category_locations = categories[category] %}
-
+          
           {% for location in category_locations %}
           <tr class="border-b border-base-300">
+                         {# 分類列（同じカテゴリの最初の行のみ表示） #}
              {% if loop.first %}
              <td
                class="font-medium text-left sticky left-0 z-10 w-20 whitespace-nowrap bg-base-100 p-1 border-r border-base-300 align-middle"
@@ -101,7 +112,8 @@
                <span class="text-sm text-base-content/80 font-semibold">{{ category }}</span>
              </td>
              {% endif %}
-
+             
+             {# 勤怠種別列 #}
              <td
                class="font-medium text-left sticky left-[80px] z-10 w-28 whitespace-nowrap bg-base-100 p-1"
                style="width: 110px; min-width: 110px"
@@ -109,8 +121,10 @@
               <span class="location-tone-text" data-location-tone="{{ location.tone }}">{{ location.name }}</span>
             </td>
 
+            {# 各勤怠種別のデータを一度のループで効率的に表示 #}
             {% for item in day_data_array %}
               {% set day = item.day %}
+              {% set day_idx = item.day_idx %}
               {% set day_kind = item.day_kind %}
 
               <td
