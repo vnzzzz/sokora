@@ -21,17 +21,19 @@
     {% set body_content %}{% block content %}{% endblock %}{% endset %}
     {% if show_sidebar %}
       <div
-        class="flex"
+        class="app-shell flex"
         x-data="{
-          isSidebarOpen: localStorage.getItem('sidebarOpen') === null ? true : localStorage.getItem('sidebarOpen') === 'true'
+          isSidebarOpen: document.documentElement.dataset.sidebarOpen !== 'false'
         }"
-        x-init="$watch('isSidebarOpen', value => localStorage.setItem('sidebarOpen', value))"
-        x-cloak
+        x-init="$watch('isSidebarOpen', value => {
+          document.documentElement.dataset.sidebarOpen = String(value)
+          localStorage.setItem('sidebarOpen', value)
+        })"
       >
         {% include "components/common/sidebar.html" with context %}
 
         <main
-          class="relative flex-1 py-2 px-3 pt-14 transition-all duration-300 ease-in-out"
+          class="app-main relative flex-1 py-2 px-3 pt-14 transition-all duration-300 ease-in-out"
           :class="{
             'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen,
             'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen
