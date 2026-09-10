@@ -57,6 +57,42 @@ async def test_month_analysis_renders_read_model(
     assert 'data-testid="analysis-table"' in response.text
 
 
+async def test_htmx_analysis_returns_fragment(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis?month=2031-05",
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'id="analysis-view"' in response.text
+    assert "<html" not in response.text
+
+
+async def test_htmx_history_restore_returns_full_page(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis?month=2031-05",
+        headers={
+            "HX-Request": "true",
+            "HX-History-Restore-Request": "true",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert "<!DOCTYPE html>" in response.text
+    assert 'id="analysis-view"' in response.text
+
+
+
 async def test_fiscal_year_analysis_preserves_period_contract(
     async_client: AsyncClient,
     db_with_data: Session,
