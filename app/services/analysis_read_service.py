@@ -176,16 +176,12 @@ def _build_group_sections(
             location_id = int(location.id)
             count = int(user_info.get("location_counts", {}).get(location_id, 0))
             location_cells.append({"location_id": location_id, "count": count})
-            if (
-                selected_location_ids is not None
-                and location_id in selected_location_ids
-            ):
+            if selected_location_ids is not None and location_id in selected_location_ids:
                 selected_total_days += count
 
             dates = location_details.get(location_id, {}).get(user_id_str, [])
             if dates and (
-                selected_location_ids is None
-                or location_id in selected_location_ids
+                selected_location_ids is None or location_id in selected_location_ids
             ):
                 date_groups.append(
                     {
@@ -275,7 +271,9 @@ def get_analysis_page_view_model(
         normalized_selected_location_ids = available_location_ids
         selected_filter = None
     else:
-        requested_location_ids = {int(location_id) for location_id in selected_location_ids}
+        requested_location_ids = {
+            int(location_id) for location_id in selected_location_ids
+        }
         normalized_selected_location_ids = [
             location_id
             for location_id in available_location_ids
