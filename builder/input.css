@@ -235,3 +235,23 @@ body {
 .location-tone-chip[data-location-tone="9"] {
   @apply text-cyan-600 bg-cyan-500/15 dark:text-cyan-400;
 }
+
+
+/* Calendar date state: template emits state, CSS owns presentation. */
+.calendar-day-surface[data-day-kind="holiday"],
+.calendar-day-surface[data-day-kind="sunday"] {
+  @apply bg-opacity-90 bg-red-900/10 dark:bg-red-300/10;
+}
+
+.calendar-day-surface[data-day-kind="saturday"] {
+  @apply bg-opacity-90 bg-blue-900/10 dark:bg-blue-300/10;
+}
+
+.calendar-day-label[data-day-kind="holiday"],
+.calendar-day-label[data-day-kind="sunday"] {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.calendar-day-label[data-day-kind="saturday"] {
+  @apply text-blue-600 dark:text-blue-400;
+}
