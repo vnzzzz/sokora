@@ -74,6 +74,7 @@ class AnalysisPageViewModel(TypedDict):
     year_options: List[int]
     location_categories: List[LocationCategory]
     group_sections: List[GroupSection]
+    selected_location_ids: List[int]
     location_details: Dict[int, Dict[str, List[Dict[str, Any]]]]
     empty_message: str
 
@@ -139,6 +140,7 @@ def _build_group_sections(
     *,
     analysis_data: Dict[str, Any],
     locations: List[Any],
+    selected_location_ids: Optional[set[int]] = None,
 ) -> List[GroupSection]:
     group_sort_info: Dict[str, tuple[bool, int, int, str]] = {}
     for group in crud.group.list_all(db):
@@ -170,13 +172,22 @@ def _build_group_sections(
 
         location_cells: List[LocationCell] = []
         date_groups: List[DateGroup] = []
+        selected_total_days = 0
         for location in locations:
             location_id = int(location.id)
             count = int(user_info.get("location_counts", {}).get(location_id, 0))
             location_cells.append({"location_id": location_id, "count": count})
+            if (
+                selected_location_ids is not None
+                and location_id in selected_location_ids
+            ):
+                selected_total_days += count
 
             dates = location_details.get(location_id, {}).get(user_id_str, [])
-            if dates:
+            if dates and (
+                selected_location_ids is None
+                or location_id in selected_location_ids
+            ):
                 date_groups.append(
                     {
                         "location_id": location_id,
@@ -191,7 +202,11 @@ def _build_group_sections(
             "group_name": group_name,
             "user_type_name": user_type_name,
             "location_cells": location_cells,
-            "total_days": int(user_info.get("total_days") or 0),
+            "total_days": (
+                int(user_info.get("total_days") or 0)
+                if selected_location_ids is None
+                else selected_total_days
+            ),
             "date_groups": date_groups,
         }
         grouped.setdefault(group_name, {}).setdefault(user_type_name, []).append(row)
@@ -223,6 +238,7 @@ def get_analysis_page_view_model(
     month: Optional[str] = None,
     year: Optional[int] = None,
     mode: Optional[str] = None,
+    selected_location_ids: Optional[List[int]] = None,
     today: Optional[date] = None,
 ) -> AnalysisPageViewModel:
     """月次/年度集計をtemplateが直接renderできるpage modelへ編成する。
@@ -255,6 +271,19 @@ def get_analysis_page_view_model(
     analysis_data = dict(analysis_data)
     analysis_data["locations"] = locations
 
+    available_location_ids = [int(location.id) for location in locations]
+    if selected_location_ids is None:
+        normalized_selected_location_ids = available_location_ids
+        selected_filter = None
+    else:
+        requested_location_ids = {int(location_id) for location_id in selected_location_ids}
+        normalized_selected_location_ids = [
+            location_id
+            for location_id in available_location_ids
+            if location_id in requested_location_ids
+        ]
+        selected_filter = set(normalized_selected_location_ids)
+
     current_month = str(
         analysis_data["period"].get("month") or today_value.strftime("%Y-%m")
     )
@@ -265,6 +294,7 @@ def get_analysis_page_view_model(
         db,
         analysis_data=analysis_data,
         locations=locations,
+        selected_location_ids=selected_filter,
     )
 
     if is_year_mode:
@@ -280,6 +310,7 @@ def get_analysis_page_view_model(
         "year_options": year_options,
         "location_categories": location_categories,
         "group_sections": group_sections,
+        "selected_location_ids": normalized_selected_location_ids,
         "location_details": analysis_data.get("location_details", {}),
         "empty_message": empty_message,
     }
