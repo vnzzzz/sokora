@@ -262,6 +262,53 @@ async def test_guard_rejects_cross_origin_htmx_current_url(
 
 
 @pytest.mark.asyncio
+async def test_guard_skips_malformed_htmx_current_url(
+    async_client,
+    monkeypatch,
+) -> None:
+    """malformed HX-Current-URLでも500にせずsame-origin Refererへfallbackする。"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+
+    resp = await async_client.get(
+        "/analysis?month=2031-05&selected_locations=7",
+        headers={
+            "HX-Request": "true",
+            "HX-Current-URL": "http://[",
+            "Referer": "http://test/analysis?month=2031-05",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["HX-Redirect"] == (
+        "/auth/login?next=/analysis%3Fmonth%3D2031-05&reason=reauth"
+    )
+
+
+@pytest.mark.asyncio
+async def test_guard_falls_back_to_request_path_when_htmx_url_headers_are_malformed(
+    async_client,
+    monkeypatch,
+) -> None:
+    """HTMX URL headersをparseできない場合はfragment queryを捨てrequest pathへ戻す。"""
+    monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
+
+    resp = await async_client.get(
+        "/analysis?month=2031-05&selected_locations=7",
+        headers={
+            "HX-Request": "true",
+            "HX-Current-URL": "http://[",
+            "Referer": "http://[",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["HX-Redirect"] == (
+        "/auth/login?next=/analysis&reason=reauth"
+    )
+
+@pytest.mark.asyncio
 async def test_missing_oidc_config_returns_400(async_client, monkeypatch) -> None:
     """OIDC必須設定が無い状態ではOIDCフローを開始しないこと。"""
     monkeypatch.setenv("SOKORA_AUTH_ENABLED", "true")
