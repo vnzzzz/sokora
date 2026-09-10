@@ -1,0 +1,16 @@
+<div class="p-4" id="analysis-view">
+  <div class="flex justify-between items-center mb-4">
+    <div>
+      <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
+      <div class="mt-1">
+        <span class="badge badge-outline badge-sm analysis-period-label">{{ analysis_data.period.label }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4" id="analysis-root">
+    {% include "components/analysis/period_controls.html" %}
+    {% include "components/analysis/location_filter.html" %}
+    {% include "components/analysis/table.html" %}
+  </div>
+</div>
