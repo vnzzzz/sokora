@@ -162,8 +162,8 @@
           if weekday_index == 6 or is_holiday else "bg-blue-900/10 dark:bg-blue-300/10" if weekday_index == 5 else "")
           %}           {% set has_data = day.date in user_attendances[user_id]|default({}) %} {% set location_name =
           user_attendance_locations[user_id][day.date]|default('') if has_data else '' %} {% set note =
-          user_attendance_notes[user_id][day.date]|default('') if has_data else '' %} {% set style_info =
-          location_styles[location_name]|default({}) if location_name else {} %} {# location_stylesから辞書を取得 #}
+          user_attendance_notes[user_id][day.date]|default('') if has_data else '' %} {% set location_tone =
+          location_tones.get(location_name, -1) if location_name else -1 %}
 
           <td
             class="text-center p-0.5 cursor-pointer attendance-cell {% if is_weekend or is_holiday %}{{ weekend_class }}{% endif %}"
@@ -181,7 +181,7 @@
             {% if note %}
             <div class="tooltip tooltip-custom tooltip-right" data-tip="{{ note }}">
               <div
-                class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full flex items-center justify-center"
+                class="location-tone-chip text-[11px] font-medium px-0.5 rounded block w-full flex items-center justify-center" data-location-tone="{{ location_tone }}"
               >
                 {{ location_name }}
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 ml-1">
@@ -191,7 +191,7 @@
             </div>
             {% else %}
             <div
-              class="text-[11px] font-medium px-0.5 rounded {{ style_info.get('text_class', '') }} {{ style_info.get('bg_class', '') }} block w-full"
+              class="location-tone-chip text-[11px] font-medium px-0.5 rounded block w-full" data-location-tone="{{ location_tone }}"
             >
               {{ location_name }}
             </div>
