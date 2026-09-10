@@ -27,18 +27,25 @@ def test_auth_off_anonymous_can_login_and_logout_local_admin() -> None:
     application = _create_auth_app(auth_enabled=False)
 
     with TestClient(application) as client:
-        anonymous_page = client.get("/")
+        anonymous_page = client.get("/analysis?month=2031-05")
         assert anonymous_page.status_code == 200
         assert 'data-testid="admin-login-entry"' in anonymous_page.text
-        assert 'href="/auth/login/admin?next=/"' in anonymous_page.text
+        assert (
+            'href="/auth/login/admin?next=/analysis%3Fmonth%3D2031-05"'
+            in anonymous_page.text
+        )
 
         login_response = client.post(
             "/auth/local",
-            data={"username": "admin", "password": "secret", "next": "/"},
+            data={
+                "username": "admin",
+                "password": "secret",
+                "next": "/analysis?month=2031-05",
+            },
             follow_redirects=False,
         )
         assert login_response.status_code == 303
-        assert login_response.headers["location"] == "/"
+        assert login_response.headers["location"] == "/analysis?month=2031-05"
 
         admin_page = client.get("/admin/auth")
         assert admin_page.status_code == 200
