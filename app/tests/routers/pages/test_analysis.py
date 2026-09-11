@@ -138,8 +138,10 @@ async def test_more_than_ten_work_types_are_split_into_chart_panels(
     response = await async_client.get("/analysis?month=2031-05")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.text.count('data-testid="analysis-group-chart-panel"') == 2
-    assert response.text.count('data-testid="analysis-group-chart-scroller"') == 2
+    panel_count = response.text.count('data-testid="analysis-group-chart-panel"')
+    scroller_count = response.text.count('data-testid="analysis-group-chart-scroller"')
+    assert panel_count == 2
+    assert scroller_count == 2
     assert "Work Type 1" in response.text
     assert "Work Type 11" in response.text
 
@@ -235,7 +237,7 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert 'value="2031" selected' in response.text
     assert 'data-testid="analysis-group-charts"' in response.text
     assert 'data-testid="analysis-user-type-charts"' in response.text
-    assert 'data-analysis-day=' not in response.text
+    assert "data-analysis-day=" not in response.text
     assert 'id="analysis-day-detail"' not in response.text
 
 
@@ -255,7 +257,9 @@ async def test_fiscal_year_analysis_ignores_invalid_month_parameter(
 ) -> None:
     _add_analysis_attendance(db_with_data)
 
-    response = await async_client.get("/analysis?mode=year&year=2031&month=invalid")
+    response = await async_client.get(
+        "/analysis?mode=year&year=2031&month=invalid"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     assert "2031年度" in response.text
