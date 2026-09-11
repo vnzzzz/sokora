@@ -103,13 +103,18 @@ def _build_summary_calendar_presentation(
             }
         )
 
-    categories = [
-        {"name": category, "locations": grouped_locations[category]}
-        for category in sorted(
-            grouped_locations,
-            key=lambda category: (category == "未分類", category),
+    categories: list[SummaryCalendarCategoryViewModel] = []
+    for category in sorted(
+        grouped_locations,
+        key=lambda category: (category == "未分類", category),
+    ):
+        categories.append(
+            {
+                "name": category,
+                "locations": grouped_locations[category],
+            }
         )
-    ]
+
     location_keys = [
         location["key"] for category in categories for location in category["locations"]
     ]
