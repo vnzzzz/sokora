@@ -82,6 +82,9 @@ html[data-sidebar-open="false"] .app-shell {
 }
 
 .sidebar-panel {
+  top: 0;
+  bottom: 0;
+  height: auto;
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   max-width: var(--sidebar-width);
