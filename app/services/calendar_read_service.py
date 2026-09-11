@@ -98,9 +98,7 @@ def _build_summary_calendar_presentation(
                 "name": str(raw_location["name"]),
                 "key": str(raw_location["key"]),
                 "tone": (
-                    int(raw_tone)
-                    if raw_tone is not None
-                    else UNRESOLVED_LOCATION_TONE
+                    int(raw_tone) if raw_tone is not None else UNRESOLVED_LOCATION_TONE
                 ),
             }
         )
@@ -113,9 +111,7 @@ def _build_summary_calendar_presentation(
         )
     ]
     location_keys = [
-        location["key"]
-        for category in categories
-        for location in category["locations"]
+        location["key"] for category in categories for location in category["locations"]
     ]
 
     days: list[SummaryCalendarDayViewModel] = []
