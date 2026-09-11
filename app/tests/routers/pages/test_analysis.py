@@ -59,10 +59,11 @@ async def test_month_analysis_renders_one_chart_and_target_filters_by_default(
     assert 'id="analysis-user-type-select"' in response.text
     assert 'data-testid="analysis-coverage-chart"' in response.text
     assert response.text.count('data-testid="analysis-chart-scroller"') == 1
-    assert 'data-testid="analysis-chart-target">全組織 / 全社員種別' in response.text
+    assert 'data-testid="analysis-chart-target">全グループ / 全社員種別' in response.text
     assert 'id="analysis-total-series"' in response.text
     assert 'name="show_total"' in response.text
     assert "全合計" in response.text
+    assert "勤怠種別" in response.text
     assert 'data-analysis-day="2031-05-03"' in response.text
     assert 'id="analysis-day-detail"' in response.text
     assert 'data-testid="analysis-table"' not in response.text
@@ -125,7 +126,7 @@ async def test_htmx_filter_can_clear_all_series(
     assert 'id="analysis-table-region"' in response.text
     assert 'id="analysis-view"' not in response.text
     assert 'data-testid="analysis-no-selection-hint"' in response.text
-    assert "表示系列を選択してください。" in response.text
+    assert "勤怠種別を選択してください。" in response.text
     assert 'data-testid="analysis-coverage-chart"' not in response.text
 
 
