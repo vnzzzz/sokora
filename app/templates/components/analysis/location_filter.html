@@ -19,7 +19,7 @@
         <span>
           <span id="analysis-target-heading" class="block text-sm font-medium text-base-content">集計対象</span>
           <span class="mt-1 block text-xs text-base-content/60">
-            勤怠種別を絞り込む場合に開いてください。初期状態はすべてを集計します。
+            勤務種別を絞り込む場合に開いてください。初期状態はすべてを表示します。
           </span>
         </span>
         <span class="text-xs text-base-content/50">絞り込み</span>
@@ -27,7 +27,7 @@
     </summary>
 
     <fieldset class="mt-4" aria-labelledby="analysis-target-heading">
-      <legend class="sr-only">集計対象の勤怠種別</legend>
+      <legend class="sr-only">集計対象の勤務種別</legend>
       <div class="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
         {% for category in location_categories %}
         <div>
