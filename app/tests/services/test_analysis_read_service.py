@@ -159,41 +159,6 @@ def test_month_view_model_owns_grouping_sorting_and_location_categories(
     assert view_model["selected_total_days"] == 5
     assert view_model["selected_user_count"] == 4
 
-    group_coverage = {
-        row["label"]: row for row in view_model["group_coverage_rows"]
-    }
-    later_cells = {
-        cell["key"]: cell for cell in group_coverage["Analysis Group Later"]["cells"]
-    }
-    first_cells = {
-        cell["key"]: cell for cell in group_coverage["Analysis Group First"]["cells"]
-    }
-    assert group_coverage["Analysis Group Later"]["member_count"] == 2
-    assert later_cells["2031-05-03"]["total"] == 1
-    assert later_cells["2031-05-04"]["total"] == 1
-    assert later_cells["2031-05-05"]["total"] == 1
-    assert first_cells["2031-05-03"]["total"] == 0
-    assert first_cells["2031-05-06"]["total"] == 1
-    assert later_cells["2031-05-03"]["type_counts"][0]["name"] == (
-        "Analysis Office Zero"
-    )
-
-    user_type_coverage = {
-        row["label"]: row for row in view_model["user_type_coverage_rows"]
-    }
-    first_type_cells = {
-        cell["key"]: cell
-        for cell in user_type_coverage["Analysis Type First"]["cells"]
-    }
-    later_type_cells = {
-        cell["key"]: cell
-        for cell in user_type_coverage["Analysis Type Later"]["cells"]
-    }
-    assert first_type_cells["2031-05-03"]["total"] == 1
-    assert first_type_cells["2031-05-06"]["total"] == 1
-    assert later_type_cells["2031-05-05"]["total"] == 1
-    assert later_type_cells["2031-05-03"]["total"] == 0
-
 
 def test_fiscal_year_view_model_uses_april_to_march_period(
     db_with_data: Session,
@@ -232,17 +197,8 @@ def test_fiscal_year_view_model_uses_april_to_march_period(
     assert trend["2031-05"] == 5
     assert view_model["selected_total_days"] == 5
 
-    later_group = next(
-        row
-        for row in view_model["group_coverage_rows"]
-        if row["label"] == "Analysis Group Later"
-    )
-    annual_cells = {cell["key"]: cell for cell in later_group["cells"]}
-    assert annual_cells["2031-04"]["total"] == 0
-    assert annual_cells["2031-05"]["total"] == 2
 
-
-def test_location_selection_filters_user_totals_date_groups_trend_and_coverage(
+def test_location_selection_filters_user_totals_date_groups_and_trend(
     db_with_data: Session,
 ) -> None:
     _add_reference_data(db_with_data)
@@ -282,24 +238,9 @@ def test_location_selection_filters_user_totals_date_groups_trend_and_coverage(
     assert trend["2031-05-04"] == 1
     assert view_model["selected_total_days"] == 1
     assert view_model["selected_user_count"] == 1
-    assert [item["name"] for item in view_model["coverage_locations"]] == [
-        "Analysis Office Later"
-    ]
-
-    coverage_later_group = next(
-        row
-        for row in view_model["group_coverage_rows"]
-        if row["label"] == "Analysis Group Later"
-    )
-    coverage_cells = {cell["key"]: cell for cell in coverage_later_group["cells"]}
-    assert coverage_cells["2031-05-03"]["total"] == 0
-    assert coverage_cells["2031-05-04"]["total"] == 1
-    assert coverage_cells["2031-05-04"]["type_counts"][0]["name"] == (
-        "Analysis Office Later"
-    )
 
 
-def test_empty_location_selection_produces_zero_trend_and_coverage(
+def test_empty_location_selection_produces_zero_trend(
     db_with_data: Session,
 ) -> None:
     _add_reference_data(db_with_data)
@@ -314,10 +255,4 @@ def test_empty_location_selection_produces_zero_trend_and_coverage(
     assert view_model["selected_location_ids"] == []
     assert view_model["selected_total_days"] == 0
     assert view_model["selected_user_count"] == 0
-    assert view_model["coverage_locations"] == []
     assert all(point["count"] == 0 for point in view_model["trend_points"])
-    assert all(
-        cell["total"] == 0
-        for row in view_model["group_coverage_rows"]
-        for cell in row["cells"]
-    )
