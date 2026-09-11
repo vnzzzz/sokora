@@ -1,0 +1,52 @@
+<div class="mt-6" data-testid="analysis-trend-chart">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <p class="text-xs text-base-content/60">延べ登録日数</p>
+      <p class="mt-1 text-2xl font-semibold text-base-content" data-testid="analysis-trend-total">
+        {{ selected_total_days }}
+      </p>
+    </div>
+    <div>
+      <p class="text-xs text-base-content/60">登録あり社員</p>
+      <p class="mt-1 text-2xl font-semibold text-base-content">
+        {{ selected_user_count }}<span class="ml-1 text-sm font-normal text-base-content/50">/ {{ analysis_data.users|length }}人</span>
+      </p>
+    </div>
+  </div>
+
+  <figure class="mt-6" aria-labelledby="analysis-trend-heading">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <figcaption id="analysis-trend-heading" class="text-sm font-medium text-base-content">
+        {% if is_year_mode %}月別推移{% else %}日別推移{% endif %}
+      </figcaption>
+      <span class="text-xs text-base-content/50">縦軸: 延べ登録日数</span>
+    </div>
+
+    <div class="mt-3 overflow-x-auto pb-2" data-testid="analysis-trend-scroller">
+      <div
+        class="flex h-52 items-end gap-2 border-b border-base-300 {% if is_year_mode %}min-w-[42rem]{% else %}min-w-[64rem]{% endif %}"
+      >
+        {% for point in trend_points %}
+        <div class="flex h-full min-w-0 flex-1 flex-col justify-end" data-trend-key="{{ point.key }}">
+          <div class="mb-1 h-4 text-center text-[10px] leading-4 text-base-content/60">
+            {% if point.count %}{{ point.count }}{% endif %}
+          </div>
+          <div class="flex h-36 items-end">
+            {% if point.count %}
+            <div
+              class="w-full rounded-t-sm bg-primary/70"
+              style="height: {{ point.height_percent }}%"
+              role="img"
+              aria-label="{{ point.label }}: {{ point.count }}日"
+            ></div>
+            {% endif %}
+          </div>
+          <div class="mt-2 truncate text-center text-[10px] text-base-content/60">
+            {{ point.label }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </figure>
+</div>
