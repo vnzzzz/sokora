@@ -21,34 +21,50 @@
     <section aria-labelledby="auth-status-heading">
       <h3 id="auth-status-heading" class="mb-3 text-base font-bold text-base-content">現在の状態</h3>
 
-      <dl class="max-w-2xl border-y border-base-300 text-sm">
-        <div class="grid gap-1 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt class="text-base-content/60">設定元</dt>
-          <dd class="font-medium sm:text-right">
-            <span data-testid="oidc-config-source">{{ settings.oidc_source }}</span>
-          </dd>
-        </div>
-        <div class="grid gap-1 border-t border-base-200 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt class="text-base-content/60">認証ガード</dt>
-          <dd class="font-medium sm:text-right">{{ "有効" if settings.auth_enabled else "無効" }}</dd>
-        </div>
-        <div class="grid gap-1 border-t border-base-200 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt class="text-base-content/60">OIDC</dt>
-          <dd class="font-medium sm:text-right">{{ "有効" if settings.oidc_enabled else "無効" }}</dd>
-        </div>
-        <div class="grid gap-1 border-t border-base-200 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt class="text-base-content/60">ローカル管理者</dt>
-          <dd class="font-medium sm:text-right">{{ "有効" if settings.local_admin_enabled else "無効" }}</dd>
-        </div>
-        <div class="grid gap-1 border-t border-base-200 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt class="text-base-content/60">Client secret</dt>
-          <dd class="font-medium sm:text-right">{{ "設定済み" if settings.oidc_secret_configured else "未設定" }}</dd>
-        </div>
-        <div class="grid gap-1 border-t border-base-200 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-          <dt class="text-base-content/60">Redirect URI</dt>
-          <dd class="break-all font-mono text-xs sm:text-right">{{ settings.oidc_redirect_uri or "runtime未設定" }}</dd>
-        </div>
-      </dl>
+      <div class="max-w-2xl overflow-x-auto">
+        <table class="table table-sm w-full">
+          <thead>
+            <tr>
+              <th class="w-40">項目</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>設定元</td>
+              <td class="font-medium" data-testid="oidc-config-source">{{ settings.oidc_source }}</td>
+            </tr>
+            <tr>
+              <td>認証ガード</td>
+              <td>
+                <span class="badge badge-sm badge-ghost">{{ "有効" if settings.auth_enabled else "無効" }}</span>
+              </td>
+            </tr>
+            <tr>
+              <td>OIDC</td>
+              <td>
+                <span class="badge badge-sm badge-ghost">{{ "有効" if settings.oidc_enabled else "無効" }}</span>
+              </td>
+            </tr>
+            <tr>
+              <td>ローカル管理者</td>
+              <td>
+                <span class="badge badge-sm badge-ghost">{{ "有効" if settings.local_admin_enabled else "無効" }}</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Client secret</td>
+              <td>
+                <span class="badge badge-sm badge-ghost">{{ "設定済み" if settings.oidc_secret_configured else "未設定" }}</span>
+              </td>
+            </tr>
+            <tr>
+              <td>Redirect URI</td>
+              <td class="break-all font-mono text-xs">{{ settings.oidc_redirect_uri or "runtime未設定" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section class="mt-10 max-w-2xl" aria-labelledby="oidc-settings-heading">
