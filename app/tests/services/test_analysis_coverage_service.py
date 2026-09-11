@@ -75,7 +75,7 @@ def test_month_chart_defaults_to_all_people() -> None:
     assert view_model["user_type_options"] == ["Employee", "Contractor"]
     assert view_model["selected_group_name"] is None
     assert view_model["selected_user_type_name"] is None
-    assert view_model["coverage_chart"]["label"] == "全組織 / 全社員種別"
+    assert view_model["coverage_chart"]["label"] == "全グループ / 全社員種別"
     assert [item["name"] for item in view_model["coverage_locations"]] == [
         "Office",
         "Remote",
@@ -120,12 +120,12 @@ def test_user_type_filter_can_span_all_groups() -> None:
         selected_user_type_name="Employee",
     )
 
-    assert view_model["coverage_chart"]["label"] == "全組織 / Employee"
+    assert view_model["coverage_chart"]["label"] == "全グループ / Employee"
     remote = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Remote"))
     assert remote["2031-05-03"] == 2
 
 
-def test_total_series_deduplicates_people_across_work_types() -> None:
+def test_total_series_deduplicates_people_across_attendance_types() -> None:
     view_model = analysis_coverage_service.get_analysis_coverage_view_model(
         analysis_data=_analysis_data(),
         group_sections=_group_sections(),
@@ -160,7 +160,7 @@ def test_invalid_target_filter_falls_back_to_all() -> None:
 
     assert view_model["selected_group_name"] is None
     assert view_model["selected_user_type_name"] is None
-    assert view_model["coverage_chart"]["label"] == "全組織 / 全社員種別"
+    assert view_model["coverage_chart"]["label"] == "全グループ / 全社員種別"
 
 
 def test_year_chart_counts_unique_people_per_month() -> None:
