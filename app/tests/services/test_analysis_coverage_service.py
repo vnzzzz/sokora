@@ -54,10 +54,6 @@ def _group_sections() -> List[GroupSection]:
     ]
 
 
-def _chart_by_label(charts: List[CoverageChart], label: str) -> CoverageChart:
-    return next(chart for chart in charts if chart["label"] == label)
-
-
 def _series_by_name(chart: CoverageChart, name: str) -> CoverageSeries:
     return next(series for series in chart["series"] if series["name"] == name)
 
@@ -66,7 +62,7 @@ def _counts_by_key(series: CoverageSeries) -> Dict[str, int]:
     return {point["key"]: point["count"] for point in series["points"]}
 
 
-def test_month_charts_count_unique_people_per_work_type() -> None:
+def test_month_chart_defaults_to_all_people() -> None:
     view_model = analysis_coverage_service.get_analysis_coverage_view_model(
         analysis_data=_analysis_data(),
         group_sections=_group_sections(),
@@ -75,31 +71,58 @@ def test_month_charts_count_unique_people_per_work_type() -> None:
     )
 
     assert len(view_model["coverage_buckets"]) == 31
+    assert view_model["group_options"] == ["Design", "Sales"]
+    assert view_model["user_type_options"] == ["Employee", "Contractor"]
+    assert view_model["selected_group_name"] is None
+    assert view_model["selected_user_type_name"] is None
+    assert view_model["coverage_chart"]["label"] == "全組織 / 全社員種別"
     assert [item["name"] for item in view_model["coverage_locations"]] == [
         "Office",
         "Remote",
     ]
     assert view_model["coverage_locations"][0]["tone_index"] == get_location_tone(1)
 
-    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
-    sales = _chart_by_label(view_model["group_coverage_charts"], "Sales")
-    design_office = _counts_by_key(_series_by_name(design, "Office"))
-    design_remote = _counts_by_key(_series_by_name(design, "Remote"))
-    sales_remote = _counts_by_key(_series_by_name(sales, "Remote"))
+    office = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Office"))
+    remote = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Remote"))
+    assert office["2031-05-03"] == 2
+    assert office["2031-05-04"] == 1
+    assert remote["2031-05-03"] == 2
+    assert remote["2031-05-04"] == 0
 
-    assert design["max_count"] == 2
-    assert design_office["2031-05-03"] == 2
-    assert design_office["2031-05-04"] == 1
-    assert design_remote["2031-05-03"] == 1
-    assert design_remote["2031-05-04"] == 0
-    assert sales_remote["2031-05-03"] == 1
 
-    employee = _chart_by_label(view_model["user_type_coverage_charts"], "Employee")
-    contractor = _chart_by_label(view_model["user_type_coverage_charts"], "Contractor")
-    employee_remote = _counts_by_key(_series_by_name(employee, "Remote"))
-    contractor_office = _counts_by_key(_series_by_name(contractor, "Office"))
-    assert employee_remote["2031-05-03"] == 2
-    assert contractor_office["2031-05-03"] == 1
+def test_group_and_user_type_filters_are_independent_and_intersect() -> None:
+    view_model = analysis_coverage_service.get_analysis_coverage_view_model(
+        analysis_data=_analysis_data(),
+        group_sections=_group_sections(),
+        selected_location_ids=[1, 2],
+        is_year_mode=False,
+        selected_group_name="Design",
+        selected_user_type_name="Employee",
+    )
+
+    assert view_model["selected_group_name"] == "Design"
+    assert view_model["selected_user_type_name"] == "Employee"
+    assert view_model["coverage_chart"]["label"] == "Design / Employee"
+
+    office = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Office"))
+    remote = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Remote"))
+    assert office["2031-05-03"] == 1
+    assert office["2031-05-04"] == 1
+    assert remote["2031-05-03"] == 1
+
+
+def test_user_type_filter_can_span_all_groups() -> None:
+    view_model = analysis_coverage_service.get_analysis_coverage_view_model(
+        analysis_data=_analysis_data(),
+        group_sections=_group_sections(),
+        selected_location_ids=[2],
+        is_year_mode=False,
+        selected_user_type_name="Employee",
+    )
+
+    assert view_model["coverage_chart"]["label"] == "全組織 / Employee"
+    remote = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Remote"))
+    assert remote["2031-05-03"] == 2
 
 
 def test_total_series_deduplicates_people_across_work_types() -> None:
@@ -109,61 +132,44 @@ def test_total_series_deduplicates_people_across_work_types() -> None:
         selected_location_ids=[],
         is_year_mode=False,
         include_total=True,
+        selected_group_name="Design",
     )
 
     assert view_model["include_total"] is True
     assert view_model["coverage_locations"] == []
 
-    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
-    total = _series_by_name(design, "全合計")
+    total = _series_by_name(view_model["coverage_chart"], "全合計")
     total_counts = _counts_by_key(total)
-
     assert total["is_total"] is True
-    assert [series["name"] for series in design["series"]] == ["全合計"]
+    assert [series["name"] for series in view_model["coverage_chart"]["series"]] == [
+        "全合計"
+    ]
     assert total_counts["2031-05-03"] == 2
     assert total_counts["2031-05-04"] == 1
 
-    employee = _chart_by_label(view_model["user_type_coverage_charts"], "Employee")
-    employee_total = _counts_by_key(_series_by_name(employee, "全合計"))
-    assert employee_total["2031-05-03"] == 2
 
-
-def test_total_and_selected_work_type_can_be_compared() -> None:
+def test_invalid_target_filter_falls_back_to_all() -> None:
     view_model = analysis_coverage_service.get_analysis_coverage_view_model(
         analysis_data=_analysis_data(),
         group_sections=_group_sections(),
-        selected_location_ids=[2],
+        selected_location_ids=[1],
         is_year_mode=False,
-        include_total=True,
+        selected_group_name="Missing",
+        selected_user_type_name="Unknown",
     )
 
-    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
-    assert [series["name"] for series in design["series"]] == ["全合計", "Remote"]
-    assert design["max_count"] == 2
+    assert view_model["selected_group_name"] is None
+    assert view_model["selected_user_type_name"] is None
+    assert view_model["coverage_chart"]["label"] == "全組織 / 全社員種別"
 
 
-def test_selected_work_type_exposes_zero_as_chart_point() -> None:
-    view_model = analysis_coverage_service.get_analysis_coverage_view_model(
-        analysis_data=_analysis_data(),
-        group_sections=_group_sections(),
-        selected_location_ids=[2],
-        is_year_mode=False,
-    )
-
-    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
-    remote = _counts_by_key(_series_by_name(design, "Remote"))
-
-    assert remote["2031-05-03"] == 1
-    assert remote["2031-05-04"] == 0
-    assert view_model["coverage_locations"][0]["name"] == "Remote"
-
-
-def test_year_charts_count_unique_people_per_month_and_work_type() -> None:
+def test_year_chart_counts_unique_people_per_month() -> None:
     view_model = analysis_coverage_service.get_analysis_coverage_view_model(
         analysis_data=_analysis_data(date(2031, 4, 1)),
         group_sections=_group_sections(),
         selected_location_ids=[1, 2],
         is_year_mode=True,
+        selected_group_name="Design",
     )
 
     assert [label for _, label in view_model["coverage_buckets"]] == [
@@ -181,15 +187,14 @@ def test_year_charts_count_unique_people_per_month_and_work_type() -> None:
         "3月",
     ]
 
-    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
-    office = _counts_by_key(_series_by_name(design, "Office"))
-    remote = _counts_by_key(_series_by_name(design, "Remote"))
+    office = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Office"))
+    remote = _counts_by_key(_series_by_name(view_model["coverage_chart"], "Remote"))
     assert office["2031-04"] == 0
     assert office["2031-05"] == 2
     assert remote["2031-05"] == 1
 
 
-def test_empty_selection_keeps_chart_groups_without_series() -> None:
+def test_empty_selection_keeps_chart_without_series() -> None:
     view_model = analysis_coverage_service.get_analysis_coverage_view_model(
         analysis_data=_analysis_data(),
         group_sections=_group_sections(),
@@ -199,4 +204,4 @@ def test_empty_selection_keeps_chart_groups_without_series() -> None:
 
     assert view_model["include_total"] is False
     assert view_model["coverage_locations"] == []
-    assert all(chart["series"] == [] for chart in view_model["group_coverage_charts"])
+    assert view_model["coverage_chart"]["series"] == []
