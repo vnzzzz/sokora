@@ -102,6 +102,46 @@ def test_month_charts_count_unique_people_per_work_type() -> None:
     assert contractor_office["2031-05-03"] == 1
 
 
+def test_total_series_deduplicates_people_across_work_types() -> None:
+    view_model = analysis_coverage_service.get_analysis_coverage_view_model(
+        analysis_data=_analysis_data(),
+        group_sections=_group_sections(),
+        selected_location_ids=[],
+        is_year_mode=False,
+        include_total=True,
+    )
+
+    assert view_model["include_total"] is True
+    assert view_model["coverage_locations"] == []
+
+    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
+    total = _series_by_name(design, "全合計")
+    total_counts = _counts_by_key(total)
+
+    assert total["is_total"] is True
+    assert [series["name"] for series in design["series"]] == ["全合計"]
+    assert total_counts["2031-05-03"] == 2
+    assert total_counts["2031-05-04"] == 1
+
+    employee = _chart_by_label(view_model["user_type_coverage_charts"], "Employee")
+    employee_total = _counts_by_key(_series_by_name(employee, "全合計"))
+    assert employee_total["2031-05-03"] == 2
+
+
+def test_total_and_selected_work_type_can_be_compared() -> None:
+    view_model = analysis_coverage_service.get_analysis_coverage_view_model(
+        analysis_data=_analysis_data(),
+        group_sections=_group_sections(),
+        selected_location_ids=[2],
+        is_year_mode=False,
+        include_total=True,
+    )
+
+    design = _chart_by_label(view_model["group_coverage_charts"], "Design")
+    assert [series["name"] for series in design["series"]] == ["全合計", "Remote"]
+    assert design["max_count"] == 2
+
+
 def test_selected_work_type_exposes_zero_as_chart_point() -> None:
     view_model = analysis_coverage_service.get_analysis_coverage_view_model(
         analysis_data=_analysis_data(),
@@ -157,5 +197,6 @@ def test_empty_selection_keeps_chart_groups_without_series() -> None:
         is_year_mode=False,
     )
 
+    assert view_model["include_total"] is False
     assert view_model["coverage_locations"] == []
     assert all(chart["series"] == [] for chart in view_model["group_coverage_charts"])
