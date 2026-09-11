@@ -1,73 +1,21 @@
-{% macro coverage_table(title, testid, rows) -%}
-<div class="mt-5">
-  <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-    <h4 class="text-sm font-medium text-base-content">{{ title }}</h4>
-    <span class="text-xs text-base-content/50">
-      {% if is_year_mode %}月内に登録がある社員数{% else %}その日に登録がある社員数{% endif %}
-    </span>
-  </div>
-  <div class="overflow-x-auto pb-2" data-testid="{{ testid }}-scroller">
-    <table class="table table-xs w-max min-w-full" data-testid="{{ testid }}">
-      <thead>
-        <tr>
-          <th class="sticky left-0 z-20 min-w-44 bg-base-100 text-left">区分</th>
-          {% for bucket in coverage_buckets %}
-          <th class="min-w-16 text-center font-normal">{{ bucket[1] }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-        <tr data-coverage-row-label="{{ row.label }}">
-          <th class="sticky left-0 z-10 min-w-44 bg-base-100 text-left font-medium">
-            <span class="block">{{ row.label }}</span>
-            <span class="mt-0.5 block text-[10px] font-normal text-base-content/45">{{ row.member_count }}人</span>
-          </th>
-          {% for cell in row.cells %}
-          <td
-            class="min-w-16 px-1.5 py-2 text-center {% if cell.total == 0 %}bg-base-200/45 text-base-content/35{% endif %}"
-            data-coverage-key="{{ cell.key }}"
-            data-coverage-count="{{ cell.total }}"
-            title="{{ row.label }}・{{ cell.label }}: {{ cell.total }}/{{ row.member_count }}人{% for item in cell.type_counts %}、{{ item.name }} {{ item.count }}人{% endfor %}"
-          >
-            <div class="whitespace-nowrap text-sm font-semibold">
-              {{ cell.total }}<span class="text-[10px] font-normal text-base-content/40">/{{ row.member_count }}</span>
-            </div>
-            {% if cell.type_counts %}
-            <div class="mt-1 flex flex-wrap justify-center gap-0.5" aria-hidden="true">
-              {% for item in cell.type_counts %}
-              <span
-                class="location-tone-chip min-w-4 rounded px-1 text-[10px] leading-4"
-                data-location-tone="{{ item.tone_index }}"
-              >{{ item.count }}</span>
-              {% endfor %}
-            </div>
-            {% endif %}
-          </td>
-          {% endfor %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{%- endmacro %}
-
-<section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="analysis-coverage-heading">
-  <div class="max-w-4xl">
-    <h3 id="analysis-coverage-heading" class="text-base font-semibold text-base-content">配置状況</h3>
-    <p class="mt-1 text-xs leading-5 text-base-content/60">
-      選択した勤怠種別について、組織・社員種別ごとの在籍人数に対する登録あり社員数を確認します。
-      特定の勤務種別で「0人」の日を探す場合は、表示条件でその勤怠種別だけに絞り込んでください。
-    </p>
+{% macro coverage_charts(title, heading_id, prefix, charts) -%}
+<section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="{{ heading_id }}" data-testid="{{ prefix }}-charts">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h3 id="{{ heading_id }}" class="text-base font-semibold text-base-content">{{ title }}</h3>
+      <p class="mt-1 text-xs text-base-content/55">
+        {% if is_year_mode %}月ごと{% else %}日ごと{% endif %}の勤務種別別人数。0は該当者なしを示します。
+      </p>
+    </div>
+    <span class="text-xs text-base-content/45">縦軸: 人数</span>
   </div>
 
   {% if coverage_locations %}
-  <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤怠種別の凡例">
+  <div class="mt-4 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤務種別の凡例">
     {% for location in coverage_locations %}
-    <span class="inline-flex items-center gap-1.5 text-xs text-base-content/65">
+    <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
       <span
-        class="location-tone-chip h-2.5 w-2.5 rounded-sm p-0"
+        class="location-tone-chip h-2.5 w-2.5 rounded-full p-0"
         data-location-tone="{{ location.tone_index }}"
         aria-hidden="true"
       ></span>
@@ -77,11 +25,87 @@
   </div>
   {% endif %}
 
-  {% if group_coverage_rows %}
-    {{ coverage_table("組織別", "analysis-group-coverage", group_coverage_rows) }}
-  {% endif %}
+  <div class="mt-6 space-y-8">
+    {% for chart in charts %}
+      {% set axis_max = chart.member_count if chart.member_count > 0 else 1 %}
+      {% set point_count = coverage_buckets|length %}
+      <figure data-testid="{{ prefix }}-chart">
+        <figcaption class="mb-2 flex items-baseline justify-between gap-3">
+          <span class="text-sm font-medium text-base-content">{{ chart.label }}</span>
+          <span class="text-[11px] text-base-content/45">在籍 {{ chart.member_count }}人</span>
+        </figcaption>
 
-  {% if user_type_coverage_rows %}
-    {{ coverage_table("社員種別別", "analysis-user-type-coverage", user_type_coverage_rows) }}
-  {% endif %}
+        <div class="overflow-x-auto pb-2" data-testid="{{ prefix }}-chart-scroller">
+          <svg
+            class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
+            viewBox="0 0 820 220"
+            role="img"
+            aria-label="{{ chart.label }}の勤務種別別人数推移"
+          >
+            <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
+              <line x1="52" y1="28" x2="782" y2="28"></line>
+              <line x1="52" y1="104" x2="782" y2="104"></line>
+            </g>
+            <line x1="52" y1="180" x2="782" y2="180" class="text-base-content/35" stroke="currentColor" stroke-width="1.5"></line>
+
+            <g class="text-base-content/45" fill="currentColor" font-size="10">
+              <text x="43" y="32" text-anchor="end">{{ chart.member_count }}</text>
+              <text x="43" y="184" text-anchor="end">0</text>
+            </g>
+
+            {% for series in chart.series %}
+            <g data-location-tone="{{ series.tone_index }}">
+              {% for point in series.points %}
+                {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+                {% set y = 180 - (point.count * 152 / axis_max) %}
+                {% if not loop.last %}
+                  {% set next_point = series.points[loop.index] %}
+                  {% set next_x = 52 + (loop.index * 730 / (point_count - 1)) %}
+                  {% set next_y = 180 - (next_point.count * 152 / axis_max) %}
+                  <line
+                    x1="{{ x }}"
+                    y1="{{ y }}"
+                    x2="{{ next_x }}"
+                    y2="{{ next_y }}"
+                    stroke="rgb(var(--location-tone-rgb))"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  ></line>
+                {% endif %}
+                <circle
+                  cx="{{ x }}"
+                  cy="{{ y }}"
+                  r="{% if point.count == 0 %}4{% else %}3{% endif %}"
+                  fill="rgb(var(--location-tone-rgb))"
+                >
+                  <title>{{ chart.label }}・{{ point.label }}・{{ series.name }}: {{ point.count }}人</title>
+                </circle>
+              {% endfor %}
+            </g>
+            {% endfor %}
+
+            <g class="text-base-content/45" fill="currentColor" font-size="10">
+              {% for bucket in coverage_buckets %}
+                {% if is_year_mode or loop.first or loop.last or loop.index % 5 == 0 %}
+                  {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+                  <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
+                {% endif %}
+              {% endfor %}
+            </g>
+          </svg>
+        </div>
+      </figure>
+    {% endfor %}
+  </div>
 </section>
+{%- endmacro %}
+
+{% if selected_location_ids|length == 0 %}
+<div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-no-selection-hint">
+  表示条件で勤務種別を選択してください。
+</div>
+{% else %}
+  {{ coverage_charts("組織別", "analysis-group-charts-heading", "analysis-group", group_coverage_charts) }}
+  {{ coverage_charts("社員種別別", "analysis-user-type-charts-heading", "analysis-user-type", user_type_coverage_charts) }}
+{% endif %}
