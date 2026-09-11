@@ -97,7 +97,7 @@ def test_month_view_model_reads_fresh_database_state(db_with_data: Session) -> N
     assert _summary_day(second_view, 1)["counts"][str(location.name)] == 2
 
 
-def test_month_view_model_groups_categories_with_unclassified_last(
+def test_month_view_model_groups_and_orders_categories_like_template(
     db_with_data: Session,
 ) -> None:
     db = db_with_data
@@ -125,18 +125,40 @@ def test_month_view_model_groups_categories_with_unclassified_last(
             order=1,
         ),
     )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category Lower A",
+            category="a",
+            order=1,
+        ),
+    )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category Upper B",
+            category="B",
+            order=1,
+        ),
+    )
     db.commit()
 
     view_model = calendar_read_service.get_month_view_model(db, month="2031-06")
 
     assert [category["name"] for category in view_model["categories"]] == [
+        "a",
         "A分類",
+        "B",
         "Z分類",
         "未分類",
     ]
-    assert [
-        location["name"] for location in view_model["categories"][0]["locations"]
-    ] == ["Calendar Category A1", "Calendar Category A2"]
+    category_a = next(
+        category for category in view_model["categories"] if category["name"] == "A分類"
+    )
+    assert [location["name"] for location in category_a["locations"]] == [
+        "Calendar Category A1",
+        "Calendar Category A2",
+    ]
     assert view_model["categories"][-1]["locations"][0]["name"] == "Test Location"
 
 
