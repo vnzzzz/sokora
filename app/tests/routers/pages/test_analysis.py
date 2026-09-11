@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app import models
-from app.services import analysis_read_service
+from app.services import analysis_coverage_service, analysis_read_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -58,6 +58,32 @@ async def test_month_analysis_renders_graph_only_read_model(
     assert 'data-testid="analysis-table"' not in response.text
     assert 'data-testid="analysis-trend-chart"' not in response.text
     assert 'data-testid="analysis-trend-total"' not in response.text
+
+
+async def test_empty_chart_data_preserves_period_empty_message(
+    async_client: AsyncClient,
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+
+    monkeypatch.setattr(
+        analysis_coverage_service,
+        "get_analysis_coverage_view_model",
+        lambda **_kwargs: {
+            "coverage_locations": [],
+            "coverage_buckets": [],
+            "group_coverage_charts": [],
+            "user_type_coverage_charts": [],
+        },
+    )
+
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'data-testid="analysis-empty-message"' in response.text
+    assert "2031年5月の勤怠データがありません。" in response.text
+    assert 'data-testid="analysis-group-charts"' not in response.text
 
 
 async def test_htmx_analysis_returns_fragment(
