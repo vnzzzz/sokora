@@ -1,21 +1,33 @@
 <div class="p-4" id="analysis-view" hx-history-elt>
-  <header class="mb-8 max-w-5xl">
+  <header class="mb-6 max-w-5xl">
     <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
-    <p class="analysis-period-label mt-1 text-sm text-base-content/60">
-      {{ analysis_data.period.label }}
+    <p class="mt-1 text-sm text-base-content/60">
+      表示条件を指定して、全体の推移から社員別の登録内容まで確認します。
     </p>
   </header>
 
   <div id="analysis-root">
-    <section aria-labelledby="analysis-period-heading">
-      {% include "components/analysis/period_controls.html" %}
+    <section
+      class="max-w-5xl rounded-lg border border-base-300 bg-base-200/30 p-4 sm:p-5"
+      aria-labelledby="analysis-controls-heading"
+    >
+      <div>
+        <h3 id="analysis-controls-heading" class="text-sm font-semibold text-base-content">表示条件</h3>
+        <p class="mt-1 text-xs text-base-content/60">
+          集計単位・期間・勤怠種別を指定します。
+        </p>
+      </div>
+
+      <div class="mt-5">
+        {% include "components/analysis/period_controls.html" %}
+      </div>
+
+      <div class="mt-5 border-t border-base-300 pt-5">
+        {% include "components/analysis/location_filter.html" %}
+      </div>
     </section>
 
-    <section class="mt-10" aria-labelledby="analysis-target-heading">
-      {% include "components/analysis/location_filter.html" %}
-    </section>
-
-    <section class="mt-10" aria-labelledby="analysis-results-heading">
+    <section class="mt-8" aria-labelledby="analysis-overview-heading">
       {% include "components/analysis/table_region.html" %}
     </section>
   </div>
