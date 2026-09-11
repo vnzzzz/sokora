@@ -94,14 +94,8 @@ def test_month_charts_count_unique_people_per_work_type() -> None:
     assert design_remote["2031-05-04"] == 0
     assert sales_remote["2031-05-03"] == 1
 
-    employee = _chart_by_label(
-        view_model["user_type_coverage_charts"],
-        "Employee",
-    )
-    contractor = _chart_by_label(
-        view_model["user_type_coverage_charts"],
-        "Contractor",
-    )
+    employee = _chart_by_label(view_model["user_type_coverage_charts"], "Employee")
+    contractor = _chart_by_label(view_model["user_type_coverage_charts"], "Contractor")
     employee_remote = _counts_by_key(_series_by_name(employee, "Remote"))
     contractor_office = _counts_by_key(_series_by_name(contractor, "Office"))
     assert employee_remote["2031-05-03"] == 2
@@ -164,6 +158,4 @@ def test_empty_selection_keeps_chart_groups_without_series() -> None:
     )
 
     assert view_model["coverage_locations"] == []
-    assert all(
-        chart["series"] == [] for chart in view_model["group_coverage_charts"]
-    )
+    assert all(chart["series"] == [] for chart in view_model["group_coverage_charts"])
