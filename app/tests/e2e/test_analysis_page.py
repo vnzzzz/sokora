@@ -131,14 +131,14 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     expect(accessible_data).to_contain_text(location_name, timeout=5000)
     expect(page).to_have_url(initial_url)
 
-    page.get_by_role("button", name="一括選択").click()
+    page.get_by_role("button", name="一括選択", exact=True).click()
     expect(total_checkbox).to_be_checked()
     for index in range(location_count):
         expect(checkboxes.nth(index)).to_be_checked(timeout=5000)
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page).to_have_url(initial_url)
 
-    page.get_by_role("button", name="一括選択解除").click()
+    page.get_by_role("button", name="一括選択解除", exact=True).click()
     expect(total_checkbox).not_to_be_checked()
     for index in range(location_count):
         expect(checkboxes.nth(index)).not_to_be_checked(timeout=5000)
