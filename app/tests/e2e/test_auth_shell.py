@@ -43,9 +43,7 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     assert logout_form.get_attribute("data-tip") is None
 
     button_box = logout_button.bounding_box()
-    icon_box = logout_icon.bounding_box()
     assert button_box is not None
-    assert icon_box is not None
 
     before_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
@@ -61,6 +59,9 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     assert ring_hover["hovered"] is True
     assert ring_hover["background"] != before_hover
 
+    # Hover状態での実座標を取り直し、現在描画されているiconの中心へ移動する。
+    icon_box = logout_icon.bounding_box()
+    assert icon_box is not None
     icon_x = icon_box["x"] + icon_box["width"] / 2
     icon_y = icon_box["y"] + icon_box["height"] / 2
     page.mouse.move(icon_x, icon_y)
