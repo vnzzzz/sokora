@@ -47,7 +47,8 @@ function markSelectedAnalysisDay(day) {
     if (!(trigger instanceof HTMLButtonElement)) return
 
     const isSelected = trigger.dataset.analysisDay === day
-    trigger.toggleAttribute('aria-current', isSelected)
+    if (isSelected) trigger.setAttribute('aria-current', 'date')
+    else trigger.removeAttribute('aria-current')
     trigger.classList.toggle('text-primary', isSelected)
     trigger.classList.toggle('font-semibold', isSelected)
     trigger.classList.toggle('text-base-content/45', !isSelected)
