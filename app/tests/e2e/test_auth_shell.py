@@ -13,7 +13,7 @@ def _development_session_cookie(session: dict[str, object]) -> str:
 
 
 def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> None:
-    """logout controlはicon上でもhoverを維持し、補助tooltipを表示しない。"""
+    """logout controlはicon上でも同じhover feedbackとclick surfaceを維持する。"""
     page.context.add_cookies(
         [
             {
@@ -42,22 +42,25 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     expect(logout_form).not_to_have_class("tooltip")
     assert logout_form.get_attribute("data-tip") is None
 
+    form_box = logout_form.bounding_box()
     button_box = logout_button.bounding_box()
+    assert form_box is not None
     assert button_box is not None
+    assert abs(form_box["width"] - button_box["width"]) < 0.5
+    assert abs(form_box["height"] - button_box["height"]) < 0.5
 
     before_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
     )
 
-    ring_x = button_box["x"] + 4
-    ring_y = button_box["y"] + button_box["height"] / 2
+    ring_x = form_box["x"] + 4
+    ring_y = form_box["y"] + form_box["height"] / 2
     page.mouse.move(ring_x, ring_y)
     ring_hover = logout_button.evaluate(
-        "element => ({hovered: element.matches(':hover'), "
-        "background: getComputedStyle(element).backgroundColor})"
+        "element => getComputedStyle(element).backgroundColor"
     )
-    assert ring_hover["hovered"] is True
-    assert ring_hover["background"] != before_hover
+    assert logout_form.evaluate("element => element.matches(':hover')") is True
+    assert ring_hover != before_hover
 
     # Hover状態での実座標を取り直し、現在描画されているiconの中心へ移動する。
     icon_box = logout_icon.bounding_box()
@@ -65,19 +68,25 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     icon_x = icon_box["x"] + icon_box["width"] / 2
     icon_y = icon_box["y"] + icon_box["height"] / 2
     page.mouse.move(icon_x, icon_y)
+
     icon_hover = logout_button.evaluate(
-        "element => ({hovered: element.matches(':hover'), "
-        "background: getComputedStyle(element).backgroundColor})"
+        "element => getComputedStyle(element).backgroundColor"
     )
-    hit_inside_button = page.evaluate(
+    interaction_state = page.evaluate(
         """([x, y]) => {
+          const form = document.querySelector('.logout-control')
           const button = document.querySelector('[data-testid="logout-button"]')
           const hit = document.elementFromPoint(x, y)
-          return Boolean(button && hit && (hit === button || button.contains(hit)))
+          return {
+            formHovered: Boolean(form && form.matches(':hover')),
+            hitInsideButton: Boolean(
+              button && hit && (hit === button || button.contains(hit))
+            ),
+          }
         }""",
         [icon_x, icon_y],
     )
 
-    assert icon_hover["hovered"] is True
-    assert hit_inside_button is True
-    assert icon_hover["background"] == ring_hover["background"]
+    assert interaction_state["formHovered"] is True
+    assert interaction_state["hitInsideButton"] is True
+    assert icon_hover == ring_hover
