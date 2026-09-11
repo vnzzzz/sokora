@@ -37,7 +37,7 @@ class CoverageSeries(TypedDict):
 
 
 class CoverageChart(TypedDict):
-    """選択中の組織・社員種別に対応する単一時系列chart。"""
+    """選択中のグループ・社員種別に対応する単一時系列chart。"""
 
     label: str
     max_count: int
@@ -143,7 +143,7 @@ def _chart_label(
     selected_group_name: Optional[str],
     selected_user_type_name: Optional[str],
 ) -> str:
-    group_label = selected_group_name or "全組織"
+    group_label = selected_group_name or "全グループ"
     user_type_label = selected_user_type_name or "全社員種別"
     return f"{group_label} / {user_type_label}"
 
