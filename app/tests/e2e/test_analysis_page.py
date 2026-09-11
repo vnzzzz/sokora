@@ -101,8 +101,13 @@ def test_analysis_primary_controls_and_results_remain_reachable_on_narrow_viewpo
     page.goto(ANALYSIS_URL)
 
     expect(page.locator("#period-month")).to_be_visible()
+    expect(page.locator("#month-input")).to_be_visible()
     expect(page.locator(".location-checkbox").first).to_be_visible()
     expect(page.locator("#analysis-table-region")).to_be_visible()
+
+    assert page.evaluate(
+        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+    )
 
     table_scroller = page.locator("#analysis-table-region .overflow-x-auto")
     expect(table_scroller).to_be_visible()
