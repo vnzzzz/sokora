@@ -11,7 +11,7 @@
   "10 2 2 2 2 2",
 ] %}
 
-{% if location_categories|length == 0 %}
+{% if location_categories|length == 0 or group_sections|length == 0 %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-empty-message">
   {{ empty_message }}
 </div>

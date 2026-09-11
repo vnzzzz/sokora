@@ -71,6 +71,22 @@ async def test_month_analysis_renders_one_chart_and_target_filters_by_default(
     assert 'data-testid="analysis-trend-chart"' not in response.text
 
 
+async def test_analysis_without_any_users_preserves_period_empty_message(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    """勤怠種別は存在するがuserが1人も登録されていない場合、全合計0の chartではなく
+    period-specific empty_messageを表示する。group_sectionsが空でも全合計seriesは
+    常時描画できてしまうため、chart側でこのcaseを明示的に区別する必要がある。
+    """
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'data-testid="analysis-empty-message"' in response.text
+    assert "2031年5月の勤怠データがありません。" in response.text
+    assert 'data-testid="analysis-coverage-chart"' not in response.text
+
+
 async def test_target_filters_render_selected_intersection(
     async_client: AsyncClient,
     db_with_data: Session,
