@@ -1,6 +1,6 @@
 <form
   id="analysis-location-filter"
-  class="mb-4 p-3 bg-base-200 rounded-lg"
+  class="max-w-5xl"
   hx-get="/analysis"
   hx-trigger="change"
   hx-target="#analysis-table-region"
@@ -14,26 +14,37 @@
   <input type="hidden" name="month" value="{{ current_month }}" />
   {% endif %}
 
-  <h4 class="text-sm font-medium mb-3">勤怠種別</h4>
+  <fieldset aria-describedby="analysis-target-hint">
+    <legend id="analysis-target-heading" class="text-sm font-semibold text-base-content">
+      集計対象
+    </legend>
+    <p id="analysis-target-hint" class="mt-1 text-xs text-base-content/60">
+      複数選択できます。選択した勤怠種別だけを登録日数と登録日付一覧に反映します。
+    </p>
 
-  {% for category in location_categories %}
-  <div class="mb-3">
-    <h5 class="font-medium text-base-content mb-2 border-b pb-1 text-xs">{{ category.name }}</h5>
-    <div class="flex flex-wrap gap-3">
-      {% for location in category.locations %}
-      <label class="flex items-center space-x-2 cursor-pointer" for="location-{{ location.id }}">
-        <input
-          type="checkbox"
-          id="location-{{ location.id }}"
-          name="selected_locations"
-          value="{{ location.id }}"
-          class="checkbox checkbox-sm location-checkbox"
-          {% if location.id in selected_location_ids %}checked{% endif %}
-        />
-        <span class="text-sm">{{ location.name }}</span>
-      </label>
+    <div class="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+      {% for category in location_categories %}
+      <div>
+        <h4 class="mb-2 border-b border-base-300 pb-1 text-xs font-medium text-base-content/70">
+          {{ category.name }}
+        </h4>
+        <div class="flex flex-wrap gap-x-4 gap-y-2">
+          {% for location in category.locations %}
+          <label class="flex items-center gap-2 cursor-pointer" for="location-{{ location.id }}">
+            <input
+              type="checkbox"
+              id="location-{{ location.id }}"
+              name="selected_locations"
+              value="{{ location.id }}"
+              class="checkbox checkbox-sm location-checkbox"
+              {% if location.id in selected_location_ids %}checked{% endif %}
+            />
+            <span class="text-sm">{{ location.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
       {% endfor %}
     </div>
-  </div>
-  {% endfor %}
+  </fieldset>
 </form>
