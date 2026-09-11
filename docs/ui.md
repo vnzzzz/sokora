@@ -63,7 +63,9 @@ analysis画面は **表示条件 → 組織別グラフ → 社員種別別グ�
 
 主可視化は既存attendance analysis resultのlocation別date detailをserver-sideで再集約したline chartです。**組織ごと**、**社員種別ごと**にchartを分け、選択中の各勤怠種別を1系列として描画します。月次は日別、年度は4月〜翌3月の月別で、縦軸はそのbucketで該当勤怠種別を登録したunique社員数です。同一社員が同じbucketで同じ勤怠種別を複数回持っても1人として数えます。縦軸の0を常に表示し、系列が0へ落ちた日/月を「その区分で該当勤務者がいない」状態として直接読めることをprimary use caseにします。
 
-延べ登録日数、登録あり社員数等のKPI、coverage matrix、全体延べ登録日数trend、社員別集計tableはanalysisのprimary surfaceには置きません。限られた画面領域を勤務状況の時系列比較へ使います。chartはJinjaでsemantic SVGとしてrenderし、axis / grid / line / pointを持たせます。client-side chart stateや追加chart libraryは導入しません。勤怠種別の色は他画面と同じstable paletteを再利用します。
+1つのSVGへ重ねる勤怠種別は最大10系列とし、11種類以上を同時選択した場合は同じ組織・社員種別内で追加panelへ10系列ずつ自動分割します。各panelは同じ縦軸scaleを共有し、凡例もpanel単位で表示します。これにより10色paletteや線種を循環させて同一SVG内の系列を見失うことを避けつつ、勤怠種別数そのものには上限を設けません。
+
+延べ登録日数、登録あり社員数等のKPI、coverage matrix、全体延べ登録日数trend、社員別集計tableはanalysisのprimary surfaceには置きません。限られた画面領域を勤務状況の時系列比較へ使います。chartはJinjaでserver-rendered SVGとしてrenderし、axis / grid / line / pointを持たせます。SVG自体に依存せず同じbucket / 勤怠種別 / 人数を読み取れるvisually-hidden text summaryも併設します。client-side chart stateや追加chart libraryは導入しません。勤怠種別の色は他画面と同じstable paletteを再利用し、同一panel内では線種も併用して色だけに依存しません。
 
 `#analysis-view` はmode / period変更のHTMX replacement boundaryで、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。このregionには組織別・社員種別別chartを含め、filter変更時に両方を同一read snapshotから同期更新します。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長chartは内部scroll surfaceを持ち、狭いviewportでpage全体を横overflowさせません。
 
