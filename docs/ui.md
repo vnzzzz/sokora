@@ -67,7 +67,7 @@ analysis画面は **表示条件 → 人数推移chart → 月次の日別detail
 
 主可視化は既存attendance analysis resultのlocation別date detailをserver-sideで再集約した単一line chartです。月次は日別、年度は4月〜翌3月の月別で、個別勤怠種別の縦軸値はそのbucketで該当勤怠種別を登録したunique社員数です。同一社員が同じbucketで同じ勤怠種別を複数回持っても1人として数えます。縦軸の0を常に表示し、0人へ落ちた日/月を直接読めることをprimary use caseにします。
 
-chartはlineだけで描画し、各bucketのpoint markerは表示しません。個別勤怠種別はstable 10-tone paletteと線種を併用し、全合計は太いsolid lineとして強く表示します。選択中の勤怠種別は1つのSVGへ重ね、SVGとは別に同じbucket / series / 人数を読み取れるvisually-hidden text summaryを併設します。
+chartはlineだけで描画し、各bucketのpoint markerは表示しません。個別勤怠種別はstable 10-tone paletteと線種を併用し、全合計は太いsolid lineとして強く表示します。1つのSVGへ重ねるseriesは最大10本とし、11本以上を同時選択した場合は同じ対象filter内で追加panelへ10系列ずつ自動分割します。各panelは同じ縦軸scaleと凡例を共有し、10色paletteや線種の循環による同一SVG内での見分けづらさを避けます。SVGとは別に同じbucket / series / 人数を読み取れるvisually-hidden text summaryを併設します。
 
 月次・年度とも日付/月ラベルはSVG内のx軸へ描画し、line bucketと同じx座標を共有します。月次の日付ラベルはinteractive controlでもあり、選択すると既存 `/calendar/day/{day}` の日別detailを同じanalysis pageのchart直下へHTMXで読み込みます。detailにはグループ・社員種別・社員名・勤怠種別を表示し、読み込み後はdetailが見える位置へscrollします。新しいdetail query/modelをanalysisへ重複実装しません。年度viewは月bucketのため日別detail controlを表示しません。
 

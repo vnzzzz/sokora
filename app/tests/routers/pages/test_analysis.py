@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app import models
-from app.services import analysis_read_service
+from app.services import analysis_coverage_service, analysis_read_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -191,6 +191,63 @@ async def test_htmx_history_restore_returns_full_page(
     assert response.status_code == status.HTTP_200_OK
     assert "<!DOCTYPE html>" in response.text
     assert 'id="analysis-view"' in response.text
+
+
+async def test_more_than_ten_series_are_split_into_chart_panels(
+    async_client: AsyncClient,
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """1chartに11個以上のseriesが乗ると、色toneと点線patternの両方が
+    location_id基準で10周期になり、11番目以降が1番目以降と完全に同一の
+    見た目になってしまう。panelを10 series単位で分割し、pattern/tone衝突が
+    同一panel内で起きないようにする。
+    """
+    _add_analysis_attendance(db_with_data)
+    points = [
+        {"key": "2031-05-01", "label": "1", "count": 0},
+        {"key": "2031-05-02", "label": "2", "count": 0},
+    ]
+    series = [
+        {
+            "location_id": index,
+            "name": f"Work Type {index}",
+            "tone_index": index % 10,
+            "is_total": False,
+            "points": points,
+        }
+        for index in range(1, 12)
+    ]
+
+    monkeypatch.setattr(
+        analysis_coverage_service,
+        "get_analysis_coverage_view_model",
+        lambda **_kwargs: {
+            "include_total": True,
+            "coverage_locations": [],
+            "coverage_buckets": [
+                ("2031-05-01", "1"),
+                ("2031-05-02", "2"),
+            ],
+            "group_options": [],
+            "user_type_options": [],
+            "selected_group_name": None,
+            "selected_user_type_name": None,
+            "coverage_chart": {
+                "label": "全グループ / 全社員種別",
+                "max_count": 1,
+                "series": series,
+            },
+        },
+    )
+
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.text.count('data-testid="analysis-chart-panel"') == 2
+    assert response.text.count('data-testid="analysis-chart-scroller"') == 2
+    assert "Work Type 1" in response.text
+    assert "Work Type 11" in response.text
 
 
 async def test_fiscal_year_analysis_preserves_period_contract(
