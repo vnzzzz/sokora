@@ -62,37 +62,21 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
         "element => getComputedStyle(element).backgroundColor"
     )
 
-    ring_x = form_box["x"] + 4
-    ring_y = form_box["y"] + form_box["height"] / 2
-    page.mouse.move(ring_x, ring_y)
+    # 円形surfaceの余白へ直接hoverし、最初のpointer entryでfeedbackが出ることを確認する。
+    logout_button.hover(position={"x": 4, "y": button_box["height"] / 2})
     ring_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
     )
     assert logout_form.evaluate("element => element.matches(':hover')") is True
     assert ring_hover != before_hover
 
-    # button中心とicon中心が一致することを上で確認したうえで、pointer
-    # interactionを担うbuttonの中心へ移動する。
-    page.mouse.move(button_center_x, button_center_y)
-
+    # 実際のSVGへhoverする。Playwrightのactionability checkも通るため、別要素が
+    # iconを覆ってpointerを奪う回帰も同時に検出できる。
+    logout_icon.hover()
     icon_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
     )
-    interaction_state = page.evaluate(
-        """([x, y]) => {
-          const form = document.querySelector('.logout-control')
-          const button = document.querySelector('[data-testid="logout-button"]')
-          const hit = document.elementFromPoint(x, y)
-          return {
-            formHovered: Boolean(form && form.matches(':hover')),
-            hitInsideButton: Boolean(
-              button && hit && (hit === button || button.contains(hit))
-            ),
-          }
-        }""",
-        [button_center_x, button_center_y],
-    )
 
-    assert interaction_state["formHovered"] is True
-    assert interaction_state["hitInsideButton"] is True
+    assert logout_form.evaluate("element => element.matches(':hover')") is True
+    assert logout_button.evaluate("element => element.matches(':hover')") is True
     assert icon_hover == ring_hover
