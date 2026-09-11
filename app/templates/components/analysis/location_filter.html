@@ -15,14 +15,19 @@
 
   <details>
     <summary class="cursor-pointer list-none">
-      <span class="flex flex-wrap items-center justify-between gap-2">
-        <span>
-          <span id="analysis-target-heading" class="block text-sm font-medium text-base-content">集計対象</span>
-          <span class="mt-1 block text-xs text-base-content/60">
-            初期表示は全合計のみ。比較したい勤務場所を追加してください。
-          </span>
-        </span>
-        <span class="text-xs text-base-content/50">選択を変更</span>
+      <span class="flex items-center justify-between gap-3">
+        <span id="analysis-target-heading" class="text-sm font-medium text-base-content">表示系列</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="h-4 w-4 text-base-content/45"
+          aria-hidden="true"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
       </span>
     </summary>
 
@@ -30,7 +35,7 @@
       <legend class="sr-only">グラフに表示する系列</legend>
 
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-4">
-        <label class="flex items-center gap-2 cursor-pointer" for="analysis-total-series">
+        <label class="flex cursor-pointer items-center gap-2" for="analysis-total-series">
           <input
             type="checkbox"
             id="analysis-total-series"
@@ -43,9 +48,9 @@
           <span class="text-sm font-medium">全合計</span>
         </label>
 
-        <div class="flex flex-wrap gap-2" aria-label="勤務場所の一括操作">
-          <button type="button" class="btn btn-ghost btn-xs" data-analysis-select-all>一括選択</button>
-          <button type="button" class="btn btn-ghost btn-xs" data-analysis-clear-all>一括選択解除</button>
+        <div class="flex flex-wrap gap-1" aria-label="勤務場所の一括操作">
+          <button type="button" class="btn btn-ghost btn-xs" data-analysis-select-all>全選択</button>
+          <button type="button" class="btn btn-ghost btn-xs" data-analysis-clear-all>全解除</button>
         </div>
       </div>
 
@@ -57,7 +62,7 @@
           </h4>
           <div class="flex flex-wrap gap-x-4 gap-y-2">
             {% for location in category.locations %}
-            <label class="flex items-center gap-2 cursor-pointer" for="location-{{ location.id }}">
+            <label class="flex cursor-pointer items-center gap-2" for="location-{{ location.id }}">
               <input
                 type="checkbox"
                 id="location-{{ location.id }}"
