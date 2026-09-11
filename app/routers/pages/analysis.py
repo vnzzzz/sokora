@@ -33,7 +33,7 @@ def get_analysis_page(
     不正値はcurrent monthへredirectする。DB/internal failureはempty 200へ変換せず、
     application共通HTTP boundaryへ伝播させる。
 
-    full page / period変更では「全合計・全組織・全社員種別」を初期表示する。analysis filter
+    full page / period変更では「全合計・全グループ・全社員種別」を初期表示する。analysis filter
     自身のHTMX requestではcheckbox/select parameterをそのままselectionとして扱い、全解除も
     表現できるようにする。
     """
