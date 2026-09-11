@@ -27,13 +27,9 @@
 
   <div class="mt-6 space-y-8">
     {% for chart in charts %}
-      {% set axis_max = chart.member_count if chart.member_count > 0 else 1 %}
       {% set point_count = coverage_buckets|length %}
       <figure data-testid="{{ prefix }}-chart">
-        <figcaption class="mb-2 flex items-baseline justify-between gap-3">
-          <span class="text-sm font-medium text-base-content">{{ chart.label }}</span>
-          <span class="text-[11px] text-base-content/45">在籍 {{ chart.member_count }}人</span>
-        </figcaption>
+        <figcaption class="mb-2 text-sm font-medium text-base-content">{{ chart.label }}</figcaption>
 
         <div class="overflow-x-auto pb-2" data-testid="{{ prefix }}-chart-scroller">
           <svg
@@ -49,7 +45,7 @@
             <line x1="52" y1="180" x2="782" y2="180" class="text-base-content/35" stroke="currentColor" stroke-width="1.5"></line>
 
             <g class="text-base-content/45" fill="currentColor" font-size="10">
-              <text x="43" y="32" text-anchor="end">{{ chart.member_count }}</text>
+              <text x="43" y="32" text-anchor="end">{{ chart.max_count }}</text>
               <text x="43" y="184" text-anchor="end">0</text>
             </g>
 
@@ -57,11 +53,11 @@
             <g data-location-tone="{{ series.tone_index }}">
               {% for point in series.points %}
                 {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-                {% set y = 180 - (point.count * 152 / axis_max) %}
+                {% set y = 180 - (point.count * 152 / chart.max_count) %}
                 {% if not loop.last %}
                   {% set next_point = series.points[loop.index] %}
                   {% set next_x = 52 + (loop.index * 730 / (point_count - 1)) %}
-                  {% set next_y = 180 - (next_point.count * 152 / axis_max) %}
+                  {% set next_y = 180 - (next_point.count * 152 / chart.max_count) %}
                   <line
                     x1="{{ x }}"
                     y1="{{ y }}"
