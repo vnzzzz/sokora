@@ -77,6 +77,13 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   transform: rotate(180deg);
 }
 
+/* The icon is visual-only. Keep the logout button as one continuous pointer
+ * target so moving from its circular surface onto the glyph cannot change hover. */
+.logout-button svg,
+.logout-button svg * {
+  pointer-events: none;
+}
+
 html.sidebar-animating .sidebar-panel {
   transition:
     width 0.3s ease-in-out,
