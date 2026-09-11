@@ -6,9 +6,6 @@
   <div class="max-w-4xl">
     <header class="mb-8">
       <h2 class="text-lg font-bold text-base-content">認証設定</h2>
-      <p class="mt-1 max-w-2xl text-sm leading-relaxed text-base-content/60">
-        local adminはruntime secretを維持し、OIDC設定だけをshared DBで管理します。
-      </p>
     </header>
 
     {% if notice %}
@@ -22,12 +19,7 @@
     {% endif %}
 
     <section aria-labelledby="auth-status-heading">
-      <div class="mb-3">
-        <h3 id="auth-status-heading" class="text-base font-bold text-base-content">現在の状態</h3>
-        <p class="mt-1 text-sm text-base-content/60">
-          runtimeとshared DBから解決された現在の認証設定です。
-        </p>
-      </div>
+      <h3 id="auth-status-heading" class="mb-3 text-base font-bold text-base-content">現在の状態</h3>
 
       <dl class="max-w-2xl border-y border-base-300 text-sm">
         <div class="grid gap-1 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
@@ -60,12 +52,7 @@
     </section>
 
     <section class="mt-10 max-w-2xl" aria-labelledby="oidc-settings-heading">
-      <div class="mb-5">
-        <h3 id="oidc-settings-heading" class="text-base font-bold text-base-content">OIDC / Keycloak</h3>
-        <p class="mt-1 text-sm leading-relaxed text-base-content/60">
-          issuerは標準OIDC issuerを指定します。Keycloakの場合はrealm issuerを指定してください。
-        </p>
-      </div>
+      <h3 id="oidc-settings-heading" class="mb-5 text-base font-bold text-base-content">OIDC / Keycloak</h3>
 
       <form method="post" action="/admin/auth/oidc" class="space-y-5">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -123,9 +110,7 @@
             class="input input-bordered w-full"
             value="{{ form_values.scope }}"
           />
-          <span class="mt-1 text-xs text-base-content/60">
-            OIDCを有効にする場合は openid scope が必須です。
-          </span>
+          <span class="mt-1 text-xs text-base-content/60">openid が必須です。</span>
         </label>
 
         <div class="flex flex-wrap gap-2 pt-1">
@@ -143,9 +128,6 @@
 
     <section class="mt-10 max-w-2xl border-t border-base-300 pt-6" aria-labelledby="oidc-unlink-heading">
       <h3 id="oidc-unlink-heading" class="text-sm font-semibold text-error">OIDC連携の解除</h3>
-      <p class="mt-1 max-w-xl text-xs leading-relaxed text-base-content/60">
-        DBにdisabled状態を残すため、legacy environment設定へは戻りません。
-      </p>
       <form method="post" action="/admin/auth/oidc/unlink" class="mt-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <button type="submit" class="btn btn-error btn-outline btn-sm">OIDC連携を解除</button>
