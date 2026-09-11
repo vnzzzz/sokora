@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.services import analysis_read_service
+from app.services import analysis_coverage_service, analysis_read_service
 from app.utils.calendar_utils import get_current_month_formatted, parse_month
 
 router = APIRouter(prefix="/analysis", tags=["Pages"])
@@ -60,7 +60,17 @@ def get_analysis_page(
         mode=mode,
         selected_location_ids=selected_location_ids,
     )
-    context = {"request": request, **view_model}
+    coverage_view_model = analysis_coverage_service.get_analysis_coverage_view_model(
+        analysis_data=view_model["analysis_data"],
+        group_sections=view_model["group_sections"],
+        selected_location_ids=view_model["selected_location_ids"],
+        is_year_mode=view_model["is_year_mode"],
+    )
+    context = {
+        "request": request,
+        **view_model,
+        **coverage_view_model,
+    }
 
     if is_htmx_request and not is_history_restore:
         template_name = (
