@@ -17,7 +17,7 @@ browser UIはJinja2によるSSRを基本に、HTMXでpartial update、Alpine.js�
 | `/user-types` | user type master |
 | `/holidays` | custom holiday master |
 | `/csv` | CSV download UI |
-| `/analysis` | monthly / fiscal-year trend and employee aggregation |
+| `/analysis` | monthly / fiscal-year trend, coverage and employee aggregation |
 | `/auth/*` | login / logout / OIDC protocol flow |
 | `/admin/auth` | OIDC / authentication settings |
 | `/admin/database` | SQLite backup / restore |
@@ -59,11 +59,13 @@ DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持�
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
-analysis画面は **表示条件 → 概要 → 社員別明細** の3層で情報を配置します。表示条件は他の分析結果と視覚的に区別した専用surfaceとし、月次/年度はform radioではなくanalysis viewのtab navigationとして扱います。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。勤怠種別filterも同じ表示条件surfaceに置き、`details`で折りたためるようにして多数の選択肢が主可視化を押し下げ続けない構成にします。
+analysis画面は **表示条件 → 概要 / 配置状況 / 全体推移 → 社員別明細** の順で情報を配置します。表示条件は他の分析結果と視覚的に区別した専用surfaceとし、月次/年度はform radioではなくanalysis viewのtab navigationとして扱います。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。勤怠種別filterも同じ表示条件surfaceに置き、`details`で折りたためるようにして多数の選択肢が主可視化を押し下げ続けない構成にします。
 
-概要には延べ登録日数・登録あり社員数とprimary time-series chartを置きます。trendは既存attendance analysis resultのlocation別date detailをpresentation serviceで日次/月次bucketへ変換し、Jinjaでsemantic SVGとしてrenderします。SVGにはaxis / grid / line / pointを持たせ、client-side chart stateや追加chart libraryは導入しません。月次は日別、年度は4月〜翌3月の月別trendです。その下に社員別明細tableを独立sectionとして置き、overviewとdetailを明確に分離します。
+概要には延べ登録日数・登録あり社員数を置きます。配置状況は既存attendance analysis resultのlocation別date detailをpresentation serviceで再集約し、**組織別** と **社員種別別** のmatrixとして表示します。月次では日ごと、年度では月ごとに、選択中の勤怠種別について「登録があるunique社員数 / その区分の在籍社員数」を表示します。同一社員が同じbucketで複数の勤怠種別を持ってもcoverageのtotalは1人として数え、勤怠種別別の内訳だけを個別に保持します。これにより、たとえば「出社」だけにfilterしたときに組織×日付の0人を直接確認できます。
 
-`#analysis-view` はmode / period変更のHTMX replacement boundaryで、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。このregionには選択件数、overview、SVG chart、社員別tableを含め、filter変更時にchartとdetailを同一read modelから同期更新します。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長のSVG chartと集計tableはそれぞれ内部scroll surfaceを持ち、狭いviewportでpage全体を横overflowさせません。
+全体推移は同じ選択条件を日次/月次bucketへ畳み込み、Jinjaでsemantic SVGとしてrenderします。SVGにはaxis / grid / line / pointを持たせ、client-side chart stateや追加chart libraryは導入しません。月次は日別、年度は4月〜翌3月の月別trendです。その下に社員別明細tableを独立sectionとして置き、overview / coverage / trend / detailを分離します。
+
+`#analysis-view` はmode / period変更のHTMX replacement boundaryで、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。このregionには選択件数、KPI、coverage matrices、SVG chart、社員別tableを含め、filter変更時にすべてを同一read modelから同期更新します。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長のcoverage matrix、SVG chart、集計tableはそれぞれ内部scroll surfaceを持ち、狭いviewportでpage全体を横overflowさせません。
 
 ### Styling boundary
 
@@ -77,7 +79,7 @@ runtime dataからTailwind / daisyUI class名を組み立てません。
 
 勤怠種別の色は永続 `location_id` を10個のpalette slotへ写像し、templateへは
 `data-location-tone="0..9"` だけを渡します。名称変更や表示順変更ではtoneは変わりません。
-実際の10色paletteはCSSだけで変更できます。
+実際の10色paletteはCSSだけで変更できます。analysisのcoverage matrixも同じ `get_location_tone()` の割当を再利用します。
 
 週末/祝日も `data-day-kind` で状態を渡し、色指定をtemplateから分離します。
 
