@@ -39,7 +39,7 @@ class CoverageChart(TypedDict):
     """1組織または1社員種別の時系列chart。"""
 
     label: str
-    member_count: int
+    max_count: int
     series: List[CoverageSeries]
 
 
@@ -139,7 +139,6 @@ def _build_dimension_charts(
     location_details = analysis_data.get("location_details", {})
     bucket_keys = {key for key, _ in specs}
 
-    members: Dict[str, set[str]] = {name: set() for name in names}
     counts: Dict[str, Dict[int, Dict[str, set[str]]]] = {
         name: {
             location["location_id"]: {key: set() for key, _ in specs}
@@ -147,11 +146,6 @@ def _build_dimension_charts(
         }
         for name in names
     }
-
-    for user_id, user_info in users.items():
-        name = str(user_info.get(dimension_key) or "未分類")
-        if name in members:
-            members[name].add(str(user_id))
 
     for raw_location_id, details_by_user in location_details.items():
         location_id = int(raw_location_id)
@@ -177,6 +171,7 @@ def _build_dimension_charts(
     charts: List[CoverageChart] = []
     for name in names:
         series: List[CoverageSeries] = []
+        max_count = 0
         for location in locations:
             location_id = location["location_id"]
             points: List[CoveragePoint] = [
@@ -187,6 +182,10 @@ def _build_dimension_charts(
                 }
                 for key, label in specs
             ]
+            max_count = max(
+                max_count,
+                max((point["count"] for point in points), default=0),
+            )
             series.append(
                 {
                     "location_id": location_id,
@@ -199,7 +198,7 @@ def _build_dimension_charts(
         charts.append(
             {
                 "label": name,
-                "member_count": len(members[name]),
+                "max_count": max(max_count, 1),
                 "series": series,
             }
         )
