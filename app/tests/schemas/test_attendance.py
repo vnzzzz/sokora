@@ -19,13 +19,9 @@ def test_attendance_create_parses_iso_date_string() -> None:
 
 
 def test_attendance_create_rejects_invalid_date_string() -> None:
-    with pytest.raises(ValidationError) as exc_info:
+    with pytest.raises(ValidationError, match="日付形式が無効です"):
         AttendanceCreate(
             user_id="test_user",
             date="invalid-date",  # type: ignore[arg-type] - validate invalid input
             location_id=1,
         )
-
-    errors = exc_info.value.errors()
-    assert len(errors) == 1
-    assert "日付形式が無効です" in str(errors[0]["ctx"]["error"])
