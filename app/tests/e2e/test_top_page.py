@@ -32,6 +32,30 @@ def _assert_shell_geometry(page: Page, expected_sidebar_width: float) -> None:
     assert abs(geometry["sidebarRight"] - geometry["mainLeft"]) < 1
 
 
+def _assert_sidebar_toggle_foreground(page: Page) -> None:
+    geometry = page.evaluate(
+        """() => {
+          const sidebar = document.querySelector('.sidebar-panel')
+          const toggle = document.querySelector('[data-sidebar-toggle]')
+          if (!sidebar || !toggle) throw new Error('sidebar toggle is missing')
+          const sidebarRect = sidebar.getBoundingClientRect()
+          const toggleRect = toggle.getBoundingClientRect()
+          const probeX = sidebarRect.right + 4
+          const probeY = toggleRect.top + (toggleRect.height / 2)
+          const hit = document.elementFromPoint(probeX, probeY)
+          return {
+            sidebarRight: sidebarRect.right,
+            toggleLeft: toggleRect.left,
+            toggleRight: toggleRect.right,
+            hitIsToggle: Boolean(hit && (hit === toggle || toggle.contains(hit))),
+          }
+        }"""
+    )
+    assert geometry["toggleLeft"] < geometry["sidebarRight"]
+    assert geometry["toggleRight"] > geometry["sidebarRight"] + 8
+    assert geometry["hitIsToggle"] is True
+
+
 def _sample_sidebar_frames(page: Page, count: int = 6) -> list[SidebarFrame]:
     return page.evaluate(
         """count => new Promise(resolve => {
@@ -132,6 +156,7 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     expect(sidebar).to_be_visible(timeout=5000)
     expect(main).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, expected_width)
+    _assert_sidebar_toggle_foreground(page)
     assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
     assert main.evaluate(TRANSITION_PROPERTY) == "none"
     if labels_visible:
@@ -146,6 +171,7 @@ def test_sidebar_persisted_state_is_applied_without_alpine_layout_dependency(
     main = page.locator(".app-main")
     expect(sidebar).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, expected_width)
+    _assert_sidebar_toggle_foreground(page)
     assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
     assert main.evaluate(TRANSITION_PROPERTY) == "none"
 
@@ -191,6 +217,7 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
     toggle = page.locator("[data-sidebar-toggle]")
     expect(toggle).to_be_visible(timeout=5000)
     _assert_shell_geometry(page, 200)
+    _assert_sidebar_toggle_foreground(page)
     assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
     assert main.evaluate(TRANSITION_PROPERTY) == "none"
 
@@ -199,15 +226,18 @@ def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transiti
     assert root.evaluate("element => element.classList.contains('sidebar-animating')")
     assert "width" in sidebar.evaluate(TRANSITION_PROPERTY)
     assert "margin-left" in main.evaluate(TRANSITION_PROPERTY)
+    assert "left" in toggle.evaluate(TRANSITION_PROPERTY)
     page.wait_for_function(
         "!document.documentElement.classList.contains('sidebar-animating')"
     )
     _assert_shell_geometry(page, 64)
+    _assert_sidebar_toggle_foreground(page)
     assert page.evaluate("localStorage.getItem('sidebarOpen')") == "false"
 
     page.reload()
     expect(root).to_have_attribute("data-sidebar-open", "false")
     _assert_shell_geometry(page, 64)
+    _assert_sidebar_toggle_foreground(page)
     assert sidebar.evaluate(TRANSITION_PROPERTY) == "none"
     assert main.evaluate(TRANSITION_PROPERTY) == "none"
 
