@@ -44,9 +44,9 @@ function setAllAnalysisSeries(button, checked) {
 
 function markSelectedAnalysisDay(day) {
   document.querySelectorAll('[data-analysis-day]').forEach((trigger) => {
-    if (!(trigger instanceof HTMLButtonElement)) return
+    if (!(trigger instanceof Element)) return
 
-    const isSelected = trigger.dataset.analysisDay === day
+    const isSelected = trigger.getAttribute('data-analysis-day') === day
     if (isSelected) trigger.setAttribute('aria-current', 'date')
     else trigger.removeAttribute('aria-current')
     trigger.classList.toggle('text-primary', isSelected)
@@ -56,15 +56,28 @@ function markSelectedAnalysisDay(day) {
 }
 
 function loadAnalysisDayDetail(trigger) {
-  const day = trigger.dataset.analysisDay
+  const day = trigger.getAttribute('data-analysis-day')
   const target = document.querySelector('#analysis-day-detail')
-  if (!day || !(target instanceof HTMLElement) || !window.htmx) return
+  if (!day || !(target instanceof HTMLElement)) return
 
   markSelectedAnalysisDay(day)
+  target.setAttribute('aria-busy', 'true')
+
+  if (!window.htmx) {
+    window.location.href = `/calendar/day/${encodeURIComponent(day)}`
+    return
+  }
+
   window.htmx.ajax('GET', `/calendar/day/${encodeURIComponent(day)}`, {
     target: '#analysis-day-detail',
     swap: 'innerHTML',
   })
+}
+
+function activateAnalysisDayTrigger(trigger) {
+  if (!(trigger instanceof Element)) return false
+  loadAnalysisDayDetail(trigger)
+  return true
 }
 
 document.addEventListener('click', (event) => {
@@ -72,10 +85,7 @@ document.addEventListener('click', (event) => {
   if (!(target instanceof Element)) return
 
   const dayTrigger = target.closest('[data-analysis-day]')
-  if (dayTrigger instanceof HTMLButtonElement) {
-    loadAnalysisDayDetail(dayTrigger)
-    return
-  }
+  if (activateAnalysisDayTrigger(dayTrigger)) return
 
   const selectAllButton = target.closest('[data-analysis-select-all]')
   if (selectAllButton instanceof HTMLButtonElement) {
@@ -87,6 +97,27 @@ document.addEventListener('click', (event) => {
   if (clearAllButton instanceof HTMLButtonElement) {
     setAllAnalysisSeries(clearAllButton, false)
   }
+})
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+
+  const target = event.target
+  if (!(target instanceof Element)) return
+
+  const dayTrigger = target.closest('[data-analysis-day]')
+  if (!dayTrigger) return
+
+  event.preventDefault()
+  activateAnalysisDayTrigger(dayTrigger)
+})
+
+document.addEventListener('htmx:afterSwap', (event) => {
+  const target = event.detail?.target
+  if (!(target instanceof HTMLElement) || target.id !== 'analysis-day-detail') return
+
+  target.setAttribute('aria-busy', 'false')
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 })
 
 document.addEventListener('htmx:responseError', fallbackToFullNavigation)
