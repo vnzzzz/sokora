@@ -113,6 +113,10 @@ html[data-sidebar-open="false"] .sidebar-label {
 }
 
 .sidebar-toggle {
+  position: fixed;
+  top: 0.5rem;
+  left: calc(var(--sidebar-width) - 0.75rem);
+  z-index: 30;
   transition: none;
 }
 
@@ -132,7 +136,9 @@ html.sidebar-animating .app-main {
 }
 
 html.sidebar-animating .sidebar-toggle {
-  transition: transform 0.3s ease-in-out;
+  transition:
+    left 0.3s ease-in-out,
+    transform 0.3s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
