@@ -102,11 +102,6 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   transition: none;
 }
 
-.logout-button svg,
-.logout-button svg * {
-  pointer-events: none;
-}
-
 html.sidebar-animating .sidebar-panel {
   transition:
     width 0.3s ease-in-out,
