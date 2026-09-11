@@ -34,6 +34,12 @@ def test_auth_off_anonymous_can_login_and_logout_local_admin() -> None:
             'href="/auth/login/admin?next=/analysis%3Fmonth%3D2031-05"'
             in anonymous_page.text
         )
+        api_link_position = anonymous_page.text.index('href="/docs"')
+        admin_login_position = anonymous_page.text.index(
+            'data-testid="admin-login-entry"'
+        )
+        sidebar_end_position = anonymous_page.text.index("</aside>")
+        assert api_link_position < admin_login_position < sidebar_end_position
 
         login_response = client.post(
             "/auth/local",
