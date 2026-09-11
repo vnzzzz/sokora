@@ -188,13 +188,15 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     expect(page).to_have_url(initial_url)
 
 
-def test_analysis_month_date_axis_loads_day_detail_without_navigation(
+def test_analysis_month_axis_labels_load_visible_day_detail_without_navigation(
     page: Page,
 ) -> None:
     page.goto(ANALYSIS_URL)
 
     trigger = page.get_by_test_id("analysis-day-trigger").first
     expect(trigger).to_be_visible()
+    expect(trigger.locator("text")).to_have_text("1")
+    expect(trigger.locator("xpath=ancestor::svg")).to_have_count(1)
     day = trigger.get_attribute("data-analysis-day")
     assert day is not None
     initial_url = page.url
@@ -208,6 +210,7 @@ def test_analysis_month_date_axis_loads_day_detail_without_navigation(
         f"{day}の勤怠情報",
         timeout=5000,
     )
+    expect(detail).to_be_in_viewport(timeout=5000)
     expect(page).to_have_url(initial_url)
 
 
