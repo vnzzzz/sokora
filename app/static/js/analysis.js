@@ -32,18 +32,5 @@ function fallbackToFullNavigation(event) {
   if (url) window.location.href = url
 }
 
-document.addEventListener(
-  'scroll',
-  (event) => {
-    const scroller = event.target
-    if (!(scroller instanceof Element) || !scroller.matches('#analysis-view .overflow-x-auto')) return
-
-    scroller.querySelectorAll('th.sticky, td.sticky').forEach((header) => {
-      header.style.boxShadow = scroller.scrollLeft > 0 ? '2px 0 4px rgba(0,0,0,0.1)' : 'none'
-    })
-  },
-  true
-)
-
 document.addEventListener('htmx:responseError', fallbackToFullNavigation)
 document.addEventListener('htmx:sendError', fallbackToFullNavigation)
