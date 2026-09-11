@@ -1,3 +1,16 @@
+{% set line_patterns = [
+  "12 3",
+  "8 3",
+  "5 3",
+  "3 3",
+  "12 3 2 3",
+  "8 3 2 3",
+  "6 2 1 2",
+  "4 2 1 2",
+  "2 2",
+  "10 2 2 2 2 2",
+] %}
+
 {% macro coverage_charts(title, heading_id, prefix, charts) -%}
 <section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="{{ heading_id }}" data-testid="{{ prefix }}-charts">
   <div class="flex flex-wrap items-end justify-between gap-3">
@@ -13,12 +26,25 @@
   {% if coverage_locations %}
   <div class="mt-4 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤務種別の凡例">
     {% for location in coverage_locations %}
+      {% set dash_pattern = line_patterns[loop.index0 % (line_patterns|length)] %}
     <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
-      <span
-        class="location-tone-chip h-2.5 w-2.5 rounded-full p-0"
+      <svg
+        class="h-2 w-6 shrink-0"
+        viewBox="0 0 24 8"
         data-location-tone="{{ location.tone_index }}"
         aria-hidden="true"
-      ></span>
+      >
+        <line
+          x1="1"
+          y1="4"
+          x2="23"
+          y2="4"
+          stroke="rgb(var(--location-tone-rgb))"
+          stroke-width="2.5"
+          stroke-dasharray="{{ dash_pattern }}"
+          stroke-linecap="round"
+        ></line>
+      </svg>
       {{ location.name }}
     </span>
     {% endfor %}
@@ -31,12 +57,28 @@
       <figure data-testid="{{ prefix }}-chart">
         <figcaption class="mb-2 text-sm font-medium text-base-content">{{ chart.label }}</figcaption>
 
+        <div
+          class="sr-only"
+          data-testid="{{ prefix }}-chart-accessible-data"
+          aria-label="{{ chart.label }}の勤務種別別人数データ"
+        >
+          <ul>
+            {% for series in chart.series %}
+            <li>
+              {{ series.name }}:
+              {% for point in series.points %}
+                {{ point.label }} {{ point.count }}人{% if not loop.last %}、{% endif %}
+              {% endfor %}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
         <div class="overflow-x-auto pb-2" data-testid="{{ prefix }}-chart-scroller">
           <svg
             class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
             viewBox="0 0 820 220"
-            role="img"
-            aria-label="{{ chart.label }}の勤務種別別人数推移"
+            aria-hidden="true"
           >
             <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
               <line x1="52" y1="28" x2="782" y2="28"></line>
@@ -50,6 +92,8 @@
             </g>
 
             {% for series in chart.series %}
+              {% set series_index = loop.index0 % (line_patterns|length) %}
+              {% set dash_pattern = line_patterns[series_index] %}
             <g data-location-tone="{{ series.tone_index }}">
               {% for point in series.points %}
                 {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
@@ -64,7 +108,10 @@
                     x2="{{ next_x }}"
                     y2="{{ next_y }}"
                     stroke="rgb(var(--location-tone-rgb))"
+                    stroke-opacity="0.85"
                     stroke-width="2.5"
+                    stroke-dasharray="{{ dash_pattern }}"
+                    stroke-dashoffset="{{ series_index * 1.5 }}"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   ></line>
@@ -72,11 +119,11 @@
                 <circle
                   cx="{{ x }}"
                   cy="{{ y }}"
-                  r="{% if point.count == 0 %}4{% else %}3{% endif %}"
-                  fill="rgb(var(--location-tone-rgb))"
-                >
-                  <title>{{ chart.label }}・{{ point.label }}・{{ series.name }}: {{ point.count }}人</title>
-                </circle>
+                  r="{{ 3 + (series_index % 4) }}"
+                  fill="none"
+                  stroke="rgb(var(--location-tone-rgb))"
+                  stroke-width="1.75"
+                ></circle>
               {% endfor %}
             </g>
             {% endfor %}
@@ -100,6 +147,10 @@
 {% if selected_location_ids|length == 0 %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-no-selection-hint">
   表示条件で勤務種別を選択してください。
+</div>
+{% elif not group_coverage_charts and not user_type_coverage_charts %}
+<div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-empty-message">
+  {{ empty_message }}
 </div>
 {% else %}
   {{ coverage_charts("組織別", "analysis-group-charts-heading", "analysis-group", group_coverage_charts) }}
