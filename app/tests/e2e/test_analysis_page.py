@@ -12,7 +12,7 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
     expect(page.locator("[data-testid='analysis-table']")).to_be_visible()
     expect(page.get_by_test_id("analysis-month-period")).to_contain_text("表示中")
     expect(page.get_by_test_id("analysis-year-period")).to_be_visible()
-    expect(page.get_by_role("figure").get_by_text("日別推移")).to_be_visible()
+    expect(page.get_by_test_id("analysis-trend-chart")).to_contain_text("日別推移")
 
     first_of_month = date.today().replace(day=1)
     previous_month = first_of_month - timedelta(days=1)
@@ -60,7 +60,7 @@ def test_analysis_month_and_fiscal_year_periods_are_independent_htmx_inputs(
         "表示中", timeout=5000
     )
     expect(page.locator(".analysis-period-label")).to_contain_text("年度")
-    expect(page.get_by_role("figure").get_by_text("月別推移")).to_be_visible()
+    expect(page.get_by_test_id("analysis-trend-chart")).to_contain_text("月別推移")
     expect(page).to_have_url(
         f"{ANALYSIS_URL}?mode=year&year={selected_year}",
         timeout=5000,
@@ -73,7 +73,7 @@ def test_analysis_month_and_fiscal_year_periods_are_independent_htmx_inputs(
     expect(page.get_by_test_id("analysis-month-period")).to_contain_text(
         "表示中", timeout=5000
     )
-    expect(page.get_by_role("figure").get_by_text("日別推移")).to_be_visible()
+    expect(page.get_by_test_id("analysis-trend-chart")).to_contain_text("日別推移")
     expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
 
 
@@ -86,30 +86,34 @@ def test_analysis_location_filter_updates_chart_and_table_without_changing_url(
     expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="集計結果")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-chart")).to_be_visible()
-    expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
-        "集計対象 0件"
-    )
-    expect(page.get_by_test_id("analysis-trend-total")).to_have_text("0")
-    expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible()
 
-    checkbox = page.locator(".location-checkbox").first
+    checkboxes = page.locator(".location-checkbox")
+    location_count = checkboxes.count()
+    assert location_count > 0
+    expect(checkboxes).to_have_count(location_count)
+    expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
+        f"集計対象 {location_count}件"
+    )
+    expect(page.get_by_test_id("analysis-no-selection-hint")).to_have_count(0)
+
+    checkbox = checkboxes.first
     location_id = checkbox.get_attribute("value")
     assert location_id is not None
 
     header = page.locator(f".location-header[data-location-id='{location_id}']")
-    expect(header).to_be_hidden()
+    expect(checkbox).to_be_checked()
+    expect(header).to_be_visible()
     initial_url = page.url
 
-    checkbox.check()
+    checkbox.uncheck()
 
-    expect(page.locator(f"#location-{location_id}")).to_be_checked(timeout=5000)
-    expect(header).to_be_visible(timeout=5000)
+    expect(page.locator(f"#location-{location_id}")).not_to_be_checked(timeout=5000)
+    expect(header).to_be_hidden(timeout=5000)
     expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
-        "集計対象 1件",
+        f"集計対象 {location_count - 1}件",
         timeout=5000,
     )
     expect(page.get_by_test_id("analysis-trend-chart")).to_be_visible()
-    expect(page.get_by_test_id("analysis-no-selection-hint")).to_have_count(0)
     expect(page).to_have_url(initial_url)
 
 
