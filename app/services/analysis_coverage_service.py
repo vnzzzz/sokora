@@ -27,11 +27,12 @@ class CoveragePoint(TypedDict):
 
 
 class CoverageSeries(TypedDict):
-    """1勤怠種別の時系列。"""
+    """1勤怠種別または全合計の時系列。"""
 
     location_id: int
     name: str
     tone_index: int
+    is_total: bool
     points: List[CoveragePoint]
 
 
@@ -46,6 +47,7 @@ class CoverageChart(TypedDict):
 class AnalysisCoverageViewModel(TypedDict):
     """Coverage chart templateが参照するpresentation contract。"""
 
+    include_total: bool
     coverage_locations: List[CoverageLocation]
     coverage_buckets: List[tuple[str, str]]
     group_coverage_charts: List[CoverageChart]
@@ -134,10 +136,14 @@ def _build_dimension_charts(
     is_year_mode: bool,
     locations: List[CoverageLocation],
     selected_location_ids: set[int],
+    include_total: bool,
 ) -> List[CoverageChart]:
     users = analysis_data.get("users", {})
     location_details = analysis_data.get("location_details", {})
     bucket_keys = {key for key, _ in specs}
+    available_location_ids = {
+        int(location.id) for location in analysis_data.get("locations", [])
+    }
 
     counts: Dict[str, Dict[int, Dict[str, set[str]]]] = {
         name: {
@@ -146,10 +152,15 @@ def _build_dimension_charts(
         }
         for name in names
     }
+    total_counts: Dict[str, Dict[str, set[str]]] = {
+        name: {key: set() for key, _ in specs} for name in names
+    }
 
     for raw_location_id, details_by_user in location_details.items():
         location_id = int(raw_location_id)
-        if location_id not in selected_location_ids:
+        contributes_to_total = include_total and location_id in available_location_ids
+        contributes_to_location = location_id in selected_location_ids
+        if not contributes_to_total and not contributes_to_location:
             continue
 
         for user_id, date_details in details_by_user.items():
@@ -159,19 +170,47 @@ def _build_dimension_charts(
                 continue
 
             name = str(user_info.get(dimension_key) or "未分類")
-            if name not in counts or location_id not in counts[name]:
+            if name not in counts:
                 continue
 
             for date_detail in date_details:
                 attendance_date = date.fromisoformat(str(date_detail["date_str"]))
                 key = _bucket_key(attendance_date, is_year_mode=is_year_mode)
-                if key in bucket_keys:
+                if key not in bucket_keys:
+                    continue
+                if contributes_to_total:
+                    total_counts[name][key].add(user_id_str)
+                if contributes_to_location and location_id in counts[name]:
                     counts[name][location_id][key].add(user_id_str)
 
     charts: List[CoverageChart] = []
     for name in names:
         series: List[CoverageSeries] = []
         max_count = 0
+
+        if include_total:
+            total_points: List[CoveragePoint] = [
+                {
+                    "key": key,
+                    "label": label,
+                    "count": len(total_counts[name][key]),
+                }
+                for key, label in specs
+            ]
+            max_count = max(
+                max_count,
+                max((point["count"] for point in total_points), default=0),
+            )
+            series.append(
+                {
+                    "location_id": 0,
+                    "name": "全合計",
+                    "tone_index": 0,
+                    "is_total": True,
+                    "points": total_points,
+                }
+            )
+
         for location in locations:
             location_id = location["location_id"]
             points: List[CoveragePoint] = [
@@ -191,6 +230,7 @@ def _build_dimension_charts(
                     "location_id": location_id,
                     "name": location["name"],
                     "tone_index": location["tone_index"],
+                    "is_total": False,
                     "points": points,
                 }
             )
@@ -212,6 +252,7 @@ def get_analysis_coverage_view_model(
     group_sections: List[GroupSection],
     selected_location_ids: List[int],
     is_year_mode: bool,
+    include_total: bool = False,
 ) -> AnalysisCoverageViewModel:
     """同一read snapshotから組織別・社員種別別の時系列を構築する。"""
     specs = _bucket_specs(
@@ -233,6 +274,7 @@ def get_analysis_coverage_view_model(
         is_year_mode=is_year_mode,
         locations=locations,
         selected_location_ids=selected,
+        include_total=include_total,
     )
     user_type_charts = _build_dimension_charts(
         analysis_data,
@@ -242,9 +284,11 @@ def get_analysis_coverage_view_model(
         is_year_mode=is_year_mode,
         locations=locations,
         selected_location_ids=selected,
+        include_total=include_total,
     )
 
     return {
+        "include_total": include_total,
         "coverage_locations": locations,
         "coverage_buckets": specs,
         "group_coverage_charts": group_charts,
