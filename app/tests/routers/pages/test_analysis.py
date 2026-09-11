@@ -52,12 +52,15 @@ async def test_month_analysis_renders_total_only_by_default(
 
     assert response.status_code == status.HTTP_200_OK
     assert 'id="analysis-root"' in response.text
-    assert "2031年5月" in response.text
+    assert 'id="month-input"' in response.text
+    assert 'value="2031-05"' in response.text
     assert 'data-testid="analysis-group-charts"' in response.text
     assert 'data-testid="analysis-user-type-charts"' in response.text
     assert 'id="analysis-total-series"' in response.text
     assert 'name="show_total"' in response.text
     assert "全合計" in response.text
+    assert 'data-analysis-day="2031-05-03"' in response.text
+    assert 'id="analysis-day-detail"' in response.text
     assert 'data-testid="analysis-table"' not in response.text
     assert 'data-testid="analysis-trend-chart"' not in response.text
     assert 'data-testid="analysis-trend-total"' not in response.text
@@ -175,7 +178,7 @@ async def test_htmx_filter_can_clear_all_series(
     assert 'id="analysis-table-region"' in response.text
     assert 'id="analysis-view"' not in response.text
     assert 'data-testid="analysis-no-selection-hint"' in response.text
-    assert "全合計または勤務場所を選択してください。" in response.text
+    assert "表示系列を選択してください。" in response.text
     assert 'data-testid="analysis-group-charts"' not in response.text
 
 
@@ -228,11 +231,12 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     response = await async_client.get("/analysis?mode=year&year=2031")
 
     assert response.status_code == status.HTTP_200_OK
-    assert "2031年度" in response.text
-    assert "4月〜翌3月" in response.text
+    assert 'id="year-select"' in response.text
+    assert 'value="2031" selected' in response.text
     assert 'data-testid="analysis-group-charts"' in response.text
     assert 'data-testid="analysis-user-type-charts"' in response.text
-    assert "月ごとの人数推移" in response.text
+    assert 'data-analysis-day=' not in response.text
+    assert 'id="analysis-day-detail"' not in response.text
 
 
 async def test_fiscal_year_outside_supported_range_is_422(
