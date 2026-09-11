@@ -42,7 +42,7 @@ def _add_analysis_attendance(db: Session) -> None:
     db.commit()
 
 
-async def test_month_analysis_renders_graph_only_read_model(
+async def test_month_analysis_renders_total_only_by_default(
     async_client: AsyncClient,
     db_with_data: Session,
 ) -> None:
@@ -55,6 +55,9 @@ async def test_month_analysis_renders_graph_only_read_model(
     assert "2031年5月" in response.text
     assert 'data-testid="analysis-group-charts"' in response.text
     assert 'data-testid="analysis-user-type-charts"' in response.text
+    assert 'id="analysis-total-series"' in response.text
+    assert 'name="show_total"' in response.text
+    assert "全合計" in response.text
     assert 'data-testid="analysis-table"' not in response.text
     assert 'data-testid="analysis-trend-chart"' not in response.text
     assert 'data-testid="analysis-trend-total"' not in response.text
@@ -71,6 +74,7 @@ async def test_empty_chart_data_preserves_period_empty_message(
         analysis_coverage_service,
         "get_analysis_coverage_view_model",
         lambda **_kwargs: {
+            "include_total": True,
             "coverage_locations": [],
             "coverage_buckets": [],
             "group_coverage_charts": [],
@@ -101,6 +105,7 @@ async def test_more_than_ten_work_types_are_split_into_chart_panels(
             "location_id": index,
             "name": f"Work Type {index}",
             "tone_index": index % 10,
+            "is_total": False,
             "points": points,
         }
         for index in range(1, 12)
@@ -110,6 +115,7 @@ async def test_more_than_ten_work_types_are_split_into_chart_panels(
         analysis_coverage_service,
         "get_analysis_coverage_view_model",
         lambda **_kwargs: {
+            "include_total": True,
             "coverage_locations": [],
             "coverage_buckets": [
                 ("2031-05-01", "1"),
@@ -151,7 +157,7 @@ async def test_htmx_analysis_returns_fragment(
     assert "<html" not in response.text
 
 
-async def test_htmx_location_filter_returns_chart_fragment_and_allows_zero_selection(
+async def test_htmx_filter_can_clear_all_series(
     async_client: AsyncClient,
     db_with_data: Session,
 ) -> None:
@@ -169,8 +175,29 @@ async def test_htmx_location_filter_returns_chart_fragment_and_allows_zero_selec
     assert 'id="analysis-table-region"' in response.text
     assert 'id="analysis-view"' not in response.text
     assert 'data-testid="analysis-no-selection-hint"' in response.text
-    assert "表示条件で勤務種別を選択してください。" in response.text
+    assert "全合計または勤務場所を選択してください。" in response.text
     assert 'data-testid="analysis-group-charts"' not in response.text
+
+
+async def test_htmx_filter_can_render_total_without_locations(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis?month=2031-05&show_total=true",
+        headers={
+            "HX-Request": "true",
+            "HX-Target": "analysis-table-region",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'data-testid="analysis-group-charts"' in response.text
+    assert 'data-testid="analysis-user-type-charts"' in response.text
+    assert "全合計" in response.text
+    assert 'data-testid="analysis-no-selection-hint"' not in response.text
 
 
 async def test_htmx_history_restore_returns_full_page(
@@ -205,7 +232,7 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert "4月〜翌3月" in response.text
     assert 'data-testid="analysis-group-charts"' in response.text
     assert 'data-testid="analysis-user-type-charts"' in response.text
-    assert "月ごとの勤務種別別人数" in response.text
+    assert "月ごとの人数推移" in response.text
 
 
 async def test_fiscal_year_outside_supported_range_is_422(
