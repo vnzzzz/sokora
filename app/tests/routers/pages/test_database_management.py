@@ -168,7 +168,7 @@ async def test_postgresql_backend_disables_database_file_operations() -> None:
         assert page.status_code == 200
         assert "GUI管理" in page.text
         assert "無効" in page.text
-        assert "backup/restore機能はファイルベースSQLite専用" in page.text
+        assert "/admin/database/backup" not in page.text
         assert "/admin/database/restore" not in page.text
     finally:
         runtime.dispose()
