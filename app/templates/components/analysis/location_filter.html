@@ -19,16 +19,37 @@
         <span>
           <span id="analysis-target-heading" class="block text-sm font-medium text-base-content">集計対象</span>
           <span class="mt-1 block text-xs text-base-content/60">
-            勤務種別を絞り込む場合に開いてください。初期状態はすべてを表示します。
+            初期表示は全合計のみ。比較したい勤務場所を追加してください。
           </span>
         </span>
-        <span class="text-xs text-base-content/50">絞り込み</span>
+        <span class="text-xs text-base-content/50">選択を変更</span>
       </span>
     </summary>
 
     <fieldset class="mt-4" aria-labelledby="analysis-target-heading">
-      <legend class="sr-only">集計対象の勤務種別</legend>
-      <div class="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+      <legend class="sr-only">グラフに表示する系列</legend>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-4">
+        <label class="flex items-center gap-2 cursor-pointer" for="analysis-total-series">
+          <input
+            type="checkbox"
+            id="analysis-total-series"
+            name="show_total"
+            value="true"
+            class="checkbox checkbox-sm"
+            data-analysis-series-checkbox
+            {% if include_total %}checked{% endif %}
+          />
+          <span class="text-sm font-medium">全合計</span>
+        </label>
+
+        <div class="flex flex-wrap gap-2" aria-label="勤務場所の一括操作">
+          <button type="button" class="btn btn-ghost btn-xs" data-analysis-select-all>一括選択</button>
+          <button type="button" class="btn btn-ghost btn-xs" data-analysis-clear-all>一括選択解除</button>
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
         {% for category in location_categories %}
         <div>
           <h4 class="mb-2 border-b border-base-300 pb-1 text-xs font-medium text-base-content/70">
@@ -43,6 +64,7 @@
                 name="selected_locations"
                 value="{{ location.id }}"
                 class="checkbox checkbox-sm location-checkbox"
+                data-analysis-series-checkbox
                 {% if location.id in selected_location_ids %}checked{% endif %}
               />
               <span class="text-sm">{{ location.name }}</span>
