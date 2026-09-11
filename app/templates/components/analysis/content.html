@@ -2,7 +2,7 @@
   <header class="mb-6 max-w-5xl">
     <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
     <p class="mt-1 text-sm text-base-content/60">
-      表示条件を指定して、全体の推移から社員別の登録内容まで確認します。
+      期間と勤務種別を指定して、組織・社員種別ごとの人数推移を確認します。
     </p>
   </header>
 
@@ -14,7 +14,7 @@
       <div>
         <h3 id="analysis-controls-heading" class="text-sm font-semibold text-base-content">表示条件</h3>
         <p class="mt-1 text-xs text-base-content/60">
-          集計単位・期間・勤怠種別を指定します。
+          集計単位・期間・勤務種別を指定します。
         </p>
       </div>
 
@@ -27,8 +27,8 @@
       </div>
     </section>
 
-    <section class="mt-8" aria-labelledby="analysis-overview-heading">
+    <div class="mt-8">
       {% include "components/analysis/table_region.html" %}
-    </section>
+    </div>
   </div>
 </div>
