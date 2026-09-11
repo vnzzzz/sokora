@@ -59,10 +59,8 @@ async def test_month_analysis_renders_one_chart_and_target_filters_by_default(
     assert 'id="analysis-user-type-select"' in response.text
     assert 'data-testid="analysis-coverage-chart"' in response.text
     assert response.text.count('data-testid="analysis-chart-scroller"') == 1
-    assert (
-        'data-testid="analysis-chart-target">全グループ / 全社員種別'
-        in response.text
-    )
+    assert 'data-testid="analysis-chart-target"' in response.text
+    assert "全グループ / 全社員種別" in response.text
     assert 'id="analysis-total-series"' in response.text
     assert 'name="show_total"' in response.text
     assert "全合計" in response.text
