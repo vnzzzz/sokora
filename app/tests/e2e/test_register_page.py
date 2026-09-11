@@ -37,3 +37,26 @@ def test_register_user_selection_and_month_navigation_use_htmx(page: Page) -> No
     current_button = calendar.get_by_role("button", name="今月")
     current_button.click()
     expect(calendar).not_to_have_attribute("data-month", next_month)
+
+
+def test_register_calendar_keeps_equal_day_columns_on_narrow_viewport(
+    page: Page,
+) -> None:
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(MONTHLY_URL)
+
+    user_link = page.locator("#user-list a[hx-get]").first
+    expect(user_link).to_be_visible()
+    user_link.click()
+
+    calendar = page.locator("#user-calendar")
+    headers = calendar.locator("thead th")
+    expect(headers).to_have_count(7)
+    expect(calendar.locator("td.attendance-cell").first).to_be_visible()
+
+    widths = headers.evaluate_all(
+        "elements => elements.map(element => element.getBoundingClientRect().width)"
+    )
+
+    assert widths
+    assert max(widths) - min(widths) < 1
