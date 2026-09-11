@@ -4,7 +4,7 @@
       <div>
         <h3 id="analysis-overview-heading" class="text-base font-semibold text-base-content">概要</h3>
         <p class="mt-1 text-xs text-base-content/60">
-          {{ analysis_data.period.label }}の登録状況を時系列で確認します。
+          {{ analysis_data.period.label }}の登録状況を確認します。
         </p>
       </div>
       <p class="text-xs text-base-content/50" data-testid="analysis-selection-summary">
@@ -32,10 +32,15 @@
       class="mt-5 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/70"
       data-testid="analysis-no-selection-hint"
     >
-      表示条件の「集計対象」で勤怠種別を選択すると、グラフと社員別明細に反映されます。
+      表示条件の「集計対象」で勤怠種別を選択すると、配置状況・グラフ・社員別明細に反映されます。
     </div>
     {% endif %}
+  </section>
 
+  {% include "components/analysis/coverage_matrix.html" %}
+
+  <section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="analysis-trend-section-heading">
+    <div class="sr-only" id="analysis-trend-section-heading">全体推移</div>
     {% include "components/analysis/trend_chart.html" %}
   </section>
 
