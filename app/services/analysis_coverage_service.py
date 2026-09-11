@@ -88,11 +88,9 @@ def _bucket_specs(
 
 
 def _bucket_key(attendance_date: date, *, is_year_mode: bool) -> str:
-    return (
-        attendance_date.strftime("%Y-%m")
-        if is_year_mode
-        else attendance_date.isoformat()
-    )
+    if is_year_mode:
+        return attendance_date.strftime("%Y-%m")
+    return attendance_date.isoformat()
 
 
 def _coverage_locations(
