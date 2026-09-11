@@ -1,0 +1,87 @@
+{% macro coverage_table(title, testid, rows) -%}
+<div class="mt-5">
+  <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+    <h4 class="text-sm font-medium text-base-content">{{ title }}</h4>
+    <span class="text-xs text-base-content/50">
+      {% if is_year_mode %}月内に登録がある社員数{% else %}その日に登録がある社員数{% endif %}
+    </span>
+  </div>
+  <div class="overflow-x-auto pb-2" data-testid="{{ testid }}-scroller">
+    <table class="table table-xs w-max min-w-full" data-testid="{{ testid }}">
+      <thead>
+        <tr>
+          <th class="sticky left-0 z-20 min-w-44 bg-base-100 text-left">区分</th>
+          {% for bucket in coverage_buckets %}
+          <th class="min-w-16 text-center font-normal">{{ bucket[1] }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-coverage-row-label="{{ row.label }}">
+          <th class="sticky left-0 z-10 min-w-44 bg-base-100 text-left font-medium">
+            <span class="block">{{ row.label }}</span>
+            <span class="mt-0.5 block text-[10px] font-normal text-base-content/45">{{ row.member_count }}人</span>
+          </th>
+          {% for cell in row.cells %}
+          <td
+            class="min-w-16 px-1.5 py-2 text-center {% if cell.total == 0 %}bg-base-200/45 text-base-content/35{% endif %}"
+            data-coverage-key="{{ cell.key }}"
+            data-coverage-count="{{ cell.total }}"
+            title="{{ row.label }}・{{ cell.label }}: {{ cell.total }}/{{ row.member_count }}人{% for item in cell.type_counts %}、{{ item.name }} {{ item.count }}人{% endfor %}"
+          >
+            <div class="whitespace-nowrap text-sm font-semibold">
+              {{ cell.total }}<span class="text-[10px] font-normal text-base-content/40">/{{ row.member_count }}</span>
+            </div>
+            {% if cell.type_counts %}
+            <div class="mt-1 flex flex-wrap justify-center gap-0.5" aria-hidden="true">
+              {% for item in cell.type_counts %}
+              <span
+                class="location-tone-chip min-w-4 rounded px-1 text-[10px] leading-4"
+                data-location-tone="{{ item.tone_index }}"
+              >{{ item.count }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{%- endmacro %}
+
+<section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="analysis-coverage-heading">
+  <div class="max-w-4xl">
+    <h3 id="analysis-coverage-heading" class="text-base font-semibold text-base-content">配置状況</h3>
+    <p class="mt-1 text-xs leading-5 text-base-content/60">
+      選択した勤怠種別について、組織・社員種別ごとの在籍人数に対する登録あり社員数を確認します。
+      特定の勤務種別で「0人」の日を探す場合は、表示条件でその勤怠種別だけに絞り込んでください。
+    </p>
+  </div>
+
+  {% if coverage_locations %}
+  <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤怠種別の凡例">
+    {% for location in coverage_locations %}
+    <span class="inline-flex items-center gap-1.5 text-xs text-base-content/65">
+      <span
+        class="location-tone-chip h-2.5 w-2.5 rounded-sm p-0"
+        data-location-tone="{{ location.tone_index }}"
+        aria-hidden="true"
+      ></span>
+      {{ location.name }}
+    </span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if group_coverage_rows %}
+    {{ coverage_table("組織別", "analysis-group-coverage", group_coverage_rows) }}
+  {% endif %}
+
+  {% if user_type_coverage_rows %}
+    {{ coverage_table("社員種別別", "analysis-user-type-coverage", user_type_coverage_rows) }}
+  {% endif %}
+</section>
