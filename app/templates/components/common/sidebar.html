@@ -10,7 +10,7 @@
   </a>
 {%- endmacro %}
 
-<aside class="sidebar-panel bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20">
+<aside class="sidebar-panel bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20{{ ' h-screen overflow-y-auto overflow-x-hidden' if show_admin_login_entry else '' }}">
   <button
     type="button"
     data-sidebar-toggle
@@ -122,4 +122,32 @@
   </div>
 
   <div class="flex-grow"></div>
+
+  {% if show_admin_login_entry %}
+    <div class="pt-2 border-t border-base-300">
+      <a
+        href="/auth/login/admin?next={{ current_page_url | urlencode }}"
+        class="sidebar-nav-link btn btn-ghost btn-sm mb-0 w-full text-base-content/60 hover:text-base-content"
+        data-testid="admin-login-entry"
+        aria-label="管理者ログイン"
+        title="管理者ログイン"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="w-4 h-4 flex-shrink-0"
+          aria-hidden="true"
+        >
+          <rect x="5" y="10" width="14" height="10" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+        </svg>
+        <span class="sidebar-label text-xs">管理者ログイン</span>
+      </a>
+    </div>
+  {% endif %}
 </aside>
