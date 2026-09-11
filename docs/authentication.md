@@ -74,7 +74,7 @@ local adminはbreak-glass管理経路です。`SOKORA_LOCAL_AUTH_ENABLED=true`�
 
 OIDC設定、shared DB上のOIDC secret、IdP discoveryに問題があってもlocal admin credential照合自体はそれらへ依存しません。OIDC failureからlocal adminへ自動failoverはせず、利用者がlogin経路を選択します。
 
-`SOKORA_AUTH_ENABLED=false`で匿名利用している場合も、local adminが設定済みならapplication shell右上に「管理者ログイン」を表示します。導線は既存の`/auth/login/admin`を使い、local admin sessionを取得した後だけ`/admin/*`の管理機能へアクセスできます。local adminが未設定の場合は無効なログイン導線を表示しません。
+`SOKORA_AUTH_ENABLED=false`で匿名利用している場合も、local adminが設定済みならサイドバー最下部に「管理者ログイン」を表示します。導線は既存の`/auth/login/admin`を使い、local admin sessionを取得した後だけ`/admin/*`の管理機能へアクセスできます。local adminが未設定の場合は無効なログイン導線を表示しません。表示領域が低い場合はサイドバーをスクロールして導線へ到達できます。
 
 ## Session and logout
 
