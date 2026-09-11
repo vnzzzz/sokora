@@ -92,13 +92,15 @@ def _build_summary_calendar_presentation(
     grouped_locations: Dict[str, list[SummaryCalendarLocationViewModel]] = {}
     for raw_location in calendar_data.get("locations", []):
         category = str(raw_location.get("category") or "未分類")
+        raw_tone = raw_location.get("tone")
         grouped_locations.setdefault(category, []).append(
             {
                 "name": str(raw_location["name"]),
                 "key": str(raw_location["key"]),
-                "tone": int(
-                    raw_location.get("tone", UNRESOLVED_LOCATION_TONE)
-                    or UNRESOLVED_LOCATION_TONE
+                "tone": (
+                    int(raw_tone)
+                    if raw_tone is not None
+                    else UNRESOLVED_LOCATION_TONE
                 ),
             }
         )
