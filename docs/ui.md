@@ -17,7 +17,7 @@ browser UIはJinja2によるSSRを基本に、HTMXでpartial update、Alpine.js�
 | `/user-types` | user type master |
 | `/holidays` | custom holiday master |
 | `/csv` | CSV download UI |
-| `/analysis` | monthly / yearly aggregation |
+| `/analysis` | monthly / fiscal-year trend and employee aggregation |
 | `/auth/*` | login / logout / OIDC protocol flow |
 | `/admin/auth` | OIDC / authentication settings |
 | `/admin/database` | SQLite backup / restore |
@@ -59,7 +59,9 @@ DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持�
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
-analysis画面は「対象期間 → 集計対象 → 集計結果」の順で情報を配置します。`#analysis-view` を期間変更のHTMX replacement boundaryとし、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。選択件数と未選択時の案内もtable region内で更新し、何が集計結果へ反映されているかを明示します。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長の集計tableはstickyな識別列を維持し、狭いviewportではtable自体を横scrollして主要列へ到達できる構成とします。
+analysis画面は「集計期間 → 集計対象 → 集計結果」の順で情報を配置します。集計期間では月次集計と年度集計をradioで排他的に隠さず、月pickerと年度pickerを独立した領域として常時表示します。月次は日別trend、年度は4月〜翌3月の月別trendを主表示とし、その下へ社員別明細を置きます。同時に月次/年度の両datasetをreadするのではなく、選択したperiodだけを従来どおりserverで集計します。
+
+`#analysis-view` は期間変更のHTMX replacement boundaryで、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。このregionには選択件数、未選択時の案内、trend chart、社員別tableを含め、filter変更時にchartとdetailを同一read modelから同期更新します。trendは既存のattendance analysis resultに含まれるlocation別date detailをpresentation serviceで日次/月次bucketへ変換し、client-side chart stateや追加chart libraryは持ちません。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長のtrendと集計tableはそれぞれ内部scroll surfaceを持ち、狭いviewportでpage全体を横overflowさせません。
 
 ### Styling boundary
 
