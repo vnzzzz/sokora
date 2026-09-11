@@ -20,7 +20,7 @@
     {% set show_sidebar = (not current_path.startswith("/auth")) and (not auth_enabled or auth_session) %}
     {% set body_content %}{% block content %}{% endblock %}{% endset %}
     {% if show_sidebar %}
-      <div class="app-shell flex">
+      <div class="app-shell flex{{ ' admin-login-visible' if show_admin_login_entry else '' }}">
         {% include "components/common/sidebar.html" with context %}
 
         {% if show_admin_login_entry %}
