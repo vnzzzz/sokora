@@ -1,32 +1,49 @@
 <div id="analysis-table-region">
-  <div class="flex flex-wrap items-end justify-between gap-2">
-    <div>
-      <h3 id="analysis-results-heading" class="text-sm font-semibold text-base-content">集計結果</h3>
-      <p class="mt-1 text-xs text-base-content/60">
-        選択した勤怠種別について、期間内の推移を俯瞰してから社員別明細を確認できます。
+  <section aria-labelledby="analysis-overview-heading">
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h3 id="analysis-overview-heading" class="text-base font-semibold text-base-content">概要</h3>
+        <p class="mt-1 text-xs text-base-content/60">
+          {{ analysis_data.period.label }}の登録状況を時系列で確認します。
+        </p>
+      </div>
+      <p class="text-xs text-base-content/50" data-testid="analysis-selection-summary">
+        集計対象 {{ selected_location_ids|length }}件
       </p>
     </div>
-    <p class="text-xs text-base-content/60" data-testid="analysis-selection-summary">
-      集計対象 {{ selected_location_ids|length }}件
-    </p>
-  </div>
 
-  {% if selected_location_ids|length == 0 %}
-  <div
-    class="mt-4 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/70"
-    data-testid="analysis-no-selection-hint"
-  >
-    集計対象を選択すると、グラフと社員別明細へ反映されます。
-  </div>
-  {% endif %}
+    <dl class="mt-5 grid grid-cols-2 gap-4 border-y border-base-300 py-4 sm:max-w-xl">
+      <div>
+        <dt class="text-xs text-base-content/60">延べ登録日数</dt>
+        <dd class="mt-1 text-2xl font-semibold text-base-content" data-testid="analysis-trend-total">
+          {{ selected_total_days }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-base-content/60">登録あり社員</dt>
+        <dd class="mt-1 text-2xl font-semibold text-base-content">
+          {{ selected_user_count }}<span class="ml-1 text-sm font-normal text-base-content/50">/ {{ analysis_data.users|length }}人</span>
+        </dd>
+      </div>
+    </dl>
 
-  {% include "components/analysis/trend_chart.html" %}
+    {% if selected_location_ids|length == 0 %}
+    <div
+      class="mt-5 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/70"
+      data-testid="analysis-no-selection-hint"
+    >
+      表示条件の「集計対象」で勤怠種別を選択すると、グラフと社員別明細に反映されます。
+    </div>
+    {% endif %}
 
-  <section class="mt-10" aria-labelledby="analysis-detail-heading">
-    <div class="mb-3">
-      <h4 id="analysis-detail-heading" class="text-sm font-medium text-base-content">社員別明細</h4>
+    {% include "components/analysis/trend_chart.html" %}
+  </section>
+
+  <section class="mt-12 border-t border-base-300 pt-8" aria-labelledby="analysis-detail-heading">
+    <div class="mb-4">
+      <h3 id="analysis-detail-heading" class="text-base font-semibold text-base-content">社員別明細</h3>
       <p class="mt-1 text-xs text-base-content/60">
-        勤怠種別ごとの登録日数と登録日付を社員単位で確認します。
+        選択した勤怠種別について、社員ごとの登録日数と登録日付を確認します。
       </p>
     </div>
     {% include "components/analysis/table.html" %}
