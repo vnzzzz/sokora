@@ -5,6 +5,11 @@
 function analysisFallbackUrl(element) {
   if (!(element instanceof Element) || !element.closest('#analysis-view')) return null
 
+  const modeTab = element.closest('[data-analysis-mode-tab]')
+  if (modeTab instanceof HTMLAnchorElement) {
+    return modeTab.getAttribute('href')
+  }
+
   if (element.id === 'month-input') {
     return element.value ? `/analysis?month=${encodeURIComponent(element.value)}` : '/analysis'
   }
