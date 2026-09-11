@@ -94,7 +94,8 @@ async def test_htmx_location_filter_returns_table_fragment_and_allows_zero_selec
     assert 'id="analysis-table-region"' in response.text
     assert 'id="analysis-view"' not in response.text
     assert "集計対象 0件" in response.text
-    assert "集計対象を選択すると、グラフと社員別明細へ反映されます。" in response.text
+    assert 'data-testid="analysis-no-selection-hint"' in response.text
+    assert "集計対象" in response.text
 
 
 async def test_htmx_history_restore_returns_full_page(
@@ -128,7 +129,8 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert "2031年度" in response.text
     assert "4月〜翌3月" in response.text
     assert "Analysis Route User" in response.text
-    assert "月別推移" in response.text
+    assert 'data-testid="analysis-trend-chart"' in response.text
+    assert "月ごとの延べ登録日数" in response.text
 
 
 async def test_fiscal_year_outside_supported_range_is_422(
