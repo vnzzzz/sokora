@@ -96,6 +96,8 @@ html[data-sidebar-open="false"] .app-shell {
 }
 
 .sidebar-nav-link {
+  --animation-btn: 0s;
+  --btn-focus-scale: 1;
   justify-content: flex-start;
   gap: 0.5rem;
 }
