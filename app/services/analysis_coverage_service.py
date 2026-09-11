@@ -1,4 +1,4 @@
-"""分析画面の組織・社員種別coverageをpresentation modelへ変換する。"""
+"""分析画面の組織・社員種別coverageをchart向けpresentation modelへ変換する。"""
 
 from __future__ import annotations
 
@@ -11,46 +11,45 @@ from app.utils.ui_utils import get_location_tone
 
 
 class CoverageLocation(TypedDict):
-    """Coverage matrixで使う勤怠種別legend item。"""
+    """Chart legendで使う勤怠種別。"""
 
     location_id: int
     name: str
     tone_index: int
 
 
-class CoverageTypeCount(TypedDict):
-    """Coverage cell内の勤怠種別別unique社員数。"""
-
-    location_id: int
-    name: str
-    tone_index: int
-    count: int
-
-
-class CoverageCell(TypedDict):
-    """1区分×1期間bucketのunique社員coverage。"""
+class CoveragePoint(TypedDict):
+    """1勤怠種別×1期間bucketのunique社員数。"""
 
     key: str
     label: str
-    total: int
-    type_counts: List[CoverageTypeCount]
+    count: int
 
 
-class CoverageRow(TypedDict):
-    """Coverage matrixの1行。"""
+class CoverageSeries(TypedDict):
+    """1勤怠種別の時系列。"""
+
+    location_id: int
+    name: str
+    tone_index: int
+    points: List[CoveragePoint]
+
+
+class CoverageChart(TypedDict):
+    """1組織または1社員種別の時系列chart。"""
 
     label: str
     member_count: int
-    cells: List[CoverageCell]
+    series: List[CoverageSeries]
 
 
 class AnalysisCoverageViewModel(TypedDict):
-    """Coverage templateが参照するpresentation contract。"""
+    """Coverage chart templateが参照するpresentation contract。"""
 
     coverage_locations: List[CoverageLocation]
     coverage_buckets: List[tuple[str, str]]
-    group_coverage_rows: List[CoverageRow]
-    user_type_coverage_rows: List[CoverageRow]
+    group_coverage_charts: List[CoverageChart]
+    user_type_coverage_charts: List[CoverageChart]
 
 
 def _bucket_specs(
@@ -126,7 +125,7 @@ def _row_names(
     return group_names, user_type_names
 
 
-def _build_dimension_rows(
+def _build_dimension_charts(
     analysis_data: Dict[str, Any],
     *,
     names: List[str],
@@ -135,20 +134,16 @@ def _build_dimension_rows(
     is_year_mode: bool,
     locations: List[CoverageLocation],
     selected_location_ids: set[int],
-) -> List[CoverageRow]:
+) -> List[CoverageChart]:
     users = analysis_data.get("users", {})
     location_details = analysis_data.get("location_details", {})
-    location_ids = [location["location_id"] for location in locations]
     bucket_keys = {key for key, _ in specs}
 
     members: Dict[str, set[str]] = {name: set() for name in names}
-    totals: Dict[str, Dict[str, set[str]]] = {
-        name: {key: set() for key, _ in specs} for name in names
-    }
-    by_location: Dict[str, Dict[str, Dict[int, set[str]]]] = {
+    counts: Dict[str, Dict[int, Dict[str, set[str]]]] = {
         name: {
-            key: {location_id: set() for location_id in location_ids}
-            for key, _ in specs
+            location["location_id"]: {key: set() for key, _ in specs}
+            for location in locations
         }
         for name in names
     }
@@ -170,59 +165,46 @@ def _build_dimension_rows(
                 continue
 
             name = str(user_info.get(dimension_key) or "未分類")
-            if name not in totals:
+            if name not in counts or location_id not in counts[name]:
                 continue
 
             for date_detail in date_details:
                 attendance_date = date.fromisoformat(str(date_detail["date_str"]))
-                key = _bucket_key(
-                    attendance_date,
-                    is_year_mode=is_year_mode,
-                )
-                if key not in bucket_keys:
-                    continue
+                key = _bucket_key(attendance_date, is_year_mode=is_year_mode)
+                if key in bucket_keys:
+                    counts[name][location_id][key].add(user_id_str)
 
-                totals[name][key].add(user_id_str)
-                if location_id in by_location[name][key]:
-                    by_location[name][key][location_id].add(user_id_str)
-
-    rows: List[CoverageRow] = []
+    charts: List[CoverageChart] = []
     for name in names:
-        cells: List[CoverageCell] = []
-        for key, label in specs:
-            type_counts: List[CoverageTypeCount] = []
-            for location in locations:
-                location_id = location["location_id"]
-                count = len(by_location[name][key][location_id])
-                if count == 0:
-                    continue
-                type_counts.append(
-                    {
-                        "location_id": location_id,
-                        "name": location["name"],
-                        "tone_index": location["tone_index"],
-                        "count": count,
-                    }
-                )
-
-            cells.append(
+        series: List[CoverageSeries] = []
+        for location in locations:
+            location_id = location["location_id"]
+            points: List[CoveragePoint] = [
                 {
                     "key": key,
                     "label": label,
-                    "total": len(totals[name][key]),
-                    "type_counts": type_counts,
+                    "count": len(counts[name][location_id][key]),
+                }
+                for key, label in specs
+            ]
+            series.append(
+                {
+                    "location_id": location_id,
+                    "name": location["name"],
+                    "tone_index": location["tone_index"],
+                    "points": points,
                 }
             )
 
-        rows.append(
+        charts.append(
             {
                 "label": name,
                 "member_count": len(members[name]),
-                "cells": cells,
+                "series": series,
             }
         )
 
-    return rows
+    return charts
 
 
 def get_analysis_coverage_view_model(
@@ -232,7 +214,7 @@ def get_analysis_coverage_view_model(
     selected_location_ids: List[int],
     is_year_mode: bool,
 ) -> AnalysisCoverageViewModel:
-    """同一read snapshotから組織別・社員種別別coverageを構築する。"""
+    """同一read snapshotから組織別・社員種別別の時系列を構築する。"""
     specs = _bucket_specs(
         analysis_data,
         is_year_mode=is_year_mode,
@@ -244,7 +226,7 @@ def get_analysis_coverage_view_model(
     )
     group_names, user_type_names = _row_names(group_sections)
 
-    group_rows = _build_dimension_rows(
+    group_charts = _build_dimension_charts(
         analysis_data,
         names=group_names,
         dimension_key="group_name",
@@ -253,7 +235,7 @@ def get_analysis_coverage_view_model(
         locations=locations,
         selected_location_ids=selected,
     )
-    user_type_rows = _build_dimension_rows(
+    user_type_charts = _build_dimension_charts(
         analysis_data,
         names=user_type_names,
         dimension_key="user_type_name",
@@ -266,6 +248,6 @@ def get_analysis_coverage_view_model(
     return {
         "coverage_locations": locations,
         "coverage_buckets": specs,
-        "group_coverage_rows": group_rows,
-        "user_type_coverage_rows": user_type_rows,
+        "group_coverage_charts": group_charts,
+        "user_type_coverage_charts": user_type_charts,
     }
