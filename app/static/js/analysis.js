@@ -42,9 +42,39 @@ function setAllAnalysisSeries(button, checked) {
   form.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
+function markSelectedAnalysisDay(day) {
+  document.querySelectorAll('[data-analysis-day]').forEach((trigger) => {
+    if (!(trigger instanceof HTMLButtonElement)) return
+
+    const isSelected = trigger.dataset.analysisDay === day
+    trigger.toggleAttribute('aria-current', isSelected)
+    trigger.classList.toggle('text-primary', isSelected)
+    trigger.classList.toggle('font-semibold', isSelected)
+    trigger.classList.toggle('text-base-content/45', !isSelected)
+  })
+}
+
+function loadAnalysisDayDetail(trigger) {
+  const day = trigger.dataset.analysisDay
+  const target = document.querySelector('#analysis-day-detail')
+  if (!day || !(target instanceof HTMLElement) || !window.htmx) return
+
+  markSelectedAnalysisDay(day)
+  window.htmx.ajax('GET', `/calendar/day/${encodeURIComponent(day)}`, {
+    target: '#analysis-day-detail',
+    swap: 'innerHTML',
+  })
+}
+
 document.addEventListener('click', (event) => {
   const target = event.target
   if (!(target instanceof Element)) return
+
+  const dayTrigger = target.closest('[data-analysis-day]')
+  if (dayTrigger instanceof HTMLButtonElement) {
+    loadAnalysisDayDetail(dayTrigger)
+    return
+  }
 
   const selectAllButton = target.closest('[data-analysis-select-all]')
   if (selectAllButton instanceof HTMLButtonElement) {
