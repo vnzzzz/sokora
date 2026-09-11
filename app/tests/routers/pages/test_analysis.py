@@ -42,22 +42,22 @@ def _add_analysis_attendance(db: Session) -> None:
     db.commit()
 
 
-async def test_month_analysis_renders_read_model(
+async def test_month_analysis_renders_graph_only_read_model(
     async_client: AsyncClient,
     db_with_data: Session,
 ) -> None:
     _add_analysis_attendance(db_with_data)
-    location_count = db_with_data.query(models.Location).count()
 
     response = await async_client.get("/analysis?month=2031-05")
 
     assert response.status_code == status.HTTP_200_OK
     assert 'id="analysis-root"' in response.text
     assert "2031年5月" in response.text
-    assert "Analysis Route User" in response.text
-    assert 'data-testid="analysis-table"' in response.text
-    assert 'data-testid="analysis-trend-chart"' in response.text
-    assert f"集計対象 {location_count}件" in response.text
+    assert 'data-testid="analysis-group-charts"' in response.text
+    assert 'data-testid="analysis-user-type-charts"' in response.text
+    assert 'data-testid="analysis-table"' not in response.text
+    assert 'data-testid="analysis-trend-chart"' not in response.text
+    assert 'data-testid="analysis-trend-total"' not in response.text
 
 
 async def test_htmx_analysis_returns_fragment(
@@ -76,7 +76,7 @@ async def test_htmx_analysis_returns_fragment(
     assert "<html" not in response.text
 
 
-async def test_htmx_location_filter_returns_table_fragment_and_allows_zero_selection(
+async def test_htmx_location_filter_returns_chart_fragment_and_allows_zero_selection(
     async_client: AsyncClient,
     db_with_data: Session,
 ) -> None:
@@ -93,9 +93,9 @@ async def test_htmx_location_filter_returns_table_fragment_and_allows_zero_selec
     assert response.status_code == status.HTTP_200_OK
     assert 'id="analysis-table-region"' in response.text
     assert 'id="analysis-view"' not in response.text
-    assert "集計対象 0件" in response.text
     assert 'data-testid="analysis-no-selection-hint"' in response.text
-    assert "集計対象" in response.text
+    assert "表示条件で勤務種別を選択してください。" in response.text
+    assert 'data-testid="analysis-group-charts"' not in response.text
 
 
 async def test_htmx_history_restore_returns_full_page(
@@ -128,9 +128,9 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     assert response.status_code == status.HTTP_200_OK
     assert "2031年度" in response.text
     assert "4月〜翌3月" in response.text
-    assert "Analysis Route User" in response.text
-    assert 'data-testid="analysis-trend-chart"' in response.text
-    assert "月ごとの延べ登録日数" in response.text
+    assert 'data-testid="analysis-group-charts"' in response.text
+    assert 'data-testid="analysis-user-type-charts"' in response.text
+    assert "月ごとの勤務種別別人数" in response.text
 
 
 async def test_fiscal_year_outside_supported_range_is_422(
