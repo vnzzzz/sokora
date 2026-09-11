@@ -1,3 +1,24 @@
 <div id="analysis-table-region">
+  <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+    <div>
+      <h3 id="analysis-results-heading" class="text-sm font-semibold text-base-content">集計結果</h3>
+      <p class="mt-1 text-xs text-base-content/60">
+        選択した勤怠種別に基づいて登録日数と登録日付を集計します。
+      </p>
+    </div>
+    <p class="text-xs text-base-content/60" data-testid="analysis-selection-summary">
+      集計対象 {{ selected_location_ids|length }}件
+    </p>
+  </div>
+
+  {% if selected_location_ids|length == 0 %}
+  <div
+    class="mb-4 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/70"
+    data-testid="analysis-no-selection-hint"
+  >
+    集計対象を選択すると、登録日数と登録日付一覧に反映されます。
+  </div>
+  {% endif %}
+
   {% include "components/analysis/table.html" %}
 </div>
