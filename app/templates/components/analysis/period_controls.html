@@ -40,13 +40,13 @@
         <span class="text-sm">年度別</span>
       </label>
 
-      <div id="month-selection" class="{% if is_year_mode %}hidden{% endif %}">
+      <div id="month-selection" class="w-full sm:w-auto {% if is_year_mode %}hidden{% endif %}">
         <label class="sr-only" for="month-input">対象月</label>
         <input
           type="month"
           id="month-input"
           name="month"
-          class="input input-bordered input-sm w-48"
+          class="input input-bordered input-sm w-full max-w-full sm:w-48"
           value="{{ current_month or '' }}"
           hx-get="/analysis"
           hx-trigger="change"
@@ -56,13 +56,13 @@
         />
       </div>
 
-      <div id="year-selection" class="{% if not is_year_mode %}hidden{% endif %}">
-        <div class="flex items-center gap-2">
+      <div id="year-selection" class="w-full sm:w-auto {% if not is_year_mode %}hidden{% endif %}">
+        <div class="flex flex-wrap items-center gap-2">
           <label class="sr-only" for="year-select">対象年度</label>
           <select
             id="year-select"
             name="year"
-            class="select select-bordered select-sm w-32"
+            class="select select-bordered select-sm w-32 max-w-full"
             hx-get="/analysis?mode=year"
             hx-trigger="change"
             hx-target="#analysis-view"
