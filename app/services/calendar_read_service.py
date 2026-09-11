@@ -106,7 +106,7 @@ def _build_summary_calendar_presentation(
     categories: list[SummaryCalendarCategoryViewModel] = []
     for category in sorted(
         grouped_locations,
-        key=lambda category: (category == "未分類", category),
+        key=lambda category: (category == "未分類", category.lower()),
     ):
         categories.append(
             {
