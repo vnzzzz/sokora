@@ -8,7 +8,7 @@ ANALYSIS_URL = "http://localhost:8000/analysis"
 def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
     page.goto(ANALYSIS_URL)
     expect(page).to_have_title("Sokora - 勤怠集計")
-    initial_label = page.locator(".analysis-period-label").inner_text()
+    initial_month = page.locator("#month-input").input_value()
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.get_by_test_id("analysis-user-type-charts")).to_be_visible()
     expect(page.get_by_role("link", name="月次")).to_have_attribute(
@@ -19,16 +19,11 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
     first_of_month = date.today().replace(day=1)
     previous_month = first_of_month - timedelta(days=1)
     target_month = previous_month.strftime("%Y-%m")
-    target_label = f"{previous_month.year}年{previous_month.month}月"
 
     month_input = page.locator("#month-input")
     month_input.fill(target_month)
     month_input.dispatch_event("change")
 
-    expect(page.locator(".analysis-period-label")).to_contain_text(
-        target_label,
-        timeout=5000,
-    )
     expect(page).to_have_url(
         f"{ANALYSIS_URL}?month={target_month}",
         timeout=5000,
@@ -42,9 +37,7 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
 
     page.go_back()
     expect(page).to_have_url(ANALYSIS_URL, timeout=5000)
-    expect(page.locator(".analysis-period-label")).to_have_text(
-        initial_label, timeout=5000
-    )
+    expect(page.locator("#month-input")).to_have_value(initial_month, timeout=5000)
 
 
 def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
@@ -56,6 +49,7 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(year_tab).to_be_visible()
     expect(page.locator("#month-input")).to_be_visible()
     expect(page.locator("#year-select")).to_have_count(0)
+    expect(page.get_by_test_id("analysis-group-day-trigger").first).to_be_visible()
 
     year_tab.click()
 
@@ -65,10 +59,11 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page.locator("#year-select")).to_be_visible()
     expect(page.locator("#month-input")).to_have_count(0)
     selected_year = page.locator("#year-select").input_value()
-    expect(page.locator(".analysis-period-label")).to_contain_text("年度")
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.get_by_test_id("analysis-user-type-charts")).to_be_visible()
     expect(page.locator("#analysis-total-series")).to_be_checked()
+    expect(page.get_by_test_id("analysis-group-day-trigger")).to_have_count(0)
+    expect(page.locator("#analysis-day-detail")).to_have_count(0)
     expect(page).to_have_url(
         f"{ANALYSIS_URL}?mode=year&year={selected_year}",
         timeout=5000,
@@ -84,6 +79,7 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page.locator("#year-select")).to_have_count(0)
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.locator("#analysis-total-series")).to_be_checked()
+    expect(page.get_by_test_id("analysis-group-day-trigger").first).to_be_visible()
     expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
 
 
@@ -93,7 +89,7 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     page.goto(ANALYSIS_URL)
 
     expect(page.get_by_role("heading", name="表示条件")).to_be_visible()
-    expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
+    expect(page.get_by_text("表示系列", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="組織別")).to_be_visible()
     expect(page.get_by_role("heading", name="社員種別別")).to_be_visible()
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
@@ -133,14 +129,14 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     expect(accessible_data).to_contain_text(location_name, timeout=5000)
     expect(page).to_have_url(initial_url)
 
-    page.get_by_role("button", name="一括選択", exact=True).click()
+    page.get_by_role("button", name="全選択", exact=True).click()
     expect(total_checkbox).to_be_checked()
     for index in range(location_count):
         expect(checkboxes.nth(index)).to_be_checked(timeout=5000)
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page).to_have_url(initial_url)
 
-    page.get_by_role("button", name="一括選択解除", exact=True).click()
+    page.get_by_role("button", name="全解除", exact=True).click()
     expect(total_checkbox).not_to_be_checked()
     for index in range(location_count):
         expect(checkboxes.nth(index)).not_to_be_checked(timeout=5000)
@@ -148,6 +144,28 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
         timeout=5000
     )
     expect(page.get_by_test_id("analysis-group-charts")).to_have_count(0)
+    expect(page).to_have_url(initial_url)
+
+
+def test_analysis_month_date_axis_loads_day_detail_without_navigation(page: Page) -> None:
+    page.goto(ANALYSIS_URL)
+
+    trigger = page.get_by_test_id("analysis-group-day-trigger").first
+    expect(trigger).to_be_visible()
+    day = trigger.get_attribute("data-analysis-day")
+    assert day is not None
+    initial_url = page.url
+
+    trigger.click()
+
+    expect(trigger).to_have_attribute("aria-current", "date")
+    expect(page.locator("#analysis-day-detail #day-detail-container")).to_be_visible(
+        timeout=5000
+    )
+    expect(page.locator("#analysis-day-detail")).to_contain_text(
+        f"{day}の勤怠情報",
+        timeout=5000,
+    )
     expect(page).to_have_url(initial_url)
 
 
@@ -160,7 +178,7 @@ def test_analysis_primary_controls_and_graphs_remain_reachable_on_narrow_viewpor
     expect(page.get_by_role("link", name="月次")).to_be_visible()
     expect(page.get_by_role("link", name="年度")).to_be_visible()
     expect(page.locator("#month-input")).to_be_visible()
-    expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
+    expect(page.get_by_text("表示系列", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="組織別")).to_be_visible()
     expect(page.get_by_role("heading", name="社員種別別")).to_be_visible()
 
@@ -173,6 +191,7 @@ def test_analysis_primary_controls_and_graphs_remain_reachable_on_narrow_viewpor
     assert group_scroller.evaluate(
         "element => element.scrollWidth > element.clientWidth"
     )
+    expect(page.get_by_test_id("analysis-group-day-trigger").first).to_be_visible()
 
     filter_details = page.locator("#analysis-location-filter details")
     filter_details.locator("summary").click()
