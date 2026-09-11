@@ -50,9 +50,7 @@ def get_analysis_page(
         and request.headers.get("HX-Target") == "analysis-table-region"
     )
     selected_location_ids = (
-        selected_locations or []
-        if is_location_filter_request
-        else selected_locations
+        selected_locations or [] if is_location_filter_request else selected_locations
     )
 
     view_model = analysis_read_service.get_analysis_page_view_model(
