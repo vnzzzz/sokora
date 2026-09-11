@@ -1,69 +1,71 @@
-<div class="max-w-5xl">
-  <h3 id="analysis-period-heading" class="text-sm font-semibold text-base-content">集計期間</h3>
-  <p class="mt-1 text-xs text-base-content/60">
-    月次は日ごとの推移、年度は4月から翌3月までの月ごとの推移を確認します。
-  </p>
-
-  <div class="mt-4 grid gap-6 md:grid-cols-2">
-    <div
-      class="border-l-2 py-1 pl-4 {% if not is_year_mode %}border-primary{% else %}border-base-300{% endif %}"
-      data-testid="analysis-month-period"
+<div>
+  <nav class="flex gap-6 border-b border-base-300" aria-label="集計単位">
+    <a
+      href="/analysis?month={{ current_month }}"
+      class="border-b-2 px-1 pb-2 text-sm font-medium {% if not is_year_mode %}border-primary text-base-content{% else %}border-transparent text-base-content/50 hover:text-base-content{% endif %}"
+      {% if not is_year_mode %}aria-current="page"{% endif %}
+      hx-get="/analysis?month={{ current_month }}"
+      hx-target="#analysis-view"
+      hx-swap="outerHTML"
+      hx-push-url="true"
     >
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 class="text-sm font-medium text-base-content">月次集計</h4>
-        {% if not is_year_mode %}
-        <span class="text-xs text-primary">表示中</span>
-        {% endif %}
-      </div>
-      <p class="mt-1 text-xs text-base-content/60">選択月の日別推移と社員別明細を表示します。</p>
-      <div class="mt-3">
-        <label class="sr-only" for="month-input">対象月</label>
-        <input
-          type="month"
-          id="month-input"
-          name="month"
-          class="input input-bordered input-sm w-full max-w-full sm:w-48"
-          value="{{ current_month or '' }}"
-          hx-get="/analysis"
-          hx-trigger="change"
-          hx-target="#analysis-view"
-          hx-swap="outerHTML"
-          hx-push-url="true"
-        />
-      </div>
-    </div>
-
-    <div
-      class="border-l-2 py-1 pl-4 {% if is_year_mode %}border-primary{% else %}border-base-300{% endif %}"
-      data-testid="analysis-year-period"
+      月次
+    </a>
+    <a
+      href="/analysis?mode=year&amp;year={{ current_year }}"
+      class="border-b-2 px-1 pb-2 text-sm font-medium {% if is_year_mode %}border-primary text-base-content{% else %}border-transparent text-base-content/50 hover:text-base-content{% endif %}"
+      {% if is_year_mode %}aria-current="page"{% endif %}
+      hx-get="/analysis?mode=year&amp;year={{ current_year }}"
+      hx-target="#analysis-view"
+      hx-swap="outerHTML"
+      hx-push-url="true"
     >
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 class="text-sm font-medium text-base-content">年度集計</h4>
-        {% if is_year_mode %}
-        <span class="text-xs text-primary">表示中</span>
-        {% endif %}
-      </div>
-      <p class="mt-1 text-xs text-base-content/60">4月〜翌3月を月単位で俯瞰し、社員別明細を表示します。</p>
-      <div class="mt-3 flex flex-wrap items-center gap-2">
-        <label class="sr-only" for="year-select">対象年度</label>
-        <select
-          id="year-select"
-          name="year"
-          class="select select-bordered select-sm w-32 max-w-full"
-          hx-get="/analysis?mode=year"
-          hx-trigger="change"
-          hx-target="#analysis-view"
-          hx-swap="outerHTML"
-          hx-push-url="true"
-        >
-          {% for year_option in year_options %}
-          <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
-            {{ year_option }}年度
-          </option>
-          {% endfor %}
-        </select>
-        <span class="text-xs text-base-content/60">4月〜翌3月</span>
-      </div>
+      年度
+    </a>
+  </nav>
+
+  <div class="mt-4 flex flex-wrap items-end gap-4">
+    {% if is_year_mode %}
+    <div>
+      <label class="mb-1 block text-xs font-medium text-base-content/70" for="year-select">対象年度</label>
+      <select
+        id="year-select"
+        name="year"
+        class="select select-bordered select-sm w-36 max-w-full"
+        hx-get="/analysis?mode=year"
+        hx-trigger="change"
+        hx-target="#analysis-view"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+      >
+        {% for year_option in year_options %}
+        <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
+          {{ year_option }}年度
+        </option>
+        {% endfor %}
+      </select>
     </div>
+    <p class="pb-2 text-xs text-base-content/50">4月〜翌3月</p>
+    {% else %}
+    <div>
+      <label class="mb-1 block text-xs font-medium text-base-content/70" for="month-input">対象月</label>
+      <input
+        type="month"
+        id="month-input"
+        name="month"
+        class="input input-bordered input-sm w-full max-w-full sm:w-48"
+        value="{{ current_month or '' }}"
+        hx-get="/analysis"
+        hx-trigger="change"
+        hx-target="#analysis-view"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+      />
+    </div>
+    {% endif %}
+
+    <p class="analysis-period-label pb-2 text-xs text-base-content/50">
+      表示中: {{ analysis_data.period.label }}
+    </p>
   </div>
 </div>
