@@ -1,5 +1,6 @@
 <form
   id="analysis-location-filter"
+  class="contents"
   hx-get="/analysis"
   hx-trigger="change"
   hx-target="#analysis-table-region"
@@ -13,41 +14,39 @@
   <input type="hidden" name="month" value="{{ current_month }}" />
   {% endif %}
 
-  <div class="grid gap-3 sm:grid-cols-2">
-    <label class="block" for="analysis-group-select">
-      <span class="mb-1 block text-xs font-medium text-base-content/70">グループ</span>
-      <select
-        id="analysis-group-select"
-        name="group_name"
-        class="select select-bordered select-sm w-full"
-      >
-        <option value="">すべて</option>
-        {% for group_name in group_options %}
-        <option value="{{ group_name }}" {% if group_name == selected_group_name %}selected{% endif %}>
-          {{ group_name }}
-        </option>
-        {% endfor %}
-      </select>
-    </label>
+  <label class="block" for="analysis-group-select">
+    <span class="mb-1 block text-xs font-medium text-base-content/70">グループ</span>
+    <select
+      id="analysis-group-select"
+      name="group_name"
+      class="select select-bordered select-sm w-full"
+    >
+      <option value="">すべて</option>
+      {% for group_name in group_options %}
+      <option value="{{ group_name }}" {% if group_name == selected_group_name %}selected{% endif %}>
+        {{ group_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </label>
 
-    <label class="block" for="analysis-user-type-select">
-      <span class="mb-1 block text-xs font-medium text-base-content/70">社員種別</span>
-      <select
-        id="analysis-user-type-select"
-        name="user_type_name"
-        class="select select-bordered select-sm w-full"
-      >
-        <option value="">すべて</option>
-        {% for user_type_name in user_type_options %}
-        <option value="{{ user_type_name }}" {% if user_type_name == selected_user_type_name %}selected{% endif %}>
-          {{ user_type_name }}
-        </option>
-        {% endfor %}
-      </select>
-    </label>
-  </div>
+  <label class="block" for="analysis-user-type-select">
+    <span class="mb-1 block text-xs font-medium text-base-content/70">社員種別</span>
+    <select
+      id="analysis-user-type-select"
+      name="user_type_name"
+      class="select select-bordered select-sm w-full"
+    >
+      <option value="">すべて</option>
+      {% for user_type_name in user_type_options %}
+      <option value="{{ user_type_name }}" {% if user_type_name == selected_user_type_name %}selected{% endif %}>
+        {{ user_type_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </label>
 
-  <details class="mt-4 border-t border-base-300 pt-4">
+  <details class="mt-1 border-t border-base-300 pt-4 md:col-span-3">
     <summary class="cursor-pointer list-none">
       <span class="flex items-center justify-between gap-3">
         <span id="analysis-attendance-type-heading" class="text-sm font-medium text-base-content">勤怠種別</span>
