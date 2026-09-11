@@ -77,8 +77,14 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   transform: rotate(180deg);
 }
 
-/* The icon is visual-only. Keep the logout button as one continuous pointer
- * target so moving from its circular surface onto the glyph cannot change hover. */
+/* The logout control is navigation-like rather than a tactile action button.
+ * Disable daisyUI's button-pop geometry and keep the icon visual-only so the
+ * pointer target and hover state stay continuous across the entire circle. */
+.logout-button {
+  --animation-btn: 0s;
+  --btn-focus-scale: 1;
+}
+
 .logout-button svg,
 .logout-button svg * {
   pointer-events: none;
