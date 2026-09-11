@@ -55,10 +55,16 @@ function markSelectedAnalysisDay(day) {
   })
 }
 
+let analysisDayDetailRequestId = 0
+
 async function loadAnalysisDayDetail(trigger) {
   const day = trigger.getAttribute('data-analysis-day')
   const target = document.querySelector('#analysis-day-detail')
   if (!day || !(target instanceof HTMLElement)) return
+
+  // 連続clickで先行requestが後着した場合に選択と無関係な日付で上書きしないよう、
+  // 発火時点のrequestだけが最新であることをtokenで確認してから反映する。
+  const requestId = ++analysisDayDetailRequestId
 
   markSelectedAnalysisDay(day)
   target.setAttribute('aria-busy', 'true')
@@ -72,17 +78,23 @@ async function loadAnalysisDayDetail(trigger) {
       headers: { 'HX-Request': 'true' },
     })
 
+    if (requestId !== analysisDayDetailRequestId) return
+
     if (response.redirected) {
       window.location.href = response.url
       return
     }
     if (!response.ok) throw new Error(`day detail request failed: ${response.status}`)
 
-    target.innerHTML = await response.text()
+    const html = await response.text()
+    if (requestId !== analysisDayDetailRequestId) return
+
+    target.innerHTML = html
     target.setAttribute('aria-busy', 'false')
     if (window.htmx) window.htmx.process(target)
     target.scrollIntoView({ behavior: 'smooth', block: 'start' })
   } catch (_error) {
+    if (requestId !== analysisDayDetailRequestId) return
     target.setAttribute('aria-busy', 'false')
     target.innerHTML =
       '<div class="alert alert-error text-sm" role="alert">勤怠明細を読み込めませんでした。</div>'

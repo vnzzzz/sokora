@@ -235,6 +235,62 @@ def test_analysis_month_axis_labels_load_visible_day_detail_without_navigation(
     expect(page).to_have_url(initial_url)
 
 
+def test_analysis_day_detail_ignores_stale_response_from_earlier_click(
+    page: Page,
+) -> None:
+    """先にactivateしたdayのresponseが後着しても、最後にactivateしたdayの
+    detailを上書きしてはいけない。1番目のdayだけfetch responseの到着を
+    遅延させ、2番目のdayを続けてactivateしても最終的なdetailが2番目の
+    dayのまま保たれることを確認する。
+    """
+    page.goto(ANALYSIS_URL)
+
+    triggers = page.get_by_test_id("analysis-day-trigger")
+    first_trigger = triggers.nth(0)
+    second_trigger = triggers.nth(1)
+    first_day = first_trigger.get_attribute("data-analysis-day")
+    second_day = second_trigger.get_attribute("data-analysis-day")
+    assert first_day is not None
+    assert second_day is not None
+
+    # Playwrightのroute handlerをPython側でsleepさせるとdriver全体の
+    # dispatchを止めてしまい、2番目のclickまで巻き添えで遅延するため、
+    # browser側のfetchをwrapして対象dayのresponseだけ遅延させる。
+    # 遅延したresponseが実際に解決したことを`__delayedResolved`で判定し、
+    # 固定sleepではなくその解決を待ってから最終状態を検証する。
+    page.evaluate(
+        """
+        (delayedDay) => {
+          window.__delayedResolved = false
+          const originalFetch = window.fetch
+          window.fetch = (input, init) => {
+            const result = originalFetch(input, init)
+            if (String(input).includes(`/calendar/day/${delayedDay}`)) {
+              return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                  result.then(resolve, reject).finally(() => {
+                    window.__delayedResolved = true
+                  })
+                }, 500)
+              })
+            }
+            return result
+          }
+        }
+        """,
+        first_day,
+    )
+
+    first_trigger.click()
+    second_trigger.click()
+
+    detail = page.locator("#analysis-day-detail")
+    expect(detail).to_contain_text(f"{second_day}の勤怠情報", timeout=5000)
+    page.wait_for_function("window.__delayedResolved === true", timeout=5000)
+    expect(detail).to_contain_text(f"{second_day}の勤怠情報")
+    assert f"{first_day}の勤怠情報" not in detail.inner_text()
+
+
 def test_analysis_primary_controls_and_chart_remain_reachable_on_narrow_viewport(
     page: Page,
 ) -> None:
