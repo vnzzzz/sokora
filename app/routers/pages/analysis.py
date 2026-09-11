@@ -29,6 +29,9 @@ def get_analysis_page(
     year指定またはmode=yearではmonthを参照しない。月次modeのmonthだけをcanonical化し、
     不正値はcurrent monthへredirectする。DB/internal failureはempty 200へ変換せず、
     application共通HTTP boundaryへ伝播させる。
+
+    full page / period変更では勤怠種別未指定を「全件」として扱う。location filter自身のHTMX
+    requestだけはparameter不在を「0件選択」と解釈し、全checkboxを外した状態を表現できるようにする。
     """
     is_year_mode = year is not None or mode == "year"
     if month is not None and not is_year_mode:
@@ -39,21 +42,32 @@ def get_analysis_page(
             current_month = get_current_month_formatted()
             return RedirectResponse(url=f"/analysis?month={current_month}")
 
+    is_htmx_request = request.headers.get("HX-Request") == "true"
+    is_history_restore = request.headers.get("HX-History-Restore-Request") == "true"
+    is_location_filter_request = (
+        is_htmx_request
+        and not is_history_restore
+        and request.headers.get("HX-Target") == "analysis-table-region"
+    )
+    selected_location_ids = (
+        selected_locations or []
+        if is_location_filter_request
+        else selected_locations
+    )
+
     view_model = analysis_read_service.get_analysis_page_view_model(
         db,
         month=month,
         year=year,
         mode=mode,
-        selected_location_ids=selected_locations or [],
+        selected_location_ids=selected_location_ids,
     )
     context = {"request": request, **view_model}
 
-    is_htmx_request = request.headers.get("HX-Request") == "true"
-    is_history_restore = request.headers.get("HX-History-Restore-Request") == "true"
     if is_htmx_request and not is_history_restore:
         template_name = (
             "components/analysis/table_region.html"
-            if request.headers.get("HX-Target") == "analysis-table-region"
+            if is_location_filter_request
             else "components/analysis/content.html"
         )
         return templates.TemplateResponse(
