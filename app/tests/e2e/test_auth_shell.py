@@ -13,7 +13,7 @@ def _development_session_cookie(session: dict[str, object]) -> str:
 
 
 def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> None:
-    """logout controlは初回hoverから反応し、補助tooltipを表示しない。"""
+    """logout controlはicon上を含む初回hoverから反応し、補助tooltipを表示しない。"""
     page.context.add_cookies(
         [
             {
@@ -34,7 +34,9 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     page.goto(BASE_URL)
 
     logout_button = page.get_by_test_id("logout-button")
+    logout_icon = page.get_by_test_id("logout-icon")
     expect(logout_button).to_be_visible()
+    expect(logout_icon).to_be_visible()
 
     logout_form = logout_button.locator("xpath=..")
     expect(logout_form).not_to_have_class("tooltip")
@@ -43,9 +45,23 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     before_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
     )
-    logout_button.hover()
+    icon_box = logout_icon.bounding_box()
+    assert icon_box is not None
+    icon_x = icon_box["x"] + icon_box["width"] / 2
+    icon_y = icon_box["y"] + icon_box["height"] / 2
+    page.mouse.move(icon_x, icon_y)
+
+    hit_is_button = page.evaluate(
+        """([x, y]) => {
+          const button = document.querySelector('[data-testid="logout-button"]')
+          const hit = document.elementFromPoint(x, y)
+          return Boolean(button && hit === button)
+        }""",
+        [icon_x, icon_y],
+    )
     after_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
     )
 
+    assert hit_is_button is True
     assert after_hover != before_hover
