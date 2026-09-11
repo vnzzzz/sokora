@@ -216,7 +216,8 @@ def test_analysis_month_axis_labels_load_visible_day_detail_without_navigation(
     trigger = page.get_by_test_id("analysis-day-trigger").first
     expect(trigger).to_be_visible()
     expect(trigger.locator("text")).to_have_text("1")
-    expect(trigger.locator("xpath=ancestor::svg")).to_have_count(1)
+    # SVG要素はnamespace付きのため、unprefixed XPath step "svg" は常に0件になる。
+    expect(trigger.locator("xpath=ancestor::*[local-name()='svg']")).to_have_count(1)
     day = trigger.get_attribute("data-analysis-day")
     assert day is not None
     initial_url = page.url
