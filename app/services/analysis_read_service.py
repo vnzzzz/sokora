@@ -1,8 +1,8 @@
 """勤怠analysisの集計結果をtemplate向けpresentation modelへ変換する。
 
 集計期間と件数そのものはattendance analysis serviceが所有し、このmoduleはlocation/category、
-group/user type、user row、trend chartの表示順とrender-safeなpage shapeを決める。router/Jinjaが
-同じsorting / aggregation ruleを個別実装しないためのread boundaryである。
+group/user type、user row、trend chart、coverage matrixの表示順とrender-safeなpage shapeを決める。
+router/Jinjaが同じsorting / aggregation ruleを個別実装しないためのread boundaryである。
 """
 
 from __future__ import annotations
@@ -74,6 +74,40 @@ class TrendPoint(TypedDict):
     height_percent: int
 
 
+class CoverageLocation(TypedDict):
+    """coverage matrixで使う勤怠種別legend item。"""
+
+    location_id: int
+    name: str
+    tone_index: int
+
+
+class CoverageTypeCount(TypedDict):
+    """coverage cell内の勤怠種別別unique社員数。"""
+
+    location_id: int
+    name: str
+    tone_index: int
+    count: int
+
+
+class CoverageCell(TypedDict):
+    """1組織/社員種別×1期間bucketのunique社員coverage。"""
+
+    key: str
+    label: str
+    total: int
+    type_counts: List[CoverageTypeCount]
+
+
+class CoverageRow(TypedDict):
+    """coverage matrixの1行。member_countはそのrowに所属する全社員数。"""
+
+    label: str
+    member_count: int
+    cells: List[CoverageCell]
+
+
 class AnalysisPageViewModel(TypedDict):
     """analysis templateが参照する正常readのpage contract。"""
 
@@ -88,6 +122,10 @@ class AnalysisPageViewModel(TypedDict):
     trend_points: List[TrendPoint]
     selected_total_days: int
     selected_user_count: int
+    coverage_locations: List[CoverageLocation]
+    coverage_buckets: List[tuple[str, str]]
+    group_coverage_rows: List[CoverageRow]
+    user_type_coverage_rows: List[CoverageRow]
     empty_message: str
 
 
@@ -277,6 +315,23 @@ def _trend_bucket_specs(
     ]
 
 
+def _bucket_key(attendance_date: date, *, is_year_mode: bool) -> str:
+    return (
+        attendance_date.strftime("%Y-%m")
+        if is_year_mode
+        else attendance_date.isoformat()
+    )
+
+
+def _eligible_location_ids(
+    location_details: Dict[Any, Any],
+    selected_location_ids: Optional[set[int]],
+) -> set[int]:
+    if selected_location_ids is None:
+        return {int(location_id) for location_id in location_details}
+    return set(selected_location_ids)
+
+
 def _build_trend_points(
     analysis_data: Dict[str, Any],
     *,
@@ -287,11 +342,10 @@ def _build_trend_points(
     specs = _trend_bucket_specs(analysis_data, is_year_mode=is_year_mode)
     counts = {key: 0 for key, _ in specs}
     location_details = analysis_data.get("location_details", {})
-
-    if selected_location_ids is None:
-        eligible_location_ids = {int(location_id) for location_id in location_details}
-    else:
-        eligible_location_ids = selected_location_ids
+    eligible_location_ids = _eligible_location_ids(
+        location_details,
+        selected_location_ids,
+    )
 
     for location_id, details_by_user in location_details.items():
         if int(location_id) not in eligible_location_ids:
@@ -299,11 +353,7 @@ def _build_trend_points(
         for date_details in details_by_user.values():
             for date_detail in date_details:
                 attendance_date = date.fromisoformat(str(date_detail["date_str"]))
-                key = (
-                    attendance_date.strftime("%Y-%m")
-                    if is_year_mode
-                    else attendance_date.isoformat()
-                )
+                key = _bucket_key(attendance_date, is_year_mode=is_year_mode)
                 if key in counts:
                     counts[key] += 1
 
@@ -321,6 +371,163 @@ def _build_trend_points(
         }
         for key, label in specs
     ]
+
+
+def _build_coverage_locations(
+    locations: List[Any],
+    selected_location_ids: Optional[set[int]],
+) -> List[CoverageLocation]:
+    return [
+        {
+            "location_id": int(location.id),
+            "name": str(location.name),
+            "tone_index": index % 10,
+        }
+        for index, location in enumerate(locations)
+        if selected_location_ids is None
+        or int(location.id) in selected_location_ids
+    ]
+
+
+def _coverage_row_names(
+    group_sections: List[GroupSection],
+) -> tuple[List[str], List[str]]:
+    group_names = [section["name"] for section in group_sections]
+    user_type_names: List[str] = []
+    seen_user_types: set[str] = set()
+    for group in group_sections:
+        for user_type in group["user_types"]:
+            name = user_type["name"]
+            if name not in seen_user_types:
+                user_type_names.append(name)
+                seen_user_types.add(name)
+    return group_names, user_type_names
+
+
+def _build_coverage_rows(
+    analysis_data: Dict[str, Any],
+    *,
+    is_year_mode: bool,
+    selected_location_ids: Optional[set[int]],
+    coverage_locations: List[CoverageLocation],
+    group_sections: List[GroupSection],
+) -> tuple[List[tuple[str, str]], List[CoverageRow], List[CoverageRow]]:
+    """組織/社員種別ごとのbucket別unique社員数と勤怠種別内訳を構築する。"""
+    specs = _trend_bucket_specs(analysis_data, is_year_mode=is_year_mode)
+    bucket_keys = {key for key, _ in specs}
+    group_names, user_type_names = _coverage_row_names(group_sections)
+    users = analysis_data.get("users", {})
+    location_details = analysis_data.get("location_details", {})
+    eligible_location_ids = _eligible_location_ids(
+        location_details,
+        selected_location_ids,
+    )
+    coverage_location_ids = [item["location_id"] for item in coverage_locations]
+    coverage_location_by_id = {
+        item["location_id"]: item for item in coverage_locations
+    }
+
+    group_members: Dict[str, set[str]] = {name: set() for name in group_names}
+    type_members: Dict[str, set[str]] = {name: set() for name in user_type_names}
+    for user_id, user_info in users.items():
+        user_id_str = str(user_id)
+        group_name = str(user_info.get("group_name") or "未分類")
+        user_type_name = str(user_info.get("user_type_name") or "未分類")
+        group_members.setdefault(group_name, set()).add(user_id_str)
+        type_members.setdefault(user_type_name, set()).add(user_id_str)
+
+    group_totals: Dict[str, Dict[str, set[str]]] = {
+        name: {key: set() for key, _ in specs} for name in group_names
+    }
+    type_totals: Dict[str, Dict[str, set[str]]] = {
+        name: {key: set() for key, _ in specs} for name in user_type_names
+    }
+    group_by_location: Dict[str, Dict[str, Dict[int, set[str]]]] = {
+        name: {
+            key: {location_id: set() for location_id in coverage_location_ids}
+            for key, _ in specs
+        }
+        for name in group_names
+    }
+    type_by_location: Dict[str, Dict[str, Dict[int, set[str]]]] = {
+        name: {
+            key: {location_id: set() for location_id in coverage_location_ids}
+            for key, _ in specs
+        }
+        for name in user_type_names
+    }
+
+    for raw_location_id, details_by_user in location_details.items():
+        location_id = int(raw_location_id)
+        if location_id not in eligible_location_ids:
+            continue
+        for user_id, date_details in details_by_user.items():
+            user_id_str = str(user_id)
+            user_info = users.get(user_id_str)
+            if user_info is None:
+                continue
+            group_name = str(user_info.get("group_name") or "未分類")
+            user_type_name = str(user_info.get("user_type_name") or "未分類")
+            if group_name not in group_totals or user_type_name not in type_totals:
+                continue
+
+            for date_detail in date_details:
+                attendance_date = date.fromisoformat(str(date_detail["date_str"]))
+                key = _bucket_key(attendance_date, is_year_mode=is_year_mode)
+                if key not in bucket_keys:
+                    continue
+                group_totals[group_name][key].add(user_id_str)
+                type_totals[user_type_name][key].add(user_id_str)
+                if location_id in coverage_location_by_id:
+                    group_by_location[group_name][key][location_id].add(user_id_str)
+                    type_by_location[user_type_name][key][location_id].add(user_id_str)
+
+    def materialize(
+        names: List[str],
+        members: Dict[str, set[str]],
+        totals: Dict[str, Dict[str, set[str]]],
+        by_location: Dict[str, Dict[str, Dict[int, set[str]]]],
+    ) -> List[CoverageRow]:
+        rows: List[CoverageRow] = []
+        for name in names:
+            cells: List[CoverageCell] = []
+            for key, label in specs:
+                type_counts: List[CoverageTypeCount] = []
+                for location in coverage_locations:
+                    location_id = location["location_id"]
+                    count = len(by_location[name][key][location_id])
+                    if count == 0:
+                        continue
+                    type_counts.append(
+                        {
+                            "location_id": location_id,
+                            "name": location["name"],
+                            "tone_index": location["tone_index"],
+                            "count": count,
+                        }
+                    )
+                cells.append(
+                    {
+                        "key": key,
+                        "label": label,
+                        "total": len(totals[name][key]),
+                        "type_counts": type_counts,
+                    }
+                )
+            rows.append(
+                {
+                    "label": name,
+                    "member_count": len(members.get(name, set())),
+                    "cells": cells,
+                }
+            )
+        return rows
+
+    return (
+        specs,
+        materialize(group_names, group_members, group_totals, group_by_location),
+        materialize(user_type_names, type_members, type_totals, type_by_location),
+    )
 
 
 def _selected_user_count(group_sections: List[GroupSection]) -> int:
@@ -345,8 +552,9 @@ def get_analysis_page_view_model(
     """月次/年度集計をtemplateが直接renderできるpage modelへ編成する。
 
     ``year``指定または``mode=year``で年度mode、それ以外を月次modeとする。集計serviceの
-    raw resultを変更せずcopyした上で、勤怠種別・group・社員種別・userの表示順とtrendを
-    このboundaryで決定する。order未設定は後段へ送り、明示された``order=0``は維持する。
+    raw resultを変更せずcopyした上で、勤怠種別・group・社員種別・userの表示順とtrend、
+    coverage matrixをこのboundaryで決定する。order未設定は後段へ送り、明示された
+    ``order=0``は維持する。
 
     ``today`` はtestで年度defaultとyear selector範囲を決定的にするためのclock injectionで、
     data retention期間を制限するものではない。
@@ -404,6 +612,16 @@ def get_analysis_page_view_model(
         is_year_mode=is_year_mode,
         selected_location_ids=selected_filter,
     )
+    coverage_locations = _build_coverage_locations(locations, selected_filter)
+    coverage_buckets, group_coverage_rows, user_type_coverage_rows = (
+        _build_coverage_rows(
+            analysis_data,
+            is_year_mode=is_year_mode,
+            selected_location_ids=selected_filter,
+            coverage_locations=coverage_locations,
+            group_sections=group_sections,
+        )
+    )
 
     if is_year_mode:
         empty_message = f"{current_year}年度の勤怠データがありません。"
@@ -422,5 +640,9 @@ def get_analysis_page_view_model(
         "trend_points": trend_points,
         "selected_total_days": sum(point["count"] for point in trend_points),
         "selected_user_count": _selected_user_count(group_sections),
+        "coverage_locations": coverage_locations,
+        "coverage_buckets": coverage_buckets,
+        "group_coverage_rows": group_coverage_rows,
+        "user_type_coverage_rows": user_type_coverage_rows,
         "empty_message": empty_message,
     }
