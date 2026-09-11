@@ -38,6 +38,7 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
         "aria-current", "page"
     )
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
+    expect(page.locator("#analysis-total-series")).to_be_checked()
 
     page.go_back()
     expect(page).to_have_url(ANALYSIS_URL, timeout=5000)
@@ -67,6 +68,7 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page.locator(".analysis-period-label")).to_contain_text("年度")
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.get_by_test_id("analysis-user-type-charts")).to_be_visible()
+    expect(page.locator("#analysis-total-series")).to_be_checked()
     expect(page).to_have_url(
         f"{ANALYSIS_URL}?mode=year&year={selected_year}",
         timeout=5000,
@@ -81,10 +83,11 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page.locator("#month-input")).to_have_value(current_month)
     expect(page.locator("#year-select")).to_have_count(0)
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
+    expect(page.locator("#analysis-total-series")).to_be_checked()
     expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
 
 
-def test_analysis_location_filter_updates_charts_without_changing_url(
+def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     page: Page,
 ) -> None:
     page.goto(ANALYSIS_URL)
@@ -96,7 +99,7 @@ def test_analysis_location_filter_updates_charts_without_changing_url(
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.get_by_test_id("analysis-user-type-charts")).to_be_visible()
     accessible_data = page.get_by_test_id("analysis-group-chart-accessible-data").first
-    expect(accessible_data).to_contain_text("人")
+    expect(accessible_data).to_contain_text("全合計")
     expect(page.locator("#analysis-table-region table")).to_have_count(0)
     expect(page.get_by_test_id("analysis-trend-plot")).to_have_count(0)
     expect(page.get_by_test_id("analysis-trend-total")).to_have_count(0)
@@ -105,23 +108,42 @@ def test_analysis_location_filter_updates_charts_without_changing_url(
     expect(filter_details).not_to_have_attribute("open", "")
     filter_details.locator("summary").click()
 
+    total_checkbox = page.locator("#analysis-total-series")
+    expect(total_checkbox).to_be_checked()
+
     checkboxes = page.locator(".location-checkbox")
     location_count = checkboxes.count()
     assert location_count > 0
     expect(checkboxes.first).to_be_visible()
     for index in range(location_count):
-        expect(checkboxes.nth(index)).to_be_checked()
+        expect(checkboxes.nth(index)).not_to_be_checked()
 
     checkbox = checkboxes.first
     location_id = checkbox.get_attribute("value")
     assert location_id is not None
+    location_name = page.locator(f"label[for='location-{location_id}'] span").inner_text()
     initial_url = page.url
 
-    checkbox.uncheck()
+    checkbox.check()
 
-    expect(page.locator(f"#location-{location_id}")).not_to_be_checked(timeout=5000)
+    expect(page.locator(f"#location-{location_id}")).to_be_checked(timeout=5000)
+    expect(total_checkbox).to_be_checked()
+    expect(accessible_data).to_contain_text(location_name, timeout=5000)
+    expect(page).to_have_url(initial_url)
+
+    page.get_by_role("button", name="一括選択").click()
+    expect(total_checkbox).to_be_checked()
+    for index in range(location_count):
+        expect(checkboxes.nth(index)).to_be_checked(timeout=5000)
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
-    expect(page.get_by_test_id("analysis-user-type-charts")).to_be_visible()
+    expect(page).to_have_url(initial_url)
+
+    page.get_by_role("button", name="一括選択解除").click()
+    expect(total_checkbox).not_to_be_checked()
+    for index in range(location_count):
+        expect(checkboxes.nth(index)).not_to_be_checked(timeout=5000)
+    expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible(timeout=5000)
+    expect(page.get_by_test_id("analysis-group-charts")).to_have_count(0)
     expect(page).to_have_url(initial_url)
 
 
@@ -150,4 +172,5 @@ def test_analysis_primary_controls_and_graphs_remain_reachable_on_narrow_viewpor
 
     filter_details = page.locator("#analysis-location-filter details")
     filter_details.locator("summary").click()
+    expect(page.locator("#analysis-total-series")).to_be_checked()
     expect(page.locator(".location-checkbox").first).to_be_visible()
