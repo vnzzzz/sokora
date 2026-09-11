@@ -66,6 +66,14 @@ def test_analysis_location_filter_updates_table_without_changing_url(
 ) -> None:
     page.goto(ANALYSIS_URL)
 
+    expect(page.get_by_role("heading", name="対象期間")).to_be_visible()
+    expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
+    expect(page.get_by_role("heading", name="集計結果")).to_be_visible()
+    expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
+        "集計対象 0件"
+    )
+    expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible()
+
     checkbox = page.locator(".location-checkbox").first
     location_id = checkbox.get_attribute("value")
     assert location_id is not None
@@ -78,4 +86,26 @@ def test_analysis_location_filter_updates_table_without_changing_url(
 
     expect(page.locator(f"#location-{location_id}")).to_be_checked(timeout=5000)
     expect(header).to_be_visible(timeout=5000)
+    expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
+        "集計対象 1件",
+        timeout=5000,
+    )
+    expect(page.get_by_test_id("analysis-no-selection-hint")).to_have_count(0)
     expect(page).to_have_url(initial_url)
+
+
+def test_analysis_primary_controls_and_results_remain_reachable_on_narrow_viewport(
+    page: Page,
+) -> None:
+    page.set_viewport_size({"width": 390, "height": 800})
+    page.goto(ANALYSIS_URL)
+
+    expect(page.locator("#period-month")).to_be_visible()
+    expect(page.locator(".location-checkbox").first).to_be_visible()
+    expect(page.locator("#analysis-table-region")).to_be_visible()
+
+    table_scroller = page.locator("#analysis-table-region .overflow-x-auto")
+    expect(table_scroller).to_be_visible()
+    assert table_scroller.evaluate(
+        "element => element.scrollWidth > element.clientWidth"
+    )
