@@ -1,4 +1,18 @@
 {% if group_sections %}
+  {% if is_year_mode %}
+  <div class="mb-6 p-4 bg-info/10 rounded-lg">
+    <div class="flex flex-wrap gap-6 text-sm">
+      <div>
+        <span class="text-base-content/70">{{ current_year }}年度 全体集計</span>
+      </div>
+      <div>
+        <span class="text-base-content/70">対象ユーザー数：</span>
+        <span class="font-bold text-info">{{ analysis_data.users|length }}人</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="mb-6">
     <div class="overflow-x-auto w-full">
       <table
