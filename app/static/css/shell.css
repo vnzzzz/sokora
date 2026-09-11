@@ -77,12 +77,44 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   transform: rotate(180deg);
 }
 
-/* The logout control is navigation-like rather than a tactile action button.
- * Disable daisyUI's button-pop geometry and keep the icon visual-only so the
- * pointer target and hover state stay continuous across the entire circle. */
+/* The logout action owns one fixed hit surface instead of delegating geometry
+ * to daisyUI button modifiers. The form remains the hover owner while the
+ * button fills it, so the ring and glyph are one continuous interaction area. */
+.logout-control {
+  display: inline-flex;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+}
+
 .logout-button {
-  --animation-btn: 0s;
-  --btn-focus-scale: 1;
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: hsl(var(--bc));
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.logout-control:hover .logout-button,
+.logout-button:focus-visible {
+  background-color: hsl(var(--b3));
+  color: hsl(var(--bc));
+}
+
+.logout-button:focus-visible {
+  outline: 2px solid hsl(var(--p));
+  outline-offset: 2px;
 }
 
 .logout-button svg,
