@@ -181,8 +181,9 @@ def test_sidebar_links_remain_geometrically_stable_across_full_navigation(
 def test_sidebar_manual_toggle_animates_and_persists_without_navigation_transition(
     page: Page,
 ) -> None:
-    page.add_init_script("localStorage.setItem('sidebarOpen', 'true')")
     page.goto(TOP_URL)
+    page.evaluate("localStorage.setItem('sidebarOpen', 'true')")
+    page.reload()
 
     root = page.locator("html")
     sidebar = page.locator(".sidebar-panel")
