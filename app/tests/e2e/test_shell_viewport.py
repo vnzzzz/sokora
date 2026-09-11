@@ -44,7 +44,9 @@ def test_sidebar_spans_full_viewport(page: Page) -> None:
     _assert_sidebar_spans_viewport(page)
 
 
-def test_sidebar_contents_scroll_in_short_viewport_without_shrinking(page: Page) -> None:
+def test_sidebar_contents_scroll_in_short_viewport_without_shrinking(
+    page: Page,
+) -> None:
     page.set_viewport_size({"width": 1280, "height": 360})
     page.goto(BASE_URL)
 
