@@ -14,7 +14,7 @@
 {{ form_ui.simple_error(error_message) }}
 {%- endmacro %}
 
-{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='') -%}
+{% macro month_switcher(prev_month, next_month, current_month, url_base='/attendance/monthly', target_id='calendar', use_htmx=true, user_id=None, class='', swap='outerHTML') -%}
 {{ navigation_ui.month_switcher(
   prev_month=prev_month,
   next_month=next_month,
@@ -22,7 +22,8 @@
   url_base=url_base,
   target_id=target_id,
   user_id=user_id,
-  class=class
+  class=class,
+  swap=swap
 ) }}
 {%- endmacro %}
 

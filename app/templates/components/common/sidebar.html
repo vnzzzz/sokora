@@ -2,27 +2,19 @@
   {% set is_active = current_path == href or (href != "/" and current_path.startswith(href ~ "/")) %}
   <a
     href="{{ href }}"
-    class="btn hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full transition-all flex items-center text-xs {{ 'bg-base-300 font-medium' if is_active else 'btn-ghost' }}"
-    x-bind:class="isSidebarOpen ? 'justify-start gap-2' : 'justify-center px-0'"
+    class="sidebar-nav-link btn hover:bg-base-300 hover:text-base-content whitespace-nowrap mb-2 w-full flex items-center text-xs transition-colors {{ 'bg-base-300 font-medium' if is_active else 'btn-ghost' }}"
     title="{{ title }}"
   >
     {{ caller() }}
-    <span
-      x-show="isSidebarOpen"
-      class="transition-opacity duration-200 text-xs"
-      x-bind:class="{'opacity-0': !isSidebarOpen, 'opacity-100': isSidebarOpen}"
-    >{{ title }}</span>
+    <span class="sidebar-label text-xs">{{ title }}</span>
   </a>
 {%- endmacro %}
 
-<aside
-  x-bind:class="{'w-16': !isSidebarOpen, 'min-w-[200px] max-w-[200px]': isSidebarOpen}"
-  class="bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20 transition-all duration-300 ease-in-out"
->
+<aside class="sidebar-panel bg-base-200 min-h-screen shadow-lg border-r border-base-300 p-5 flex flex-col fixed top-0 left-0 z-20">
   <button
-    @click="isSidebarOpen = !isSidebarOpen"
-    class="absolute top-2 -right-3 bg-base-300 text-base-content rounded-full p-1 shadow-md z-10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-200 transition-transform duration-300"
-    x-bind:class="{ 'rotate-180': !isSidebarOpen }"
+    type="button"
+    data-sidebar-toggle
+    class="sidebar-toggle bg-base-300 text-base-content rounded-full p-1 shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-200"
     aria-label="サイドバーを開閉"
   >
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
@@ -31,7 +23,7 @@
   </button>
 
   <div class="mb-6 mt-8 overflow-hidden">
-    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+    <h3 class="sidebar-label text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
       一般機能
     </h3>
 
@@ -62,7 +54,7 @@
   </div>
 
   <div class="mb-6 overflow-hidden">
-    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+    <h3 class="sidebar-label text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
       管理機能
     </h3>
 
@@ -112,7 +104,7 @@
   </div>
 
   <div class="mb-6 overflow-hidden">
-    <h3 x-show="isSidebarOpen" class="text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
+    <h3 class="sidebar-label text-xs font-semibold uppercase text-base-content/70 px-2 mb-2 whitespace-nowrap">
       その他
     </h3>
 

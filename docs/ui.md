@@ -46,11 +46,14 @@ refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等か
 | --- | --- |
 | Jinja2 | full page / partial / reusable componentのrender |
 | HTMX | server request、partial replacement、custom event |
-| Alpine.js | sidebar / theme等の局所UI state |
+| Alpine.js | theme等の局所UI state |
+| `sidebar.js` | sidebar open/closed toggleと`localStorage`永続化。stateは`html[data-sidebar-open]`、presentationはCSSが所有 |
 | `ui-events.js` | modal / message / page refresh等の共通event |
 | `attendance-interactions.js` | attendance/register画面固有interaction。対象pageだけでload |
 | `calendar.js` | top calendarの日付選択 / detail取得。topだけでload |
 | `analysis.js` | analysis画面のsticky shadow / HTMX failure fallback。期間・location更新はHTMX + server render |
+
+sidebarの保存stateはCSS読込前にhead内の最小scriptで`html[data-sidebar-open]`へ反映し、初回paintから正しいshell geometryを使います。sidebar幅・main offset・label表示・navigation alignmentはCSSが所有し、Alpineのclass toggleには依存しません。
 
 DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持ちません。
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。

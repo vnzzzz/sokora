@@ -20,7 +20,7 @@
     window.htmx.ajax('GET', `/calendar/day/${date}`, { target: '#detail-area' })
   }
 
-  function highlightSelectedDate(date) {
+  function highlightSelectedDate(date, loadDetail = true) {
     if (!date) return
 
     calendarArea.querySelectorAll('.selected-date, .selected-column').forEach((element) => {
@@ -34,11 +34,17 @@
       cell.classList.add('selected-column')
     })
 
-    loadDayDetail(date)
+    if (loadDetail) loadDayDetail(date)
   }
 
   function initializeCalendar() {
     if (!calendarArea.querySelector('#calendar-metadata')) return
+
+    const selectedTarget = calendarArea.querySelector('th.selected-date[data-date]')
+    if (selectedTarget) {
+      loadDayDetail(selectedTarget.dataset.date)
+      return
+    }
 
     const todayDate = getTodayDate()
     const target =
@@ -51,7 +57,9 @@
   calendarArea.addEventListener('click', (event) => {
     const cell = event.target.closest('.calendar-cell[data-date]')
     if (!cell || !calendarArea.contains(cell)) return
-    highlightSelectedDate(cell.dataset.date)
+
+    // Cell自体のhx-getがdetailを取得するため、ここでは選択表示だけを更新する。
+    highlightSelectedDate(cell.dataset.date, false)
   })
 
   document.body.addEventListener('htmx:afterSwap', (event) => {

@@ -20,23 +20,10 @@
     {% set show_sidebar = (not current_path.startswith("/auth")) and (not auth_enabled or auth_session) %}
     {% set body_content %}{% block content %}{% endblock %}{% endset %}
     {% if show_sidebar %}
-      <div
-        class="flex"
-        x-data="{
-          isSidebarOpen: localStorage.getItem('sidebarOpen') === null ? true : localStorage.getItem('sidebarOpen') === 'true'
-        }"
-        x-init="$watch('isSidebarOpen', value => localStorage.setItem('sidebarOpen', value))"
-        x-cloak
-      >
+      <div class="app-shell flex">
         {% include "components/common/sidebar.html" with context %}
 
-        <main
-          class="relative flex-1 py-2 px-3 pt-14 transition-all duration-300 ease-in-out"
-          :class="{
-            'ml-[200px] max-w-[calc(100vw-200px-1.5rem)]': isSidebarOpen,
-            'ml-16 max-w-[calc(100vw-64px-1.5rem)]': !isSidebarOpen
-          }"
-        >
+        <main class="app-main relative flex-1 py-2 px-3 pt-14">
           {% if show_user_menu %}
             <header
               class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
@@ -107,6 +94,7 @@
     <div id="ui-message-container" class="toast toast-top toast-end z-[100]"></div>
 
     {% if show_sidebar %}
+      <script src="{{ url_for('static', path='js/sidebar.js') }}" defer></script>
       <script src="{{ url_for('static', path='js/ui-events.js') }}" defer></script>
     {% endif %}
 

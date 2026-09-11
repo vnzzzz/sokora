@@ -6,7 +6,7 @@
   <div class="flex items-center justify-start space-x-4 mb-2">
     <span class="text-xl font-bold">{{ current_month }}</span>
     {{ ui.month_switcher( prev_month=calendar.prev_month, next_month=calendar.next_month, current_month=current_month,
-    use_htmx=true, target_id="calendar-area", url_base="/calendar" ) }}
+    use_htmx=true, target_id="calendar-area", url_base="/calendar", swap="innerHTML" ) }}
   </div>
 
   {# 勤怠種別をカテゴリごとにグルーピング #}
@@ -45,6 +45,13 @@
     {% endfor %}
   {% endfor %}
 
+  {% set selection = namespace(date=day_data_array[0].day.date if day_data_array else '') %}
+  {% for item in day_data_array %}
+    {% if item.day.date == today_date %}
+      {% set selection.date = today_date %}
+    {% endif %}
+  {% endfor %}
+
   <div class="overflow-x-auto max-w-[850px]">
     <table class="table table-xs w-full" style="table-layout: fixed">
       <thead>
@@ -59,7 +66,7 @@
             {% set day_kind = item.day_kind %}
 
             <th
-              class="calendar-day-surface text-center p-1 w-10 calendar-cell"
+              class="calendar-day-surface text-center p-1 w-10 calendar-cell {{ 'selected-date' if day.date == selection.date else '' }}"
               hx-get="/calendar/day/{{ day.date }}"
               hx-target="#detail-area"
               data-date="{{ day.date }}"
@@ -121,7 +128,7 @@
               {% set day_kind = item.day_kind %}
 
               <td
-                class="calendar-day-surface text-center hover:bg-base-300 cursor-pointer p-1 calendar-cell"
+                class="calendar-day-surface text-center hover:bg-base-300 cursor-pointer p-1 calendar-cell {{ 'selected-column' if day.date == selection.date else '' }}"
                 hx-get="/calendar/day/{{ day.date }}"
                 hx-target="#detail-area"
                 data-date="{{ day.date }}"
