@@ -10,7 +10,9 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
     expect(page).to_have_title("Sokora - 勤怠集計")
     initial_label = page.locator(".analysis-period-label").inner_text()
     expect(page.locator("[data-testid='analysis-table']")).to_be_visible()
-    expect(page.locator("#period-month")).to_be_checked()
+    expect(page.get_by_test_id("analysis-month-period")).to_contain_text("表示中")
+    expect(page.get_by_test_id("analysis-year-period")).to_be_visible()
+    expect(page.get_by_role("figure").get_by_text("日別推移")).to_be_visible()
 
     first_of_month = date.today().replace(day=1)
     previous_month = first_of_month - timedelta(days=1)
@@ -30,6 +32,7 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
         timeout=5000,
     )
     expect(page.locator("#month-input")).to_have_value(target_month)
+    expect(page.get_by_test_id("analysis-month-period")).to_contain_text("表示中")
     expect(page.locator("[data-testid='analysis-table']")).to_be_visible()
 
     page.go_back()
@@ -39,39 +42,54 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
     )
 
 
-def test_analysis_period_mode_switch_uses_htmx_navigation(page: Page) -> None:
+def test_analysis_month_and_fiscal_year_periods_are_independent_htmx_inputs(
+    page: Page,
+) -> None:
     page.goto(ANALYSIS_URL)
 
-    page.locator("#period-year").check()
+    expect(page.get_by_role("heading", name="月次集計")).to_be_visible()
+    expect(page.get_by_role("heading", name="年度集計")).to_be_visible()
+    expect(page.locator("#month-input")).to_be_visible()
+    expect(page.locator("#year-select")).to_be_visible()
+    expect(page.get_by_test_id("analysis-month-period")).to_contain_text("表示中")
 
-    expect(page.locator("#period-year")).to_be_checked(timeout=5000)
-    expect(page.locator("#year-selection")).to_be_visible()
-    expect(page.locator(".analysis-period-label")).to_contain_text("年度")
     selected_year = page.locator("#year-select").input_value()
+    page.locator("#year-select").dispatch_event("change")
+
+    expect(page.get_by_test_id("analysis-year-period")).to_contain_text(
+        "表示中", timeout=5000
+    )
+    expect(page.locator(".analysis-period-label")).to_contain_text("年度")
+    expect(page.get_by_role("figure").get_by_text("月別推移")).to_be_visible()
     expect(page).to_have_url(
         f"{ANALYSIS_URL}?mode=year&year={selected_year}",
         timeout=5000,
     )
 
     current_month = date.today().strftime("%Y-%m")
-    page.locator("#period-month").check()
+    expect(page.locator("#month-input")).to_have_value(current_month)
+    page.locator("#month-input").dispatch_event("change")
 
-    expect(page.locator("#period-month")).to_be_checked(timeout=5000)
-    expect(page.locator("#month-selection")).to_be_visible()
+    expect(page.get_by_test_id("analysis-month-period")).to_contain_text(
+        "表示中", timeout=5000
+    )
+    expect(page.get_by_role("figure").get_by_text("日別推移")).to_be_visible()
     expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
 
 
-def test_analysis_location_filter_updates_table_without_changing_url(
+def test_analysis_location_filter_updates_chart_and_table_without_changing_url(
     page: Page,
 ) -> None:
     page.goto(ANALYSIS_URL)
 
-    expect(page.get_by_role("heading", name="対象期間")).to_be_visible()
+    expect(page.get_by_role("heading", name="集計期間")).to_be_visible()
     expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="集計結果")).to_be_visible()
+    expect(page.get_by_test_id("analysis-trend-chart")).to_be_visible()
     expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
         "集計対象 0件"
     )
+    expect(page.get_by_test_id("analysis-trend-total")).to_have_text("0")
     expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible()
 
     checkbox = page.locator(".location-checkbox").first
@@ -90,6 +108,7 @@ def test_analysis_location_filter_updates_table_without_changing_url(
         "集計対象 1件",
         timeout=5000,
     )
+    expect(page.get_by_test_id("analysis-trend-chart")).to_be_visible()
     expect(page.get_by_test_id("analysis-no-selection-hint")).to_have_count(0)
     expect(page).to_have_url(initial_url)
 
@@ -100,16 +119,23 @@ def test_analysis_primary_controls_and_results_remain_reachable_on_narrow_viewpo
     page.set_viewport_size({"width": 390, "height": 800})
     page.goto(ANALYSIS_URL)
 
-    expect(page.locator("#period-month")).to_be_visible()
     expect(page.locator("#month-input")).to_be_visible()
+    expect(page.locator("#year-select")).to_be_visible()
     expect(page.locator(".location-checkbox").first).to_be_visible()
     expect(page.locator("#analysis-table-region")).to_be_visible()
+    expect(page.get_by_test_id("analysis-trend-chart")).to_be_visible()
 
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
 
-    table_scroller = page.locator("#analysis-table-region .overflow-x-auto")
+    trend_scroller = page.get_by_test_id("analysis-trend-scroller")
+    expect(trend_scroller).to_be_visible()
+    assert trend_scroller.evaluate(
+        "element => element.scrollWidth > element.clientWidth"
+    )
+
+    table_scroller = page.locator("[data-testid='analysis-table']").locator("xpath=..")
     expect(table_scroller).to_be_visible()
     assert table_scroller.evaluate(
         "element => element.scrollWidth > element.clientWidth"
