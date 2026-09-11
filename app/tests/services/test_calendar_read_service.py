@@ -2,12 +2,14 @@
 
 from datetime import date
 
+import pytest
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.schemas.user_type import UserTypeCreate
 from app.services import calendar_read_service
+from app.utils import calendar_utils
 
 
 def _base_ids(db: Session) -> tuple[int, int, int]:
@@ -39,13 +41,10 @@ def _create_user(
     )
 
 
-def _calendar_day(calendar_data: dict, day: int) -> dict:
-    return next(
-        day_data
-        for week in calendar_data["weeks"]
-        for day_data in week
-        if day_data["day"] == day
-    )
+def _summary_day(
+    view_model: calendar_read_service.MonthCalendarViewModel, day: int
+) -> calendar_read_service.SummaryCalendarDayViewModel:
+    return next(day_data for day_data in view_model["days"] if day_data["day"] == day)
 
 
 def test_month_view_model_reads_fresh_database_state(db_with_data: Session) -> None:
@@ -82,7 +81,7 @@ def test_month_view_model_reads_fresh_database_state(db_with_data: Session) -> N
     db.commit()
 
     first_view = calendar_read_service.get_month_view_model(db, month="2031-05")
-    assert _calendar_day(first_view["calendar"], 1)[str(location.name)] == 1
+    assert _summary_day(first_view, 1)["counts"][str(location.name)] == 1
 
     crud.attendance.create(
         db,
@@ -95,7 +94,122 @@ def test_month_view_model_reads_fresh_database_state(db_with_data: Session) -> N
     db.commit()
 
     second_view = calendar_read_service.get_month_view_model(db, month="2031-05")
-    assert _calendar_day(second_view["calendar"], 1)[str(location.name)] == 2
+    assert _summary_day(second_view, 1)["counts"][str(location.name)] == 2
+
+
+def test_month_view_model_groups_and_orders_categories_like_template(
+    db_with_data: Session,
+) -> None:
+    db = db_with_data
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category Z",
+            category="Z分類",
+            order=1,
+        ),
+    )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category A2",
+            category="A分類",
+            order=2,
+        ),
+    )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category A1",
+            category="A分類",
+            order=1,
+        ),
+    )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category Lower A",
+            category="a",
+            order=1,
+        ),
+    )
+    crud.location.create(
+        db,
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category Upper B",
+            category="B",
+            order=1,
+        ),
+    )
+    db.commit()
+
+    view_model = calendar_read_service.get_month_view_model(db, month="2031-06")
+
+    assert [category["name"] for category in view_model["categories"]] == [
+        "a",
+        "A分類",
+        "B",
+        "Z分類",
+        "未分類",
+    ]
+    category_a = next(
+        category for category in view_model["categories"] if category["name"] == "A分類"
+    )
+    assert [location["name"] for location in category_a["locations"]] == [
+        "Calendar Category A1",
+        "Calendar Category A2",
+    ]
+    assert view_model["categories"][-1]["locations"][0]["name"] == "Test Location"
+
+
+def test_month_view_model_builds_day_metadata_and_selects_today(
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    holiday = date(2031, 6, 2)
+    monkeypatch.setattr(
+        calendar_read_service,
+        "get_today_formatted",
+        lambda: holiday.isoformat(),
+    )
+    monkeypatch.setattr(calendar_utils, "is_holiday", lambda day: day == holiday)
+    monkeypatch.setattr(
+        calendar_utils,
+        "get_holiday_name",
+        lambda day: "Calendar Holiday" if day == holiday else None,
+    )
+
+    view_model = calendar_read_service.get_month_view_model(
+        db_with_data,
+        month="2031-06",
+    )
+
+    assert view_model["selected_date"] == "2031-06-02"
+    assert _summary_day(view_model, 1)["weekday_label"] == "日"
+    assert _summary_day(view_model, 1)["day_kind"] == "sunday"
+    assert _summary_day(view_model, 2)["weekday_label"] == "月"
+    assert _summary_day(view_model, 2)["day_kind"] == "holiday"
+    assert _summary_day(view_model, 2)["holiday_name"] == "Calendar Holiday"
+    assert _summary_day(view_model, 7)["weekday_label"] == "土"
+    assert _summary_day(view_model, 7)["day_kind"] == "saturday"
+
+
+def test_month_view_model_selects_first_day_when_today_is_outside_month(
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        calendar_read_service,
+        "get_today_formatted",
+        lambda: "2031-07-01",
+    )
+
+    view_model = calendar_read_service.get_month_view_model(
+        db_with_data,
+        month="2031-06",
+    )
+
+    assert view_model["selected_date"] == "2031-06-01"
 
 
 def test_day_detail_uses_one_select_and_orders_view_model(

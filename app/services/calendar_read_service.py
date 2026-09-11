@@ -2,7 +2,7 @@
 
 import calendar as calendar_module
 from datetime import date
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, Dict, Literal, Optional, TypedDict
 
 from sqlalchemy.orm import Session
 
@@ -17,13 +17,47 @@ from app.utils.calendar_utils import (
 )
 from app.utils.ui_utils import UNRESOLVED_LOCATION_TONE, get_location_tone
 
+DayKind = Literal["holiday", "sunday", "saturday", "weekday"]
+_WEEKDAY_LABELS = ("日", "月", "火", "水", "木", "金", "土")
+
+
+class SummaryCalendarLocationViewModel(TypedDict):
+    """月次summary calendarの勤怠種別表示contract。"""
+
+    name: str
+    key: str
+    tone: int
+
+
+class SummaryCalendarCategoryViewModel(TypedDict):
+    """月次summary calendarのcategory表示contract。"""
+
+    name: str
+    locations: list[SummaryCalendarLocationViewModel]
+
+
+class SummaryCalendarDayViewModel(TypedDict):
+    """月次summary calendarの1日分の表示contract。"""
+
+    day: int
+    date: str
+    has_data: bool
+    holiday_name: str
+    weekday_label: str
+    day_kind: DayKind
+    counts: Dict[str, int]
+
 
 class MonthCalendarViewModel(TypedDict):
     """月次calendar templateが参照するsummary page contract。"""
 
     current_month: str
     month: str
-    calendar: Dict[str, Any]
+    prev_month: str
+    next_month: str
+    categories: list[SummaryCalendarCategoryViewModel]
+    days: list[SummaryCalendarDayViewModel]
+    selected_date: str
     today_date: str
 
 
@@ -47,6 +81,83 @@ def normalize_month(month: Optional[str]) -> str:
     return f"{year}-{month_num:02d}"
 
 
+def _build_summary_calendar_presentation(
+    calendar_data: Dict[str, Any], *, today_date: str
+) -> tuple[
+    list[SummaryCalendarCategoryViewModel],
+    list[SummaryCalendarDayViewModel],
+    str,
+]:
+    """raw calendar dataをdeterministicなtemplate-ready presentationへ変換する。"""
+    grouped_locations: Dict[str, list[SummaryCalendarLocationViewModel]] = {}
+    for raw_location in calendar_data.get("locations", []):
+        category = str(raw_location.get("category") or "未分類")
+        raw_tone = raw_location.get("tone")
+        grouped_locations.setdefault(category, []).append(
+            {
+                "name": str(raw_location["name"]),
+                "key": str(raw_location["key"]),
+                "tone": (
+                    int(raw_tone) if raw_tone is not None else UNRESOLVED_LOCATION_TONE
+                ),
+            }
+        )
+
+    categories: list[SummaryCalendarCategoryViewModel] = []
+    for category in sorted(
+        grouped_locations,
+        key=lambda category: (category == "未分類", category.lower()),
+    ):
+        categories.append(
+            {
+                "name": category,
+                "locations": grouped_locations[category],
+            }
+        )
+
+    location_keys = [
+        location["key"] for category in categories for location in category["locations"]
+    ]
+
+    days: list[SummaryCalendarDayViewModel] = []
+    for week in calendar_data.get("weeks", []):
+        for weekday_index, raw_day in enumerate(week):
+            day_number = int(raw_day.get("day", 0) or 0)
+            if day_number == 0:
+                continue
+
+            is_holiday = bool(raw_day.get("is_holiday", False))
+            day_kind: DayKind
+            if is_holiday:
+                day_kind = "holiday"
+            elif weekday_index == 0:
+                day_kind = "sunday"
+            elif weekday_index == 6:
+                day_kind = "saturday"
+            else:
+                day_kind = "weekday"
+
+            days.append(
+                {
+                    "day": day_number,
+                    "date": str(raw_day["date"]),
+                    "has_data": bool(raw_day.get("has_data", False)),
+                    "holiday_name": str(raw_day.get("holiday_name") or ""),
+                    "weekday_label": _WEEKDAY_LABELS[weekday_index],
+                    "day_kind": day_kind,
+                    "counts": {
+                        key: int(raw_day.get(key, 0) or 0) for key in location_keys
+                    },
+                }
+            )
+
+    selected_date = days[0]["date"] if days else ""
+    if any(day["date"] == today_date for day in days):
+        selected_date = today_date
+
+    return categories, days, selected_date
+
+
 def get_month_view_model(
     db: Session, *, month: Optional[str] = None
 ) -> MonthCalendarViewModel:
@@ -57,7 +168,8 @@ def get_month_view_model(
     snapshotをcalendar utilityが参照する前提で、ここでは独自cacheを作らない。
 
     location metadataが集計結果と対応しない場合だけneutral toneへfallbackし、欠落した
-    master rowを推測して作らない。
+    master rowを推測して作らない。category grouping、day metadata、selected dateまでこのserviceで
+    決定し、templateへdeterministicなrender-ready contractを渡す。
     """
     current_month = normalize_month(month)
     year, month_num = parse_month(current_month)
@@ -105,11 +217,21 @@ def get_month_view_model(
             }
         )
 
+    today_date = get_today_formatted()
+    categories, days, selected_date = _build_summary_calendar_presentation(
+        calendar_data,
+        today_date=today_date,
+    )
+
     return {
         "current_month": current_month,
         "month": str(calendar_data.get("month_name", "エラー")),
-        "calendar": calendar_data,
-        "today_date": get_today_formatted(),
+        "prev_month": str(calendar_data.get("prev_month", "")),
+        "next_month": str(calendar_data.get("next_month", "")),
+        "categories": categories,
+        "days": days,
+        "selected_date": selected_date,
+        "today_date": today_date,
     }
 
 
