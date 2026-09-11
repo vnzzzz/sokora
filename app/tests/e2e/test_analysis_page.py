@@ -98,10 +98,14 @@ def test_analysis_location_filter_updates_overview_and_detail_without_changing_u
     expect(page.get_by_role("heading", name="社員別明細")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-plot")).to_be_visible()
 
+    filter_details = page.locator("#analysis-location-filter details")
+    expect(filter_details).not_to_have_attribute("open", "")
+    filter_details.locator("summary").click()
+
     checkboxes = page.locator(".location-checkbox")
     location_count = checkboxes.count()
     assert location_count > 0
-    expect(checkboxes).to_have_count(location_count)
+    expect(checkboxes.first).to_be_visible()
     expect(page.get_by_test_id("analysis-selection-summary")).to_have_text(
         f"集計対象 {location_count}件"
     )
@@ -137,7 +141,7 @@ def test_analysis_primary_controls_and_results_remain_reachable_on_narrow_viewpo
     expect(page.get_by_role("link", name="月次")).to_be_visible()
     expect(page.get_by_role("link", name="年度")).to_be_visible()
     expect(page.locator("#month-input")).to_be_visible()
-    expect(page.locator(".location-checkbox").first).to_be_visible()
+    expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="概要")).to_be_visible()
     expect(page.get_by_role("heading", name="社員別明細")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-plot")).to_be_visible()
@@ -151,6 +155,10 @@ def test_analysis_primary_controls_and_results_remain_reachable_on_narrow_viewpo
     assert trend_scroller.evaluate(
         "element => element.scrollWidth > element.clientWidth"
     )
+
+    filter_details = page.locator("#analysis-location-filter details")
+    filter_details.locator("summary").click()
+    expect(page.locator(".location-checkbox").first).to_be_visible()
 
     table_scroller = page.locator("[data-testid='analysis-table']").locator("xpath=..")
     expect(table_scroller).to_be_visible()
