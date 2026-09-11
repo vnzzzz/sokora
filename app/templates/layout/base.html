@@ -38,10 +38,10 @@
                     {{ auth_username or "ログインユーザー" }}
                   </span>
                 </div>
-                <form action="/auth/logout" method="post" class="logout-control">
+                <form action="/auth/logout" method="post" class="logout-control group">
                   <button
                     type="submit"
-                    class="logout-button"
+                    class="logout-button bg-transparent text-base-content group-hover:bg-base-300 group-hover:text-base-content hover:bg-base-300 hover:text-base-content focus-visible:bg-base-300 focus-visible:text-base-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     aria-label="ログアウト"
                     data-testid="logout-button"
                   >
