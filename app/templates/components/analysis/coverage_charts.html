@@ -13,15 +13,7 @@
 
 {% macro coverage_charts(title, heading_id, prefix, charts) -%}
 <section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="{{ heading_id }}" data-testid="{{ prefix }}-charts">
-  <div class="flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <h3 id="{{ heading_id }}" class="text-base font-semibold text-base-content">{{ title }}</h3>
-      <p class="mt-1 text-xs text-base-content/55">
-        {% if is_year_mode %}月ごと{% else %}日ごと{% endif %}の人数推移。全合計と選択した勤務場所を表示し、0は該当者なしを示します。
-      </p>
-    </div>
-    <span class="text-xs text-base-content/45">縦軸: 人数</span>
-  </div>
+  <h3 id="{{ heading_id }}" class="text-base font-semibold text-base-content">{{ title }}</h3>
 
   <div class="mt-6 space-y-8">
     {% for chart in charts %}
@@ -53,7 +45,6 @@
               {% for series in series_batch %}
                 {% set series_index = loop.index0 %}
                 {% set dash_pattern = "none" if series.is_total else line_patterns[series_index] %}
-                {% set legend_marker_radius = 3.5 if series.is_total else 0.9 + (series_index * 0.25) %}
               <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
                 <svg
                   class="h-2 w-6 shrink-0"
@@ -71,14 +62,6 @@
                     stroke-dasharray="{{ dash_pattern }}"
                     stroke-linecap="round"
                   ></line>
-                  <circle
-                    cx="12"
-                    cy="4"
-                    r="{{ legend_marker_radius }}"
-                    fill="none"
-                    stroke="rgb(var(--location-tone-rgb))"
-                    stroke-width="0.75"
-                  ></circle>
                 </svg>
                 {{ series.name }}
               </span>
@@ -105,7 +88,6 @@
                 {% for series in series_batch %}
                   {% set series_index = loop.index0 %}
                   {% set dash_pattern = "none" if series.is_total else line_patterns[series_index] %}
-                  {% set marker_radius = 11.5 if series.is_total else 2 + (series_index * 0.9) %}
                 <g data-location-tone="{{ series.tone_index }}">
                   {% for point in series.points %}
                     {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
@@ -120,7 +102,7 @@
                         x2="{{ next_x }}"
                         y2="{{ next_y }}"
                         stroke="rgb(var(--location-tone-rgb))"
-                        stroke-opacity="{% if series.is_total %}1{% else %}0.85{% endif %}"
+                        stroke-opacity="{% if series.is_total %}1{% else %}0.82{% endif %}"
                         stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
                         stroke-dasharray="{{ dash_pattern }}"
                         stroke-dashoffset="{{ series_index * 1.5 }}"
@@ -128,27 +110,38 @@
                         stroke-linejoin="round"
                       ></line>
                     {% endif %}
-                    <circle
-                      cx="{{ x }}"
-                      cy="{{ y }}"
-                      r="{{ marker_radius }}"
-                      fill="none"
-                      stroke="rgb(var(--location-tone-rgb))"
-                      stroke-width="{% if series.is_total %}1.25{% else %}0.75{% endif %}"
-                    ></circle>
                   {% endfor %}
                 </g>
                 {% endfor %}
 
+                {% if is_year_mode %}
                 <g class="text-base-content/45" fill="currentColor" font-size="10">
                   {% for bucket in coverage_buckets %}
-                    {% if is_year_mode or loop.first or loop.last or loop.index % 5 == 0 %}
-                      {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-                      <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
-                    {% endif %}
+                    {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+                    <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
                   {% endfor %}
                 </g>
+                {% endif %}
               </svg>
+
+              {% if not is_year_mode %}
+              <div
+                class="-mt-6 grid min-w-[58rem] pl-[3.7rem] pr-[2.7rem]"
+                style="grid-template-columns: repeat({{ point_count }}, minmax(0, 1fr))"
+                aria-label="日別勤怠明細"
+              >
+                {% for bucket in coverage_buckets %}
+                <button
+                  type="button"
+                  class="h-6 min-h-0 rounded px-0 text-[10px] font-normal text-base-content/45 hover:bg-base-200 hover:text-base-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                  data-analysis-day="{{ bucket[0] }}"
+                  data-testid="{{ prefix }}-day-trigger"
+                  aria-label="{{ bucket[1] }}日の勤怠明細"
+                  aria-controls="analysis-day-detail"
+                >{{ bucket[1] }}</button>
+                {% endfor %}
+              </div>
+              {% endif %}
             </div>
           </div>
           {% endfor %}
@@ -165,7 +158,7 @@
 </div>
 {% elif not include_total and selected_location_ids|length == 0 %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-no-selection-hint">
-  表示条件で全合計または勤務場所を選択してください。
+  表示系列を選択してください。
 </div>
 {% elif not group_coverage_charts and not user_type_coverage_charts %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-empty-message">
@@ -174,4 +167,7 @@
 {% else %}
   {{ coverage_charts("組織別", "analysis-group-charts-heading", "analysis-group", group_coverage_charts) }}
   {{ coverage_charts("社員種別別", "analysis-user-type-charts-heading", "analysis-user-type", user_type_coverage_charts) }}
+  {% if not is_year_mode %}
+  <div id="analysis-day-detail" class="mt-10 border-t border-base-300 pt-2" aria-live="polite"></div>
+  {% endif %}
 {% endif %}
