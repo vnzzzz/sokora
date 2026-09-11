@@ -1,12 +1,13 @@
 """勤怠analysisの集計結果をtemplate向けpresentation modelへ変換する。
 
 集計期間と件数そのものはattendance analysis serviceが所有し、このmoduleはlocation/category、
-group/user type、user rowの表示順とrender-safeなpage shapeを決める。router/Jinjaが同じsorting
-ruleを個別実装しないためのread boundaryである。
+group/user type、user row、trend chartの表示順とrender-safeなpage shapeを決める。router/Jinjaが
+同じsorting / aggregation ruleを個別実装しないためのread boundaryである。
 """
 
 from __future__ import annotations
 
+import calendar as calendar_module
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, TypedDict
 
@@ -64,6 +65,15 @@ class LocationCategory(TypedDict):
     locations: List[Any]
 
 
+class TrendPoint(TypedDict):
+    """選択中の勤怠種別を期間bucketへ畳み込んだchart point。"""
+
+    key: str
+    label: str
+    count: int
+    height_percent: int
+
+
 class AnalysisPageViewModel(TypedDict):
     """analysis templateが参照する正常readのpage contract。"""
 
@@ -75,6 +85,9 @@ class AnalysisPageViewModel(TypedDict):
     location_categories: List[LocationCategory]
     group_sections: List[GroupSection]
     selected_location_ids: List[int]
+    trend_points: List[TrendPoint]
+    selected_total_days: int
+    selected_user_count: int
     empty_message: str
 
 
@@ -230,6 +243,96 @@ def _build_group_sections(
     return group_sections
 
 
+def _trend_bucket_specs(
+    analysis_data: Dict[str, Any],
+    *,
+    is_year_mode: bool,
+) -> List[tuple[str, str]]:
+    period_start = analysis_data["period"]["start"]
+    if is_year_mode:
+        specs: List[tuple[str, str]] = []
+        start_month_index = period_start.year * 12 + period_start.month - 1
+        for offset in range(12):
+            month_index = start_month_index + offset
+            bucket_year, month_zero_based = divmod(month_index, 12)
+            bucket_month = month_zero_based + 1
+            specs.append(
+                (
+                    f"{bucket_year:04d}-{bucket_month:02d}",
+                    f"{bucket_month}月",
+                )
+            )
+        return specs
+
+    days_in_month = calendar_module.monthrange(
+        period_start.year,
+        period_start.month,
+    )[1]
+    return [
+        (
+            date(period_start.year, period_start.month, day).isoformat(),
+            str(day),
+        )
+        for day in range(1, days_in_month + 1)
+    ]
+
+
+def _build_trend_points(
+    analysis_data: Dict[str, Any],
+    *,
+    is_year_mode: bool,
+    selected_location_ids: Optional[set[int]],
+) -> List[TrendPoint]:
+    """既存location detailを日次/月次bucketへ集約しchart用pointを返す。"""
+    specs = _trend_bucket_specs(analysis_data, is_year_mode=is_year_mode)
+    counts = {key: 0 for key, _ in specs}
+    location_details = analysis_data.get("location_details", {})
+
+    if selected_location_ids is None:
+        eligible_location_ids = {int(location_id) for location_id in location_details}
+    else:
+        eligible_location_ids = selected_location_ids
+
+    for location_id, details_by_user in location_details.items():
+        if int(location_id) not in eligible_location_ids:
+            continue
+        for date_details in details_by_user.values():
+            for date_detail in date_details:
+                attendance_date = date.fromisoformat(str(date_detail["date_str"]))
+                key = (
+                    attendance_date.strftime("%Y-%m")
+                    if is_year_mode
+                    else attendance_date.isoformat()
+                )
+                if key in counts:
+                    counts[key] += 1
+
+    maximum = max(counts.values(), default=0)
+    return [
+        {
+            "key": key,
+            "label": label,
+            "count": counts[key],
+            "height_percent": (
+                max(2, round(counts[key] / maximum * 100))
+                if maximum and counts[key]
+                else 0
+            ),
+        }
+        for key, label in specs
+    ]
+
+
+def _selected_user_count(group_sections: List[GroupSection]) -> int:
+    return sum(
+        1
+        for group in group_sections
+        for user_type in group["user_types"]
+        for user in user_type["users"]
+        if user["total_days"] > 0
+    )
+
+
 def get_analysis_page_view_model(
     db: Session,
     *,
@@ -242,8 +345,8 @@ def get_analysis_page_view_model(
     """月次/年度集計をtemplateが直接renderできるpage modelへ編成する。
 
     ``year``指定または``mode=year``で年度mode、それ以外を月次modeとする。集計serviceの
-    raw resultを変更せずcopyした上で、勤怠種別・group・社員種別・userの表示順をこのboundary
-    で決定する。order未設定は後段へ送り、明示された``order=0``は維持する。
+    raw resultを変更せずcopyした上で、勤怠種別・group・社員種別・userの表示順とtrendを
+    このboundaryで決定する。order未設定は後段へ送り、明示された``order=0``は維持する。
 
     ``today`` はtestで年度defaultとyear selector範囲を決定的にするためのclock injectionで、
     data retention期間を制限するものではない。
@@ -296,6 +399,11 @@ def get_analysis_page_view_model(
         locations=locations,
         selected_location_ids=selected_filter,
     )
+    trend_points = _build_trend_points(
+        analysis_data,
+        is_year_mode=is_year_mode,
+        selected_location_ids=selected_filter,
+    )
 
     if is_year_mode:
         empty_message = f"{current_year}年度の勤怠データがありません。"
@@ -311,5 +419,8 @@ def get_analysis_page_view_model(
         "location_categories": location_categories,
         "group_sections": group_sections,
         "selected_location_ids": normalized_selected_location_ids,
+        "trend_points": trend_points,
+        "selected_total_days": sum(point["count"] for point in trend_points),
+        "selected_user_count": _selected_user_count(group_sections),
         "empty_message": empty_message,
     }
