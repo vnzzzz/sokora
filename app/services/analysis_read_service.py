@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.services import attendance_analysis_service
+from app.utils.ui_utils import get_location_tone
 
 
 class LocationCell(TypedDict):
@@ -381,9 +382,9 @@ def _build_coverage_locations(
         {
             "location_id": int(location.id),
             "name": str(location.name),
-            "tone_index": index % 10,
+            "tone_index": get_location_tone(int(location.id)),
         }
-        for index, location in enumerate(locations)
+        for location in locations
         if selected_location_ids is None
         or int(location.id) in selected_location_ids
     ]
