@@ -88,6 +88,12 @@ html[data-sidebar-open="false"] .app-shell {
   transition: none;
 }
 
+.app-shell.admin-login-visible .sidebar-panel {
+  height: 100vh;
+  overflow-y: auto;
+  padding-bottom: 5rem;
+}
+
 .app-main {
   min-width: 0;
   margin-left: var(--sidebar-width);
