@@ -10,11 +10,9 @@
     >
       <h3 id="analysis-controls-heading" class="text-sm font-semibold text-base-content">表示条件</h3>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-3 md:items-start">
+      <div class="mt-4 grid gap-3 md:grid-cols-3 md:items-end">
         {% include "components/analysis/period_controls.html" %}
-        <div class="md:col-span-2">
-          {% include "components/analysis/location_filter.html" %}
-        </div>
+        {% include "components/analysis/location_filter.html" %}
       </div>
     </section>
 
