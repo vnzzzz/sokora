@@ -3,6 +3,7 @@
     <a
       href="/analysis?month={{ current_month }}"
       class="border-b-2 px-1 pb-2 text-sm font-medium {% if not is_year_mode %}border-primary text-base-content{% else %}border-transparent text-base-content/50 hover:text-base-content{% endif %}"
+      data-analysis-mode-tab="month"
       {% if not is_year_mode %}aria-current="page"{% endif %}
       hx-get="/analysis?month={{ current_month }}"
       hx-target="#analysis-view"
@@ -14,6 +15,7 @@
     <a
       href="/analysis?mode=year&amp;year={{ current_year }}"
       class="border-b-2 px-1 pb-2 text-sm font-medium {% if is_year_mode %}border-primary text-base-content{% else %}border-transparent text-base-content/50 hover:text-base-content{% endif %}"
+      data-analysis-mode-tab="year"
       {% if is_year_mode %}aria-current="page"{% endif %}
       hx-get="/analysis?mode=year&amp;year={{ current_year }}"
       hx-target="#analysis-view"
