@@ -9,12 +9,12 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app import models
-from app.services import analysis_read_service
+from app.services import analysis_coverage_service, analysis_read_service
 
 pytestmark = pytest.mark.asyncio
 
 
-def _add_analysis_attendance(db: Session) -> None:
+def _add_analysis_attendance(db: Session) -> tuple[models.Group, models.UserType]:
     group = db.query(models.Group).first()
     user_type = db.query(models.UserType).first()
     location = db.query(models.Location).first()
@@ -40,9 +40,10 @@ def _add_analysis_attendance(db: Session) -> None:
         )
     )
     db.commit()
+    return group, user_type
 
 
-async def test_month_analysis_renders_read_model(
+async def test_month_analysis_renders_one_chart_and_target_filters_by_default(
     async_client: AsyncClient,
     db_with_data: Session,
 ) -> None:
@@ -52,9 +53,60 @@ async def test_month_analysis_renders_read_model(
 
     assert response.status_code == status.HTTP_200_OK
     assert 'id="analysis-root"' in response.text
-    assert "2031年5月" in response.text
-    assert "Analysis Route User" in response.text
-    assert 'data-testid="analysis-table"' in response.text
+    assert 'id="month-input"' in response.text
+    assert 'value="2031-05"' in response.text
+    assert 'id="analysis-group-select"' in response.text
+    assert 'id="analysis-user-type-select"' in response.text
+    assert 'data-testid="analysis-coverage-chart"' in response.text
+    assert response.text.count('data-testid="analysis-chart-scroller"') == 1
+    assert 'data-testid="analysis-chart-target"' in response.text
+    assert "全グループ / 全社員種別" in response.text
+    assert 'id="analysis-total-series"' in response.text
+    assert 'name="show_total"' in response.text
+    assert "全合計" in response.text
+    assert "勤怠種別" in response.text
+    assert 'data-analysis-day="2031-05-03"' in response.text
+    assert 'id="analysis-day-detail"' in response.text
+    assert 'data-testid="analysis-table"' not in response.text
+    assert 'data-testid="analysis-trend-chart"' not in response.text
+
+
+async def test_analysis_without_any_users_preserves_period_empty_message(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    """勤怠種別は存在するがuserが1人も登録されていない場合、全合計0の chartではなく
+    period-specific empty_messageを表示する。group_sectionsが空でも全合計seriesは
+    常時描画できてしまうため、chart側でこのcaseを明示的に区別する必要がある。
+    """
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'data-testid="analysis-empty-message"' in response.text
+    assert "2031年5月の勤怠データがありません。" in response.text
+    assert 'data-testid="analysis-coverage-chart"' not in response.text
+
+
+async def test_target_filters_render_selected_intersection(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    group, user_type = _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis",
+        params={
+            "month": "2031-05",
+            "group_name": group.name,
+            "user_type_name": user_type.name,
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert f'value="{group.name}" selected' in response.text
+    assert f'value="{user_type.name}" selected' in response.text
+    assert f"{group.name} / {user_type.name}" in response.text
+    assert response.text.count('data-testid="analysis-chart-scroller"') == 1
 
 
 async def test_htmx_analysis_returns_fragment(
@@ -73,7 +125,7 @@ async def test_htmx_analysis_returns_fragment(
     assert "<html" not in response.text
 
 
-async def test_htmx_location_filter_returns_table_fragment(
+async def test_htmx_filter_can_clear_all_series(
     async_client: AsyncClient,
     db_with_data: Session,
 ) -> None:
@@ -90,6 +142,36 @@ async def test_htmx_location_filter_returns_table_fragment(
     assert response.status_code == status.HTTP_200_OK
     assert 'id="analysis-table-region"' in response.text
     assert 'id="analysis-view"' not in response.text
+    assert 'data-testid="analysis-no-selection-hint"' in response.text
+    assert "勤怠種別を選択してください。" in response.text
+    assert 'data-testid="analysis-coverage-chart"' not in response.text
+
+
+async def test_htmx_filter_preserves_target_while_rendering_total(
+    async_client: AsyncClient,
+    db_with_data: Session,
+) -> None:
+    group, user_type = _add_analysis_attendance(db_with_data)
+
+    response = await async_client.get(
+        "/analysis",
+        params={
+            "month": "2031-05",
+            "show_total": "true",
+            "group_name": group.name,
+            "user_type_name": user_type.name,
+        },
+        headers={
+            "HX-Request": "true",
+            "HX-Target": "analysis-table-region",
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'data-testid="analysis-coverage-chart"' in response.text
+    assert f"{group.name} / {user_type.name}" in response.text
+    assert "全合計" in response.text
+    assert 'data-testid="analysis-no-selection-hint"' not in response.text
 
 
 async def test_htmx_history_restore_returns_full_page(
@@ -111,6 +193,66 @@ async def test_htmx_history_restore_returns_full_page(
     assert 'id="analysis-view"' in response.text
 
 
+async def test_more_than_ten_series_are_split_into_chart_panels(
+    async_client: AsyncClient,
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """1chartに11個以上のseriesが乗ると、色toneと点線patternの両方が
+    location_id基準で10周期になり、11番目以降が1番目以降と完全に同一の
+    見た目になってしまう。panelを10 series単位で分割し、pattern/tone衝突が
+    同一panel内で起きないようにする。
+    """
+    _add_analysis_attendance(db_with_data)
+    points = [
+        {"key": "2031-05-01", "label": "1", "count": 0},
+        {"key": "2031-05-02", "label": "2", "count": 0},
+    ]
+    series = [
+        {
+            "location_id": index,
+            "name": f"Work Type {index}",
+            "tone_index": index % 10,
+            "is_total": False,
+            "points": points,
+        }
+        for index in range(1, 12)
+    ]
+
+    monkeypatch.setattr(
+        analysis_coverage_service,
+        "get_analysis_coverage_view_model",
+        lambda **_kwargs: {
+            "include_total": True,
+            "coverage_locations": [],
+            "coverage_buckets": [
+                ("2031-05-01", "1"),
+                ("2031-05-02", "2"),
+            ],
+            "group_options": [],
+            "user_type_options": [],
+            "selected_group_name": None,
+            "selected_user_type_name": None,
+            "coverage_chart": {
+                "label": "全グループ / 全社員種別",
+                "max_count": 1,
+                "series": series,
+            },
+        },
+    )
+
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.text.count('data-testid="analysis-chart-panel"') == 2
+    assert response.text.count('data-testid="analysis-chart-scroller"') == 2
+    assert "Work Type 1" in response.text
+    assert "Work Type 11" in response.text
+    # 2つ目以降のpanelは日付labelを表示するが、focusable dayコントロールは
+    # 最初のpanelだけに置き、keyboard/AT向けの重複操作を増やさない。
+    assert response.text.count('data-testid="analysis-day-trigger"') == 2
+
+
 async def test_fiscal_year_analysis_preserves_period_contract(
     async_client: AsyncClient,
     db_with_data: Session,
@@ -120,9 +262,12 @@ async def test_fiscal_year_analysis_preserves_period_contract(
     response = await async_client.get("/analysis?mode=year&year=2031")
 
     assert response.status_code == status.HTTP_200_OK
-    assert "2031年度" in response.text
-    assert "4月〜翌3月" in response.text
-    assert "Analysis Route User" in response.text
+    assert 'id="year-select"' in response.text
+    assert 'value="2031" selected' in response.text
+    assert 'data-testid="analysis-coverage-chart"' in response.text
+    assert response.text.count('data-testid="analysis-chart-scroller"') == 1
+    assert "data-analysis-day=" not in response.text
+    assert 'id="analysis-day-detail"' not in response.text
 
 
 async def test_fiscal_year_outside_supported_range_is_422(

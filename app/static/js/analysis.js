@@ -5,6 +5,11 @@
 function analysisFallbackUrl(element) {
   if (!(element instanceof Element) || !element.closest('#analysis-view')) return null
 
+  const modeTab = element.closest('[data-analysis-mode-tab]')
+  if (modeTab instanceof HTMLAnchorElement) {
+    return modeTab.getAttribute('href')
+  }
+
   if (element.id === 'month-input') {
     return element.value ? `/analysis?month=${encodeURIComponent(element.value)}` : '/analysis'
   }
@@ -13,10 +18,6 @@ function analysisFallbackUrl(element) {
     return element.value
       ? `/analysis?mode=year&year=${encodeURIComponent(element.value)}`
       : '/analysis?mode=year'
-  }
-
-  if (element.id === 'period-month' || element.id === 'period-year') {
-    return element.getAttribute('hx-get')
   }
 
   if (element.closest('#analysis-location-filter')) {
@@ -31,18 +32,112 @@ function fallbackToFullNavigation(event) {
   if (url) window.location.href = url
 }
 
-document.addEventListener(
-  'scroll',
-  (event) => {
-    const scroller = event.target
-    if (!(scroller instanceof Element) || !scroller.matches('#analysis-view .overflow-x-auto')) return
+function setAllAnalysisSeries(button, checked) {
+  const form = button.closest('#analysis-location-filter')
+  if (!(form instanceof HTMLFormElement)) return
 
-    scroller.querySelectorAll('th.sticky, td.sticky').forEach((header) => {
-      header.style.boxShadow = scroller.scrollLeft > 0 ? '2px 0 4px rgba(0,0,0,0.1)' : 'none'
+  form.querySelectorAll('[data-analysis-series-checkbox]').forEach((checkbox) => {
+    if (checkbox instanceof HTMLInputElement) checkbox.checked = checked
+  })
+  form.dispatchEvent(new Event('change', { bubbles: true }))
+}
+
+function markSelectedAnalysisDay(day) {
+  document.querySelectorAll('[data-analysis-day]').forEach((trigger) => {
+    if (!(trigger instanceof Element)) return
+
+    const isSelected = trigger.getAttribute('data-analysis-day') === day
+    if (isSelected) trigger.setAttribute('aria-current', 'date')
+    else trigger.removeAttribute('aria-current')
+    trigger.classList.toggle('text-primary', isSelected)
+    trigger.classList.toggle('font-semibold', isSelected)
+    trigger.classList.toggle('text-base-content/45', !isSelected)
+  })
+}
+
+let analysisDayDetailRequestId = 0
+
+async function loadAnalysisDayDetail(trigger) {
+  const day = trigger.getAttribute('data-analysis-day')
+  const target = document.querySelector('#analysis-day-detail')
+  if (!day || !(target instanceof HTMLElement)) return
+
+  // 連続clickで先行requestが後着した場合に選択と無関係な日付で上書きしないよう、
+  // 発火時点のrequestだけが最新であることをtokenで確認してから反映する。
+  const requestId = ++analysisDayDetailRequestId
+
+  markSelectedAnalysisDay(day)
+  target.setAttribute('aria-busy', 'true')
+  target.innerHTML =
+    '<div class="flex min-h-24 items-center justify-center" aria-label="読み込み中"><span class="loading loading-spinner loading-sm"></span></div>'
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  try {
+    const response = await fetch(`/calendar/day/${encodeURIComponent(day)}`, {
+      credentials: 'same-origin',
+      headers: { 'HX-Request': 'true' },
     })
-  },
-  true
-)
+
+    if (requestId !== analysisDayDetailRequestId) return
+
+    if (response.redirected) {
+      window.location.href = response.url
+      return
+    }
+    if (!response.ok) throw new Error(`day detail request failed: ${response.status}`)
+
+    const html = await response.text()
+    if (requestId !== analysisDayDetailRequestId) return
+
+    target.innerHTML = html
+    target.setAttribute('aria-busy', 'false')
+    if (window.htmx) window.htmx.process(target)
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  } catch (_error) {
+    if (requestId !== analysisDayDetailRequestId) return
+    target.setAttribute('aria-busy', 'false')
+    target.innerHTML =
+      '<div class="alert alert-error text-sm" role="alert">勤怠明細を読み込めませんでした。</div>'
+  }
+}
+
+function activateAnalysisDayTrigger(trigger) {
+  if (!(trigger instanceof Element)) return false
+  void loadAnalysisDayDetail(trigger)
+  return true
+}
+
+document.addEventListener('click', (event) => {
+  const target = event.target
+  if (!(target instanceof Element)) return
+
+  const dayTrigger = target.closest('[data-analysis-day]')
+  if (activateAnalysisDayTrigger(dayTrigger)) return
+
+  const selectAllButton = target.closest('[data-analysis-select-all]')
+  if (selectAllButton instanceof HTMLButtonElement) {
+    setAllAnalysisSeries(selectAllButton, true)
+    return
+  }
+
+  const clearAllButton = target.closest('[data-analysis-clear-all]')
+  if (clearAllButton instanceof HTMLButtonElement) {
+    setAllAnalysisSeries(clearAllButton, false)
+  }
+})
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+
+  const target = event.target
+  if (!(target instanceof Element)) return
+
+  const dayTrigger = target.closest('[data-analysis-day]')
+  if (!dayTrigger) return
+
+  event.preventDefault()
+  activateAnalysisDayTrigger(dayTrigger)
+})
 
 document.addEventListener('htmx:responseError', fallbackToFullNavigation)
 document.addEventListener('htmx:sendError', fallbackToFullNavigation)
