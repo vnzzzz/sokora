@@ -14,19 +14,16 @@
     {% if error_message %}
     <div class="alert alert-error mb-5 text-sm">{{ error_message }}</div>
     {% endif %}
-    {% if settings.oidc_configuration_error %}
-    <div class="alert alert-warning mb-5 text-sm">{{ settings.oidc_configuration_error }}</div>
-    {% endif %}
 
     <section aria-labelledby="auth-status-heading">
       <h3 id="auth-status-heading" class="mb-3 text-base font-bold text-base-content">現在の状態</h3>
 
-      <div class="max-w-2xl overflow-x-auto">
-        <table class="table table-sm w-full">
-          <thead>
+      <div class="max-w-2xl overflow-x-auto rounded-lg">
+        <table class="table table-zebra w-full">
+          <thead class="bg-base-300 text-base-content">
             <tr>
-              <th class="w-40">項目</th>
-              <th>状態</th>
+              <th class="w-40 rounded-tl-lg">項目</th>
+              <th class="rounded-tr-lg">状態</th>
             </tr>
           </thead>
           <tbody>
@@ -36,27 +33,19 @@
             </tr>
             <tr>
               <td>認証ガード</td>
-              <td>
-                <span class="badge badge-sm badge-ghost">{{ "有効" if settings.auth_enabled else "無効" }}</span>
-              </td>
+              <td>{{ "有効" if settings.auth_enabled else "無効" }}</td>
             </tr>
             <tr>
               <td>OIDC</td>
-              <td>
-                <span class="badge badge-sm badge-ghost">{{ "有効" if settings.oidc_enabled else "無効" }}</span>
-              </td>
+              <td>{{ "有効" if settings.oidc_enabled else "無効" }}</td>
             </tr>
             <tr>
               <td>ローカル管理者</td>
-              <td>
-                <span class="badge badge-sm badge-ghost">{{ "有効" if settings.local_admin_enabled else "無効" }}</span>
-              </td>
+              <td>{{ "有効" if settings.local_admin_enabled else "無効" }}</td>
             </tr>
             <tr>
               <td>Client secret</td>
-              <td>
-                <span class="badge badge-sm badge-ghost">{{ "設定済み" if settings.oidc_secret_configured else "未設定" }}</span>
-              </td>
+              <td>{{ "設定済み" if settings.oidc_secret_configured else "未設定" }}</td>
             </tr>
             <tr>
               <td>Redirect URI</td>
@@ -68,68 +57,88 @@
     </section>
 
     <section class="mt-10 max-w-2xl" aria-labelledby="oidc-settings-heading">
-      <h3 id="oidc-settings-heading" class="mb-5 text-base font-bold text-base-content">OIDC / Keycloak</h3>
+      <h3 id="oidc-settings-heading" class="mb-3 text-base font-bold text-base-content">OIDC / Keycloak</h3>
 
-      <form method="post" action="/admin/auth/oidc" class="space-y-5">
+      <form method="post" action="/admin/auth/oidc">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <label class="flex cursor-pointer items-center gap-3">
-          <input
-            type="checkbox"
-            name="enabled"
-            value="true"
-            class="checkbox checkbox-sm"
-            {% if form_values.enabled %}checked{% endif %}
-          />
-          <span class="text-sm font-medium">OIDCを有効にする</span>
-        </label>
 
-        <label class="form-control">
-          <span class="label-text mb-1">Issuer</span>
-          <input
-            type="url"
-            name="issuer"
-            class="input input-bordered w-full"
-            value="{{ form_values.issuer }}"
-            placeholder="https://keycloak.example/realms/sokora"
-          />
-        </label>
+        <div class="overflow-hidden rounded-lg border border-base-300 bg-base-100 text-sm">
+          {% if settings.oidc_configuration_error %}
+          <div class="border-b border-warning/30 bg-warning/5 px-4 py-3 text-warning">
+            {{ settings.oidc_configuration_error }}
+          </div>
+          {% endif %}
 
-        <label class="form-control">
-          <span class="label-text mb-1">Client ID</span>
-          <input
-            type="text"
-            name="client_id"
-            class="input input-bordered w-full"
-            value="{{ form_values.client_id }}"
-            autocomplete="off"
-          />
-        </label>
+          <div class="grid gap-2 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+            <span class="font-medium">OIDC</span>
+            <label class="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                name="enabled"
+                value="true"
+                class="checkbox checkbox-sm"
+                {% if form_values.enabled %}checked{% endif %}
+              />
+              <span>有効にする</span>
+            </label>
+          </div>
 
-        <label class="form-control">
-          <span class="label-text mb-1">Client secret</span>
-          <input
-            type="password"
-            name="client_secret"
-            class="input input-bordered w-full"
-            value=""
-            autocomplete="new-password"
-            placeholder="{{ '変更する場合だけ入力' if settings.oidc_secret_configured else 'client secretを入力' }}"
-          />
-          <span class="mt-1 text-xs text-base-content/60">保存済みsecretは再表示しません。</span>
-        </label>
+          <div class="grid gap-2 border-t border-base-200 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-start sm:gap-4">
+            <label for="oidc-issuer" class="pt-2 font-medium">Issuer</label>
+            <input
+              id="oidc-issuer"
+              type="url"
+              name="issuer"
+              class="input input-bordered input-sm w-full"
+              value="{{ form_values.issuer }}"
+              placeholder="https://keycloak.example/realms/sokora"
+            />
+          </div>
 
-        <label class="form-control">
-          <span class="label-text mb-1">Scope</span>
-          <input
-            type="text"
-            name="scope"
-            class="input input-bordered w-full"
-            value="{{ form_values.scope }}"
-          />
-          <span class="mt-1 text-xs text-base-content/60">openid が必須です。</span>
-        </label>
+          <div class="grid gap-2 border-t border-base-200 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-start sm:gap-4">
+            <label for="oidc-client-id" class="pt-2 font-medium">Client ID</label>
+            <input
+              id="oidc-client-id"
+              type="text"
+              name="client_id"
+              class="input input-bordered input-sm w-full"
+              value="{{ form_values.client_id }}"
+              autocomplete="off"
+            />
+          </div>
 
-        <div class="flex flex-wrap gap-2 pt-1">
+          <div class="grid gap-2 border-t border-base-200 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-start sm:gap-4">
+            <label for="oidc-client-secret" class="pt-2 font-medium">Client secret</label>
+            <div>
+              <input
+                id="oidc-client-secret"
+                type="password"
+                name="client_secret"
+                class="input input-bordered input-sm w-full"
+                value=""
+                autocomplete="new-password"
+                placeholder="{{ '変更する場合だけ入力' if settings.oidc_secret_configured else 'client secretを入力' }}"
+              />
+              <p class="mt-1 text-xs text-base-content/60">保存済みsecretは再表示しません。</p>
+            </div>
+          </div>
+
+          <div class="grid gap-2 border-t border-base-200 px-4 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-start sm:gap-4">
+            <label for="oidc-scope" class="pt-2 font-medium">Scope</label>
+            <div>
+              <input
+                id="oidc-scope"
+                type="text"
+                name="scope"
+                class="input input-bordered input-sm w-full"
+                value="{{ form_values.scope }}"
+              />
+              <p class="mt-1 text-xs text-base-content/60">openid が必須です。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
           <button type="submit" class="btn btn-primary btn-sm">保存</button>
           <button
             type="submit"
