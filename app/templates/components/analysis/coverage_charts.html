@@ -78,9 +78,9 @@
 
     <div class="overflow-x-auto pb-2" data-testid="analysis-chart-scroller">
       <svg
-        class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
-        viewBox="0 0 820 220"
-        aria-hidden="true"
+        class="block h-60 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
+        viewBox="0 0 820 228"
+        aria-hidden="{% if is_year_mode %}true{% else %}false{% endif %}"
       >
         <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
           <line x1="52" y1="28" x2="782" y2="28"></line>
@@ -123,39 +123,66 @@
         </g>
         {% endfor %}
 
-        {% if is_year_mode %}
-        <g class="text-base-content/45" fill="currentColor" font-size="10">
-          {% for bucket in coverage_buckets %}
-            {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-            <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
-          {% endfor %}
-        </g>
-        {% endif %}
-      </svg>
-
-      {% if not is_year_mode %}
-      <div
-        class="-mt-6 grid min-w-[58rem] pl-[3.7rem] pr-[2.7rem]"
-        style="grid-template-columns: repeat({{ point_count }}, minmax(0, 1fr))"
-        aria-label="日別勤怠明細"
-      >
         {% for bucket in coverage_buckets %}
-        <button
-          type="button"
-          class="h-6 min-h-0 rounded px-0 text-[10px] font-normal text-base-content/45 hover:bg-base-200 hover:text-base-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          data-analysis-day="{{ bucket[0] }}"
-          data-testid="analysis-day-trigger"
-          aria-label="{{ bucket[1] }}日の勤怠明細"
-          aria-controls="analysis-day-detail"
-        >{{ bucket[1] }}</button>
+          {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+          <line
+            x1="{{ x }}"
+            y1="180"
+            x2="{{ x }}"
+            y2="184"
+            class="text-base-content/25"
+            stroke="currentColor"
+            stroke-width="1"
+          ></line>
+          {% if is_year_mode %}
+          <text
+            x="{{ x }}"
+            y="207"
+            text-anchor="middle"
+            class="text-base-content/45"
+            fill="currentColor"
+            font-size="10"
+          >{{ bucket[1] }}</text>
+          {% else %}
+          <g
+            data-analysis-day="{{ bucket[0] }}"
+            data-testid="analysis-day-trigger"
+            class="cursor-pointer text-base-content/45 hover:text-primary focus:text-primary focus:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="{{ bucket[1] }}日の勤怠明細"
+            aria-controls="analysis-day-detail"
+          >
+            <rect
+              x="{{ x - 11 }}"
+              y="187"
+              width="22"
+              height="28"
+              rx="4"
+              fill="transparent"
+            ></rect>
+            <text
+              x="{{ x }}"
+              y="207"
+              text-anchor="middle"
+              fill="currentColor"
+              font-size="10"
+              pointer-events="none"
+            >{{ bucket[1] }}</text>
+          </g>
+          {% endif %}
         {% endfor %}
-      </div>
-      {% endif %}
+      </svg>
     </div>
   </figure>
 </section>
 
   {% if not is_year_mode %}
-  <div id="analysis-day-detail" class="mt-4 border-t border-base-300 pt-2" aria-live="polite"></div>
+  <div
+    id="analysis-day-detail"
+    class="mt-4 scroll-mt-6 border-t border-base-300 pt-2"
+    aria-live="polite"
+    aria-busy="false"
+  ></div>
   {% endif %}
 {% endif %}
