@@ -78,8 +78,8 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
 }
 
 /* The logout action owns one fixed hit surface instead of delegating geometry
- * to daisyUI button modifiers. The form remains the hover owner while the
- * button fills it, so the ring and glyph are one continuous interaction area. */
+ * to daisyUI button modifiers. Theme colors stay in generated utility classes
+ * so this direct CSS owns geometry only. */
 .logout-control {
   display: inline-flex;
   flex: 0 0 2rem;
@@ -98,23 +98,10 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   padding: 0;
   border: 0;
   border-radius: inherit;
-  background: transparent;
-  color: hsl(var(--bc));
   cursor: pointer;
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
-}
-
-.logout-control:hover .logout-button,
-.logout-button:focus-visible {
-  background-color: hsl(var(--b3));
-  color: hsl(var(--bc));
-}
-
-.logout-button:focus-visible {
-  outline: 2px solid hsl(var(--p));
-  outline-offset: 2px;
 }
 
 .logout-button svg,
