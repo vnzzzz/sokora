@@ -103,15 +103,27 @@ def test_month_view_model_groups_categories_with_unclassified_last(
     db = db_with_data
     crud.location.create(
         db,
-        obj_in=schemas.LocationCreate(name="Calendar Category Z", category="Z分類", order=1),
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category Z",
+            category="Z分類",
+            order=1,
+        ),
     )
     crud.location.create(
         db,
-        obj_in=schemas.LocationCreate(name="Calendar Category A2", category="A分類", order=2),
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category A2",
+            category="A分類",
+            order=2,
+        ),
     )
     crud.location.create(
         db,
-        obj_in=schemas.LocationCreate(name="Calendar Category A1", category="A分類", order=1),
+        obj_in=schemas.LocationCreate(
+            name="Calendar Category A1",
+            category="A分類",
+            order=1,
+        ),
     )
     db.commit()
 
