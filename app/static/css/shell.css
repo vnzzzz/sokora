@@ -30,6 +30,12 @@ html[data-sidebar-open="false"] .app-shell {
   transition: none;
 }
 
+/* Keep navigation sections at their intrinsic height. On short viewports the
+ * sidebar's inner overflow container scrolls instead of clipping shrunken rows. */
+.sidebar-panel > div > div > * {
+  flex-shrink: 0;
+}
+
 .app-main {
   min-width: 0;
   margin-left: var(--sidebar-width);
