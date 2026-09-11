@@ -1,0 +1,142 @@
+/* Application shell layout.
+ *
+ * Shell geometry is served directly instead of being coupled to the Tailwind
+ * asset build. This keeps sidebar state/layout changes in sync on ordinary
+ * development reloads and gives the fixed sidebar one clear layout owner.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
+.app-shell {
+  --sidebar-width: 200px;
+  width: 100%;
+}
+
+html[data-sidebar-open="false"] .app-shell {
+  --sidebar-width: 64px;
+}
+
+.sidebar-panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+  height: auto;
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  max-width: var(--sidebar-width);
+  transition: none;
+}
+
+/* Keep navigation sections at their intrinsic height. On short viewports the
+ * sidebar's inner overflow container scrolls instead of clipping shrunken rows. */
+.sidebar-panel > div > div > * {
+  flex-shrink: 0;
+}
+
+.app-main {
+  min-width: 0;
+  margin-left: var(--sidebar-width);
+  transition: none;
+}
+
+.sidebar-nav-link {
+  --animation-btn: 0s;
+  --btn-focus-scale: 1;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+html[data-sidebar-open="false"] .sidebar-nav-link {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+html[data-sidebar-open="false"] .sidebar-label {
+  display: none;
+}
+
+.sidebar-toggle {
+  position: fixed;
+  top: 0.5rem;
+  left: calc(var(--sidebar-width) - 0.75rem);
+  z-index: 30;
+  transition: none;
+}
+
+.sidebar-toggle > svg {
+  transform: rotate(0deg);
+  transition: none;
+}
+
+html[data-sidebar-open="false"] .sidebar-toggle > svg {
+  transform: rotate(180deg);
+}
+
+/* The logout action owns one fixed hit surface instead of delegating geometry
+ * to daisyUI button modifiers. Theme colors stay in generated utility classes
+ * so this direct CSS owns geometry only. */
+.logout-control {
+  display: inline-flex;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+}
+
+.logout-button {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+  transition: none;
+}
+
+/* The toast wrapper spans the top-right overlay area even when it is empty.
+ * Let pointer input pass through that transparent wrapper so shell controls
+ * remain reachable, while actual rendered messages can still own interactions. */
+#ui-message-container {
+  pointer-events: none;
+}
+
+#ui-message-container > * {
+  pointer-events: auto;
+}
+
+html.sidebar-animating .sidebar-panel {
+  transition:
+    width 0.3s ease-in-out,
+    min-width 0.3s ease-in-out,
+    max-width 0.3s ease-in-out;
+}
+
+html.sidebar-animating .app-main {
+  transition: margin-left 0.3s ease-in-out;
+}
+
+html.sidebar-animating .sidebar-toggle {
+  transition: left 0.3s ease-in-out;
+}
+
+html.sidebar-animating .sidebar-toggle > svg {
+  transition: transform 0.3s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.sidebar-animating .sidebar-panel,
+  html.sidebar-animating .app-main,
+  html.sidebar-animating .sidebar-toggle,
+  html.sidebar-animating .sidebar-toggle > svg {
+    transition-duration: 0s;
+  }
+}

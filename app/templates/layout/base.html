@@ -26,10 +26,10 @@
         <main class="app-main relative flex-1 py-2 px-3 pt-14">
           {% if show_user_menu %}
             <header
-              class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
+              class="fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
               data-testid="user-menu-wrapper"
             >
-              <div class="pointer-events-auto flex items-center gap-2" data-testid="user-menu">
+              <div class="flex items-center gap-2" data-testid="user-menu">
                 <div class="flex items-center gap-2 px-2.5 py-1.5 bg-base-200 rounded-full shadow-sm">
                   <div class="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs">
                     {{ (auth_username | first | upper) if auth_username else "U" }}
@@ -38,11 +38,10 @@
                     {{ auth_username or "ログインユーザー" }}
                   </span>
                 </div>
-                <form action="/auth/logout" method="post">
+                <form action="/auth/logout" method="post" class="logout-control group">
                   <button
                     type="submit"
-                    class="btn btn-ghost btn-circle btn-xs"
-                    title="ログアウト"
+                    class="logout-button bg-transparent text-base-content group-hover:bg-base-300 group-hover:text-base-content hover:bg-base-300 hover:text-base-content focus-visible:bg-base-300 focus-visible:text-base-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     aria-label="ログアウト"
                     data-testid="logout-button"
                   >
@@ -55,6 +54,7 @@
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       class="w-4 h-4"
+                      aria-hidden="true"
                       data-testid="logout-icon"
                     >
                       <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15" />
@@ -64,19 +64,6 @@
                   </button>
                 </form>
               </div>
-            </header>
-          {% elif show_admin_login_entry %}
-            <header
-              class="pointer-events-none fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
-              data-testid="admin-login-entry-wrapper"
-            >
-              <a
-                href="/auth/login/admin?next={{ current_page_url | urlencode }}"
-                class="pointer-events-auto btn btn-ghost btn-sm"
-                data-testid="admin-login-entry"
-              >
-                管理者ログイン
-              </a>
             </header>
           {% endif %}
           <div class="space-y-4">
