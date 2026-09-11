@@ -99,7 +99,10 @@ class TestOpenApiContract:
         assert response.status_code == 200
         schema = response.json()
         assert schema["info"]["title"] == "Sokora API"
-        assert schema["info"]["description"] == "勤怠管理システムSokora APIのドキュメント"
+        assert (
+            schema["info"]["description"]
+            == "勤怠管理システムSokora APIのドキュメント"
+        )
         assert schema["openapi"] == "3.0.2"
         assert [tag["name"] for tag in schema["tags"]] == [
             "Attendance",
