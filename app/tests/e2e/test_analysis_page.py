@@ -87,6 +87,21 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     )
 
 
+def test_analysis_primary_filters_share_one_row_on_desktop(page: Page) -> None:
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(ANALYSIS_URL)
+
+    controls = [
+        page.locator("#month-input"),
+        page.locator("#analysis-group-select"),
+        page.locator("#analysis-user-type-select"),
+    ]
+    boxes = [control.bounding_box() for control in controls]
+    assert all(box is not None for box in boxes)
+    top_values = [box["y"] for box in boxes if box is not None]
+    assert max(top_values) - min(top_values) < 4
+
+
 def test_analysis_target_selectors_update_one_chart_without_changing_url(
     page: Page,
 ) -> None:
