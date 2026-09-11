@@ -37,7 +37,10 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
 
     page.go_back()
     expect(page).to_have_url(ANALYSIS_URL, timeout=5000)
-    expect(page.locator("#month-input")).to_have_value(initial_month, timeout=5000)
+    expect(page.locator("#month-input")).to_have_value(
+        initial_month,
+        timeout=5000,
+    )
 
 
 def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
@@ -45,11 +48,13 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
 
     month_tab = page.get_by_role("link", name="月次")
     year_tab = page.get_by_role("link", name="年度")
+    group_day_trigger = page.get_by_test_id("analysis-group-day-trigger")
+
     expect(month_tab).to_have_attribute("aria-current", "page")
     expect(year_tab).to_be_visible()
     expect(page.locator("#month-input")).to_be_visible()
     expect(page.locator("#year-select")).to_have_count(0)
-    expect(page.get_by_test_id("analysis-group-day-trigger").first).to_be_visible()
+    expect(group_day_trigger.first).to_be_visible()
 
     year_tab.click()
 
@@ -80,7 +85,10 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.locator("#analysis-total-series")).to_be_checked()
     expect(page.get_by_test_id("analysis-group-day-trigger").first).to_be_visible()
-    expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
+    expect(page).to_have_url(
+        f"{ANALYSIS_URL}?month={current_month}",
+        timeout=5000,
+    )
 
 
 def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
@@ -147,7 +155,9 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     expect(page).to_have_url(initial_url)
 
 
-def test_analysis_month_date_axis_loads_day_detail_without_navigation(page: Page) -> None:
+def test_analysis_month_date_axis_loads_day_detail_without_navigation(
+    page: Page,
+) -> None:
     page.goto(ANALYSIS_URL)
 
     trigger = page.get_by_test_id("analysis-group-day-trigger").first
@@ -159,10 +169,9 @@ def test_analysis_month_date_axis_loads_day_detail_without_navigation(page: Page
     trigger.click()
 
     expect(trigger).to_have_attribute("aria-current", "date")
-    expect(page.locator("#analysis-day-detail #day-detail-container")).to_be_visible(
-        timeout=5000
-    )
-    expect(page.locator("#analysis-day-detail")).to_contain_text(
+    detail = page.locator("#analysis-day-detail")
+    expect(detail.locator("#day-detail-container")).to_be_visible(timeout=5000)
+    expect(detail).to_contain_text(
         f"{day}の勤怠情報",
         timeout=5000,
     )
