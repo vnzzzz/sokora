@@ -85,7 +85,6 @@ html[data-sidebar-open="false"] .app-shell {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   max-width: var(--sidebar-width);
-  overflow-x: hidden;
   transition: none;
 }
 
