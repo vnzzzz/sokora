@@ -38,10 +38,10 @@
                     {{ auth_username or "ログインユーザー" }}
                   </span>
                 </div>
-                <form action="/auth/logout" method="post" class="tooltip tooltip-bottom" data-tip="ログアウト">
+                <form action="/auth/logout" method="post">
                   <button
                     type="submit"
-                    class="btn btn-ghost btn-circle btn-sm transition-colors hover:bg-base-300 focus-visible:bg-base-300"
+                    class="btn btn-ghost btn-circle btn-sm hover:bg-base-300 hover:text-base-content focus-visible:bg-base-300 focus-visible:text-base-content"
                     aria-label="ログアウト"
                     data-testid="logout-button"
                   >
