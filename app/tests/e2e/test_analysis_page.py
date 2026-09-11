@@ -144,7 +144,9 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     expect(total_checkbox).not_to_be_checked()
     for index in range(location_count):
         expect(checkboxes.nth(index)).not_to_be_checked(timeout=5000)
-    expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible(timeout=5000)
+    expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible(
+        timeout=5000
+    )
     expect(page.get_by_test_id("analysis-group-charts")).to_have_count(0)
     expect(page).to_have_url(initial_url)
 
