@@ -106,8 +106,7 @@ app/templates/
 - `components/macros/`: reusable Jinja macro
 - domain component directory: screen-specific presentation
 
-
-`components/macros/ui.html`はlegacy template向けcompatibility facadeです。新規templateは必要な責務のmacroを直接importします。
+`components/macros/` のmacroは責務別の `forms.html` / `navigation.html` / `attendance.html` を必要なtemplateから直接importします。compatibility facadeは置きません。
 
 ## Assets
 
