@@ -12,5 +12,5 @@ def test_top_page_renders_public_content() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/html; charset=utf-8"
-    assert "Sokora" in response.text
-    assert "勤怠管理" in response.text
+    assert "勤怠確認" in response.text
+    assert 'id="calendar-area"' in response.text
