@@ -25,7 +25,7 @@
         "現在の状態",
         "runtimeとshared DBから解決された現在の認証設定です。"
       ) %}
-        {{ admin_ui.status_row("設定元", settings.oidc_source) }}
+        {{ admin_ui.status_row("設定元", settings.oidc_source, testid="oidc-config-source") }}
         {{ admin_ui.status_row("認証ガード", "有効" if settings.auth_enabled else "無効") }}
         {{ admin_ui.status_row("OIDC", "有効" if settings.oidc_enabled else "無効") }}
         {{ admin_ui.status_row("ローカル管理者", "有効" if settings.local_admin_enabled else "無効") }}
