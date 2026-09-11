@@ -87,7 +87,7 @@ def test_month_charts_count_unique_people_per_work_type() -> None:
     design_remote = _counts_by_key(_series_by_name(design, "Remote"))
     sales_remote = _counts_by_key(_series_by_name(sales, "Remote"))
 
-    assert design["member_count"] == 2
+    assert design["max_count"] == 2
     assert design_office["2031-05-03"] == 2
     assert design_office["2031-05-04"] == 1
     assert design_remote["2031-05-03"] == 1
