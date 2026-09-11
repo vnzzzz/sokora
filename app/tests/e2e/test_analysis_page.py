@@ -95,6 +95,8 @@ def test_analysis_location_filter_updates_charts_without_changing_url(
     expect(page.get_by_role("heading", name="社員種別別")).to_be_visible()
     expect(page.get_by_test_id("analysis-group-charts")).to_be_visible()
     expect(page.get_by_test_id("analysis-user-type-charts")).to_be_visible()
+    accessible_data = page.get_by_test_id("analysis-group-chart-accessible-data").first
+    expect(accessible_data).to_contain_text("人")
     expect(page.locator("#analysis-table-region table")).to_have_count(0)
     expect(page.get_by_test_id("analysis-trend-plot")).to_have_count(0)
     expect(page.get_by_test_id("analysis-trend-total")).to_have_count(0)
