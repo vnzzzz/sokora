@@ -165,6 +165,5 @@ def test_empty_selection_keeps_chart_groups_without_series() -> None:
 
     assert view_model["coverage_locations"] == []
     assert all(
-        chart["series"] == []
-        for chart in view_model["group_coverage_charts"]
+        chart["series"] == [] for chart in view_model["group_coverage_charts"]
     )
