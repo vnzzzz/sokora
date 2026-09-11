@@ -22,6 +22,7 @@ def get_analysis_page(
     year: Optional[int] = Query(default=None, ge=1900, le=2100),
     mode: Optional[str] = None,
     selected_locations: Optional[list[int]] = Query(default=None),
+    show_total: Optional[bool] = Query(default=None),
     db: Session = Depends(get_db),
 ) -> Any:
     """月次/年度の勤怠集計をrenderする。
@@ -30,8 +31,8 @@ def get_analysis_page(
     不正値はcurrent monthへredirectする。DB/internal failureはempty 200へ変換せず、
     application共通HTTP boundaryへ伝播させる。
 
-    full page / period変更では勤怠種別未指定を「全件」として扱う。location filter自身のHTMX
-    requestだけはparameter不在を「0件選択」と解釈し、全checkboxを外した状態を表現できるようにする。
+    full page / period変更では「全合計」だけを初期表示する。location filter自身のHTMX
+    requestではcheckbox parameterをそのままselectionとして扱い、全解除も表現できるようにする。
     """
     is_year_mode = year is not None or mode == "year"
     if month is not None and not is_year_mode:
@@ -49,8 +50,9 @@ def get_analysis_page(
         and not is_history_restore
         and request.headers.get("HX-Target") == "analysis-table-region"
     )
-    selected_location_ids = (
-        selected_locations or [] if is_location_filter_request else selected_locations
+    selected_location_ids = selected_locations or []
+    include_total = (
+        show_total if show_total is not None else not is_location_filter_request
     )
 
     view_model = analysis_read_service.get_analysis_page_view_model(
@@ -65,6 +67,7 @@ def get_analysis_page(
         group_sections=view_model["group_sections"],
         selected_location_ids=view_model["selected_location_ids"],
         is_year_mode=view_model["is_year_mode"],
+        include_total=include_total,
     )
     context = {
         "request": request,
