@@ -47,7 +47,6 @@
         {% endfor %}
       </select>
     </div>
-    <p class="pb-2 text-xs text-base-content/50">4月〜翌3月</p>
     {% else %}
     <div>
       <label class="mb-1 block text-xs font-medium text-base-content/70" for="month-input">対象月</label>
@@ -65,9 +64,5 @@
       />
     </div>
     {% endif %}
-
-    <p class="analysis-period-label pb-2 text-xs text-base-content/50">
-      表示中: {{ analysis_data.period.label }}
-    </p>
   </div>
 </div>
