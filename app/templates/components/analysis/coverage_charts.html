@@ -17,7 +17,7 @@
     <div>
       <h3 id="{{ heading_id }}" class="text-base font-semibold text-base-content">{{ title }}</h3>
       <p class="mt-1 text-xs text-base-content/55">
-        {% if is_year_mode %}月ごと{% else %}日ごと{% endif %}の勤務種別別人数。0は該当者なしを示します。
+        {% if is_year_mode %}月ごと{% else %}日ごと{% endif %}の人数推移。全合計と選択した勤務場所を表示し、0は該当者なしを示します。
       </p>
     </div>
     <span class="text-xs text-base-content/45">縦軸: 人数</span>
@@ -32,7 +32,7 @@
         <div
           class="sr-only"
           data-testid="{{ prefix }}-chart-accessible-data"
-          aria-label="{{ chart.label }}の勤務種別別人数データ"
+          aria-label="{{ chart.label }}の人数データ"
         >
           <ul>
             {% for series in chart.series %}
@@ -49,9 +49,9 @@
         <div class="space-y-6">
           {% for series_batch in chart.series|batch(10) %}
           <div class="{% if not loop.first %}border-t border-base-300 pt-5{% endif %}" data-testid="{{ prefix }}-chart-panel">
-            <div class="mb-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤務種別の凡例">
+            <div class="mb-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="表示系列の凡例">
               {% for series in series_batch %}
-                {% set dash_pattern = line_patterns[loop.index0] %}
+                {% set dash_pattern = "none" if series.is_total else line_patterns[loop.index0] %}
               <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
                 <svg
                   class="h-2 w-6 shrink-0"
@@ -65,7 +65,7 @@
                     x2="23"
                     y2="4"
                     stroke="rgb(var(--location-tone-rgb))"
-                    stroke-width="2.5"
+                    stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
                     stroke-dasharray="{{ dash_pattern }}"
                     stroke-linecap="round"
                   ></line>
@@ -94,7 +94,7 @@
 
                 {% for series in series_batch %}
                   {% set series_index = loop.index0 %}
-                  {% set dash_pattern = line_patterns[series_index] %}
+                  {% set dash_pattern = "none" if series.is_total else line_patterns[series_index] %}
                 <g data-location-tone="{{ series.tone_index }}">
                   {% for point in series.points %}
                     {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
@@ -109,8 +109,8 @@
                         x2="{{ next_x }}"
                         y2="{{ next_y }}"
                         stroke="rgb(var(--location-tone-rgb))"
-                        stroke-opacity="0.85"
-                        stroke-width="2.5"
+                        stroke-opacity="{% if series.is_total %}1{% else %}0.85{% endif %}"
+                        stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
                         stroke-dasharray="{{ dash_pattern }}"
                         stroke-dashoffset="{{ series_index * 1.5 }}"
                         stroke-linecap="round"
@@ -120,10 +120,10 @@
                     <circle
                       cx="{{ x }}"
                       cy="{{ y }}"
-                      r="{{ 3 + (series_index % 4) }}"
+                      r="{% if series.is_total %}4.5{% else %}{{ 3 + (series_index % 4) }}{% endif %}"
                       fill="none"
                       stroke="rgb(var(--location-tone-rgb))"
-                      stroke-width="1.75"
+                      stroke-width="{% if series.is_total %}2{% else %}1.75{% endif %}"
                     ></circle>
                   {% endfor %}
                 </g>
@@ -148,9 +148,9 @@
 </section>
 {%- endmacro %}
 
-{% if selected_location_ids|length == 0 %}
+{% if not include_total and selected_location_ids|length == 0 %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-no-selection-hint">
-  表示条件で勤務種別を選択してください。
+  表示条件で全合計または勤務場所を選択してください。
 </div>
 {% elif not group_coverage_charts and not user_type_coverage_charts %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-empty-message">
