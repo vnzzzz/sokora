@@ -1,9 +1,9 @@
 <div id="analysis-table-region">
-  <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+  <div class="flex flex-wrap items-end justify-between gap-2">
     <div>
       <h3 id="analysis-results-heading" class="text-sm font-semibold text-base-content">集計結果</h3>
       <p class="mt-1 text-xs text-base-content/60">
-        選択した勤怠種別に基づいて登録日数と登録日付を集計します。
+        選択した勤怠種別について、期間内の推移を俯瞰してから社員別明細を確認できます。
       </p>
     </div>
     <p class="text-xs text-base-content/60" data-testid="analysis-selection-summary">
@@ -13,12 +13,22 @@
 
   {% if selected_location_ids|length == 0 %}
   <div
-    class="mb-4 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/70"
+    class="mt-4 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/70"
     data-testid="analysis-no-selection-hint"
   >
-    集計対象を選択すると、登録日数と登録日付一覧に反映されます。
+    集計対象を選択すると、グラフと社員別明細へ反映されます。
   </div>
   {% endif %}
 
-  {% include "components/analysis/table.html" %}
+  {% include "components/analysis/trend_chart.html" %}
+
+  <section class="mt-10" aria-labelledby="analysis-detail-heading">
+    <div class="mb-3">
+      <h4 id="analysis-detail-heading" class="text-sm font-medium text-base-content">社員別明細</h4>
+      <p class="mt-1 text-xs text-base-content/60">
+        勤怠種別ごとの登録日数と登録日付を社員単位で確認します。
+      </p>
+    </div>
+    {% include "components/analysis/table.html" %}
+  </section>
 </div>
