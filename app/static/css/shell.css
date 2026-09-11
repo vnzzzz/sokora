@@ -99,9 +99,7 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   border: 0;
   border-radius: inherit;
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+  transition: none;
 }
 
 .logout-button svg,
