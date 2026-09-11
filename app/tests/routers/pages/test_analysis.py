@@ -248,6 +248,9 @@ async def test_more_than_ten_series_are_split_into_chart_panels(
     assert response.text.count('data-testid="analysis-chart-scroller"') == 2
     assert "Work Type 1" in response.text
     assert "Work Type 11" in response.text
+    # 2つ目以降のpanelは日付labelを表示するが、focusable dayコントロールは
+    # 最初のpanelだけに置き、keyboard/AT向けの重複操作を増やさない。
+    assert response.text.count('data-testid="analysis-day-trigger"') == 2
 
 
 async def test_fiscal_year_analysis_preserves_period_contract(

@@ -50,6 +50,7 @@
 
     <div class="space-y-6">
       {% for series_batch in chart.series|batch(10) %}
+        {% set is_first_panel = loop.first %}
       <div class="{% if not loop.first %}border-t border-base-300 pt-5{% endif %}" data-testid="analysis-chart-panel">
         <div class="mb-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤怠種別の凡例">
           {% for series in series_batch %}
@@ -137,7 +138,7 @@
                 stroke="currentColor"
                 stroke-width="1"
               ></line>
-              {% if is_year_mode %}
+              {% if is_year_mode or not is_first_panel %}
               <text
                 x="{{ x }}"
                 y="207"
