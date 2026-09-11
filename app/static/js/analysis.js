@@ -15,10 +15,6 @@ function analysisFallbackUrl(element) {
       : '/analysis?mode=year'
   }
 
-  if (element.id === 'period-month' || element.id === 'period-year') {
-    return element.getAttribute('hx-get')
-  }
-
   if (element.closest('#analysis-location-filter')) {
     return window.location.href
   }
