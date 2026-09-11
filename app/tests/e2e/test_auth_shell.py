@@ -44,10 +44,19 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
 
     form_box = logout_form.bounding_box()
     button_box = logout_button.bounding_box()
+    icon_box = logout_icon.bounding_box()
     assert form_box is not None
     assert button_box is not None
+    assert icon_box is not None
     assert abs(form_box["width"] - button_box["width"]) < 0.5
     assert abs(form_box["height"] - button_box["height"]) < 0.5
+
+    button_center_x = button_box["x"] + button_box["width"] / 2
+    button_center_y = button_box["y"] + button_box["height"] / 2
+    icon_center_x = icon_box["x"] + icon_box["width"] / 2
+    icon_center_y = icon_box["y"] + icon_box["height"] / 2
+    assert abs(button_center_x - icon_center_x) < 0.5
+    assert abs(button_center_y - icon_center_y) < 0.5
 
     before_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
@@ -62,12 +71,9 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
     assert logout_form.evaluate("element => element.matches(':hover')") is True
     assert ring_hover != before_hover
 
-    # Hover状態での実座標を取り直し、現在描画されているiconの中心へ移動する。
-    icon_box = logout_icon.bounding_box()
-    assert icon_box is not None
-    icon_x = icon_box["x"] + icon_box["width"] / 2
-    icon_y = icon_box["y"] + icon_box["height"] / 2
-    page.mouse.move(icon_x, icon_y)
+    # button中心とicon中心が一致することを上で確認したうえで、pointer
+    # interactionを担うbuttonの中心へ移動する。
+    page.mouse.move(button_center_x, button_center_y)
 
     icon_hover = logout_button.evaluate(
         "element => getComputedStyle(element).backgroundColor"
@@ -84,7 +90,7 @@ def test_logout_control_responds_on_first_hover_without_tooltip(page: Page) -> N
             ),
           }
         }""",
-        [icon_x, icon_y],
+        [button_center_x, button_center_y],
     )
 
     assert interaction_state["formHovered"] is True
