@@ -121,7 +121,9 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     checkbox = checkboxes.first
     location_id = checkbox.get_attribute("value")
     assert location_id is not None
-    location_name = page.locator(f"label[for='location-{location_id}'] span").inner_text()
+    location_name = page.locator(
+        f"label[for='location-{location_id}'] span"
+    ).inner_text()
     initial_url = page.url
 
     checkbox.check()
