@@ -55,28 +55,43 @@ function markSelectedAnalysisDay(day) {
   })
 }
 
-function loadAnalysisDayDetail(trigger) {
+async function loadAnalysisDayDetail(trigger) {
   const day = trigger.getAttribute('data-analysis-day')
   const target = document.querySelector('#analysis-day-detail')
   if (!day || !(target instanceof HTMLElement)) return
 
   markSelectedAnalysisDay(day)
   target.setAttribute('aria-busy', 'true')
+  target.innerHTML =
+    '<div class="flex min-h-24 items-center justify-center" aria-label="読み込み中"><span class="loading loading-spinner loading-sm"></span></div>'
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  if (!window.htmx) {
-    window.location.href = `/calendar/day/${encodeURIComponent(day)}`
-    return
+  try {
+    const response = await fetch(`/calendar/day/${encodeURIComponent(day)}`, {
+      credentials: 'same-origin',
+      headers: { 'HX-Request': 'true' },
+    })
+
+    if (response.redirected) {
+      window.location.href = response.url
+      return
+    }
+    if (!response.ok) throw new Error(`day detail request failed: ${response.status}`)
+
+    target.innerHTML = await response.text()
+    target.setAttribute('aria-busy', 'false')
+    if (window.htmx) window.htmx.process(target)
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  } catch (_error) {
+    target.setAttribute('aria-busy', 'false')
+    target.innerHTML =
+      '<div class="alert alert-error text-sm" role="alert">勤怠明細を読み込めませんでした。</div>'
   }
-
-  window.htmx.ajax('GET', `/calendar/day/${encodeURIComponent(day)}`, {
-    target: '#analysis-day-detail',
-    swap: 'innerHTML',
-  })
 }
 
 function activateAnalysisDayTrigger(trigger) {
   if (!(trigger instanceof Element)) return false
-  loadAnalysisDayDetail(trigger)
+  void loadAnalysisDayDetail(trigger)
   return true
 }
 
@@ -110,14 +125,6 @@ document.addEventListener('keydown', (event) => {
 
   event.preventDefault()
   activateAnalysisDayTrigger(dayTrigger)
-})
-
-document.addEventListener('htmx:afterSwap', (event) => {
-  const target = event.detail?.target
-  if (!(target instanceof HTMLElement) || target.id !== 'analysis-day-detail') return
-
-  target.setAttribute('aria-busy', 'false')
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 })
 
 document.addEventListener('htmx:responseError', fallbackToFullNavigation)
