@@ -120,7 +120,12 @@ html[data-sidebar-open="false"] .sidebar-label {
   transition: none;
 }
 
-html[data-sidebar-open="false"] .sidebar-toggle {
+.sidebar-toggle > svg {
+  transform: rotate(0deg);
+  transition: none;
+}
+
+html[data-sidebar-open="false"] .sidebar-toggle > svg {
   transform: rotate(180deg);
 }
 
@@ -136,15 +141,18 @@ html.sidebar-animating .app-main {
 }
 
 html.sidebar-animating .sidebar-toggle {
-  transition:
-    left 0.3s ease-in-out,
-    transform 0.3s ease-in-out;
+  transition: left 0.3s ease-in-out;
+}
+
+html.sidebar-animating .sidebar-toggle > svg {
+  transition: transform 0.3s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html.sidebar-animating .sidebar-panel,
   html.sidebar-animating .app-main,
-  html.sidebar-animating .sidebar-toggle {
+  html.sidebar-animating .sidebar-toggle,
+  html.sidebar-animating .sidebar-toggle > svg {
     transition-duration: 0s;
   }
 }
