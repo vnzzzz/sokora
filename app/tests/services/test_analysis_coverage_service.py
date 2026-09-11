@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List
 
 from app.services import analysis_coverage_service
+from app.services.analysis_coverage_service import CoverageCell, CoverageRow
 from app.services.analysis_read_service import GroupSection
 from app.utils.ui_utils import get_location_tone
 
@@ -66,7 +67,7 @@ def _group_sections() -> List[GroupSection]:
     ]
 
 
-def _cells_by_key(row: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def _cells_by_key(row: CoverageRow) -> Dict[str, CoverageCell]:
     return {cell["key"]: cell for cell in row["cells"]}
 
 
