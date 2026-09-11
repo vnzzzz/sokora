@@ -15,7 +15,7 @@
 
   <div class="grid gap-3 sm:grid-cols-2">
     <label class="block" for="analysis-group-select">
-      <span class="mb-1 block text-xs font-medium text-base-content/70">組織</span>
+      <span class="mb-1 block text-xs font-medium text-base-content/70">グループ</span>
       <select
         id="analysis-group-select"
         name="group_name"
@@ -50,7 +50,7 @@
   <details class="mt-4 border-t border-base-300 pt-4">
     <summary class="cursor-pointer list-none">
       <span class="flex items-center justify-between gap-3">
-        <span id="analysis-target-heading" class="text-sm font-medium text-base-content">表示系列</span>
+        <span id="analysis-attendance-type-heading" class="text-sm font-medium text-base-content">勤怠種別</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -65,8 +65,8 @@
       </span>
     </summary>
 
-    <fieldset class="mt-4" aria-labelledby="analysis-target-heading">
-      <legend class="sr-only">グラフに表示する系列</legend>
+    <fieldset class="mt-4" aria-labelledby="analysis-attendance-type-heading">
+      <legend class="sr-only">グラフに表示する勤怠種別</legend>
 
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-4">
         <label class="flex cursor-pointer items-center gap-2" for="analysis-total-series">
@@ -82,7 +82,7 @@
           <span class="text-sm font-medium">全合計</span>
         </label>
 
-        <div class="flex flex-wrap gap-1" aria-label="勤務場所の一括操作">
+        <div class="flex flex-wrap gap-1" aria-label="勤怠種別の一括操作">
           <button type="button" class="btn btn-ghost btn-xs" data-analysis-select-all>全選択</button>
           <button type="button" class="btn btn-ghost btn-xs" data-analysis-clear-all>全解除</button>
         </div>
