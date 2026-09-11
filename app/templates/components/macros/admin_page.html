@@ -7,10 +7,13 @@
 </div>
 {%- endmacro %}
 
-{% macro status_row(label, value, value_class='') -%}
+{% macro status_row(label, value, value_class='', testid='') -%}
 <div class="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
   <dt class="text-sm text-base-content/70">{{ label }}</dt>
-  <dd class="break-words text-sm font-medium text-base-content sm:text-right {{ value_class }}">
+  <dd
+    class="break-words text-sm font-medium text-base-content sm:text-right {{ value_class }}"
+    {% if testid %}data-testid="{{ testid }}"{% endif %}
+  >
     {{ value }}
   </dd>
 </div>
