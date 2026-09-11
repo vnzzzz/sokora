@@ -102,6 +102,17 @@ html[data-sidebar-open="false"] .sidebar-toggle > svg {
   transition: none;
 }
 
+/* The toast wrapper spans the top-right overlay area even when it is empty.
+ * Let pointer input pass through that transparent wrapper so shell controls
+ * remain reachable, while actual rendered messages can still own interactions. */
+#ui-message-container {
+  pointer-events: none;
+}
+
+#ui-message-container > * {
+  pointer-events: auto;
+}
+
 html.sidebar-animating .sidebar-panel {
   transition:
     width 0.3s ease-in-out,
