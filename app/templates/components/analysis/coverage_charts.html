@@ -11,147 +11,6 @@
   "10 2 2 2 2 2",
 ] %}
 
-{% macro coverage_charts(title, heading_id, prefix, charts) -%}
-<section class="mt-10 border-t border-base-300 pt-8" aria-labelledby="{{ heading_id }}" data-testid="{{ prefix }}-charts">
-  <h3 id="{{ heading_id }}" class="text-base font-semibold text-base-content">{{ title }}</h3>
-
-  <div class="mt-6 space-y-8">
-    {% for chart in charts %}
-      {% set point_count = coverage_buckets|length %}
-      <figure data-testid="{{ prefix }}-chart">
-        <figcaption class="mb-2 text-sm font-medium text-base-content">{{ chart.label }}</figcaption>
-
-        <div
-          class="sr-only"
-          data-testid="{{ prefix }}-chart-accessible-data"
-          aria-label="{{ chart.label }}の人数データ"
-        >
-          <ul>
-            {% for series in chart.series %}
-            <li>
-              {{ series.name }}:
-              {% for point in series.points %}
-                {{ point.label }} {{ point.count }}人{% if not loop.last %}、{% endif %}
-              {% endfor %}
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-
-        <div class="space-y-6">
-          {% for series_batch in chart.series|batch(10) %}
-          <div class="{% if not loop.first %}border-t border-base-300 pt-5{% endif %}" data-testid="{{ prefix }}-chart-panel">
-            <div class="mb-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="表示系列の凡例">
-              {% for series in series_batch %}
-                {% set series_index = loop.index0 %}
-                {% set dash_pattern = "none" if series.is_total else line_patterns[series_index] %}
-              <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
-                <svg
-                  class="h-2 w-6 shrink-0"
-                  viewBox="0 0 24 8"
-                  data-location-tone="{{ series.tone_index }}"
-                  aria-hidden="true"
-                >
-                  <line
-                    x1="1"
-                    y1="4"
-                    x2="23"
-                    y2="4"
-                    stroke="rgb(var(--location-tone-rgb))"
-                    stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
-                    stroke-dasharray="{{ dash_pattern }}"
-                    stroke-linecap="round"
-                  ></line>
-                </svg>
-                {{ series.name }}
-              </span>
-              {% endfor %}
-            </div>
-
-            <div class="overflow-x-auto pb-2" data-testid="{{ prefix }}-chart-scroller">
-              <svg
-                class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
-                viewBox="0 0 820 220"
-                aria-hidden="true"
-              >
-                <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
-                  <line x1="52" y1="28" x2="782" y2="28"></line>
-                  <line x1="52" y1="104" x2="782" y2="104"></line>
-                </g>
-                <line x1="52" y1="180" x2="782" y2="180" class="text-base-content/35" stroke="currentColor" stroke-width="1.5"></line>
-
-                <g class="text-base-content/45" fill="currentColor" font-size="10">
-                  <text x="43" y="32" text-anchor="end">{{ chart.max_count }}</text>
-                  <text x="43" y="184" text-anchor="end">0</text>
-                </g>
-
-                {% for series in series_batch %}
-                  {% set series_index = loop.index0 %}
-                  {% set dash_pattern = "none" if series.is_total else line_patterns[series_index] %}
-                <g data-location-tone="{{ series.tone_index }}">
-                  {% for point in series.points %}
-                    {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-                    {% set y = 180 - (point.count * 152 / chart.max_count) %}
-                    {% if not loop.last %}
-                      {% set next_point = series.points[loop.index] %}
-                      {% set next_x = 52 + (loop.index * 730 / (point_count - 1)) %}
-                      {% set next_y = 180 - (next_point.count * 152 / chart.max_count) %}
-                      <line
-                        x1="{{ x }}"
-                        y1="{{ y }}"
-                        x2="{{ next_x }}"
-                        y2="{{ next_y }}"
-                        stroke="rgb(var(--location-tone-rgb))"
-                        stroke-opacity="{% if series.is_total %}1{% else %}0.82{% endif %}"
-                        stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
-                        stroke-dasharray="{{ dash_pattern }}"
-                        stroke-dashoffset="{{ series_index * 1.5 }}"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      ></line>
-                    {% endif %}
-                  {% endfor %}
-                </g>
-                {% endfor %}
-
-                {% if is_year_mode %}
-                <g class="text-base-content/45" fill="currentColor" font-size="10">
-                  {% for bucket in coverage_buckets %}
-                    {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-                    <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
-                  {% endfor %}
-                </g>
-                {% endif %}
-              </svg>
-
-              {% if not is_year_mode %}
-              <div
-                class="-mt-6 grid min-w-[58rem] pl-[3.7rem] pr-[2.7rem]"
-                style="grid-template-columns: repeat({{ point_count }}, minmax(0, 1fr))"
-                aria-label="日別勤怠明細"
-              >
-                {% for bucket in coverage_buckets %}
-                <button
-                  type="button"
-                  class="h-6 min-h-0 rounded px-0 text-[10px] font-normal text-base-content/45 hover:bg-base-200 hover:text-base-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                  data-analysis-day="{{ bucket[0] }}"
-                  data-testid="{{ prefix }}-day-trigger"
-                  aria-label="{{ bucket[1] }}日の勤怠明細"
-                  aria-controls="analysis-day-detail"
-                >{{ bucket[1] }}</button>
-                {% endfor %}
-              </div>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </figure>
-    {% endfor %}
-  </div>
-</section>
-{%- endmacro %}
-
 {% if location_categories|length == 0 %}
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-empty-message">
   {{ empty_message }}
@@ -160,14 +19,143 @@
 <div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-no-selection-hint">
   表示系列を選択してください。
 </div>
-{% elif not group_coverage_charts and not user_type_coverage_charts %}
-<div class="mt-8 border-l-2 border-base-300 py-1 pl-3 text-sm text-base-content/65" data-testid="analysis-empty-message">
-  {{ empty_message }}
-</div>
 {% else %}
-  {{ coverage_charts("組織別", "analysis-group-charts-heading", "analysis-group", group_coverage_charts) }}
-  {{ coverage_charts("社員種別別", "analysis-user-type-charts-heading", "analysis-user-type", user_type_coverage_charts) }}
+  {% set chart = coverage_chart %}
+  {% set point_count = coverage_buckets|length %}
+<section class="mt-8 border-t border-base-300 pt-6" aria-labelledby="analysis-chart-heading" data-testid="analysis-coverage-chart">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h3 id="analysis-chart-heading" class="text-base font-semibold text-base-content">人数推移</h3>
+    <span class="text-xs text-base-content/55" data-testid="analysis-chart-target">{{ chart.label }}</span>
+  </div>
+
+  <figure class="mt-4">
+    <figcaption class="sr-only">{{ chart.label }}の人数推移</figcaption>
+
+    <div
+      class="sr-only"
+      data-testid="analysis-chart-accessible-data"
+      aria-label="{{ chart.label }}の人数データ"
+    >
+      <ul>
+        {% for series in chart.series %}
+        <li>
+          {{ series.name }}:
+          {% for point in series.points %}
+            {{ point.label }} {{ point.count }}人{% if not loop.last %}、{% endif %}
+          {% endfor %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="mb-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="表示系列の凡例">
+      {% for series in chart.series %}
+        {% set series_index = loop.index0 %}
+        {% set pattern_index = series_index % 10 %}
+        {% set dash_pattern = "none" if series.is_total else line_patterns[pattern_index] %}
+      <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
+        <svg
+          class="h-2 w-6 shrink-0"
+          viewBox="0 0 24 8"
+          data-location-tone="{{ series.tone_index }}"
+          aria-hidden="true"
+        >
+          <line
+            x1="1"
+            y1="4"
+            x2="23"
+            y2="4"
+            stroke="rgb(var(--location-tone-rgb))"
+            stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
+            stroke-dasharray="{{ dash_pattern }}"
+            stroke-linecap="round"
+          ></line>
+        </svg>
+        {{ series.name }}
+      </span>
+      {% endfor %}
+    </div>
+
+    <div class="overflow-x-auto pb-2" data-testid="analysis-chart-scroller">
+      <svg
+        class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
+        viewBox="0 0 820 220"
+        aria-hidden="true"
+      >
+        <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
+          <line x1="52" y1="28" x2="782" y2="28"></line>
+          <line x1="52" y1="104" x2="782" y2="104"></line>
+        </g>
+        <line x1="52" y1="180" x2="782" y2="180" class="text-base-content/35" stroke="currentColor" stroke-width="1.5"></line>
+
+        <g class="text-base-content/45" fill="currentColor" font-size="10">
+          <text x="43" y="32" text-anchor="end">{{ chart.max_count }}</text>
+          <text x="43" y="184" text-anchor="end">0</text>
+        </g>
+
+        {% for series in chart.series %}
+          {% set series_index = loop.index0 %}
+          {% set pattern_index = series_index % 10 %}
+          {% set dash_pattern = "none" if series.is_total else line_patterns[pattern_index] %}
+        <g data-location-tone="{{ series.tone_index }}">
+          {% for point in series.points %}
+            {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+            {% set y = 180 - (point.count * 152 / chart.max_count) %}
+            {% if not loop.last %}
+              {% set next_point = series.points[loop.index] %}
+              {% set next_x = 52 + (loop.index * 730 / (point_count - 1)) %}
+              {% set next_y = 180 - (next_point.count * 152 / chart.max_count) %}
+              <line
+                x1="{{ x }}"
+                y1="{{ y }}"
+                x2="{{ next_x }}"
+                y2="{{ next_y }}"
+                stroke="rgb(var(--location-tone-rgb))"
+                stroke-opacity="{% if series.is_total %}1{% else %}0.82{% endif %}"
+                stroke-width="{% if series.is_total %}3.25{% else %}2.5{% endif %}"
+                stroke-dasharray="{{ dash_pattern }}"
+                stroke-dashoffset="{{ series_index * 1.5 }}"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></line>
+            {% endif %}
+          {% endfor %}
+        </g>
+        {% endfor %}
+
+        {% if is_year_mode %}
+        <g class="text-base-content/45" fill="currentColor" font-size="10">
+          {% for bucket in coverage_buckets %}
+            {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+            <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
+          {% endfor %}
+        </g>
+        {% endif %}
+      </svg>
+
+      {% if not is_year_mode %}
+      <div
+        class="-mt-6 grid min-w-[58rem] pl-[3.7rem] pr-[2.7rem]"
+        style="grid-template-columns: repeat({{ point_count }}, minmax(0, 1fr))"
+        aria-label="日別勤怠明細"
+      >
+        {% for bucket in coverage_buckets %}
+        <button
+          type="button"
+          class="h-6 min-h-0 rounded px-0 text-[10px] font-normal text-base-content/45 hover:bg-base-200 hover:text-base-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          data-analysis-day="{{ bucket[0] }}"
+          data-testid="analysis-day-trigger"
+          aria-label="{{ bucket[1] }}日の勤怠明細"
+          aria-controls="analysis-day-detail"
+        >{{ bucket[1] }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </figure>
+</section>
+
   {% if not is_year_mode %}
-  <div id="analysis-day-detail" class="mt-10 border-t border-base-300 pt-2" aria-live="polite"></div>
+  <div id="analysis-day-detail" class="mt-4 border-t border-base-300 pt-2" aria-live="polite"></div>
   {% endif %}
 {% endif %}
