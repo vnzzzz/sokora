@@ -23,6 +23,8 @@ def get_analysis_page(
     mode: Optional[str] = None,
     selected_locations: Optional[list[int]] = Query(default=None),
     show_total: Optional[bool] = Query(default=None),
+    group_name: Optional[str] = None,
+    user_type_name: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
     """月次/年度の勤怠集計をrenderする。
@@ -31,8 +33,9 @@ def get_analysis_page(
     不正値はcurrent monthへredirectする。DB/internal failureはempty 200へ変換せず、
     application共通HTTP boundaryへ伝播させる。
 
-    full page / period変更では「全合計」だけを初期表示する。location filter自身のHTMX
-    requestではcheckbox parameterをそのままselectionとして扱い、全解除も表現できるようにする。
+    full page / period変更では「全合計・全組織・全社員種別」を初期表示する。analysis filter
+    自身のHTMX requestではcheckbox/select parameterをそのままselectionとして扱い、全解除も
+    表現できるようにする。
     """
     is_year_mode = year is not None or mode == "year"
     if month is not None and not is_year_mode:
@@ -45,14 +48,14 @@ def get_analysis_page(
 
     is_htmx_request = request.headers.get("HX-Request") == "true"
     is_history_restore = request.headers.get("HX-History-Restore-Request") == "true"
-    is_location_filter_request = (
+    is_analysis_filter_request = (
         is_htmx_request
         and not is_history_restore
         and request.headers.get("HX-Target") == "analysis-table-region"
     )
     selected_location_ids = selected_locations or []
     include_total = (
-        show_total if show_total is not None else not is_location_filter_request
+        show_total if show_total is not None else not is_analysis_filter_request
     )
 
     view_model = analysis_read_service.get_analysis_page_view_model(
@@ -68,6 +71,8 @@ def get_analysis_page(
         selected_location_ids=view_model["selected_location_ids"],
         is_year_mode=view_model["is_year_mode"],
         include_total=include_total,
+        selected_group_name=group_name,
+        selected_user_type_name=user_type_name,
     )
     context = {
         "request": request,
@@ -78,7 +83,7 @@ def get_analysis_page(
     if is_htmx_request and not is_history_restore:
         template_name = (
             "components/analysis/table_region.html"
-            if is_location_filter_request
+            if is_analysis_filter_request
             else "components/analysis/content.html"
         )
         return templates.TemplateResponse(
