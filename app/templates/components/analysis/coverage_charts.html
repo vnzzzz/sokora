@@ -23,34 +23,6 @@
     <span class="text-xs text-base-content/45">縦軸: 人数</span>
   </div>
 
-  {% if coverage_locations %}
-  <div class="mt-4 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤務種別の凡例">
-    {% for location in coverage_locations %}
-      {% set dash_pattern = line_patterns[loop.index0 % (line_patterns|length)] %}
-    <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
-      <svg
-        class="h-2 w-6 shrink-0"
-        viewBox="0 0 24 8"
-        data-location-tone="{{ location.tone_index }}"
-        aria-hidden="true"
-      >
-        <line
-          x1="1"
-          y1="4"
-          x2="23"
-          y2="4"
-          stroke="rgb(var(--location-tone-rgb))"
-          stroke-width="2.5"
-          stroke-dasharray="{{ dash_pattern }}"
-          stroke-linecap="round"
-        ></line>
-      </svg>
-      {{ location.name }}
-    </span>
-    {% endfor %}
-  </div>
-  {% endif %}
-
   <div class="mt-6 space-y-8">
     {% for chart in charts %}
       {% set point_count = coverage_buckets|length %}
@@ -74,69 +46,101 @@
           </ul>
         </div>
 
-        <div class="overflow-x-auto pb-2" data-testid="{{ prefix }}-chart-scroller">
-          <svg
-            class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
-            viewBox="0 0 820 220"
-            aria-hidden="true"
-          >
-            <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
-              <line x1="52" y1="28" x2="782" y2="28"></line>
-              <line x1="52" y1="104" x2="782" y2="104"></line>
-            </g>
-            <line x1="52" y1="180" x2="782" y2="180" class="text-base-content/35" stroke="currentColor" stroke-width="1.5"></line>
-
-            <g class="text-base-content/45" fill="currentColor" font-size="10">
-              <text x="43" y="32" text-anchor="end">{{ chart.max_count }}</text>
-              <text x="43" y="184" text-anchor="end">0</text>
-            </g>
-
-            {% for series in chart.series %}
-              {% set series_index = loop.index0 % (line_patterns|length) %}
-              {% set dash_pattern = line_patterns[series_index] %}
-            <g data-location-tone="{{ series.tone_index }}">
-              {% for point in series.points %}
-                {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-                {% set y = 180 - (point.count * 152 / chart.max_count) %}
-                {% if not loop.last %}
-                  {% set next_point = series.points[loop.index] %}
-                  {% set next_x = 52 + (loop.index * 730 / (point_count - 1)) %}
-                  {% set next_y = 180 - (next_point.count * 152 / chart.max_count) %}
+        <div class="space-y-6">
+          {% for series_batch in chart.series|batch(10) %}
+          <div class="{% if not loop.first %}border-t border-base-300 pt-5{% endif %}" data-testid="{{ prefix }}-chart-panel">
+            <div class="mb-3 flex flex-wrap gap-x-4 gap-y-2" aria-label="勤務種別の凡例">
+              {% for series in series_batch %}
+                {% set dash_pattern = line_patterns[loop.index0] %}
+              <span class="inline-flex items-center gap-1.5 text-xs text-base-content/70">
+                <svg
+                  class="h-2 w-6 shrink-0"
+                  viewBox="0 0 24 8"
+                  data-location-tone="{{ series.tone_index }}"
+                  aria-hidden="true"
+                >
                   <line
-                    x1="{{ x }}"
-                    y1="{{ y }}"
-                    x2="{{ next_x }}"
-                    y2="{{ next_y }}"
+                    x1="1"
+                    y1="4"
+                    x2="23"
+                    y2="4"
                     stroke="rgb(var(--location-tone-rgb))"
-                    stroke-opacity="0.85"
                     stroke-width="2.5"
                     stroke-dasharray="{{ dash_pattern }}"
-                    stroke-dashoffset="{{ series_index * 1.5 }}"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
                   ></line>
-                {% endif %}
-                <circle
-                  cx="{{ x }}"
-                  cy="{{ y }}"
-                  r="{{ 3 + (series_index % 4) }}"
-                  fill="none"
-                  stroke="rgb(var(--location-tone-rgb))"
-                  stroke-width="1.75"
-                ></circle>
+                </svg>
+                {{ series.name }}
+              </span>
               {% endfor %}
-            </g>
-            {% endfor %}
+            </div>
 
-            <g class="text-base-content/45" fill="currentColor" font-size="10">
-              {% for bucket in coverage_buckets %}
-                {% if is_year_mode or loop.first or loop.last or loop.index % 5 == 0 %}
-                  {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
-                  <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
-                {% endif %}
-              {% endfor %}
-            </g>
-          </svg>
+            <div class="overflow-x-auto pb-2" data-testid="{{ prefix }}-chart-scroller">
+              <svg
+                class="block h-56 w-full {% if is_year_mode %}min-w-[44rem]{% else %}min-w-[58rem]{% endif %}"
+                viewBox="0 0 820 220"
+                aria-hidden="true"
+              >
+                <g class="text-base-content/10" stroke="currentColor" stroke-width="1">
+                  <line x1="52" y1="28" x2="782" y2="28"></line>
+                  <line x1="52" y1="104" x2="782" y2="104"></line>
+                </g>
+                <line x1="52" y1="180" x2="782" y2="180" class="text-base-content/35" stroke="currentColor" stroke-width="1.5"></line>
+
+                <g class="text-base-content/45" fill="currentColor" font-size="10">
+                  <text x="43" y="32" text-anchor="end">{{ chart.max_count }}</text>
+                  <text x="43" y="184" text-anchor="end">0</text>
+                </g>
+
+                {% for series in series_batch %}
+                  {% set series_index = loop.index0 %}
+                  {% set dash_pattern = line_patterns[series_index] %}
+                <g data-location-tone="{{ series.tone_index }}">
+                  {% for point in series.points %}
+                    {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+                    {% set y = 180 - (point.count * 152 / chart.max_count) %}
+                    {% if not loop.last %}
+                      {% set next_point = series.points[loop.index] %}
+                      {% set next_x = 52 + (loop.index * 730 / (point_count - 1)) %}
+                      {% set next_y = 180 - (next_point.count * 152 / chart.max_count) %}
+                      <line
+                        x1="{{ x }}"
+                        y1="{{ y }}"
+                        x2="{{ next_x }}"
+                        y2="{{ next_y }}"
+                        stroke="rgb(var(--location-tone-rgb))"
+                        stroke-opacity="0.85"
+                        stroke-width="2.5"
+                        stroke-dasharray="{{ dash_pattern }}"
+                        stroke-dashoffset="{{ series_index * 1.5 }}"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      ></line>
+                    {% endif %}
+                    <circle
+                      cx="{{ x }}"
+                      cy="{{ y }}"
+                      r="{{ 3 + (series_index % 4) }}"
+                      fill="none"
+                      stroke="rgb(var(--location-tone-rgb))"
+                      stroke-width="1.75"
+                    ></circle>
+                  {% endfor %}
+                </g>
+                {% endfor %}
+
+                <g class="text-base-content/45" fill="currentColor" font-size="10">
+                  {% for bucket in coverage_buckets %}
+                    {% if is_year_mode or loop.first or loop.last or loop.index % 5 == 0 %}
+                      {% set x = 52 + (loop.index0 * 730 / (point_count - 1)) %}
+                      <text x="{{ x }}" y="205" text-anchor="middle">{{ bucket[1] }}</text>
+                    {% endif %}
+                  {% endfor %}
+                </g>
+              </svg>
+            </div>
+          </div>
+          {% endfor %}
         </div>
       </figure>
     {% endfor %}
