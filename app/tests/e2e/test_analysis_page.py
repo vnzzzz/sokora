@@ -15,6 +15,7 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
     )
     expect(page.get_by_role("link", name="年度")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-plot")).to_be_visible()
+    expect(page.get_by_test_id("analysis-group-coverage")).to_be_visible()
 
     first_of_month = date.today().replace(day=1)
     previous_month = first_of_month - timedelta(days=1)
@@ -38,6 +39,7 @@ def test_analysis_month_change_updates_dom_and_history(page: Page) -> None:
         "aria-current", "page"
     )
     expect(page.locator("[data-testid='analysis-table']")).to_be_visible()
+    expect(page.get_by_test_id("analysis-group-coverage")).to_be_visible()
 
     page.go_back()
     expect(page).to_have_url(ANALYSIS_URL, timeout=5000)
@@ -68,6 +70,7 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page.get_by_test_id("analysis-trend-chart")).to_contain_text(
         "月ごとの延べ登録日数"
     )
+    expect(page.get_by_test_id("analysis-group-coverage")).to_be_visible()
     expect(page).to_have_url(
         f"{ANALYSIS_URL}?mode=year&year={selected_year}",
         timeout=5000,
@@ -87,7 +90,7 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     expect(page).to_have_url(f"{ANALYSIS_URL}?month={current_month}", timeout=5000)
 
 
-def test_analysis_location_filter_updates_overview_and_detail_without_changing_url(
+def test_analysis_location_filter_updates_all_results_without_changing_url(
     page: Page,
 ) -> None:
     page.goto(ANALYSIS_URL)
@@ -95,8 +98,13 @@ def test_analysis_location_filter_updates_overview_and_detail_without_changing_u
     expect(page.get_by_role("heading", name="表示条件")).to_be_visible()
     expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="概要")).to_be_visible()
+    expect(page.get_by_role("heading", name="配置状況")).to_be_visible()
+    expect(page.get_by_text("組織別", exact=True)).to_be_visible()
+    expect(page.get_by_text("社員種別別", exact=True)).to_be_visible()
     expect(page.get_by_role("heading", name="社員別明細")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-plot")).to_be_visible()
+    expect(page.get_by_test_id("analysis-group-coverage")).to_be_visible()
+    expect(page.get_by_test_id("analysis-user-type-coverage")).to_be_visible()
 
     filter_details = page.locator("#analysis-location-filter details")
     expect(filter_details).not_to_have_attribute("open", "")
@@ -128,6 +136,8 @@ def test_analysis_location_filter_updates_overview_and_detail_without_changing_u
         f"集計対象 {location_count - 1}件",
         timeout=5000,
     )
+    expect(page.get_by_test_id("analysis-group-coverage")).to_be_visible()
+    expect(page.get_by_test_id("analysis-user-type-coverage")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-plot")).to_be_visible()
     expect(page).to_have_url(initial_url)
 
@@ -143,11 +153,19 @@ def test_analysis_primary_controls_and_results_remain_reachable_on_narrow_viewpo
     expect(page.locator("#month-input")).to_be_visible()
     expect(page.get_by_text("集計対象", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="概要")).to_be_visible()
+    expect(page.get_by_role("heading", name="配置状況")).to_be_visible()
     expect(page.get_by_role("heading", name="社員別明細")).to_be_visible()
     expect(page.get_by_test_id("analysis-trend-plot")).to_be_visible()
+    expect(page.get_by_test_id("analysis-group-coverage")).to_be_visible()
 
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+    )
+
+    coverage_scroller = page.get_by_test_id("analysis-group-coverage-scroller")
+    expect(coverage_scroller).to_be_visible()
+    assert coverage_scroller.evaluate(
+        "element => element.scrollWidth > element.clientWidth"
     )
 
     trend_scroller = page.get_by_test_id("analysis-trend-scroller")
