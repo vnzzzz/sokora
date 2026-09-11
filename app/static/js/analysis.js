@@ -32,5 +32,31 @@ function fallbackToFullNavigation(event) {
   if (url) window.location.href = url
 }
 
+function setAllAnalysisSeries(button, checked) {
+  const form = button.closest('#analysis-location-filter')
+  if (!(form instanceof HTMLFormElement)) return
+
+  form.querySelectorAll('[data-analysis-series-checkbox]').forEach((checkbox) => {
+    if (checkbox instanceof HTMLInputElement) checkbox.checked = checked
+  })
+  form.dispatchEvent(new Event('change', { bubbles: true }))
+}
+
+document.addEventListener('click', (event) => {
+  const target = event.target
+  if (!(target instanceof Element)) return
+
+  const selectAllButton = target.closest('[data-analysis-select-all]')
+  if (selectAllButton instanceof HTMLButtonElement) {
+    setAllAnalysisSeries(selectAllButton, true)
+    return
+  }
+
+  const clearAllButton = target.closest('[data-analysis-clear-all]')
+  if (clearAllButton instanceof HTMLButtonElement) {
+    setAllAnalysisSeries(clearAllButton, false)
+  }
+})
+
 document.addEventListener('htmx:responseError', fallbackToFullNavigation)
 document.addEventListener('htmx:sendError', fallbackToFullNavigation)
