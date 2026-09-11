@@ -1,11 +1,11 @@
-{% import "components/macros/ui.html" as ui %}
+{% import "components/macros/navigation.html" as navigation_ui %}
 <!-- Week display and switcher -->
 <div id="calendar">
   <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
     <span class="text-xl font-bold">{{ week_name }}</span> {# 週名の表示 #}
     <!-- 週切り替えコンポーネント -->
-    {{ ui.week_switcher( prev_week=prev_week, next_week=next_week, current_week=current_week,
-    url_base='/attendance/weekly', use_htmx=true ) }}
+    {{ navigation_ui.week_switcher( prev_week=prev_week, next_week=next_week, current_week=current_week,
+    url_base='/attendance/weekly' ) }}
   </div>
 
   <!-- Search form -->
