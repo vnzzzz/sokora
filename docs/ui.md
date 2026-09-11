@@ -59,9 +59,11 @@ DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持�
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
-analysis画面は「集計期間 → 集計対象 → 集計結果」の順で情報を配置します。集計期間では月次集計と年度集計をradioで排他的に隠さず、月pickerと年度pickerを独立した領域として常時表示します。月次は日別trend、年度は4月〜翌3月の月別trendを主表示とし、その下へ社員別明細を置きます。同時に月次/年度の両datasetをreadするのではなく、選択したperiodだけを従来どおりserverで集計します。
+analysis画面は **表示条件 → 概要 → 社員別明細** の3層で情報を配置します。表示条件は他の分析結果と視覚的に区別した専用surfaceとし、月次/年度はform radioではなくanalysis viewのtab navigationとして扱います。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。勤怠種別filterも同じ表示条件surfaceに置き、`details`で折りたためるようにして多数の選択肢が主可視化を押し下げ続けない構成にします。
 
-`#analysis-view` は期間変更のHTMX replacement boundaryで、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。このregionには選択件数、未選択時の案内、trend chart、社員別tableを含め、filter変更時にchartとdetailを同一read modelから同期更新します。trendは既存のattendance analysis resultに含まれるlocation別date detailをpresentation serviceで日次/月次bucketへ変換し、client-side chart stateや追加chart libraryは持ちません。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長のtrendと集計tableはそれぞれ内部scroll surfaceを持ち、狭いviewportでpage全体を横overflowさせません。
+概要には延べ登録日数・登録あり社員数とprimary time-series chartを置きます。trendは既存attendance analysis resultのlocation別date detailをpresentation serviceで日次/月次bucketへ変換し、Jinjaでsemantic SVGとしてrenderします。SVGにはaxis / grid / line / pointを持たせ、client-side chart stateや追加chart libraryは導入しません。月次は日別、年度は4月〜翌3月の月別trendです。その下に社員別明細tableを独立sectionとして置き、overviewとdetailを明確に分離します。
+
+`#analysis-view` はmode / period変更のHTMX replacement boundaryで、browser historyへURLをpushします。集計対象は複数選択可能な勤怠種別filterで、同じpage adapterへGETし、`#analysis-table-region` だけをserver-sideで再renderします。このregionには選択件数、overview、SVG chart、社員別tableを含め、filter変更時にchartとdetailを同一read modelから同期更新します。選択状態はURL/historyへ残しません。history restore requestではfull pageを返し、HTMXは同じ `#analysis-view` history elementだけを復元します。通常のHTMX requestだけfragment responseにします。横長のSVG chartと集計tableはそれぞれ内部scroll surfaceを持ち、狭いviewportでpage全体を横overflowさせません。
 
 ### Styling boundary
 
