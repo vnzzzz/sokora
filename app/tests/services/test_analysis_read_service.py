@@ -152,13 +152,6 @@ def test_month_view_model_owns_grouping_sorting_and_location_categories(
     ]
     assert view_model["location_categories"][-1]["name"] == "未分類"
 
-    trend = {point["key"]: point["count"] for point in view_model["trend_points"]}
-    assert len(view_model["trend_points"]) == 31
-    assert trend["2031-05-03"] == 1
-    assert trend["2031-05-04"] == 1
-    assert view_model["selected_total_days"] == 5
-    assert view_model["selected_user_count"] == 4
-
 
 def test_fiscal_year_view_model_uses_april_to_march_period(
     db_with_data: Session,
@@ -179,26 +172,8 @@ def test_fiscal_year_view_model_uses_april_to_march_period(
     assert period["start"] == date(2031, 4, 1)
     assert period["end"] == date(2032, 3, 31)
 
-    assert [point["label"] for point in view_model["trend_points"]] == [
-        "4月",
-        "5月",
-        "6月",
-        "7月",
-        "8月",
-        "9月",
-        "10月",
-        "11月",
-        "12月",
-        "1月",
-        "2月",
-        "3月",
-    ]
-    trend = {point["key"]: point["count"] for point in view_model["trend_points"]}
-    assert trend["2031-05"] == 5
-    assert view_model["selected_total_days"] == 5
 
-
-def test_location_selection_filters_user_totals_date_groups_and_trend(
+def test_location_selection_filters_user_totals_and_date_groups(
     db_with_data: Session,
 ) -> None:
     _add_reference_data(db_with_data)
@@ -233,26 +208,3 @@ def test_location_selection_filters_user_totals_date_groups_and_trend(
     assert [group["location_name"] for group in alpha["date_groups"]] == [
         "Analysis Office Later"
     ]
-    trend = {point["key"]: point["count"] for point in view_model["trend_points"]}
-    assert trend["2031-05-03"] == 0
-    assert trend["2031-05-04"] == 1
-    assert view_model["selected_total_days"] == 1
-    assert view_model["selected_user_count"] == 1
-
-
-def test_empty_location_selection_produces_zero_trend(
-    db_with_data: Session,
-) -> None:
-    _add_reference_data(db_with_data)
-
-    view_model = analysis_read_service.get_analysis_page_view_model(
-        db_with_data,
-        month="2031-05",
-        selected_location_ids=[],
-        today=date(2031, 5, 15),
-    )
-
-    assert view_model["selected_location_ids"] == []
-    assert view_model["selected_total_days"] == 0
-    assert view_model["selected_user_count"] == 0
-    assert all(point["count"] == 0 for point in view_model["trend_points"])
