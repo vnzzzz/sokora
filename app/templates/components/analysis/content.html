@@ -1,9 +1,6 @@
 <div class="p-4" id="analysis-view" hx-history-elt>
   <header class="mb-6 max-w-5xl">
     <h2 class="text-lg font-bold text-base-content">勤怠集計</h2>
-    <p class="mt-1 text-sm text-base-content/60">
-      期間と勤務種別を指定して、組織・社員種別ごとの人数推移を確認します。
-    </p>
   </header>
 
   <div id="analysis-root">
@@ -11,18 +8,13 @@
       class="max-w-5xl rounded-lg border border-base-300 bg-base-200/30 p-4 sm:p-5"
       aria-labelledby="analysis-controls-heading"
     >
-      <div>
-        <h3 id="analysis-controls-heading" class="text-sm font-semibold text-base-content">表示条件</h3>
-        <p class="mt-1 text-xs text-base-content/60">
-          集計単位・期間・勤務種別を指定します。
-        </p>
-      </div>
+      <h3 id="analysis-controls-heading" class="text-sm font-semibold text-base-content">表示条件</h3>
 
-      <div class="mt-5">
+      <div class="mt-4">
         {% include "components/analysis/period_controls.html" %}
       </div>
 
-      <div class="mt-5 border-t border-base-300 pt-5">
+      <div class="mt-4 border-t border-base-300 pt-4">
         {% include "components/analysis/location_filter.html" %}
       </div>
     </section>
