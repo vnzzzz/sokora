@@ -1,68 +1,65 @@
 <div>
-  <nav class="flex gap-6 border-b border-base-300" aria-label="集計単位">
-    <a
-      href="/analysis?month={{ current_month }}"
-      class="border-b-2 px-1 pb-2 text-sm font-medium {% if not is_year_mode %}border-primary text-base-content{% else %}border-transparent text-base-content/50 hover:text-base-content{% endif %}"
-      data-analysis-mode-tab="month"
-      {% if not is_year_mode %}aria-current="page"{% endif %}
-      hx-get="/analysis?month={{ current_month }}"
-      hx-target="#analysis-view"
-      hx-swap="outerHTML"
-      hx-push-url="true"
+  <div class="mb-1 flex items-center justify-between gap-3">
+    <label
+      class="block text-xs font-medium text-base-content/70"
+      for="{% if is_year_mode %}year-select{% else %}month-input{% endif %}"
     >
-      月次
-    </a>
-    <a
-      href="/analysis?mode=year&amp;year={{ current_year }}"
-      class="border-b-2 px-1 pb-2 text-sm font-medium {% if is_year_mode %}border-primary text-base-content{% else %}border-transparent text-base-content/50 hover:text-base-content{% endif %}"
-      data-analysis-mode-tab="year"
-      {% if is_year_mode %}aria-current="page"{% endif %}
-      hx-get="/analysis?mode=year&amp;year={{ current_year }}"
-      hx-target="#analysis-view"
-      hx-swap="outerHTML"
-      hx-push-url="true"
-    >
-      年度
-    </a>
-  </nav>
+      {% if is_year_mode %}対象年度{% else %}対象月{% endif %}
+    </label>
 
-  <div class="mt-4 flex flex-wrap items-end gap-4">
-    {% if is_year_mode %}
-    <div>
-      <label class="mb-1 block text-xs font-medium text-base-content/70" for="year-select">対象年度</label>
-      <select
-        id="year-select"
-        name="year"
-        class="select select-bordered select-sm w-36 max-w-full"
-        hx-get="/analysis?mode=year"
-        hx-trigger="change"
+    <nav class="inline-flex items-center gap-1 text-xs" aria-label="集計単位">
+      <a
+        href="/analysis?month={{ current_month }}"
+        class="rounded px-2 py-1 font-medium {% if not is_year_mode %}bg-base-300 text-base-content{% else %}text-base-content/50 hover:bg-base-200 hover:text-base-content{% endif %}"
+        data-analysis-mode-tab="month"
+        {% if not is_year_mode %}aria-current="page"{% endif %}
+        hx-get="/analysis?month={{ current_month }}"
         hx-target="#analysis-view"
         hx-swap="outerHTML"
         hx-push-url="true"
-      >
-        {% for year_option in year_options %}
-        <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
-          {{ year_option }}年度
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-    {% else %}
-    <div>
-      <label class="mb-1 block text-xs font-medium text-base-content/70" for="month-input">対象月</label>
-      <input
-        type="month"
-        id="month-input"
-        name="month"
-        class="input input-bordered input-sm w-full max-w-full sm:w-48"
-        value="{{ current_month or '' }}"
-        hx-get="/analysis"
-        hx-trigger="change"
+      >月次</a>
+      <a
+        href="/analysis?mode=year&amp;year={{ current_year }}"
+        class="rounded px-2 py-1 font-medium {% if is_year_mode %}bg-base-300 text-base-content{% else %}text-base-content/50 hover:bg-base-200 hover:text-base-content{% endif %}"
+        data-analysis-mode-tab="year"
+        {% if is_year_mode %}aria-current="page"{% endif %}
+        hx-get="/analysis?mode=year&amp;year={{ current_year }}"
         hx-target="#analysis-view"
         hx-swap="outerHTML"
         hx-push-url="true"
-      />
-    </div>
-    {% endif %}
+      >年度</a>
+    </nav>
   </div>
+
+  {% if is_year_mode %}
+  <select
+    id="year-select"
+    name="year"
+    class="select select-bordered select-sm w-full"
+    hx-get="/analysis?mode=year"
+    hx-trigger="change"
+    hx-target="#analysis-view"
+    hx-swap="outerHTML"
+    hx-push-url="true"
+  >
+    {% for year_option in year_options %}
+    <option value="{{ year_option }}" {% if year_option == current_year %}selected{% endif %}>
+      {{ year_option }}年度
+    </option>
+    {% endfor %}
+  </select>
+  {% else %}
+  <input
+    type="month"
+    id="month-input"
+    name="month"
+    class="input input-bordered input-sm w-full"
+    value="{{ current_month or '' }}"
+    hx-get="/analysis"
+    hx-trigger="change"
+    hx-target="#analysis-view"
+    hx-swap="outerHTML"
+    hx-push-url="true"
+  />
+  {% endif %}
 </div>
