@@ -86,6 +86,55 @@ async def test_empty_chart_data_preserves_period_empty_message(
     assert 'data-testid="analysis-group-charts"' not in response.text
 
 
+async def test_more_than_ten_work_types_are_split_into_chart_panels(
+    async_client: AsyncClient,
+    db_with_data: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _add_analysis_attendance(db_with_data)
+    points = [
+        {"key": "2031-05-01", "label": "1", "count": 0},
+        {"key": "2031-05-02", "label": "2", "count": 0},
+    ]
+    series = [
+        {
+            "location_id": index,
+            "name": f"Work Type {index}",
+            "tone_index": index % 10,
+            "points": points,
+        }
+        for index in range(1, 12)
+    ]
+
+    monkeypatch.setattr(
+        analysis_coverage_service,
+        "get_analysis_coverage_view_model",
+        lambda **_kwargs: {
+            "coverage_locations": [],
+            "coverage_buckets": [
+                ("2031-05-01", "1"),
+                ("2031-05-02", "2"),
+            ],
+            "group_coverage_charts": [
+                {
+                    "label": "Design",
+                    "max_count": 1,
+                    "series": series,
+                }
+            ],
+            "user_type_coverage_charts": [],
+        },
+    )
+
+    response = await async_client.get("/analysis?month=2031-05")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.text.count('data-testid="analysis-group-chart-panel"') == 2
+    assert response.text.count('data-testid="analysis-group-chart-scroller"') == 2
+    assert "Work Type 1" in response.text
+    assert "Work Type 11" in response.text
+
+
 async def test_htmx_analysis_returns_fragment(
     async_client: AsyncClient,
     db_with_data: Session,
