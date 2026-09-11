@@ -94,10 +94,12 @@ def test_analysis_target_selectors_update_one_chart_without_changing_url(
 
     group_select = page.locator("#analysis-group-select")
     user_type_select = page.locator("#analysis-user-type-select")
+    expect(page.get_by_text("グループ", exact=True)).to_be_visible()
+    expect(page.get_by_text("社員種別", exact=True)).to_be_visible()
     expect(group_select).to_be_visible()
     expect(user_type_select).to_be_visible()
     expect(page.get_by_test_id("analysis-chart-target")).to_have_text(
-        "全組織 / 全社員種別"
+        "全グループ / 全社員種別"
     )
     expect(page.get_by_test_id("analysis-chart-scroller")).to_have_count(1)
     initial_url = page.url
@@ -127,13 +129,13 @@ def test_analysis_target_selectors_update_one_chart_without_changing_url(
     expect(page).to_have_url(initial_url)
 
 
-def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
+def test_analysis_attendance_type_filter_defaults_to_total_and_supports_bulk_actions(
     page: Page,
 ) -> None:
     page.goto(ANALYSIS_URL)
 
     expect(page.get_by_role("heading", name="表示条件")).to_be_visible()
-    expect(page.get_by_text("表示系列", exact=True).first).to_be_visible()
+    expect(page.get_by_text("勤怠種別", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="人数推移")).to_be_visible()
     expect(page.get_by_test_id("analysis-coverage-chart")).to_be_visible()
     accessible_data = page.get_by_test_id("analysis-chart-accessible-data")
@@ -184,6 +186,9 @@ def test_analysis_series_filter_defaults_to_total_and_supports_bulk_actions(
     expect(page.get_by_test_id("analysis-no-selection-hint")).to_be_visible(
         timeout=5000
     )
+    expect(page.get_by_test_id("analysis-no-selection-hint")).to_have_text(
+        "勤怠種別を選択してください。"
+    )
     expect(page.get_by_test_id("analysis-coverage-chart")).to_have_count(0)
     expect(page).to_have_url(initial_url)
 
@@ -225,7 +230,7 @@ def test_analysis_primary_controls_and_chart_remain_reachable_on_narrow_viewport
     expect(page.locator("#month-input")).to_be_visible()
     expect(page.locator("#analysis-group-select")).to_be_visible()
     expect(page.locator("#analysis-user-type-select")).to_be_visible()
-    expect(page.get_by_text("表示系列", exact=True).first).to_be_visible()
+    expect(page.get_by_text("勤怠種別", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="人数推移")).to_be_visible()
 
     assert page.evaluate(
