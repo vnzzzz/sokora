@@ -288,7 +288,9 @@ def get_analysis_page_view_model(
         analysis_data["period"].get("month") or today_value.strftime("%Y-%m")
     )
     current_year = int(analysis_data["period"].get("fiscal_year") or fiscal_default)
-    year_options = list(range(fiscal_default - 3, fiscal_default + 4))
+    year_options = sorted(
+        set(range(fiscal_default - 3, fiscal_default + 4)) | {current_year}
+    )
     location_categories = _build_location_categories(locations)
     group_sections = _build_group_sections(
         db,

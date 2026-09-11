@@ -173,6 +173,27 @@ def test_fiscal_year_view_model_uses_april_to_march_period(
     assert period["end"] == date(2032, 3, 31)
 
 
+def test_fiscal_year_outside_default_window_is_still_selectable(
+    db_with_data: Session,
+) -> None:
+    """既定windowは``today``中心の直近7年度だが、明示指定された年度は
+    windowの外でも``year_options``へ含めsync selectへ反映する。windowの外へ
+    落ちた年度を除外すると、select boxが実際に表示中の年度と食い違う。
+    """
+    _add_reference_data(db_with_data)
+
+    view_model = analysis_read_service.get_analysis_page_view_model(
+        db_with_data,
+        mode="year",
+        year=2031,
+        today=date(2020, 5, 15),
+    )
+
+    assert view_model["current_year"] == 2031
+    assert 2031 in view_model["year_options"]
+    assert view_model["year_options"] == sorted(view_model["year_options"])
+
+
 def test_location_selection_filters_user_totals_and_date_groups(
     db_with_data: Session,
 ) -> None:
