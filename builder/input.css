@@ -131,6 +131,26 @@ body {
   --location-tone-7: 5 150 105;
   --location-tone-8: 234 88 12;
   --location-tone-9: 79 70 229;
+  --location-tone-10: 190 24 93;
+  --location-tone-11: 14 116 144;
+  --location-tone-12: 77 124 15;
+  --location-tone-13: 147 51 234;
+  --location-tone-14: 217 119 6;
+  --location-tone-15: 3 105 161;
+  --location-tone-16: 185 28 28;
+  --location-tone-17: 15 118 110;
+  --location-tone-18: 101 98 7;
+  --location-tone-19: 126 34 206;
+  --location-tone-20: 157 23 77;
+  --location-tone-21: 29 78 216;
+  --location-tone-22: 21 128 61;
+  --location-tone-23: 180 83 9;
+  --location-tone-24: 109 40 217;
+  --location-tone-25: 67 56 202;
+  --location-tone-26: 159 18 57;
+  --location-tone-27: 17 94 89;
+  --location-tone-28: 113 63 18;
+  --location-tone-29: 88 28 135;
   --location-tone-unresolved: 100 116 139;
 
   --calendar-sunday: 220 38 38;
@@ -150,6 +170,26 @@ body {
   --location-tone-7: 52 211 153;
   --location-tone-8: 251 146 60;
   --location-tone-9: 129 140 248;
+  --location-tone-10: 251 113 133;
+  --location-tone-11: 103 232 249;
+  --location-tone-12: 190 242 100;
+  --location-tone-13: 216 180 254;
+  --location-tone-14: 252 211 77;
+  --location-tone-15: 125 211 252;
+  --location-tone-16: 252 165 165;
+  --location-tone-17: 94 234 212;
+  --location-tone-18: 254 240 138;
+  --location-tone-19: 233 213 255;
+  --location-tone-20: 253 164 175;
+  --location-tone-21: 147 197 253;
+  --location-tone-22: 134 239 172;
+  --location-tone-23: 253 186 116;
+  --location-tone-24: 196 181 253;
+  --location-tone-25: 165 180 252;
+  --location-tone-26: 244 63 94;
+  --location-tone-27: 45 212 191;
+  --location-tone-28: 245 158 11;
+  --location-tone-29: 192 132 252;
   --location-tone-unresolved: 148 163 184;
 
   --calendar-sunday: 248 113 113;
@@ -203,13 +243,89 @@ body {
   --location-tone-rgb: var(--location-tone-9);
 }
 
-.location-tone-text {
-  color: rgb(var(--location-tone-rgb));
+[data-location-tone="10"] {
+  --location-tone-rgb: var(--location-tone-10);
 }
 
+[data-location-tone="11"] {
+  --location-tone-rgb: var(--location-tone-11);
+}
+
+[data-location-tone="12"] {
+  --location-tone-rgb: var(--location-tone-12);
+}
+
+[data-location-tone="13"] {
+  --location-tone-rgb: var(--location-tone-13);
+}
+
+[data-location-tone="14"] {
+  --location-tone-rgb: var(--location-tone-14);
+}
+
+[data-location-tone="15"] {
+  --location-tone-rgb: var(--location-tone-15);
+}
+
+[data-location-tone="16"] {
+  --location-tone-rgb: var(--location-tone-16);
+}
+
+[data-location-tone="17"] {
+  --location-tone-rgb: var(--location-tone-17);
+}
+
+[data-location-tone="18"] {
+  --location-tone-rgb: var(--location-tone-18);
+}
+
+[data-location-tone="19"] {
+  --location-tone-rgb: var(--location-tone-19);
+}
+
+[data-location-tone="20"] {
+  --location-tone-rgb: var(--location-tone-20);
+}
+
+[data-location-tone="21"] {
+  --location-tone-rgb: var(--location-tone-21);
+}
+
+[data-location-tone="22"] {
+  --location-tone-rgb: var(--location-tone-22);
+}
+
+[data-location-tone="23"] {
+  --location-tone-rgb: var(--location-tone-23);
+}
+
+[data-location-tone="24"] {
+  --location-tone-rgb: var(--location-tone-24);
+}
+
+[data-location-tone="25"] {
+  --location-tone-rgb: var(--location-tone-25);
+}
+
+[data-location-tone="26"] {
+  --location-tone-rgb: var(--location-tone-26);
+}
+
+[data-location-tone="27"] {
+  --location-tone-rgb: var(--location-tone-27);
+}
+
+[data-location-tone="28"] {
+  --location-tone-rgb: var(--location-tone-28);
+}
+
+[data-location-tone="29"] {
+  --location-tone-rgb: var(--location-tone-29);
+}
+
+.location-tone-text,
 .location-tone-chip {
   color: rgb(var(--location-tone-rgb));
-  background-color: rgb(var(--location-tone-rgb) / 0.15);
 }
 
 /* Calendar state follows the active Sokora theme, not OS dark-mode state. */
