@@ -39,7 +39,12 @@ function setAllAnalysisSeries(button, checked) {
   form.querySelectorAll('[data-analysis-series-checkbox]').forEach((checkbox) => {
     if (checkbox instanceof HTMLInputElement) checkbox.checked = checked
   })
-  form.dispatchEvent(new Event('change', { bubbles: true }))
+
+  if (window.htmx) {
+    window.htmx.trigger(form, 'analysis:filters-changed')
+  } else {
+    form.dispatchEvent(new Event('analysis:filters-changed', { bubbles: true }))
+  }
 }
 
 function markSelectedAnalysisDay(day) {
@@ -53,6 +58,32 @@ function markSelectedAnalysisDay(day) {
     trigger.classList.toggle('font-semibold', isSelected)
     trigger.classList.toggle('text-base-content/45', !isSelected)
   })
+}
+
+function analysisDayDetailUrl(day) {
+  const params = new URLSearchParams()
+  const form = document.querySelector('#analysis-location-filter')
+
+  if (form instanceof HTMLFormElement) {
+    const groupSelect = form.querySelector('#analysis-group-select')
+    const userTypeSelect = form.querySelector('#analysis-user-type-select')
+
+    if (groupSelect instanceof HTMLSelectElement && groupSelect.value) {
+      params.set('group_name', groupSelect.value)
+    }
+    if (userTypeSelect instanceof HTMLSelectElement && userTypeSelect.value) {
+      params.set('user_type_name', userTypeSelect.value)
+    }
+
+    form.querySelectorAll('input[name="selected_locations"]:checked').forEach((checkbox) => {
+      if (checkbox instanceof HTMLInputElement) {
+        params.append('selected_locations', checkbox.value)
+      }
+    })
+  }
+
+  const query = params.toString()
+  return `/analysis/day/${encodeURIComponent(day)}${query ? `?${query}` : ''}`
 }
 
 let analysisDayDetailRequestId = 0
@@ -73,7 +104,7 @@ async function loadAnalysisDayDetail(trigger) {
   target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   try {
-    const response = await fetch(`/calendar/day/${encodeURIComponent(day)}`, {
+    const response = await fetch(analysisDayDetailUrl(day), {
       credentials: 'same-origin',
       headers: { 'HX-Request': 'true' },
     })

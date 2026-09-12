@@ -87,19 +87,27 @@ def test_analysis_month_and_fiscal_year_are_separate_views(page: Page) -> None:
     )
 
 
-def test_analysis_primary_filters_share_one_row_on_desktop(page: Page) -> None:
+def test_analysis_filters_use_two_columns_on_desktop(page: Page) -> None:
     page.set_viewport_size({"width": 1280, "height": 900})
     page.goto(ANALYSIS_URL)
 
-    controls = [
-        page.locator("#month-input"),
-        page.locator("#analysis-group-select"),
-        page.locator("#analysis-user-type-select"),
-    ]
-    boxes = [control.bounding_box() for control in controls]
-    assert all(box is not None for box in boxes)
-    top_values = [box["y"] for box in boxes if box is not None]
-    assert max(top_values) - min(top_values) < 4
+    primary_filters = page.get_by_test_id("analysis-primary-filters")
+    attendance_types = page.get_by_test_id("analysis-attendance-types")
+    expect(primary_filters).to_be_visible()
+    expect(attendance_types).to_be_visible()
+
+    primary_box = primary_filters.bounding_box()
+    attendance_box = attendance_types.bounding_box()
+    assert primary_box is not None
+    assert attendance_box is not None
+    assert abs(primary_box["y"] - attendance_box["y"]) < 4
+    assert attendance_box["x"] > primary_box["x"]
+
+    month_box = page.locator("#month-input").bounding_box()
+    group_box = page.locator("#analysis-group-select").bounding_box()
+    user_type_box = page.locator("#analysis-user-type-select").bounding_box()
+    assert month_box is not None and group_box is not None and user_type_box is not None
+    assert month_box["y"] < group_box["y"] < user_type_box["y"]
 
 
 def test_analysis_target_selectors_update_one_chart_without_changing_url(
@@ -150,15 +158,12 @@ def test_analysis_attendance_type_filter_defaults_to_total_and_supports_bulk_act
     page.goto(ANALYSIS_URL)
 
     expect(page.get_by_role("heading", name="表示条件")).to_be_visible()
+    expect(page.get_by_test_id("analysis-attendance-types")).to_be_visible()
     expect(page.get_by_text("勤怠種別", exact=True).first).to_be_visible()
     expect(page.get_by_role("heading", name="人数推移")).to_be_visible()
     expect(page.get_by_test_id("analysis-coverage-chart")).to_be_visible()
     accessible_data = page.get_by_test_id("analysis-chart-accessible-data")
     expect(accessible_data).to_contain_text("全合計")
-
-    filter_details = page.locator("#analysis-location-filter details")
-    expect(filter_details).not_to_have_attribute("open", "")
-    filter_details.locator("summary").click()
 
     total_checkbox = page.locator("#analysis-total-series")
     expect(total_checkbox).to_be_checked()
@@ -191,13 +196,7 @@ def test_analysis_attendance_type_filter_defaults_to_total_and_supports_bulk_act
     for index in range(location_count):
         expect(checkboxes.nth(index)).to_be_checked(timeout=5000)
     expect(page.get_by_test_id("analysis-coverage-chart")).to_be_visible()
-    # coverage_charts.htmlはseriesを10件単位でpanel分割するため(全location + 全合計)、
-    # scroller数はseed件数に比例する。実際のlocation数から期待値を導出し、
-    # seedのlocation数が変わってもこのassertionが追随できるようにする。
-    expected_panel_count = (location_count + 10) // 10
-    expect(page.get_by_test_id("analysis-chart-scroller")).to_have_count(
-        expected_panel_count
-    )
+    expect(page.get_by_test_id("analysis-chart-scroller")).to_have_count(1)
     expect(page).to_have_url(initial_url)
 
     page.get_by_role("button", name="全解除", exact=True).click()
@@ -271,7 +270,7 @@ def test_analysis_day_detail_ignores_stale_response_from_earlier_click(
           const originalFetch = window.fetch
           window.fetch = (input, init) => {
             const result = originalFetch(input, init)
-            if (String(input).includes(`/calendar/day/${delayedDay}`)) {
+            if (String(input).includes(`/analysis/day/${delayedDay}`)) {
               return new Promise((resolve, reject) => {
                 setTimeout(() => {
                   result.then(resolve, reject).finally(() => {
@@ -308,7 +307,10 @@ def test_analysis_primary_controls_and_chart_remain_reachable_on_narrow_viewport
     expect(page.locator("#month-input")).to_be_visible()
     expect(page.locator("#analysis-group-select")).to_be_visible()
     expect(page.locator("#analysis-user-type-select")).to_be_visible()
+    expect(page.get_by_test_id("analysis-attendance-types")).to_be_visible()
     expect(page.get_by_text("勤怠種別", exact=True).first).to_be_visible()
+    expect(page.locator("#analysis-total-series")).to_be_checked()
+    expect(page.locator(".location-checkbox").first).to_be_visible()
     expect(page.get_by_role("heading", name="人数推移")).to_be_visible()
 
     assert page.evaluate(
@@ -319,8 +321,3 @@ def test_analysis_primary_controls_and_chart_remain_reachable_on_narrow_viewport
     expect(scroller).to_be_visible()
     assert scroller.evaluate("element => element.scrollWidth > element.clientWidth")
     expect(page.get_by_test_id("analysis-day-trigger").first).to_be_visible()
-
-    filter_details = page.locator("#analysis-location-filter details")
-    filter_details.locator("summary").click()
-    expect(page.locator("#analysis-total-series")).to_be_checked()
-    expect(page.locator(".location-checkbox").first).to_be_visible()

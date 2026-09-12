@@ -18,6 +18,7 @@ browser UIはJinja2によるSSRを基本に、HTMXでpartial update、Alpine.js�
 | `/holidays` | custom holiday master |
 | `/csv` | CSV download UI |
 | `/analysis` | monthly / fiscal-year attendance coverage charts |
+| `/analysis/day/{day}` | analysis filter適用済みの日別detail fragment |
 | `/auth/*` | login / logout / OIDC protocol flow |
 | `/admin/auth` | OIDC / authentication settings |
 | `/admin/database` | SQLite backup / restore |
@@ -46,20 +47,21 @@ refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等か
 | --- | --- |
 | Jinja2 | full page / partial / reusable componentのrender |
 | HTMX | server request、partial replacement、custom event |
-| Alpine.js | theme等の局所UI state |
+| Alpine.js | 小さなcomponent-local state。shared shell stateやDB stateは持たない |
+| `theme.js` | light/dark切替と`localStorage`永続化。presentation stateは`html/body[data-theme]`へ反映 |
 | `sidebar.js` | sidebar open/closed toggleと`localStorage`永続化。stateは`html[data-sidebar-open]`、presentationはCSSが所有 |
 | `ui-events.js` | modal / message / page refresh等の共通event |
 | `attendance-interactions.js` | attendance/register画面固有interaction。対象pageだけでload |
 | `calendar.js` | top calendarの日付選択 / detail取得。topだけでload |
-| `analysis.js` | analysis画面のHTMX failure fallback、勤怠種別の一括選択/解除、月次chartの日付から既存day detailを開くinteraction。期間・filter更新はHTMX + server render |
+| `analysis.js` | analysis画面のHTMX failure fallback、勤怠種別の一括選択/解除、月次chartの日付からfilter適用済みday detailを開くinteraction。期間・filter更新はHTMX + server render |
 
-sidebarの保存stateはCSS読込前にhead内の最小scriptで`html[data-sidebar-open]`へ反映し、初回paintから正しいshell geometryを使います。sidebar幅・main offset・label表示・navigation alignmentはCSSが所有し、Alpineのclass toggleには依存しません。
+sidebarとthemeの保存stateはCSS読込前にhead内の最小scriptで`html`へ反映し、初回paintから正しいshell geometry/themeを使います。sidebar幅・main offset・label表示・navigation alignmentはCSSが所有し、Alpineのclass toggleには依存しません。theme切替操作もAlpine expressionへ依存せず、`theme.js`が`data-theme`と保存stateを同期します。
 
 DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持ちません。
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
-analysis画面は **表示条件 → 人数推移chart → 月次の日別detail** の順で配置します。表示条件は、対象月/対象年度・グループ・社員種別を同じ行に並べ、その下に折りたたみ可能な勤怠種別controlを置きます。説明文を重ねず、label・selection state・chart自体で意味が伝わる構成にします。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。
+analysis画面は **表示条件 → 人数推移chart → 月次の日別detail** の順で配置します。表示条件はdesktopで2 columnとし、左に対象月/対象年度・グループ・社員種別、右に勤怠種別controlを常時表示します。狭いviewportでは1 columnへ落とします。説明文を重ねず、label・selection state・chart自体で意味が伝わる構成にします。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。
 
 グループと社員種別は独立filterです。初期状態は **全グループ / 全社員種別** で、`グループA / 正社員` や `全グループ / 契約社員` のように交差条件で1つのchartを絞り込みます。複数のグループ別・社員種別別chartを縦に並べません。
 
@@ -69,7 +71,7 @@ analysis画面は **表示条件 → 人数推移chart → 月次の日別detail
 
 chartはlineだけで描画し、各bucketのpoint markerは表示しません。個別勤怠種別はstable 30-tone paletteと線種を併用し、全合計は太いsolid lineとして強く表示します。選択したseries数にかかわらず同じ対象filterのseriesは単一SVG / 単一panelへ重ねます。paletteや線種を超える場合の循環による色・線種の重複は許容し、filter contextを複数chartへ分断しません。SVGとは別に同じbucket / series / 人数を読み取れるvisually-hidden text summaryを併設します。
 
-月次・年度とも日付/月ラベルはSVG内のx軸へ描画し、line bucketと同じx座標を共有します。月次の日付ラベルはinteractive controlでもあり、選択すると既存 `/calendar/day/{day}` の日別detailを同じanalysis pageのchart直下へHTMXで読み込みます。detailにはグループ・社員種別・社員名・勤怠種別を表示し、読み込み後はdetailが見える位置へscrollします。新しいdetail query/modelをanalysisへ重複実装しません。年度viewは月bucketのため日別detail controlを表示しません。
+月次・年度とも日付/月ラベルはSVG内のx軸へ描画し、line bucketと同じx座標を共有します。月次の日付ラベルはinteractive controlでもあり、選択すると `/analysis/day/{day}` から日別detailを同じanalysis pageのchart直下へ読み込みます。このendpointは既存calendar day-detail read model/templateを再利用しつつ、現在選択中のグループ・社員種別・個別勤怠種別を適用した行だけを返します。個別勤怠種別が未選択で全合計だけを表示している場合は、その日の全勤怠をdetail対象とします。年度viewは月bucketのため日別detail controlを表示しません。
 
 延べ登録日数、登録あり社員数等のKPI、coverage matrix、全体延べ登録日数trend、社員別集計tableはanalysisのprimary surfaceには置きません。chartはJinjaでserver-rendered SVGとしてrenderし、client-side chart stateや追加chart libraryは導入しません。
 

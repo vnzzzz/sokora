@@ -1,17 +1,11 @@
 <!-- テーマ切り替えコンポーネント -->
-<div class="theme-controller" x-data>
+<div class="theme-controller">
   <label class="swap swap-rotate btn btn-circle btn-sm shadow-md hover:shadow-lg transition-all">
     <input
       type="checkbox"
       id="theme-toggle"
       name="theme-toggle"
-      :checked="localStorage.getItem('theme') === 'dark'"
-      @change="
-        const theme = $event.target.checked ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', theme);
-        document.body.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme)
-      "
+      aria-label="ライトモードとダークモードを切り替える"
     />
     <svg class="swap-on fill-current w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
       <path
@@ -25,4 +19,3 @@
     </svg>
   </label>
 </div>
-
