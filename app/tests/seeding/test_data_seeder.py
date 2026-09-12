@@ -85,12 +85,9 @@ def test_persona_seed_exercises_hybrid_categories_and_holiday_work(
     assert category_counts[OTHER_CATEGORY] > 0
 
     location_name_counts = Counter(
-        str(location_by_id[int(attendance.location_id)].name)
-        for attendance in created
+        str(location_by_id[int(attendance.location_id)].name) for attendance in created
     )
-    office_count = sum(
-        location_name_counts[name] for name in _OFFICE_LOCATION_NAMES
-    )
+    office_count = sum(location_name_counts[name] for name in _OFFICE_LOCATION_NAMES)
     remote_count = location_name_counts["テレワーク"]
     hybrid_total = office_count + remote_count
     assert hybrid_total > 0
