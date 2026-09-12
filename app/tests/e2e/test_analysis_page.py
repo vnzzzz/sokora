@@ -191,7 +191,13 @@ def test_analysis_attendance_type_filter_defaults_to_total_and_supports_bulk_act
     for index in range(location_count):
         expect(checkboxes.nth(index)).to_be_checked(timeout=5000)
     expect(page.get_by_test_id("analysis-coverage-chart")).to_be_visible()
-    expect(page.get_by_test_id("analysis-chart-scroller")).to_have_count(1)
+    # coverage_charts.htmlはseriesを10件単位でpanel分割するため(全location + 全合計)、
+    # scroller数はseed件数に比例する。実際のlocation数から期待値を導出し、
+    # seedのlocation数が変わってもこのassertionが追随できるようにする。
+    expected_panel_count = (location_count + 10) // 10
+    expect(page.get_by_test_id("analysis-chart-scroller")).to_have_count(
+        expected_panel_count
+    )
     expect(page).to_have_url(initial_url)
 
     page.get_by_role("button", name="全解除", exact=True).click()

@@ -33,6 +33,9 @@ with SessionLocal() as db:
         "groups": db.scalar(select(func.count()).select_from(models.Group)),
         "user_types": db.scalar(select(func.count()).select_from(models.UserType)),
         "locations": db.scalar(select(func.count()).select_from(models.Location)),
+        "custom_holidays": db.scalar(
+            select(func.count()).select_from(models.CustomHoliday)
+        ),
         "users": db.scalar(select(func.count()).select_from(models.User)),
         "attendances": db.scalar(select(func.count()).select_from(models.Attendance)),
     }
@@ -78,9 +81,10 @@ print(
 
     assert observed["created_db_files"]
     assert observed["schema_revision"]
-    assert first_counts["groups"] == 3
-    assert first_counts["user_types"] == 3
-    assert first_counts["locations"] == 4
-    assert first_counts["users"] == 5
+    assert first_counts["groups"] == 5
+    assert first_counts["user_types"] == 5
+    assert first_counts["locations"] == 19
+    assert first_counts["custom_holidays"] == 4
+    assert first_counts["users"] == 50
     assert first_counts["attendances"] > 0
     assert observed["second_attendance_count"] == first_counts["attendances"]
