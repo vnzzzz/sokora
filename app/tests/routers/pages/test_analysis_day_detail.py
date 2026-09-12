@@ -17,8 +17,12 @@ def _add_filtered_day_fixture(db: Session) -> dict[str, object]:
     group_b = models.Group(name="Analysis Detail Group B", order=20)
     type_a = models.UserType(name="Analysis Detail Type A", order=10)
     type_b = models.UserType(name="Analysis Detail Type B", order=20)
-    location_a = models.Location(name="Analysis Detail Office A", category="勤務", order=10)
-    location_b = models.Location(name="Analysis Detail Office B", category="勤務", order=20)
+    location_a = models.Location(
+        name="Analysis Detail Office A", category="勤務", order=10
+    )
+    location_b = models.Location(
+        name="Analysis Detail Office B", category="勤務", order=20
+    )
     db.add_all([group_a, group_b, type_a, type_b, location_a, location_b])
     db.flush()
 
