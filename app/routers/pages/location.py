@@ -34,6 +34,7 @@ def get_location_manage_page(request: Request, db: Session = Depends(get_db)) ->
             "locations": view.locations,
             "category_names": view.category_names,
             "grouped_locations": view.grouped_locations,
+            "location_tones": view.location_tones,
         },
     )
 
