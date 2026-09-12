@@ -121,21 +121,21 @@ body {
  */
 :root,
 [data-theme="light"] {
-  --location-tone-0: 22 163 74;
+  --location-tone-0: 18 131 60;
   --location-tone-1: 37 99 235;
-  --location-tone-2: 202 138 4;
+  --location-tone-2: 153 104 3;
   --location-tone-3: 220 38 38;
-  --location-tone-4: 8 145 178;
+  --location-tone-4: 7 124 153;
   --location-tone-5: 124 58 237;
   --location-tone-6: 219 39 119;
-  --location-tone-7: 5 150 105;
-  --location-tone-8: 234 88 12;
+  --location-tone-7: 4 130 91;
+  --location-tone-8: 197 74 10;
   --location-tone-9: 79 70 229;
   --location-tone-10: 190 24 93;
   --location-tone-11: 14 116 144;
   --location-tone-12: 77 124 15;
   --location-tone-13: 147 51 234;
-  --location-tone-14: 217 119 6;
+  --location-tone-14: 172 94 5;
   --location-tone-15: 3 105 161;
   --location-tone-16: 185 28 28;
   --location-tone-17: 15 118 110;
