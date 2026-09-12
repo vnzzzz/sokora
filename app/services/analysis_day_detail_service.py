@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from app.crud.location import location as location_crud
 from app.services import calendar_read_service
 
 
@@ -20,14 +19,9 @@ def get_filtered_day_detail_view_model(
     """汎用calendar detailを再利用し、analysis filterと一致する行だけを返す。"""
     view_model = calendar_read_service.get_day_detail_view_model(db, day=day)
 
-    selected_location_names: Optional[set[str]] = None
+    selected_ids: Optional[set[int]] = None
     if selected_location_ids is not None:
         selected_ids = {int(location_id) for location_id in selected_location_ids}
-        selected_location_names = {
-            str(location.name)
-            for location in location_crud.list_all(db)
-            if location.id is not None and int(location.id) in selected_ids
-        }
 
     normalized_group_name = (group_name or "").strip() or None
     normalized_user_type_name = (user_type_name or "").strip() or None
@@ -50,11 +44,11 @@ def get_filtered_day_detail_view_model(
                 continue
 
             users = list(group_data["user_types_data"].get(current_user_type, []))
-            if selected_location_names is not None:
+            if selected_ids is not None:
                 users = [
                     user
                     for user in users
-                    if str(user.get("location_name")) in selected_location_names
+                    if int(user["location_id"]) in selected_ids
                 ]
             if not users:
                 continue
