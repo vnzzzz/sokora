@@ -420,9 +420,7 @@ def seed_attendance(
         location for location in locations if location.category == LEAVE_CATEGORY
     ]
     leave_locations = [
-        location
-        for location in all_leave_locations
-        if location.name != "夜勤明け休暇"
+        location for location in all_leave_locations if location.name != "夜勤明け休暇"
     ]
     other_locations = [
         location for location in locations if location.category == OTHER_CATEGORY
