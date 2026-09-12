@@ -68,6 +68,7 @@ DEFAULT_LOCATIONS = [
     {"name": "有給休暇", "category": LEAVE_CATEGORY, "order": 1},
     {"name": "午前休", "category": LEAVE_CATEGORY, "order": 2},
     {"name": "午後休", "category": LEAVE_CATEGORY, "order": 3},
+    {"name": "夜勤明け休暇", "category": LEAVE_CATEGORY, "order": 4},
     {"name": "研修", "category": OTHER_CATEGORY, "order": 1},
     {"name": "健康診断", "category": OTHER_CATEGORY, "order": 2},
     {"name": "社内イベント", "category": OTHER_CATEGORY, "order": 3},
@@ -399,7 +400,9 @@ def seed_attendance(
     )
 
     existing_records = {
-        (str(record.user_id), date.fromisoformat(str(record.date)))
+        (str(record.user_id), date.fromisoformat(str(record.date))): int(
+            record.location_id
+        )
         for record in db.scalars(select(Attendance)).all()
     }
 
@@ -412,8 +415,11 @@ def seed_attendance(
     }
 
     locations_by_name = {str(location.name): location for location in locations}
+    locations_by_id = {int(location.id): location for location in locations}
     leave_locations = [
-        location for location in locations if location.category == LEAVE_CATEGORY
+        location
+        for location in locations
+        if location.category == LEAVE_CATEGORY and location.name != "夜勤明け休暇"
     ]
     other_locations = [
         location for location in locations if location.category == OTHER_CATEGORY
@@ -429,9 +435,11 @@ def seed_attendance(
         ] or locations
 
     holiday_work_location = locations_by_name.get("休日出勤")
+    post_night_leave_location = locations_by_name.get("夜勤明け休暇")
     created_records: list[Attendance] = []
 
     for user_index, user in enumerate(users):
+        user_id = str(user.id)
         persona = ATTENDANCE_PERSONAS[user_index % len(ATTENDANCE_PERSONAS)]
         logger.info(
             "ユーザー %s (%s) の勤怠記録を生成中: persona=%s",
@@ -442,56 +450,72 @@ def seed_attendance(
 
         for day_offset in range((end_date - start_date).days + 1):
             day = start_date + timedelta(days=day_offset)
-            record_key = (str(user.id), day)
+            record_key = (user_id, day)
             if record_key in existing_records:
                 continue
 
-            rng = _rng_for_day(
-                random_seed=random_seed,
-                user_id=str(user.id),
-                day=day,
+            previous_location_id = existing_records.get(
+                (user_id, day - timedelta(days=1))
+            )
+            previous_location = (
+                locations_by_id.get(previous_location_id)
+                if previous_location_id is not None
+                else None
             )
 
-            if _is_holiday(day, custom_holiday_dates):
-                if rng.random() >= persona.holiday_work_rate:
-                    continue
-                chosen_location = holiday_work_location or _choose_work_location(
-                    rng,
-                    persona=persona,
-                    locations_by_name=locations_by_name,
-                    work_locations=work_locations,
-                )
+            if (
+                previous_location is not None
+                and previous_location.name == "夜勤"
+                and post_night_leave_location is not None
+            ):
+                chosen_location = post_night_leave_location
             else:
-                if rng.random() >= persona.weekday_attendance_rate:
-                    continue
+                rng = _rng_for_day(
+                    random_seed=random_seed,
+                    user_id=user_id,
+                    day=day,
+                )
 
-                event_roll = rng.random()
-                if leave_locations and event_roll < persona.leave_rate:
-                    chosen_location = rng.choice(leave_locations)
-                elif (
-                    other_locations
-                    and event_roll < persona.leave_rate + persona.other_rate
-                ):
-                    chosen_location = rng.choice(other_locations)
-                else:
-                    chosen_location = _choose_work_location(
+                if _is_holiday(day, custom_holiday_dates):
+                    if rng.random() >= persona.holiday_work_rate:
+                        continue
+                    chosen_location = holiday_work_location or _choose_work_location(
                         rng,
                         persona=persona,
                         locations_by_name=locations_by_name,
                         work_locations=work_locations,
                     )
+                else:
+                    if rng.random() >= persona.weekday_attendance_rate:
+                        continue
+
+                    event_roll = rng.random()
+                    if leave_locations and event_roll < persona.leave_rate:
+                        chosen_location = rng.choice(leave_locations)
+                    elif (
+                        other_locations
+                        and event_roll < persona.leave_rate + persona.other_rate
+                    ):
+                        chosen_location = rng.choice(other_locations)
+                    else:
+                        chosen_location = _choose_work_location(
+                            rng,
+                            persona=persona,
+                            locations_by_name=locations_by_name,
+                            work_locations=work_locations,
+                        )
 
             if chosen_location is None:
                 continue
 
             attendance = Attendance(
-                user_id=str(user.id),
+                user_id=user_id,
                 date=day,
                 location_id=int(chosen_location.id),
             )
             db.add(attendance)
             created_records.append(attendance)
-            existing_records.add(record_key)
+            existing_records[record_key] = int(chosen_location.id)
 
     db.commit()
     logger.info("%s 件の勤怠記録をシードしました。", len(created_records))
