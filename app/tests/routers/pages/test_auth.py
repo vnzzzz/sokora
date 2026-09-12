@@ -833,7 +833,7 @@ async def test_user_menu_is_overlay_and_does_not_shift_content(
     assert "justify-end" in classes
 
     main_classes = re.findall(r'class="([^"]+)"', page.text)
-    assert any("pt-14" in cls for cls in main_classes)
+    assert any("pt-12" in cls for cls in main_classes)
 
 
 @pytest.mark.asyncio
