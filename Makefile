@@ -92,7 +92,7 @@ format: sync
 	uv run ruff format app scripts
 
 format-check: sync
-	uv run ruff format --check --diff app scripts
+	uv run ruff format --check app scripts
 
 typecheck: sync
 	uv run mypy app
