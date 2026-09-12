@@ -79,6 +79,8 @@ make assets
 
 必要な個別checkは`make lint`、`make format-check`、`make typecheck`。PR前はrepository標準CIで成立する状態にします。
 
+Python source/testを変更したcommitまたはpushの前は、**必ず先に `make format` を実行し、その後 `make quality` を実行します**。`make quality` のformat stepはcheck-onlyで自動修正しないため、formatを省略したままCIへ送らないこと。
+
 ## GitHub workflow
 
 - baseは`main`
