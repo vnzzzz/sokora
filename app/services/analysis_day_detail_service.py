@@ -46,9 +46,7 @@ def get_filtered_day_detail_view_model(
             users = list(group_data["user_types_data"].get(current_user_type, []))
             if selected_ids is not None:
                 users = [
-                    user
-                    for user in users
-                    if int(user["location_id"]) in selected_ids
+                    user for user in users if int(user["location_id"]) in selected_ids
                 ]
             if not users:
                 continue
