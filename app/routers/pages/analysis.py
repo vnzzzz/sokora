@@ -13,7 +13,11 @@ from app.services import (
     analysis_day_detail_service,
     analysis_read_service,
 )
-from app.utils.calendar_utils import get_current_month_formatted, parse_date, parse_month
+from app.utils.calendar_utils import (
+    get_current_month_formatted,
+    parse_date,
+    parse_month,
+)
 
 router = APIRouter(prefix="/analysis", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
