@@ -28,7 +28,7 @@ def test_demo_seed_builds_expected_master_shape(db: Session) -> None:
     assert created == {
         "groups": 5,
         "user_types": 5,
-        "locations": 18,
+        "locations": 19,
         "custom_holidays": 4,
         "users": 50,
     }
@@ -47,7 +47,7 @@ def test_demo_seed_builds_expected_master_shape(db: Session) -> None:
     }
     assert Counter(str(location.category) for location in locations) == {
         WORK_CATEGORY: 10,
-        LEAVE_CATEGORY: 3,
+        LEAVE_CATEGORY: 4,
         OTHER_CATEGORY: 5,
     }
 
@@ -106,6 +106,35 @@ def test_persona_seed_exercises_hybrid_categories_and_holiday_work(
     assert any(
         attendance.date.weekday() >= 5 or attendance.date in custom_holiday_dates
         for attendance in holiday_work_records
+    )
+
+    attendance_by_user_date = {
+        (str(attendance.user_id), attendance.date): str(
+            location_by_id[int(attendance.location_id)].name
+        )
+        for attendance in created
+    }
+    night_shift_records = [
+        (str(attendance.user_id), attendance.date)
+        for attendance in created
+        if str(location_by_id[int(attendance.location_id)].name) == "夜勤"
+    ]
+    assert night_shift_records
+
+    end_date = _REFERENCE_DATE + timedelta(days=60)
+    paired_night_shifts = [
+        (user_id, night_date)
+        for user_id, night_date in night_shift_records
+        if night_date < end_date
+        and attendance_by_user_date.get((user_id, night_date + timedelta(days=1)))
+        == "夜勤明け休暇"
+    ]
+    assert paired_night_shifts
+    assert all(
+        attendance_by_user_date[(user_id, night_date + timedelta(days=1))]
+        == "夜勤明け休暇"
+        for user_id, night_date in night_shift_records
+        if night_date < end_date
     )
 
 
