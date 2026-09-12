@@ -9,7 +9,11 @@
     <span id="location-category-{{ location.id }}">{{ location.category or '-' }}</span>
   </td>
   <td class="font-medium">
-    <span id="location-name-{{ location.id }}">{{ location.name }}</span>
+    <span
+      id="location-name-{{ location.id }}"
+      class="location-tone-text"
+      data-location-tone="{{ location_tones.get(location.id, -1) }}"
+    >{{ location.name }}</span>
   </td>
   <td class="text-right">
     <div class="flex justify-end gap-2">
