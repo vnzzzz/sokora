@@ -463,6 +463,7 @@ def seed_attendance(
                 if previous_location_id is not None
                 else None
             )
+            chosen_location: Location | None = None
 
             if (
                 previous_location is not None
