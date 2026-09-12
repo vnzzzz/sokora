@@ -97,9 +97,7 @@ def _build_default_users() -> list[dict[str, str]]:
         for member_index in range(10):
             user_number = group_index * 10 + member_index + 1
             surname = _SURNAMES[member_index]
-            given_name = _GIVEN_NAMES[
-                (member_index + group_index) % len(_GIVEN_NAMES)
-            ]
+            given_name = _GIVEN_NAMES[(member_index + group_index) % len(_GIVEN_NAMES)]
             user_type = DEFAULT_USER_TYPES[
                 (member_index + group_index) % len(DEFAULT_USER_TYPES)
             ]
@@ -282,12 +280,14 @@ def bootstrap_core_data(
                 str(user_type.name): user_type for user_type in user_types
             }
             for index, user in enumerate(DEFAULT_USERS):
-                group = group_by_name.get(user["group_name"]) or groups[
-                    (index // 10) % len(groups)
-                ]
-                user_type = user_type_by_name.get(user["user_type_name"]) or user_types[
-                    index % len(user_types)
-                ]
+                group = (
+                    group_by_name.get(user["group_name"])
+                    or groups[(index // 10) % len(groups)]
+                )
+                user_type = (
+                    user_type_by_name.get(user["user_type_name"])
+                    or user_types[index % len(user_types)]
+                )
                 db.add(
                     User(
                         id=user["id"],
@@ -354,7 +354,9 @@ def _choose_work_location(
         _OFFICE_LOCATION_WEIGHTS,
     )
     if remote_location is not None and office_location is not None:
-        return remote_location if rng.random() < persona.remote_share else office_location
+        return (
+            remote_location if rng.random() < persona.remote_share else office_location
+        )
     if remote_location is not None:
         return remote_location
     if office_location is not None:
@@ -366,9 +368,7 @@ def _choose_work_location(
 
 def _is_holiday(day: date, custom_holiday_dates: set[date]) -> bool:
     return (
-        day.weekday() >= 5
-        or day in custom_holiday_dates
-        or bool(get_holiday_name(day))
+        day.weekday() >= 5 or day in custom_holiday_dates or bool(get_holiday_name(day))
     )
 
 
@@ -416,10 +416,13 @@ def seed_attendance(
 
     locations_by_name = {str(location.name): location for location in locations}
     locations_by_id = {int(location.id): location for location in locations}
+    all_leave_locations = [
+        location for location in locations if location.category == LEAVE_CATEGORY
+    ]
     leave_locations = [
         location
-        for location in locations
-        if location.category == LEAVE_CATEGORY and location.name != "夜勤明け休暇"
+        for location in all_leave_locations
+        if location.name != "夜勤明け休暇"
     ]
     other_locations = [
         location for location in locations if location.category == OTHER_CATEGORY
@@ -431,7 +434,7 @@ def seed_attendance(
         work_locations = [
             location
             for location in locations
-            if location not in leave_locations and location not in other_locations
+            if location not in all_leave_locations and location not in other_locations
         ] or locations
 
     holiday_work_location = locations_by_name.get("休日出勤")
