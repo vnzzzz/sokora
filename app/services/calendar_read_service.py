@@ -255,7 +255,8 @@ def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
         user_type_order = (
             int(row.user_type_order) if row.user_type_order is not None else 9999
         )
-        location_tone = get_location_tone(int(row.location_id))
+        location_id = int(row.location_id)
+        location_tone = get_location_tone(location_id)
 
         group_data = organized_by_group.setdefault(
             group_name,
@@ -276,6 +277,7 @@ def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
                 "group_id": str(group_id),
                 "group_name": group_name,
                 "note": row.note,
+                "location_id": location_id,
                 "location_name": str(row.location_name),
                 "location_tone": location_tone,
             }

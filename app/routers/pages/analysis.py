@@ -2,14 +2,22 @@
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.services import analysis_coverage_service, analysis_read_service
-from app.utils.calendar_utils import get_current_month_formatted, parse_month
+from app.services import (
+    analysis_coverage_service,
+    analysis_day_detail_service,
+    analysis_read_service,
+)
+from app.utils.calendar_utils import (
+    get_current_month_formatted,
+    parse_date,
+    parse_month,
+)
 
 router = APIRouter(prefix="/analysis", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -94,4 +102,34 @@ def get_analysis_page(
     return templates.TemplateResponse(
         "pages/analysis.html",
         context,
+    )
+
+
+@router.get("/day/{day}", response_class=HTMLResponse)
+def get_analysis_day_detail(
+    request: Request,
+    day: str,
+    selected_locations: Optional[list[int]] = Query(default=None),
+    group_name: Optional[str] = None,
+    user_type_name: Optional[str] = None,
+    db: Session = Depends(get_db),
+) -> Any:
+    """現在のanalysis filterを反映した日別勤怠明細をrenderする。"""
+    target_date = parse_date(day)
+    if target_date is None:
+        return HTMLResponse(
+            content="無効な日付です。",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    view_model = analysis_day_detail_service.get_filtered_day_detail_view_model(
+        db,
+        day=target_date,
+        selected_location_ids=selected_locations,
+        group_name=group_name,
+        user_type_name=user_type_name,
+    )
+    return templates.TemplateResponse(
+        "components/top/day_detail.html",
+        {"request": request, **view_model},
     )

@@ -193,16 +193,12 @@ async def test_htmx_history_restore_returns_full_page(
     assert 'id="analysis-view"' in response.text
 
 
-async def test_more_than_ten_series_are_split_into_chart_panels(
+async def test_more_than_ten_series_share_one_chart_panel(
     async_client: AsyncClient,
     db_with_data: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """1chartに11個以上のseriesが乗ると、色toneと点線patternの両方が
-    location_id基準で10周期になり、11番目以降が1番目以降と完全に同一の
-    見た目になってしまう。panelを10 series単位で分割し、pattern/tone衝突が
-    同一panel内で起きないようにする。
-    """
+    """勤怠種別が10件を超えてもfilter contextを分断せず単一chartへ描画する。"""
     _add_analysis_attendance(db_with_data)
     points = [
         {"key": "2031-05-01", "label": "1", "count": 0},
@@ -212,7 +208,7 @@ async def test_more_than_ten_series_are_split_into_chart_panels(
         {
             "location_id": index,
             "name": f"Work Type {index}",
-            "tone_index": index % 10,
+            "tone_index": index % 30,
             "is_total": False,
             "points": points,
         }
@@ -244,12 +240,10 @@ async def test_more_than_ten_series_are_split_into_chart_panels(
     response = await async_client.get("/analysis?month=2031-05")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.text.count('data-testid="analysis-chart-panel"') == 2
-    assert response.text.count('data-testid="analysis-chart-scroller"') == 2
+    assert response.text.count('data-testid="analysis-chart-panel"') == 1
+    assert response.text.count('data-testid="analysis-chart-scroller"') == 1
     assert "Work Type 1" in response.text
     assert "Work Type 11" in response.text
-    # 2つ目以降のpanelは日付labelを表示するが、focusable dayコントロールは
-    # 最初のpanelだけに置き、keyboard/AT向けの重複操作を増やさない。
     assert response.text.count('data-testid="analysis-day-trigger"') == 2
 
 

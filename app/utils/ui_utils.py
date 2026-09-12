@@ -4,10 +4,10 @@ Tailwind / daisyUI class名はserver-sideで生成しない。動的な見た目
 templateへ渡し、actual stylingはbuilder/input.cssだけが所有する。
 """
 
-LOCATION_TONE_COUNT = 10
+LOCATION_TONE_COUNT = 30
 UNRESOLVED_LOCATION_TONE = -1
 
 
 def get_location_tone(location_id: int) -> int:
-    """Location IDをstableな10個のpalette slotへ変換する。"""
+    """Location IDをstableな30個のpalette slotへ変換する。"""
     return location_id % LOCATION_TONE_COUNT

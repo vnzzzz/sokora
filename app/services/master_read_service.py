@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, joinedload
 
 from app import crud, models
+from app.utils.ui_utils import get_location_tone
 
 
 @dataclass(frozen=True)
@@ -33,11 +34,13 @@ class LocationMasterPageViewModel:
 
     ``locations`` はCRUD queryのcategory/order/ID順を維持し、category名は最初に現れた順で
     ``category_names`` へ記録する。``grouped_locations`` 内のrow順も元query順を保つ。
+    ``location_tones`` は他画面と同じstable tone mappingをpersistent IDへ適用する。
     """
 
     locations: list[models.Location]
     category_names: list[str]
     grouped_locations: dict[str, list[models.Location]]
+    location_tones: dict[int, int]
 
 
 def get_user_master_page_view_model(db: Session) -> UserMasterPageViewModel:
@@ -102,11 +105,12 @@ def get_location_master_page_view_model(db: Session) -> LocationMasterPageViewMo
 
     category未設定は表示上だけ「未分類」へ正規化する。category/group内の順序は
     ``crud.location.list_all`` が決定したcategory → order → IDをそのまま維持し、この
-    serviceで別のsort ruleを重ねない。
+    serviceで別のsort ruleを重ねない。toneは他のattendance表示と同じID-based mappingを使う。
     """
     locations = crud.location.list_all(db)
     category_names: list[str] = []
     grouped_locations: dict[str, list[models.Location]] = {}
+    location_tones: dict[int, int] = {}
 
     for location in locations:
         category = str(location.category) if location.category else "未分類"
@@ -114,9 +118,13 @@ def get_location_master_page_view_model(db: Session) -> LocationMasterPageViewMo
             category_names.append(category)
             grouped_locations[category] = []
         grouped_locations[category].append(location)
+        if location.id is not None:
+            location_id = int(location.id)
+            location_tones[location_id] = get_location_tone(location_id)
 
     return LocationMasterPageViewModel(
         locations=locations,
         category_names=category_names,
         grouped_locations=grouped_locations,
+        location_tones=location_tones,
     )

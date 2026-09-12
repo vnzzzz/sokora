@@ -18,6 +18,7 @@ browser UIはJinja2によるSSRを基本に、HTMXでpartial update、Alpine.js�
 | `/holidays` | custom holiday master |
 | `/csv` | CSV download UI |
 | `/analysis` | monthly / fiscal-year attendance coverage charts |
+| `/analysis/day/{day}` | analysis filter適用済みの日別detail fragment |
 | `/auth/*` | login / logout / OIDC protocol flow |
 | `/admin/auth` | OIDC / authentication settings |
 | `/admin/database` | SQLite backup / restore |
@@ -46,20 +47,21 @@ refresh対象のmonth / weekは変更対象dateから導出し、`Referer`等か
 | --- | --- |
 | Jinja2 | full page / partial / reusable componentのrender |
 | HTMX | server request、partial replacement、custom event |
-| Alpine.js | theme等の局所UI state |
+| Alpine.js | 小さなcomponent-local state。shared shell stateやDB stateは持たない |
+| `theme.js` | light/dark切替と`localStorage`永続化。presentation stateは`html/body[data-theme]`へ反映 |
 | `sidebar.js` | sidebar open/closed toggleと`localStorage`永続化。stateは`html[data-sidebar-open]`、presentationはCSSが所有 |
 | `ui-events.js` | modal / message / page refresh等の共通event |
 | `attendance-interactions.js` | attendance/register画面固有interaction。対象pageだけでload |
 | `calendar.js` | top calendarの日付選択 / detail取得。topだけでload |
-| `analysis.js` | analysis画面のHTMX failure fallback、勤怠種別の一括選択/解除、月次chartの日付から既存day detailを開くinteraction。期間・filter更新はHTMX + server render |
+| `analysis.js` | analysis画面のHTMX failure fallback、勤怠種別の一括選択/解除、月次chartの日付からfilter適用済みday detailを開くinteraction。期間・filter更新はHTMX + server render |
 
-sidebarの保存stateはCSS読込前にhead内の最小scriptで`html[data-sidebar-open]`へ反映し、初回paintから正しいshell geometryを使います。sidebar幅・main offset・label表示・navigation alignmentはCSSが所有し、Alpineのclass toggleには依存しません。
+sidebarとthemeの保存stateはCSS読込前にhead内の最小scriptで`html`へ反映し、初回paintから正しいshell geometry/themeを使います。sidebar幅・main offset・label表示・navigation alignmentはCSSが所有し、Alpineのclass toggleには依存しません。theme切替操作もAlpine expressionへ依存せず、`theme.js`が`data-theme`と保存stateを同期します。
 
 DB由来stateやHTMX lifecycleをAlpine global storeで共有状態として持ちません。
 server-sideで決定できるnavigation active stateはJinjaでrenderし、page固有JSはglobal shellへ載せません。
 HTML標準機能で十分な操作（CSV GET download等）はclient JSを追加せず実装します。
 
-analysis画面は **表示条件 → 人数推移chart → 月次の日別detail** の順で配置します。表示条件は、対象月/対象年度・グループ・社員種別を同じ行に並べ、その下に折りたたみ可能な勤怠種別controlを置きます。説明文を重ねず、label・selection state・chart自体で意味が伝わる構成にします。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。
+analysis画面は **表示条件 → 人数推移chart → 月次の日別detail** の順で配置します。表示条件はdesktopで2 columnとし、左に対象月/対象年度・グループ・社員種別、右に勤怠種別controlを常時表示します。狭いviewportでは1 columnへ落とします。説明文を重ねず、label・selection state・chart自体で意味が伝わる構成にします。active viewだけ対象月または対象年度のinputを表示し、同時に月次/年度の両datasetをreadしません。
 
 グループと社員種別は独立filterです。初期状態は **全グループ / 全社員種別** で、`グループA / 正社員` や `全グループ / 契約社員` のように交差条件で1つのchartを絞り込みます。複数のグループ別・社員種別別chartを縦に並べません。
 
@@ -67,9 +69,9 @@ analysis画面は **表示条件 → 人数推移chart → 月次の日別detail
 
 主可視化は既存attendance analysis resultのlocation別date detailをserver-sideで再集約した単一line chartです。月次は日別、年度は4月〜翌3月の月別で、個別勤怠種別の縦軸値はそのbucketで該当勤怠種別を登録したunique社員数です。同一社員が同じbucketで同じ勤怠種別を複数回持っても1人として数えます。縦軸の0を常に表示し、0人へ落ちた日/月を直接読めることをprimary use caseにします。
 
-chartはlineだけで描画し、各bucketのpoint markerは表示しません。個別勤怠種別はstable 10-tone paletteと線種を併用し、全合計は太いsolid lineとして強く表示します。1つのSVGへ重ねるseriesは最大10本とし、11本以上を同時選択した場合は同じ対象filter内で追加panelへ10系列ずつ自動分割します。各panelは同じ縦軸scaleと凡例を共有し、10色paletteや線種の循環による同一SVG内での見分けづらさを避けます。SVGとは別に同じbucket / series / 人数を読み取れるvisually-hidden text summaryを併設します。
+chartはlineだけで描画し、各bucketのpoint markerは表示しません。個別勤怠種別はstable 30-tone paletteと線種を併用し、全合計は太いsolid lineとして強く表示します。選択したseries数にかかわらず同じ対象filterのseriesは単一SVG / 単一panelへ重ねます。paletteや線種を超える場合の循環による色・線種の重複は許容し、filter contextを複数chartへ分断しません。SVGとは別に同じbucket / series / 人数を読み取れるvisually-hidden text summaryを併設します。
 
-月次・年度とも日付/月ラベルはSVG内のx軸へ描画し、line bucketと同じx座標を共有します。月次の日付ラベルはinteractive controlでもあり、選択すると既存 `/calendar/day/{day}` の日別detailを同じanalysis pageのchart直下へHTMXで読み込みます。detailにはグループ・社員種別・社員名・勤怠種別を表示し、読み込み後はdetailが見える位置へscrollします。新しいdetail query/modelをanalysisへ重複実装しません。年度viewは月bucketのため日別detail controlを表示しません。
+月次・年度とも日付/月ラベルはSVG内のx軸へ描画し、line bucketと同じx座標を共有します。月次の日付ラベルはinteractive controlでもあり、選択すると `/analysis/day/{day}` から日別detailを同じanalysis pageのchart直下へ読み込みます。このendpointは既存calendar day-detail read model/templateを再利用しつつ、現在選択中のグループ・社員種別・個別勤怠種別を適用した行だけを返します。個別勤怠種別が未選択で全合計だけを表示している場合は、その日の全勤怠をdetail対象とします。年度viewは月bucketのため日別detail controlを表示しません。
 
 延べ登録日数、登録あり社員数等のKPI、coverage matrix、全体延べ登録日数trend、社員別集計tableはanalysisのprimary surfaceには置きません。chartはJinjaでserver-rendered SVGとしてrenderし、client-side chart stateや追加chart libraryは導入しません。
 
@@ -85,9 +87,9 @@ runtime dataからTailwind / daisyUI class名を組み立てません。
 - Tailwind safelistをruntime presentation contractとして使わない
 - Alpine等でclassをtoggleする場合も、sourceに完全なliteral classが存在する単純なUI stateに限定する
 
-勤怠種別の色は永続 `location_id` を10個のpalette slotへ写像し、templateへは
-`data-location-tone="0..9"` だけを渡します。名称変更や表示順変更ではtoneは変わりません。
-実際の10色paletteはCSSだけで変更できます。analysis chartも同じ `get_location_tone()` の割当を再利用します。
+勤怠種別の色は永続 `location_id` を30個のpalette slotへ写像し、templateへは
+`data-location-tone="0..29"` だけを渡します。名称変更や表示順変更ではtoneは変わりません。
+実際の30色paletteはCSSだけで変更できます。勤怠種別chipはtoneを文字色にだけ使い、同色の背景面は持ちません。analysis chartも同じ `get_location_tone()` の割当を再利用します。
 
 週末/祝日も `data-day-kind` で状態を渡し、色指定をtemplateから分離します。
 

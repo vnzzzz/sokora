@@ -23,7 +23,7 @@
       <div class="app-shell flex">
         {% include "components/common/sidebar.html" with context %}
 
-        <main class="app-main relative flex-1 py-2 px-3 pt-14">
+        <main class="app-main relative flex-1 py-2 px-3 pt-12">
           {% if show_user_menu %}
             <header
               class="fixed top-0 right-0 z-30 flex items-center justify-end px-3 py-2"
@@ -80,6 +80,7 @@
     <div id="modal-container"></div>
     <div id="ui-message-container" class="toast toast-top toast-end z-[100]"></div>
 
+    <script src="{{ url_for('static', path='js/theme.js') }}" defer></script>
     {% if show_sidebar %}
       <script src="{{ url_for('static', path='js/sidebar.js') }}" defer></script>
       <script src="{{ url_for('static', path='js/ui-events.js') }}" defer></script>

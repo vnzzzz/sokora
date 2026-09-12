@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.services import master_read_service
+from app.utils.ui_utils import get_location_tone
 
 
 def test_user_master_view_model_groups_orders_and_eager_loads_relationships(
@@ -120,6 +121,13 @@ def test_location_master_view_model_groups_in_query_order(db: Session) -> None:
     assert [str(location.name) for location in view.grouped_locations["未分類"]] == [
         "remote"
     ]
+    assert set(view.location_tones) == {
+        int(location.id) for location in view.locations if location.id is not None
+    }
+    assert all(
+        tone == get_location_tone(location_id)
+        for location_id, tone in view.location_tones.items()
+    )
 
 
 def test_location_master_view_model_is_not_truncated_at_default_page_size(
@@ -140,4 +148,5 @@ def test_location_master_view_model_is_not_truncated_at_default_page_size(
 
     assert len(view.locations) == 101
     assert len(view.grouped_locations["office"]) == 101
+    assert len(view.location_tones) == 101
     assert str(view.locations[-1].name) == "location-100"
