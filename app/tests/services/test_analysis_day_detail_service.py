@@ -9,7 +9,9 @@ from app import models
 from app.services import analysis_day_detail_service
 
 
-def test_location_filter_preserves_single_select_read_path(db_with_data: Session) -> None:
+def test_location_filter_preserves_single_select_read_path(
+    db_with_data: Session,
+) -> None:
     db = db_with_data
     group = db.query(models.Group).first()
     user_type = db.query(models.UserType).first()
