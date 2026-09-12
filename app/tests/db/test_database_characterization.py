@@ -83,7 +83,7 @@ print(
     assert observed["schema_revision"]
     assert first_counts["groups"] == 5
     assert first_counts["user_types"] == 5
-    assert first_counts["locations"] == 18
+    assert first_counts["locations"] == 19
     assert first_counts["custom_holidays"] == 4
     assert first_counts["users"] == 50
     assert first_counts["attendances"] > 0
