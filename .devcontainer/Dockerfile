@@ -8,7 +8,7 @@ COPY scripts/build_assets.sh ./scripts/build_assets.sh
 RUN chmod +x ./scripts/build_assets.sh && ./scripts/build_assets.sh
 
 # 2) development container stage
-# application sourceは起動時に/appへbind mountし、imageには開発toolと生成物を持たせる。
+# application sourceは起動時に/appへbind mountし、dependencyや開発toolはimage側で準備する。
 FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm
 
 # uvはproduction Dockerfileと同じ固定versionを使用する。
@@ -54,7 +54,7 @@ RUN mkdir -p \
 # productionと同様、runtimeで外部APIへ依存しないよう祝日cacheをbuild時に生成する。
 RUN python3 scripts/build_holiday_cache.py
 
-# productionと同じbuild scriptで生成したfrontend assetsをdevelopment imageへ引き継ぐ。
+# productionと同じfrontend assetsをimageへ配置する。/appは起動時にworkspaceで置き換わる。
 COPY --from=assets-builder /src/assets/css/main.css /app/assets/css/main.css
 COPY --from=assets-builder /src/assets/js/htmx.min.js /app/assets/js/htmx.min.js
 COPY --from=assets-builder /src/assets/js/alpine.min.js /app/assets/js/alpine.min.js
