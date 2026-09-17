@@ -21,13 +21,28 @@ router = APIRouter(tags=["Attendance"])
 
 @router.get("", response_model=AttendanceList)
 def get_attendances(db: Session = Depends(get_db)) -> Any:
-    """全勤怠レコードをJSON APIのrecords形式で返す。"""
+    """全勤怠recordをJSON APIのrecords形式で返す。
+
+    Args:
+        db: DB session。
+
+    Returns:
+        `records`に全勤怠recordを格納したmapping。
+    """
     return {"records": crud.attendance.list_all(db)}
 
 
 @router.get("/day/{day}")
 def get_day_attendance(day: Date, db: Session = Depends(get_db)) -> Any:
-    """YYYY-MM-DDの日別勤怠projectionをJSONで返す。"""
+    """指定日の日別勤怠projectionを返す。
+
+    Args:
+        day: 取得対象日。
+        db: DB session。
+
+    Returns:
+        `success`と日別勤怠projectionを含むmapping。
+    """
     return {"success": True, "data": crud.attendance.get_day_data(db, day=day)}
 
 
@@ -40,7 +55,18 @@ def create_attendance(
     attendance_in: AttendanceCreate,
     db: Session = Depends(get_db),
 ) -> Attendance:
-    """JSON bodyから勤怠を作成する。"""
+    """JSON bodyから勤怠を作成する。
+
+    Args:
+        attendance_in: 作成する勤怠データ。
+        db: DB session。
+
+    Returns:
+        作成後の勤怠record。
+
+    Raises:
+        HTTPException: user/locationが不正、または同一user/dateが重複する場合。
+    """
     return attendance_service.create_attendance(db, attendance_in=attendance_in)
 
 
@@ -50,7 +76,19 @@ def update_attendance(
     attendance_in: AttendanceUpdate,
     db: Session = Depends(get_db),
 ) -> Attendance:
-    """JSON bodyから勤怠を更新する。"""
+    """指定IDの勤怠を更新する。
+
+    Args:
+        attendance_id: 更新対象の勤怠ID。
+        attendance_in: 更新内容。
+        db: DB session。
+
+    Returns:
+        更新後の勤怠record。
+
+    Raises:
+        HTTPException: 対象勤怠または指定locationが存在しない場合。
+    """
     return attendance_service.update_attendance(
         db,
         attendance_id=attendance_id,
@@ -63,7 +101,18 @@ def delete_attendance(
     attendance_id: int,
     db: Session = Depends(get_db),
 ) -> Response:
-    """勤怠IDで1件削除する。"""
+    """指定IDの勤怠を削除する。
+
+    Args:
+        attendance_id: 削除対象の勤怠ID。
+        db: DB session。
+
+    Returns:
+        bodyなしの204 response。
+
+    Raises:
+        HTTPException: 対象勤怠が存在しない場合。
+    """
     attendance_service.delete_attendance(db, attendance_id=attendance_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -74,7 +123,19 @@ def delete_attendance_by_user_date(
     date: Date,
     db: Session = Depends(get_db),
 ) -> Response:
-    """ユーザーと日付で勤怠を削除する。"""
+    """user/dateで勤怠を削除する。
+
+    Args:
+        user_id: 削除対象user ID。
+        date: 削除対象日。
+        db: DB session。
+
+    Returns:
+        bodyなしの204 response。
+
+    Raises:
+        HTTPException: 対象勤怠が存在しない場合。
+    """
     attendance_service.delete_attendance_by_user_date(
         db,
         user_id=user_id,
