@@ -44,6 +44,21 @@ def get_analysis_page(
     full page / period変更では「全合計・全グループ・全社員種別」を初期表示する。analysis filter
     自身のHTMX requestではcheckbox/select parameterをそのままselectionとして扱い、全解除も
     表現できるようにする。
+
+    Args:
+        request: FastAPI request。HTMX/history headerからrender範囲を判定する。
+        month: 月次modeの対象月。`YYYY-MM`形式。
+        year: 年度modeの開始年。
+        mode: `month`または`year`の表示mode。
+        selected_locations: chartへ含める勤怠種別ID。
+        show_total: 全合計seriesを表示するか。未指定時はrequest contextから決定する。
+        group_name: group filter。
+        user_type_name: user type filter。
+        db: DB session。
+
+    Returns:
+        full analysis page、HTMX content fragment、またはfilter table region。
+        月次modeのmonthが不正な場合は現在月へredirectする。
     """
     is_year_mode = year is not None or mode == "year"
     if month is not None and not is_year_mode:
@@ -114,7 +129,19 @@ def get_analysis_day_detail(
     user_type_name: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """現在のanalysis filterを反映した日別勤怠明細をrenderする。"""
+    """現在のanalysis filterを反映した日別勤怠明細をrenderする。
+
+    Args:
+        request: FastAPI request。
+        day: 表示対象日。`YYYY-MM-DD`形式。
+        selected_locations: 表示対象の勤怠種別ID。
+        group_name: group filter。
+        user_type_name: user type filter。
+        db: DB session。
+
+    Returns:
+        filter適用済みの日別detail HTML。日付形式が不正な場合は400 responseを返す。
+    """
     target_date = parse_date(day)
     if target_date is None:
         return HTMLResponse(
