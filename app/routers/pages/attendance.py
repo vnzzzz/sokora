@@ -66,22 +66,11 @@ def attendance_page(
 def get_attendance_modal(
     request: Request,
     user_id: str,
-    date_str: str,  # パスパラメータは YYYY-MM-DD 形式を期待
+    date_str: str,
     mode: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """指定されたユーザーと日付の勤怠編集モーダルを返します。
-
-    Args:
-        request: FastAPIリクエストオブジェクト
-        user_id: 編集対象のユーザーID
-        date_str: 編集対象の日付（YYYY-MM-DD形式）
-        mode: モード指定（registerの場合は登録用モーダル）
-        db: データベースセッション
-
-    Returns:
-        HTMLResponse: レンダリングされたHTMLページ
-    """
+    """YYYY-MM-DDの日付を対象に勤怠編集モーダルを返す。"""
     logger.info(
         f"勤怠モーダルリクエスト受信: User={user_id}, Date={date_str}, Mode={mode}"
     )
@@ -89,7 +78,6 @@ def get_attendance_modal(
         target_date = date.fromisoformat(date_str)
     except ValueError:
         logger.warning(f"無効な日付形式: {date_str}")
-        # エラーを示す空のコンテナを返すか、エラーメッセージを含むHTMLを返す
         return HTMLResponse(content="", status_code=status.HTTP_400_BAD_REQUEST)
 
     user_obj = user.get(db, id=user_id)
@@ -97,18 +85,14 @@ def get_attendance_modal(
         logger.warning(f"ユーザーが見つかりません: {user_id}")
         return HTMLResponse(content="", status_code=status.HTTP_404_NOT_FOUND)
 
-    # 既存の勤怠データを取得 (CRUD関数名を修正)
     attendance_obj: Optional[AttendanceModel] = attendance.get_by_user_and_date(
         db, user_id=user_id, date=target_date
     )
     attendance_id = attendance_obj.id if attendance_obj else None
     current_location_id = attendance_obj.location_id if attendance_obj else None
-    note = attendance_obj.note if attendance_obj else None  # 備考フィールドを取得
-
-    # 全勤怠種別を取得
+    note = attendance_obj.note if attendance_obj else None
     locations: List[Location] = location_crud.list_all(db)
 
-    # マクロを使用するためのコンテキストを作成
     context = {
         "request": request,
         "attendance_modal_params": {
@@ -119,8 +103,8 @@ def get_attendance_modal(
             "attendance_id": attendance_id,
             "current_location_id": current_location_id,
             "locations": locations,
-            "mode": mode,  # モード情報を追加
-            "note": note,  # 備考フィールドを追加
+            "mode": mode,
+            "note": note,
         },
     }
     logger.debug(f"モーダルコンテキスト: {context}")
@@ -128,7 +112,6 @@ def get_attendance_modal(
     modal_id = f"attendance-modal-{user_id}-{date_str}"
     headers = {"HX-Trigger": json.dumps({"openModal": modal_id})}
 
-    # マクロを直接呼び出して表示
     return templates.TemplateResponse(
         "components/partials/modals/attendance_modal.html", context, headers=headers
     )
