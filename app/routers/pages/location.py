@@ -25,7 +25,15 @@ responder = MasterCrudResponder(
 
 @router.get("", response_class=HTMLResponse)
 def get_location_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
-    """勤怠種別管理ページを表示する。"""
+    """勤怠種別管理ページを表示する。
+
+    Args:
+        request: 現在のHTTP request。
+        db: read model構築に使うDB session。
+
+    Returns:
+        勤怠種別master pageのHTML response。
+    """
     view = master_read_service.get_location_master_page_view_model(db)
     return templates.TemplateResponse(
         "pages/location.html",
@@ -46,7 +54,19 @@ async def location_modal(
     location_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """追加・編集モーダルを返す。"""
+    """勤怠種別の追加・編集モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        location_id: 編集対象ID。省略時は新規作成。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定した勤怠種別が存在しない場合。
+    """
     location_data = (
         location.get_or_404(db, location_id) if location_id is not None else None
     )
@@ -64,7 +84,19 @@ async def location_delete_modal(
     location_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """削除確認モーダルを返す。"""
+    """勤怠種別削除の確認モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        location_id: 削除対象ID。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        delete modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定した勤怠種別が存在しない場合。
+    """
     location_data = location.get_or_404(db, location_id)
     return responder.open_delete(
         request,
@@ -81,7 +113,16 @@ async def create_location(
     ),
     db: Session = Depends(get_db),
 ) -> Any:
-    """勤怠種別を作成し、標準master CRUD triggerを返す。"""
+    """勤怠種別を作成し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        location_in: formから構築した作成payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = "add-location"
     try:
         created = location_service.create_location_with_validation(
@@ -112,7 +153,17 @@ async def update_location(
     ),
     db: Session = Depends(get_db),
 ) -> Any:
-    """勤怠種別を更新し、標準master CRUD triggerを返す。"""
+    """勤怠種別を更新し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        location_id: 更新対象ID。
+        location_in: formから構築した更新payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = f"edit-location-{location_id}"
     try:
         updated = location_service.update_location_with_validation(
@@ -141,7 +192,19 @@ async def delete_location(
     location_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """勤怠種別を削除し、標準master CRUD triggerを返す。"""
+    """勤怠種別を削除し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        location_id: 削除対象ID。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、削除拒否時はdelete modal error fragment。
+
+    Raises:
+        HTTPException: 削除対象が存在しない場合。
+    """
     modal_id = f"location-delete-modal-{location_id}"
     location_data = location.get_or_404(db, location_id)
     location_name = str(location_data.name)
