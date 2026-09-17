@@ -75,6 +75,15 @@ def normalize_month(month: Optional[str]) -> str:
 
     未指定時だけ現在月を補う。形式不正は空値へ握り潰さずparse errorをcallerへ伝え、routerが
     current monthへのredirect contractを適用できるようにする。
+
+    Args:
+        month: `YYYY-MM`形式のmonth。未指定時は現在月を使う。
+
+    Returns:
+        canonicalな`YYYY-MM`文字列。
+
+    Raises:
+        ValueError: month形式が不正な場合。
     """
     value = month or get_current_month_formatted()
     year, month_num = parse_month(value)
@@ -88,7 +97,15 @@ def _build_summary_calendar_presentation(
     list[SummaryCalendarDayViewModel],
     str,
 ]:
-    """raw calendar dataをdeterministicなtemplate-ready presentationへ変換する。"""
+    """raw calendar dataをdeterministicなtemplate-ready presentationへ変換する。
+
+    Args:
+        calendar_data: calendar utilityが返すraw month data。
+        today_date: `YYYY-MM-DD`形式の現在日。
+
+    Returns:
+        category list、day list、初期selected dateのtuple。
+    """
     grouped_locations: Dict[str, list[SummaryCalendarLocationViewModel]] = {}
     for raw_location in calendar_data.get("locations", []):
         category = str(raw_location.get("category") or "未分類")
@@ -170,6 +187,16 @@ def get_month_view_model(
     location metadataが集計結果と対応しない場合だけneutral toneへfallbackし、欠落した
     master rowを推測して作らない。category grouping、day metadata、selected dateまでこのserviceで
     決定し、templateへdeterministicなrender-ready contractを渡す。
+
+    Args:
+        db: DB session。
+        month: `YYYY-MM`形式の対象月。未指定時は現在月を使う。
+
+    Returns:
+        月次summary calendar用のrender-ready view model。
+
+    Raises:
+        ValueError: month形式が不正な場合。
     """
     current_month = normalize_month(month)
     year, month_num = parse_month(current_month)
@@ -241,6 +268,13 @@ def get_day_detail_view_model(db: Session, *, day: date) -> DayDetailViewModel:
     HTTP input validationはrouterが所有し、このserviceはvalidated dateだけを受け取る。groupは
     明示order、persistent ID、nameの順でsortし、``order=0`` と未設定を区別する。社員種別も
     order/ID/name、同一種別内のuserは表示名/IDでtie-breakするため、DB row返却順へ依存しない。
+
+    Args:
+        db: DB session。
+        day: detail対象日。
+
+    Returns:
+        group/user type単位に編成した日別detail view model。
     """
     rows = calendar_crud.get_day_attendance_rows(db, target_date=day)
     organized_by_group: Dict[str, Dict[str, Any]] = {}
