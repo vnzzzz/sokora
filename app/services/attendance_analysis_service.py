@@ -30,6 +30,17 @@ def get_attendance_analysis_data(
 
     返却shapeはpresentation serviceがgroup/category/orderを再編成するためのraw read modelで
     あり、このfunctionはDB mutationやprocess-local result cacheを持たない。
+
+    Args:
+        db: 集計対象を読み出すDB session。
+        month: 月次集計対象の ``YYYY-MM``。年度指定時は無視する。
+        fiscal_year: 4月始まり年度の開始年。指定時は年度集計を優先する。
+
+    Returns:
+        period、user別集計、location別集計、group summaryを含むraw analysis read model。
+
+    Raises:
+        ValueError: 月次modeで ``month`` が ``YYYY-MM`` として解析できない場合。
     """
     if fiscal_year is not None:
         period_mode = "fiscal_year"
