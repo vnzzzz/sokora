@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ci-closed
+      SOKORA_MAKE_CONTEXT: host
     steps:
       - name: Checkout
         uses: actions/checkout@v4
