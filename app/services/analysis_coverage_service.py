@@ -62,6 +62,15 @@ def _bucket_specs(
     *,
     is_year_mode: bool,
 ) -> List[tuple[str, str]]:
+    """analysis期間をchart bucketのkey/label列へ変換する。
+
+    Args:
+        analysis_data: period情報を含むanalysis read model。
+        is_year_mode: fiscal-year表示なら ``True``。
+
+    Returns:
+        monthlyでは各日、fiscal-yearでは12か月分の ``(key, label)`` list。
+    """
     period_start = analysis_data["period"]["start"]
     if is_year_mode:
         specs: List[tuple[str, str]] = []
@@ -92,6 +101,15 @@ def _bucket_specs(
 
 
 def _bucket_key(attendance_date: date, *, is_year_mode: bool) -> str:
+    """attendance dateを現在のchart modeに対応するbucket keyへ変換する。
+
+    Args:
+        attendance_date: 集計対象日。
+        is_year_mode: fiscal-year表示なら ``True``。
+
+    Returns:
+        月bucketなら ``YYYY-MM``、日bucketならISO date。
+    """
     if is_year_mode:
         return attendance_date.strftime("%Y-%m")
     return attendance_date.isoformat()
@@ -101,6 +119,15 @@ def _coverage_locations(
     analysis_data: Dict[str, Any],
     selected_location_ids: set[int],
 ) -> List[CoverageLocation]:
+    """選択された勤怠種別だけをchart legend modelへ変換する。
+
+    Args:
+        analysis_data: location masterを含むanalysis read model。
+        selected_location_ids: 表示対象location ID集合。
+
+    Returns:
+        stable tone index付きのcoverage location list。
+    """
     return [
         {
             "location_id": int(location.id),
@@ -115,6 +142,14 @@ def _coverage_locations(
 def _filter_options(
     group_sections: List[GroupSection],
 ) -> tuple[List[str], List[str]]:
+    """group sectionからfilter optionを重複なく抽出する。
+
+    Args:
+        group_sections: group/user-type hierarchyを含むread model。
+
+    Returns:
+        group名listと社員種別名list。
+    """
     group_names = [section["name"] for section in group_sections]
     user_type_names: List[str] = []
     seen_user_types: set[str] = set()
@@ -131,6 +166,15 @@ def _filter_options(
 
 
 def _normalize_selection(value: Optional[str], options: List[str]) -> Optional[str]:
+    """filter選択値を有効なoptionまたは未選択へ正規化する。
+
+    Args:
+        value: query等から受け取った選択値。
+        options: 許可されるoption list。
+
+    Returns:
+        有効なtrim済み選択値。空・未知の値は ``None``。
+    """
     if value is None:
         return None
     normalized = value.strip()
@@ -143,6 +187,15 @@ def _chart_label(
     selected_group_name: Optional[str],
     selected_user_type_name: Optional[str],
 ) -> str:
+    """現在のfilter選択をchart labelへ変換する。
+
+    Args:
+        selected_group_name: 選択中group名。``None``は全group。
+        selected_user_type_name: 選択中社員種別名。``None``は全社員種別。
+
+    Returns:
+        chart header用label。
+    """
     group_label = selected_group_name or "全グループ"
     user_type_label = selected_user_type_name or "全社員種別"
     return f"{group_label} / {user_type_label}"
@@ -154,6 +207,16 @@ def _matches_target(
     selected_group_name: Optional[str],
     selected_user_type_name: Optional[str],
 ) -> bool:
+    """社員が現在のgroup/user-type filter対象か判定する。
+
+    Args:
+        user_info: analysis read model上の社員情報。
+        selected_group_name: 選択中group名。
+        selected_user_type_name: 選択中社員種別名。
+
+    Returns:
+        両filter条件を満たす場合 ``True``。
+    """
     if selected_group_name is not None:
         group_name = str(user_info.get("group_name") or "未分類")
         if group_name != selected_group_name:
@@ -176,6 +239,21 @@ def _build_chart(
     selected_group_name: Optional[str],
     selected_user_type_name: Optional[str],
 ) -> CoverageChart:
+    """選択条件に対するunique社員数seriesを同一chart modelへ集約する。
+
+    Args:
+        analysis_data: users/location detailsを含むanalysis read snapshot。
+        specs: 出力bucketのkey/label定義。
+        is_year_mode: fiscal-year表示なら ``True``。
+        locations: 表示対象の勤怠種別presentation model。
+        selected_location_ids: 個別seriesへ集計するlocation ID集合。
+        include_total: 全合計seriesを含めるか。
+        selected_group_name: group filter。
+        selected_user_type_name: 社員種別filter。
+
+    Returns:
+        chart label、最大値、seriesを含むcoverage chart model。
+    """
     users = analysis_data.get("users", {})
     location_details = analysis_data.get("location_details", {})
     bucket_keys = {key for key, _ in specs}
@@ -283,7 +361,20 @@ def get_analysis_coverage_view_model(
     selected_group_name: Optional[str] = None,
     selected_user_type_name: Optional[str] = None,
 ) -> AnalysisCoverageViewModel:
-    """同一read snapshotから選択中の対象だけを単一chartへ集約する。"""
+    """同一read snapshotから選択中の対象だけを単一chartへ集約する。
+
+    Args:
+        analysis_data: analysis read serviceが返した同一snapshotのraw data。
+        group_sections: filter option生成に使うgroup hierarchy。
+        selected_location_ids: 個別seriesとして表示するlocation ID list。
+        is_year_mode: fiscal-year表示なら ``True``。
+        include_total: 全合計seriesを含めるか。
+        selected_group_name: group filter candidate。
+        selected_user_type_name: 社員種別filter candidate。
+
+    Returns:
+        filter option、normalized selection、coverage chartを含むpresentation model。
+    """
     specs = _bucket_specs(
         analysis_data,
         is_year_mode=is_year_mode,
