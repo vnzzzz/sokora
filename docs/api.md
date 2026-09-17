@@ -1,10 +1,11 @@
 # API
 
-JSON APIは`/api/v1`配下で提供します。exact method / path / request / response schemaはgenerated OpenAPIを参照してください。
+JSON APIは`/api/v1`配下で提供します。route discoveryと、annotation済みendpointのrequest / response schemaはgenerated OpenAPIを参照してください。
 
 - Swagger UI: `/docs`
 - ReDoc: `/redoc`
 - page / HTMX routeはOpenAPIへ含めません
+- annotationが不完全なendpointでは、OpenAPIだけでruntime response contractを完全には表現できません。実装とcontract testを併せて確認します
 
 主なresourceはattendance、users、locations、groups、user types、CSVです。custom holidayはJSON APIを持たず、page / HTMX routeからserviceを利用します。APIの対称性だけを理由に未使用endpointを追加しません。
 
