@@ -19,7 +19,15 @@ router = APIRouter(prefix="/attendance/entries", tags=["Pages"])
 
 
 def _refresh_response(*, user_id: str, attendance_date: Date) -> Response:
-    """変更対象日から月/週を決め、既存のHTMX refresh contractを返す。"""
+    """変更対象日から月/週を決め、既存のHTMX refresh contractを返す。
+
+    Args:
+        user_id: 変更対象user ID。
+        attendance_date: 変更対象日。
+
+    Returns:
+        modal closeと月次/週次refresh eventを含むHTMX response。
+    """
     month = attendance_date.strftime("%Y-%m")
     monday = attendance_date - timedelta(days=attendance_date.weekday())
     week = monday.isoformat()
@@ -37,6 +45,14 @@ def _refresh_response(*, user_id: str, attendance_date: Date) -> Response:
 
 
 def _error_response(exc: ApplicationError) -> HTMLResponse:
+    """application errorをattendance modal内のHTMX error responseへ変換する。
+
+    Args:
+        exc: service layerのapplication error。
+
+    Returns:
+        attendance form error targetへ差し替えるHTML response。
+    """
     return hx_error_response(exc.detail, target="#attendance-form-error")
 
 
@@ -48,7 +64,18 @@ def create_attendance(
     note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ) -> Response:
-    """attendance modalのform入力から勤怠を作成する。"""
+    """attendance modalのform入力から勤怠を作成する。
+
+    Args:
+        user_id: 対象user ID。
+        date: 対象日。
+        location_id: 登録する勤怠種別ID。
+        note: optional note。
+        db: DB session。
+
+    Returns:
+        成功時はmodal close/refresh event response。application validation failure時はmodal内error HTML。
+    """
     try:
         created = attendance_service.create_attendance(
             db,
@@ -74,7 +101,17 @@ def update_attendance(
     note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ) -> Response:
-    """attendance modalのform入力から勤怠を更新する。"""
+    """attendance modalのform入力から勤怠を更新する。
+
+    Args:
+        attendance_id: 更新対象の勤怠ID。
+        location_id: 更新後の勤怠種別ID。
+        note: optional note。
+        db: DB session。
+
+    Returns:
+        成功時はmodal close/refresh event response。application validation failure時はmodal内error HTML。
+    """
     try:
         updated = attendance_service.update_attendance(
             db,
@@ -94,7 +131,15 @@ def delete_attendance(
     attendance_id: int,
     db: Session = Depends(get_db),
 ) -> Response:
-    """attendance modalから勤怠を削除する。"""
+    """attendance modalから勤怠を削除する。
+
+    Args:
+        attendance_id: 削除対象の勤怠ID。
+        db: DB session。
+
+    Returns:
+        成功時はmodal close/refresh event response。application validation failure時はmodal内error HTML。
+    """
     try:
         deleted = attendance_service.delete_attendance(
             db,
