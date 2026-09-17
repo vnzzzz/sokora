@@ -18,7 +18,7 @@ DOCKER_APPLICATION_ENV_ARGS := $(foreach var,$(DOCKER_APPLICATION_ENV_VARS),-e $
 help:
 	@printf "\nSokora Docker host targets:\n"
 	@printf "  make build           Build unversioned production image (%s)\n" "$(IMAGE_NAME)"
-	@printf "  make dev-build       Build devcontainer image (%s)\n" "$(DEV_IMAGE_NAME)"
+	@printf "  make dev-build       Build the Dev Container Dockerfile image (%s)\n" "$(DEV_IMAGE_NAME)"
 	@printf "  make dev-shell       Attach to the running devcontainer (name: %s)\n" "$(DEV_CONTAINER_NAME)"
 	@printf "  make docker-build    Build versioned production image; requires VERSION\n"
 	@printf "  make docker-run      Run versioned production image locally; requires VERSION\n"
