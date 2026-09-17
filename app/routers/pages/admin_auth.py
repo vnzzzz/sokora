@@ -39,7 +39,14 @@ _AUTH_SETTINGS_CSRF_SESSION_KEY = "auth_settings_csrf_token"
 
 
 def _auth_settings_csrf_token(request: Request) -> str:
-    """Return a stable per-session CSRF token for admin OIDC settings forms."""
+    """admin OIDC設定form用のsession-scoped CSRF tokenを返す。
+
+    Args:
+        request: signed sessionを持つ現在のHTTP request。
+
+    Returns:
+        session内で安定したCSRF token。
+    """
     token = request.session.get(_AUTH_SETTINGS_CSRF_SESSION_KEY)
     if not isinstance(token, str) or not token:
         token = secrets.token_urlsafe(32)
@@ -48,7 +55,18 @@ def _auth_settings_csrf_token(request: Request) -> str:
 
 
 def _require_auth_settings_csrf(request: Request, submitted_token: str) -> None:
-    """Reject state-changing auth-settings requests without the session token."""
+    """state-changing auth settings requestのCSRF tokenを検証する。
+
+    Args:
+        request: expected tokenを保持するsigned session付きrequest。
+        submitted_token: formから送信されたtoken。
+
+    Returns:
+        None。
+
+    Raises:
+        HTTPException: tokenが欠落・不一致の場合。
+    """
     expected_token = request.session.get(_AUTH_SETTINGS_CSRF_SESSION_KEY)
     if (
         not isinstance(expected_token, str)
@@ -68,7 +86,17 @@ def _settings_form_values(
     request: Request,
     settings: AuthSettings,
 ) -> dict[str, object]:
-    """Return non-secret form values, preserving a failed/tested candidate once."""
+    """secretを除いたOIDC form値を構築する。
+
+    failed/test済みcandidateがsessionにある場合は一度だけそれを優先する。
+
+    Args:
+        request: candidate form stateを保持するsession付きrequest。
+        settings: 現在有効なauth settings。
+
+    Returns:
+        templateへ渡すnon-secret form values。
+    """
     pending = request.session.pop("auth_settings_form", None)
     if isinstance(pending, dict):
         return pending
@@ -93,7 +121,18 @@ def _remember_settings_form(
     client_id: str,
     scope: str,
 ) -> None:
-    """Persist only non-secret candidate fields across a redirect."""
+    """redirect後の再表示用にnon-secret candidateだけをsessionへ保存する。
+
+    Args:
+        request: candidate form stateを保持するsession付きrequest。
+        enabled: candidate OIDC enabled flag。
+        issuer: candidate issuer URL。
+        client_id: candidate client ID。
+        scope: candidate scope string。
+
+    Returns:
+        None。
+    """
     request.session["auth_settings_form"] = {
         "enabled": enabled,
         "issuer": issuer,
@@ -107,7 +146,15 @@ async def auth_settings_page(
     request: Request,
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Response:
-    """Show and edit shared OIDC settings for local administrators."""
+    """local admin向けOIDC設定画面を表示する。
+
+    Args:
+        request: 現在のHTTP request。
+        settings: env/shared DBを反映したauth settings。
+
+    Returns:
+        OIDC settings pageのHTML response。
+    """
     context = {
         "request": request,
         "settings": settings,
@@ -129,7 +176,23 @@ async def save_auth_oidc_settings(
     scope: str = Form("openid profile email"),
     csrf_token: str = Form(""),
 ) -> Response:
-    """Validate external discovery first, then persist through a short DB session."""
+    """discoveryを検証してからshared DBへOIDC設定を保存する。
+
+    Args:
+        request: application runtimeとsessionへアクセスするHTTP request。
+        enabled: OIDC有効化flag。
+        issuer: OIDC issuer candidate。
+        client_id: OIDC client ID candidate。
+        client_secret: OIDC client secret candidate。
+        scope: OIDC scope candidate。
+        csrf_token: formから送信されたCSRF token。
+
+    Returns:
+        notice/errorをsessionへ保存した後のsettings page redirect。
+
+    Raises:
+        HTTPException: CSRF tokenが無効な場合。
+    """
     _require_auth_settings_csrf(request, csrf_token)
     app_settings = request.app.state.settings_provider()
     try:
@@ -171,7 +234,23 @@ async def test_auth_oidc_settings(
     csrf_token: str = Form(""),
     settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
-    """Check standard OIDC discovery for an unsaved issuer candidate."""
+    """未保存issuer candidateのOIDC discovery接続を検証する。
+
+    Args:
+        request: notice/errorとcandidateを保持するsession付きrequest。
+        enabled: form再表示用のcandidate enabled flag。
+        issuer: discoveryを試すissuer candidate。
+        client_id: form再表示用のclient ID candidate。
+        scope: form再表示用のscope candidate。
+        csrf_token: formから送信されたCSRF token。
+        settings: HTTP timeout等を含むruntime auth settings。
+
+    Returns:
+        test結果をsessionへ保存した後のsettings page redirect。
+
+    Raises:
+        HTTPException: CSRF tokenが無効な場合。
+    """
     _require_auth_settings_csrf(request, csrf_token)
     _remember_settings_form(
         request,
@@ -195,7 +274,21 @@ async def unlink_auth_oidc_settings(
     csrf_token: str = Form(""),
     db: Session = Depends(get_db),
 ) -> Response:
-    """Explicitly disable and clear DB OIDC settings without env fallback."""
+    """DB OIDC設定を明示的に無効化・消去する。
+
+    unlink後はenv fallbackへ戻さず、shared DB側のdisabled stateを維持する。
+
+    Args:
+        request: noticeとsession stateを保持するHTTP request。
+        csrf_token: formから送信されたCSRF token。
+        db: shared auth config更新に使うDB session。
+
+    Returns:
+        settings pageへのredirect。
+
+    Raises:
+        HTTPException: CSRF tokenが無効な場合。
+    """
     _require_auth_settings_csrf(request, csrf_token)
     unlink_oidc_config(db)
     request.session["auth_settings_notice"] = "OIDC連携を解除しました。"
