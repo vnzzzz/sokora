@@ -67,6 +67,12 @@ async def health_check(request: Request) -> JSONResponse:
     DBへの短時間readiness queryが成功した場合だけHTTP 200を返す。同期DB probeは
     threadpoolで実行し、event loopをblockしない。内部failure reasonやcredential/path等は
     responseへ公開しない。認証不要であることもruntime contractの一部。
+
+    Args:
+        request: FastAPI request。application-scoped DB runtimeを取得するために使う。
+
+    Returns:
+        readyなら200 `{"status": "ok"}`、それ以外は503 `{"status": "unavailable"}`。
     """
     runtime = getattr(request.app.state, "database_runtime", None)
     if not isinstance(runtime, DatabaseRuntime):
@@ -84,6 +90,16 @@ async def database_unavailable_handler(
 
     connection invalidation / acquisition timeout / fail-closed runtimeだけをavailability failureと
     みなし、SQL statement errorや未知のexceptionは正常化せず再送出する。
+
+    Args:
+        _request: FastAPI exception-handler signature用request。response生成には使用しない。
+        exc: DB availability failure候補のexception。
+
+    Returns:
+        verified availability failureに対する503 JSON response。
+
+    Raises:
+        Exception: availability failureではないexceptionを受け取った場合、そのまま再送出する。
     """
     if not is_database_unavailable_error(exc):
         raise exc
@@ -100,6 +116,16 @@ async def application_error_handler(_request: Request, exc: Exception) -> JSONRe
     HTML/HTMX page adapterは画面固有fragmentを返すため、write handler内で
     ApplicationErrorを処理する。ここではJSON API側から漏れたapplication errorだけを
     共通形式へ変換し、未知のexceptionは誤って正常化せず再送出する。
+
+    Args:
+        _request: FastAPI exception-handler signature用request。response生成には使用しない。
+        exc: application error候補のexception。
+
+    Returns:
+        ApplicationErrorのstatus/detailを反映したJSON response。
+
+    Raises:
+        Exception: ApplicationError以外を受け取った場合、そのまま再送出する。
     """
     if not isinstance(exc, ApplicationError):
         raise exc
@@ -121,6 +147,15 @@ async def application_lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     shutdownではprocess-owned DatabaseRuntimeをdisposeし、次のapplication instanceが
     stale engine/session factoryを再利用しないようapp stateから切り離す。
+
+    Args:
+        app: lifecycle対象のFastAPI application。
+
+    Yields:
+        startup完了後、applicationがrequestを受け付けるlifecycle区間。
+
+    Raises:
+        Exception: runtime validation、migration、seed等のstartup処理に失敗した場合。
     """
     settings: AppSettings = app.state.settings_provider()
     settings.validate_runtime()
@@ -153,6 +188,15 @@ def create_application(settings: AppSettings | None = None) -> FastAPI:
     DB engine自体はここで作成せずlifespanでapplication instanceへbindする。これにより
     import時にDB接続を開始せず、startup validation/migrationより先にrequest resourceを
     公開しない。
+
+    Args:
+        settings: 明示的に使うapplication settings。省略時はenvironmentから取得する。
+
+    Returns:
+        middleware、router、lifespanを構成済みのFastAPI application。
+
+    Raises:
+        ValueError: runtime設定validationに失敗した場合。
     """
     settings_provider: Callable[[], AppSettings]
     if settings is None:
@@ -221,6 +265,12 @@ def create_openapi_schema(app: FastAPI) -> Dict[str, Any]:
 
     page/HTMX routerと`/healthz`はapplication routeとして存在するがOpenAPIから除外する。
     schemaはapplication instanceへcacheし、同一process内で毎回再構築しない。
+
+    Args:
+        app: schemaを生成するFastAPI application。
+
+    Returns:
+        cache済み、または新規生成したOpenAPI schema mapping。
     """
     if app.openapi_schema:
         return app.openapi_schema
