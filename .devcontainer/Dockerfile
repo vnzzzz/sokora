@@ -26,6 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Dev Container内ではworkspace向けMake targetだけを公開する。
+ENV SOKORA_MAKE_CONTEXT=workspace
+
 WORKDIR /app
 COPY ./scripts ./scripts
 
