@@ -56,6 +56,7 @@ analysisは表示条件と単一coverage chartを中心に構成します。
 - 初期seriesは全合計のみ。個別attendance typeは必要なものだけ追加できる
 - 全合計はbucket内で何らかのattendance typeを持つunique user数。複数typeを持っても1人として数える
 - 個別seriesもbucket内のunique user数を数え、選択seriesは1つのchartへ重ねる
+- y-axisは常に0を含み、0人のbucketを他bucketと直接比較できるようにする
 - monthlyの日付labelから、現在のfilterを適用したday detailをchart直下へ読み込める。fiscal-yearにはday detail controlを出さない
 - mode / periodはURL/historyへ残し、filter状態は残さない。mode / period変更時は初期filterへ戻す
 - chartはserver-rendered SVGと同内容のaccessible text summaryを持ち、client-side chart state/libraryへ依存しない
