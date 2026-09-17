@@ -10,7 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      VERSION: ci
       SOKORA_MAKE_CONTEXT: workspace
     steps:
       - name: Checkout
@@ -102,7 +101,6 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      VERSION: ci
       SOKORA_MAKE_CONTEXT: workspace
       DATABASE_URL: postgresql://sokora:sokora@127.0.0.1:5432/sokora
       SOKORA_TEST_POSTGRES_URL: postgresql://sokora:sokora@127.0.0.1:5432/sokora
