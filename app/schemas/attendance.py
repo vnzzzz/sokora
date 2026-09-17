@@ -75,6 +75,6 @@ class UserAttendance(BaseModel):
 
     user_id: str
     user_name: str
-    dates: List[Dict[str, Any]]
+    dates: List[Dict[str, Any]]  # 各要素は日付・勤怠種別・勤怠IDを含む。
 
     model_config = ConfigDict(from_attributes=True)
