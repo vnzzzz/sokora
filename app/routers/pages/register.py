@@ -20,7 +20,14 @@ logger = logging.getLogger(__name__)
 def _normalize_month_or_redirect(
     month: Optional[str],
 ) -> tuple[str, RedirectResponse | None]:
-    """monthly top page用にmonthを正規化し、不正値はcurrent monthへredirectする。"""
+    """monthly top page用にmonthを正規化する。
+
+    Args:
+        month: `YYYY-MM`形式の対象月。未指定時は現在月を使う。
+
+    Returns:
+        正規化済みmonthとoptional redirectのtuple。不正値では現在月とredirectを返す。
+    """
     if month is None:
         return get_current_month_formatted(), None
 
@@ -42,7 +49,17 @@ def register_page(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """monthly register user listをrenderする。"""
+    """monthly register user listをrenderする。
+
+    Args:
+        request: FastAPI request。
+        search_query: 社員名またはIDの検索文字列。
+        month: 表示対象月。`YYYY-MM`形式。
+        db: DB session。
+
+    Returns:
+        full pageまたはHTMX user-list fragment。不正monthでは現在月へredirectする。
+    """
     current_month, redirect = _normalize_month_or_redirect(month)
     if redirect is not None:
         return redirect
@@ -70,7 +87,17 @@ def user_calendar(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """特定userのmonthly calendar partialをrenderする。"""
+    """特定userのmonthly calendar partialをrenderする。
+
+    Args:
+        request: FastAPI request。
+        user_id: 表示対象user ID。
+        month: 表示対象月。`YYYY-MM`形式。未指定時は現在月を使う。
+        db: DB session。
+
+    Returns:
+        user calendar HTML。不正monthでは現在月へredirectし、user不在時は404 HTMLを返す。
+    """
     if month is None:
         current_month = get_current_month_formatted()
     else:
