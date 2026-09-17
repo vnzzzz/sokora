@@ -1,4 +1,3 @@
-# TODO: Implement tests for group service logic
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -8,7 +7,6 @@ from app.services import group_service
 from app.tests.utils.utils import random_lower_string
 
 
-# テスト用の依存データを作成するヘルパー (必要であれば conftest.py に移動)
 def create_test_group(db: Session, name: str) -> models.Group:
     group_in = schemas.GroupCreate(name=name)
     return crud.group.create(db=db, obj_in=group_in)
@@ -17,7 +15,6 @@ def create_test_group(db: Session, name: str) -> models.Group:
 def test_validate_group_creation_success(db: Session) -> None:
     """グループ作成バリデーション成功（重複なし）"""
     group_in = schemas.GroupCreate(name=random_lower_string())
-    # 例外が発生しないことを確認
     group_service.validate_group_creation(db, group_in=group_in)
 
 
@@ -45,18 +42,15 @@ def test_validate_group_creation_fail_empty_name(db: Session) -> None:
 
 def test_validate_group_update_success(db: Session) -> None:
     """グループ更新バリデーション成功"""
-    # 更新対象と、別名のグループを作成
     group_to_update = create_test_group(db, name=random_lower_string())
     create_test_group(db, name=random_lower_string())
     db.commit()
 
-    # ケース1: 存在しない名前に更新
     update_in_new_name = schemas.GroupUpdate(name=random_lower_string())
     group_service.validate_group_update(
         db, group_id_to_update=int(group_to_update.id), group_in=update_in_new_name
     )
 
-    # ケース2: 自分自身の名前に更新（変更なし）
     update_in_same_name = schemas.GroupUpdate(name=str(group_to_update.name))
     group_service.validate_group_update(
         db, group_id_to_update=int(group_to_update.id), group_in=update_in_same_name
@@ -101,7 +95,6 @@ def test_create_group_with_validation_success(db: Session) -> None:
     assert created_group
     assert created_group.name == group_name
 
-    # DBでも確認
     db_group = db.query(models.Group).filter(models.Group.name == group_name).first()
     assert db_group
     assert db_group.id == created_group.id
@@ -133,7 +126,6 @@ def test_update_group_with_validation_success(db: Session) -> None:
     assert updated_group.id == group_to_update.id
     assert updated_group.name == new_name
 
-    # DBでも確認
     db.refresh(updated_group)
     assert updated_group.name == new_name
 
@@ -159,4 +151,4 @@ def test_update_group_with_validation_fail_not_found(db: Session) -> None:
         group_service.update_group_with_validation(
             db, group_id=non_existent_id, group_in=group_in_update
         )
-    assert excinfo.value.status_code == 404  # crud.get_or_404 で発生
+    assert excinfo.value.status_code == 404

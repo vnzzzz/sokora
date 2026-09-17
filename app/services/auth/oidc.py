@@ -31,7 +31,14 @@ class OIDCLoginResult:
 
 
 def oidc_discovery_url(issuer: str) -> str:
-    """Return the OpenID Provider Configuration URL for an issuer."""
+    """issuerからOpenID Provider Configuration URLを組み立てる。
+
+    Args:
+        issuer: provider issuer URL。
+
+    Returns:
+        trailing slashを正規化したstandard discovery URL。
+    """
     return f"{issuer.rstrip('/')}/.well-known/openid-configuration"
 
 
@@ -39,6 +46,15 @@ class OIDCClient:
     """Wrap Authlib's Starlette OIDC integration behind a small application API."""
 
     def __init__(self, settings: AuthSettings, client: Any | None = None) -> None:
+        """effective settingsからOIDC client boundaryを初期化する。
+
+        Args:
+            settings: request時点で解決済みのauthentication settings。
+            client: test等で注入するAuthlib-compatible client。
+
+        Raises:
+            OIDCError: OIDCが有効な設定として成立していない場合。
+        """
         if not settings.oidc_enabled:
             raise OIDCError("OIDC is not configured")
         self.settings = settings
@@ -64,10 +80,19 @@ class OIDCClient:
         request: Request,
         redirect_uri: str | None = None,
     ) -> str:
-        """Create an authorization URL through provider discovery.
+        """provider discoveryを使ってauthorization URLを生成する。
 
-        Authlib generates and persists the OAuth state and OIDC nonce in the
-        signed Starlette session. The callback consumes that temporary state.
+        AuthlibがOAuth stateとOIDC nonceをsigned Starlette sessionへ保存し、callbackで消費する。
+
+        Args:
+            request: state/nonceを保存するStarlette request。
+            redirect_uri: callback URI override。未指定時はsettings値を使う。
+
+        Returns:
+            provider authorization endpointへのredirect URL。
+
+        Raises:
+            OIDCError: discoveryまたはauthorization redirect生成に失敗した場合。
         """
         try:
             response = await self._client.authorize_redirect(
@@ -79,11 +104,20 @@ class OIDCClient:
         return response.headers["location"]
 
     async def exchange_code(self, *, request: Request) -> OIDCLoginResult:
-        """Exchange a code and return identity claims validated by Authlib.
+        """authorization codeを交換し、検証済みidentityを返す。
 
-        Authlib validates callback state and the ID token's nonce, issuer,
-        audience, signature, and time-based claims using discovery metadata and
-        JWKS before exposing ``userinfo``.
+        Authlibがcallback stateとID tokenのnonce、issuer、audience、signature、time-based claimsを
+        discovery metadata/JWKSで検証してから``userinfo``を公開する。
+
+        Args:
+            request: provider callback queryとtemporary session stateを持つrequest。
+
+        Returns:
+            validated subjectと表示用username。
+
+        Raises:
+            OIDCStateError: callback state mismatchの場合。
+            OIDCError: token exchange、ID token validation、required claim取得に失敗した場合。
         """
         try:
             token = await self._client.authorize_access_token(request)
@@ -114,11 +148,20 @@ class OIDCClient:
         request: Request,
         post_logout_redirect_uri: str,
     ) -> str | None:
-        """Return an RP-Initiated Logout URL discovered from provider metadata.
+        """provider metadataからRP-Initiated Logout URLを取得する。
 
-        The persistent application session does not retain an ID token. The
-        standards-defined ``client_id`` parameter therefore identifies the RP
-        when requesting a registered post-logout redirect URI.
+        persistent application sessionにはID tokenを保持しないため、registered post-logout redirect
+        URIを要求する際はstandards-defined ``client_id`` でRPを識別する。
+
+        Args:
+            request: logout stateを一時保存するrequest。
+            post_logout_redirect_uri: provider logout後のregistered callback URI。
+
+        Returns:
+            provider logout URL。providerが``end_session_endpoint``を持たなければ ``None``。
+
+        Raises:
+            OIDCError: metadata取得またはlogout redirect生成に失敗した場合。
         """
         try:
             response = await self._client.logout_redirect(
@@ -135,7 +178,15 @@ class OIDCClient:
         return response.headers["location"]
 
     async def validate_logout_response(self, request: Request) -> None:
-        """Validate RP-Initiated Logout state returned by the provider."""
+        """providerから返されたRP-Initiated Logout stateを検証する。
+
+        Args:
+            request: logout callback queryとtemporary stateを持つrequest。
+
+        Raises:
+            OIDCStateError: logout state validationに失敗した場合。
+            OIDCError: その他のlogout callback validationに失敗した場合。
+        """
         try:
             await self._client.validate_logout_response(request)
         except OAuthError as exc:

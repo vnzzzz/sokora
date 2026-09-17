@@ -79,6 +79,14 @@ class AnalysisPageViewModel(TypedDict):
 
 
 def _fiscal_year(today: date) -> int:
+    """指定日が属する4月始まり年度を返す。
+
+    Args:
+        today: 年度判定の基準日。
+
+    Returns:
+        基準日が属する年度の開始年。
+    """
     return today.year if today.month >= 4 else today.year - 1
 
 
@@ -91,6 +99,14 @@ def _optional_order_key(
 
     ``0`` は有効な最小orderとして扱い、``None`` と同一視しない。orderが同じ場合は
     persistent IDとnameでtie-breakし、DB返却順へ表示が依存しないようにする。
+
+    Args:
+        order: optionalな表示順。
+        object_id: persistent ID。
+        name: 最終tie-breakに使う表示名。
+
+    Returns:
+        ``None``を末尾へ送り、order/ID/nameで安定sortできるtuple。
     """
     return (
         order is None,
@@ -101,11 +117,27 @@ def _optional_order_key(
 
 
 def _location_category_name(location: Any) -> str:
+    """locationのcategory表示名を正規化する。
+
+    Args:
+        location: category属性を持つlocation object。
+
+    Returns:
+        trim済みcategory。空値は ``未分類``。
+    """
     category = str(location.category or "").strip()
     return category or "未分類"
 
 
 def _sort_locations(locations: List[Any]) -> List[Any]:
+    """locationをcategory/order/ID/nameで安定sortする。
+
+    Args:
+        locations: 並べ替えるlocation一覧。
+
+    Returns:
+        未分類を末尾にし、明示orderを尊重した新しい一覧。
+    """
     return sorted(
         locations,
         key=lambda location: (
@@ -120,6 +152,14 @@ def _sort_locations(locations: List[Any]) -> List[Any]:
 
 
 def _build_location_categories(locations: List[Any]) -> List[LocationCategory]:
+    """location一覧をfilter表示用category sectionへまとめる。
+
+    Args:
+        locations: 表示順確定済みのlocation一覧。
+
+    Returns:
+        未分類categoryを末尾へ送ったcategory section一覧。
+    """
     categories: Dict[str, List[Any]] = {}
     for location in locations:
         categories.setdefault(_location_category_name(location), []).append(location)
@@ -141,6 +181,17 @@ def _build_group_sections(
     locations: List[Any],
     selected_location_ids: Optional[set[int]] = None,
 ) -> List[GroupSection]:
+    """analysis raw dataをgroup/user-type/userの表示sectionへ編成する。
+
+    Args:
+        db: group/user-typeの表示順取得に使うDB session。
+        analysis_data: attendance analysis serviceのraw result。
+        locations: 表示順確定済みのlocation一覧。
+        selected_location_ids: total/date detail計算対象のlocation ID集合。``None``は全件。
+
+    Returns:
+        group/order ruleとuser sortを適用したtemplate向けsection一覧。
+    """
     group_sort_info: Dict[str, tuple[bool, int, int, str]] = {}
     for group in crud.group.list_all(db):
         if group.id is None:
@@ -247,6 +298,17 @@ def get_analysis_page_view_model(
 
     ``today`` はtestで年度defaultとyear selector範囲を決定的にするためのclock injectionで、
     data retention期間を制限するものではない。
+
+    Args:
+        db: analysis read model構築に使うDB session。
+        month: 月次modeの対象月（YYYY-MM）。未指定時は基準日の月。
+        year: 年度modeの開始年。指定時は年度modeになる。
+        mode: ``year``指定時に年度modeへ切り替える表示mode。
+        selected_location_ids: 選択中のlocation ID。一覧順はavailable location順へ正規化する。
+        today: default期間とyear selector範囲を決める任意の基準日。
+
+    Returns:
+        analysis templateが直接renderできるpage view model。
     """
     today_value = today or datetime.now().date()
     fiscal_default = _fiscal_year(today_value)

@@ -37,6 +37,14 @@ logger = logging.getLogger(__name__)
 
 
 def _actor_name(admin: dict[str, object]) -> str:
+    """admin sessionからaudit log用actor名を取得する。
+
+    Args:
+        admin: 検証済みadmin session identity。
+
+    Returns:
+        username、subject、またはfallbackの ``unknown``。
+    """
     return str(admin.get("username") or admin.get("subject") or "unknown")
 
 
@@ -47,6 +55,17 @@ def _page_context(
     restored: bool = False,
     error_message: str | None = None,
 ) -> dict[str, object]:
+    """DB management pageの共通template contextを構築する。
+
+    Args:
+        request: 現在のHTTP request。
+        runtime: application-owned DB runtime。
+        restored: restore成功後の表示flag。
+        error_message: 表示する安全なerror message。
+
+    Returns:
+        backend種別とSQLite操作可否を含むtemplate context。
+    """
     database_path = sqlite_database_path(runtime.database_url)
     backend = sqlalchemy_database_url(runtime.database_url).get_backend_name()
     return {
@@ -60,6 +79,14 @@ def _page_context(
 
 
 def _delete_temporary_file(path: Path) -> None:
+    """download完了後のtemporary backup fileを削除する。
+
+    Args:
+        path: 削除対象のtemporary file path。
+
+    Returns:
+        None。
+    """
     path.unlink(missing_ok=True)
 
 
@@ -74,6 +101,14 @@ async def database_management_page(
     page自体はadmin-only。file-backed SQLiteではbackup/restore操作を有効化し、PostgreSQLと
     in-memory SQLiteでは操作を無効化したdiagnostic viewを返す。`result=restored`はredirect後の
     success表示だけに利用し、DB stateの判定には使わない。
+
+    Args:
+        request: application runtimeへアクセスするHTTP request。
+        result: redirect後の表示用result code。
+        _admin: admin authorization dependencyの検証済みidentity。
+
+    Returns:
+        DB management pageのHTML response。
     """
     runtime = get_app_database_runtime(request.app)
     return templates.TemplateResponse(
@@ -92,6 +127,13 @@ async def download_database_backup(
     snapshot作成・integrity validationはserviceへ委譲し、event loopをblockしないようthreadpoolで
     実行する。download完了後はBackgroundTaskで一時fileを削除し、server側にbackup copyを
     永続保管しない。unsupported backendやvalidation failureは管理画面へ安全なerrorを返す。
+
+    Args:
+        request: application runtimeへアクセスするHTTP request。
+        admin: 検証済みadmin identity。
+
+    Returns:
+        成功時はSQLite backup file response、失敗時はerror表示付き管理画面。
     """
     runtime = get_app_database_runtime(request.app)
     actor = _actor_name(admin)
@@ -132,6 +174,15 @@ async def restore_database_backup(
 
     staged uploadは成功/失敗にかかわらずrouterがcleanupする。ただしserviceがmanual recovery用に
     保持すると判断したpre-restore rollback snapshotは別artifactであり、このcleanup対象ではない。
+
+    Args:
+        request: application runtimeへアクセスするHTTP request。
+        database: restore candidateとしてuploadされたSQLite file。
+        confirm_restore: destructive operationの明示確認値。``yes``のみ受理する。
+        admin: 検証済みadmin identity。
+
+    Returns:
+        成功時はresult付き管理画面へのredirect、失敗時はerror表示付き管理画面。
     """
     runtime = get_app_database_runtime(request.app)
     actor = _actor_name(admin)

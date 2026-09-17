@@ -30,11 +30,29 @@ class OIDCDiscoveryError(AuthConfigError):
 
 
 def get_auth_config(db: Session) -> AuthConfig | None:
-    """Return the singleton database authentication config row when it exists."""
+    """singleton authentication config rowを取得する。
+
+    Args:
+        db: authentication configを読むDB session。
+
+    Returns:
+        保存済みconfig。未作成なら ``None``。
+    """
     return db.get(AuthConfig, AUTH_CONFIG_ID)
 
 
 def _fernet(encryption_key: str | None) -> Fernet:
+    """runtime keyからFernet instanceを構築する。
+
+    Args:
+        encryption_key: deploymentから渡されるFernet key。
+
+    Returns:
+        client secret暗号化/復号に使うFernet instance。
+
+    Raises:
+        AuthConfigValidationError: keyが未設定またはFernet keyとして不正な場合。
+    """
     if not encryption_key:
         raise AuthConfigValidationError("OIDC設定暗号鍵がruntimeに設定されていません。")
     try:
@@ -44,12 +62,34 @@ def _fernet(encryption_key: str | None) -> Fernet:
 
 
 def encrypt_client_secret(secret: str, encryption_key: str | None) -> str:
-    """Encrypt an OIDC client secret without exposing it in logs or responses."""
+    """OIDC client secretを保存用ciphertextへ暗号化する。
+
+    Args:
+        secret: 平文client secret。
+        encryption_key: deployment提供のFernet key。
+
+    Returns:
+        ASCII表現のFernet ciphertext。
+
+    Raises:
+        AuthConfigValidationError: encryption keyが未設定または不正な場合。
+    """
     return _fernet(encryption_key).encrypt(secret.encode("utf-8")).decode("ascii")
 
 
 def decrypt_client_secret(ciphertext: str, encryption_key: str | None) -> str:
-    """Decrypt a persisted OIDC client secret using the deployment-provided key."""
+    """保存済みOIDC client secretを復号する。
+
+    Args:
+        ciphertext: 保存済みFernet ciphertext。
+        encryption_key: deployment提供のFernet key。
+
+    Returns:
+        UTF-8 client secret。
+
+    Raises:
+        AuthConfigValidationError: key不整合、ciphertext破損、decode failureの場合。
+    """
     try:
         plaintext = _fernet(encryption_key).decrypt(ciphertext.encode("ascii"))
     except (InvalidToken, UnicodeError) as exc:
@@ -65,11 +105,17 @@ def decrypt_client_secret(ciphertext: str, encryption_key: str | None) -> str:
 
 
 def resolve_auth_settings(db: Session, app_settings: AppSettings) -> AuthSettings:
-    """Resolve the three-state OIDC compatibility contract for one request.
+    """request時点のeffective authentication settingsを解決する。
 
-    No database row keeps the legacy environment configuration. Once the singleton
-    row exists, the database becomes authoritative. An explicit disabled row never
-    falls back to legacy environment values.
+    DB rowが無い場合だけlegacy environment設定を使う。singleton rowが存在した時点でDBを
+    authoritative sourceとし、明示disabled rowからenvironment値へfallbackしない。
+
+    Args:
+        db: shared auth configを読むDB session。
+        app_settings: process起動時のenvironment由来application settings。
+
+    Returns:
+        DB/environment precedenceとsecret復号結果を反映したeffective settings。
     """
     legacy = AuthSettings.from_app_settings(app_settings)
     config = get_auth_config(db)
@@ -110,7 +156,17 @@ def resolve_auth_settings(db: Session, app_settings: AppSettings) -> AuthSetting
 
 
 def validate_oidc_scope_for_enable(scope: str) -> str:
-    """Return normalized OIDC scope and require the protocol-defining openid scope."""
+    """OIDC有効化に必要なscopeを正規化・検証する。
+
+    Args:
+        scope: 管理画面から入力されたspace-separated scope。
+
+    Returns:
+        空値をdefaultへ補正したscope。
+
+    Raises:
+        AuthConfigValidationError: ``openid`` scopeが含まれない場合。
+    """
     normalized_scope = scope.strip() or DEFAULT_OIDC_SCOPE
     if "openid" not in normalized_scope.split():
         raise AuthConfigValidationError(
@@ -129,7 +185,26 @@ def save_oidc_config(
     client_secret: str,
     scope: str,
 ) -> AuthConfig:
-    """Upsert the singleton OIDC config while preserving omitted existing secrets."""
+    """singleton OIDC configをvalidation付きでupsertする。
+
+    client secret未入力時は、同一client identityの既存ciphertextを保持する。issuer/client IDを
+    変更した場合は旧secretを破棄し、enable時は必要項目と復号可能性をcommit前に検証する。
+
+    Args:
+        db: configを更新するDB session。
+        app_settings: redirect URIや暗号鍵を含むruntime settings。
+        enabled: 保存後にOIDCを有効化するか。
+        issuer: issuer URL candidate。
+        client_id: OIDC client ID candidate。
+        client_secret: 新しいclient secret。空値は既存secret保持の意図。
+        scope: space-separated OIDC scope。
+
+    Returns:
+        保存済みsingleton AuthConfig row。
+
+    Raises:
+        AuthConfigValidationError: enableに必要な設定不足、scope不正、secret復号不可の場合。
+    """
     normalized_issuer = issuer.strip() or None
     normalized_client_id = client_id.strip() or None
     normalized_scope = scope.strip() or DEFAULT_OIDC_SCOPE
@@ -206,7 +281,14 @@ def save_oidc_config(
 
 
 def unlink_oidc_config(db: Session) -> AuthConfig:
-    """Explicitly disable and clear OIDC without restoring legacy env fallback."""
+    """OIDC DB設定を明示disabled状態へ初期化する。
+
+    Args:
+        db: configを更新するDB session。
+
+    Returns:
+        OIDC値をclearし、disabledを保存したsingleton AuthConfig row。
+    """
     with transaction(db):
         config = get_auth_config(db)
         if config is None:
@@ -228,7 +310,19 @@ async def check_oidc_discovery(
     *,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> dict[str, Any]:
-    """Fetch standard OIDC discovery metadata for an unsaved issuer candidate."""
+    """未保存issuer candidateのOIDC discovery metadataを取得・検証する。
+
+    Args:
+        issuer: discovery対象issuer URL。
+        timeout: HTTP timeout秒。
+        transport: test等で差し替えるoptional HTTPX transport。
+
+    Returns:
+        必須endpointとissuer整合性を検証済みのdiscovery metadata。
+
+    Raises:
+        OIDCDiscoveryError: issuer未入力、通信/JSON failure、必須項目不足、issuer不一致の場合。
+    """
     normalized_issuer = issuer.strip()
     if not normalized_issuer:
         raise OIDCDiscoveryError("issuerを入力してください。")

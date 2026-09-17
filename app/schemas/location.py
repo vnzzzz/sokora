@@ -28,7 +28,16 @@ class LocationCreate(LocationBase):
         category: Optional[str] = Form(None),
         order: Optional[int] = Form(None),
     ) -> "LocationCreate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからcreate schemaを構築する。
+
+        Args:
+            name: 勤怠種別名。
+            category: optionalなcategory名。
+            order: optionalな表示順。
+
+        Returns:
+            form値を保持する`LocationCreate`。
+        """
         return cls(name=name, category=category, order=order)
 
 
@@ -44,7 +53,16 @@ class LocationUpdate(LocationBase):
         category: Optional[str] = Form(None),
         order: Optional[int] = Form(None),
     ) -> "LocationUpdate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからupdate schemaを構築する。
+
+        Args:
+            name: optionalな勤怠種別名。
+            category: optionalなcategory名。
+            order: optionalな表示順。
+
+        Returns:
+            form値を保持する`LocationUpdate`。
+        """
         return cls(name=name, category=category, order=order)
 
 
@@ -54,9 +72,7 @@ class LocationInDBBase(LocationBase):
     id: int
     name: str
 
-    model_config = ConfigDict(
-        from_attributes=True  # ORMオブジェクトからの変換を有効化
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Location(LocationInDBBase):

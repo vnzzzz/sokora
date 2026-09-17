@@ -16,7 +16,6 @@ from typing import Any, Dict, Mapping
 
 from app.core.config import logger
 
-# キャッシュファイルのパス
 ASSETS_JSON_DIR = Path(__file__).parent.parent.parent / "assets" / "json"
 CACHE_FILE = ASSETS_JSON_DIR / "holidays_cache.json"
 
@@ -44,7 +43,14 @@ class HolidayCache:
         self._load_cache()
 
     def _load_cache(self) -> None:
-        """ビルド時キャッシュファイルから標準祝日データを読み込む。"""
+        """build-time cache fileから標準祝日を読み込む。
+
+        Returns:
+            `None`。読み込み結果はinstance stateへ保持する。
+
+        Notes:
+            file不在/破損時は例外を外へ出さず空cacheへ縮退し、診断logを残す。
+        """
         try:
             if CACHE_FILE.exists():
                 with open(CACHE_FILE, "r", encoding="utf-8") as f:
@@ -73,16 +79,34 @@ class HolidayCache:
             self._cache = {}
 
     def is_holiday(self, date_obj: datetime.date) -> bool:
-        """標準祝日データだけを使って指定日が祝日か判定する。"""
+        """標準祝日だけを使って指定日が祝日か判定する。
+
+        Args:
+            date_obj: 判定対象日。
+
+        Returns:
+            標準祝日cacheに名称が存在する場合`True`。
+        """
         return self.get_holiday_name(date_obj) != ""
 
     def get_holiday_name(self, date_obj: datetime.date) -> str:
-        """標準祝日データから指定日の名称を取得する。"""
+        """標準祝日cacheから指定日の名称を取得する。
+
+        Args:
+            date_obj: 取得対象日。
+
+        Returns:
+            祝日名。未登録の場合は空文字列。
+        """
         date_str = date_obj.strftime("%Y-%m-%d")
         return self._cache.get(date_str, "")
 
     def get_cache_info(self) -> Dict[str, Any]:
-        """immutableな標準祝日cacheの診断情報を返す。"""
+        """immutableな標準祝日cacheの診断情報を返す。
+
+        Returns:
+            件数、build-time flag、file有無、対象年等のdiagnostic mapping。
+        """
         return {
             "total_holidays": len(self._cache),
             "build_time_cache": self._build_time_cache,
@@ -111,15 +135,24 @@ def bind_custom_holiday_snapshot(
 
     ContextVarを使うことで同一process内の並行requestも別snapshotを持てるが、DB snapshotの
     読み取り時点そのものはcallerが所有する。
+
+    Args:
+        holidays: `YYYY-MM-DD`をkey、custom holiday名をvalueとするrequest snapshot。
+
+    Returns:
+        後でcontextを元へ戻すためのContextVar token。
     """
     return _custom_holiday_snapshot.set(MappingProxyType(dict(holidays)))
 
 
 def reset_custom_holiday_snapshot(token: Token[Mapping[str, str]]) -> None:
-    """対応するbind tokenをresetし、以前のcontext stateへ必ず戻す。
+    """対応するbind tokenをresetし、以前のcontext stateへ戻す。
 
     request dependencyは``finally``から呼び、template renderやDB readが例外終了した場合も
     次requestへcustom holidayを持ち越さない。
+
+    Args:
+        token: `bind_custom_holiday_snapshot()`が返した同一contextのtoken。
     """
     _custom_holiday_snapshot.reset(token)
 
@@ -129,6 +162,12 @@ def get_holiday_name(date_obj: datetime.date) -> str:
 
     同じ日付が両方に存在する場合はDB由来custom holidayをauthoritative overrideとして扱う。
     snapshotに日付が存在しない場合だけimmutableな標準祝日assetへfallbackする。
+
+    Args:
+        date_obj: 取得対象日。
+
+    Returns:
+        custom holidayまたは標準祝日の名称。未登録なら空文字列。
     """
     date_str = date_obj.strftime("%Y-%m-%d")
     custom_name = _custom_holiday_snapshot.get().get(date_str)
@@ -138,10 +177,21 @@ def get_holiday_name(date_obj: datetime.date) -> str:
 
 
 def is_holiday(date_obj: datetime.date) -> bool:
-    """request-local custom holidayを含めて指定日が祝日か判定する。"""
+    """request-local custom holidayを含めて指定日が祝日か判定する。
+
+    Args:
+        date_obj: 判定対象日。
+
+    Returns:
+        custom/standardのいずれかに祝日名が存在する場合`True`。
+    """
     return get_holiday_name(date_obj) != ""
 
 
 def get_cache_info() -> Dict[str, Any]:
-    """標準祝日cacheの診断情報を取得する。"""
+    """標準祝日cacheの診断情報を取得する。
+
+    Returns:
+        process-local標準祝日cacheのdiagnostic mapping。
+    """
     return _holiday_cache.get_cache_info()

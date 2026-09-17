@@ -13,7 +13,14 @@ from app.services import attendance_read_service
 
 
 def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
-    """現在月から遡ってCSV出力対象月の選択肢を返す。"""
+    """現在月から遡ってCSV出力対象月の選択肢を返す。
+
+    Args:
+        num_months: 現在月を含めて返す月数。
+
+    Returns:
+        `value=YYYY-MM`と日本語labelを持つ月optionのlist。
+    """
     today = datetime.now().date()
     months = []
     for index in range(num_months):
@@ -28,7 +35,17 @@ def get_available_months(num_months: int = 12) -> List[Dict[str, str]]:
 
 
 def get_date_range_for_month(month: str) -> Tuple[date, date]:
-    """YYYY-MMから月初・月末を返す。"""
+    """`YYYY-MM`からinclusiveな月初・月末を返す。
+
+    Args:
+        month: 対象月。`YYYY-MM`形式。
+
+    Returns:
+        月初日と月末日のtuple。
+
+    Raises:
+        ValueError: monthが`YYYY-MM`として解釈できない場合。
+    """
     year_str, month_str = month.split("-")
     year = int(year_str)
     month_int = int(month_str)
@@ -38,7 +55,17 @@ def get_date_range_for_month(month: str) -> Tuple[date, date]:
 
 
 def _generate_date_headers(month: Optional[str] = None) -> List[str]:
-    """CSV用の日付ヘッダーを生成する。"""
+    """CSV用の日付headerを生成する。
+
+    Args:
+        month: `YYYY-MM`形式の対象月。未指定時は直近90日を対象にする。
+
+    Returns:
+        `YYYY/MM/DD`形式の日付header list。
+
+    Raises:
+        ValueError: month形式が不正な場合。
+    """
     today = date.today()
     if month:
         start_date, end_date = get_date_range_for_month(month)
@@ -60,7 +87,18 @@ def generate_work_entries_csv_rows(
     db: Session,
     month: Optional[str] = None,
 ) -> Generator[List[str], None, None]:
-    """勤怠データのCSV行をstreaming用に生成する。"""
+    """勤怠CSVの行をstreaming用に生成する。
+
+    Args:
+        db: DB session。
+        month: `YYYY-MM`形式の対象月。未指定時は直近90日を対象にする。
+
+    Yields:
+        先頭にheader、その後userごとのCSV row。
+
+    Raises:
+        ValueError: month形式が不正な場合。
+    """
     date_headers = _generate_date_headers(month)
     yield ["user_name", "user_id", "group_name", "user_type", *date_headers]
 

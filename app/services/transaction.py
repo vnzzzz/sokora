@@ -25,6 +25,17 @@ def transaction(
     このhelperは渡されたSession全体のtransactionを所有する。callerは別use caseの未確定変更を
     同じSessionへ混在させないこと。そうしたpending stateもcommit/rollback対象になるため、
     service boundaryごとに1つのtransaction ownershipを維持する。
+
+    Args:
+        db: transaction ownershipを渡すDB session。
+        integrity_detail: DB integrity conflictをapplication errorへ変換するときのpublic detail。
+
+    Yields:
+        callerが同一transaction内でwrite処理を行うためのcontrol。
+
+    Raises:
+        DataIntegrityError: DB ``IntegrityError`` が発生した場合。
+        Exception: その他の例外はrollback後にそのまま再送出する。
     """
     try:
         yield

@@ -25,7 +25,15 @@ responder = MasterCrudResponder(
 
 @router.get("", response_class=HTMLResponse)
 def group_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
-    """グループ管理ページを表示する。"""
+    """グループ管理ページを表示する。
+
+    Args:
+        request: FastAPI request。
+        db: DB session。
+
+    Returns:
+        全groupを含む管理ページHTML。
+    """
     return templates.TemplateResponse(
         "pages/group.html",
         {"request": request, "groups": group.list_all(db)},
@@ -39,7 +47,19 @@ async def group_modal(
     group_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """追加・編集モーダルを返す。"""
+    """group追加・編集modalを返す。
+
+    Args:
+        request: FastAPI request。
+        group_id: 編集対象group ID。未指定時は新規作成modalを返す。
+        db: DB session。
+
+    Returns:
+        `openModal` event付きのform fragment。
+
+    Raises:
+        HTTPException: 指定groupが存在しない場合。
+    """
     group_data = group.get_or_404(db, group_id) if group_id is not None else None
     modal_id = "add-group" if group_id is None else f"edit-group-{group_id}"
     return responder.open_form(
@@ -55,7 +75,19 @@ async def group_delete_modal(
     group_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """削除確認モーダルを返す。"""
+    """group削除確認modalを返す。
+
+    Args:
+        request: FastAPI request。
+        group_id: 削除対象group ID。
+        db: DB session。
+
+    Returns:
+        `openModal` event付きのdelete confirmation fragment。
+
+    Raises:
+        HTTPException: 指定groupが存在しない場合。
+    """
     group_data = group.get_or_404(db, group_id)
     return responder.open_delete(
         request,
@@ -70,7 +102,16 @@ async def create_group(
     group_in: schemas.GroupCreate = Depends(schemas.GroupCreate.as_form),
     db: Session = Depends(get_db),
 ) -> Any:
-    """グループを作成し、標準master CRUD triggerを返す。"""
+    """groupを作成し、master CRUD responseを返す。
+
+    Args:
+        request: FastAPI request。
+        group_in: formから構築したgroup create schema。
+        db: DB session。
+
+    Returns:
+        成功時はclose/refresh event付きfragment。validation/integrity failure時はinline error fragment。
+    """
     modal_id = "add-group"
     try:
         created = group_service.create_group_with_validation(db=db, group_in=group_in)
@@ -96,7 +137,17 @@ async def update_group(
     group_in: schemas.GroupUpdate = Depends(schemas.GroupUpdate.as_form),
     db: Session = Depends(get_db),
 ) -> Any:
-    """グループを更新し、標準master CRUD triggerを返す。"""
+    """groupを更新し、master CRUD responseを返す。
+
+    Args:
+        request: FastAPI request。
+        group_id: 更新対象group ID。
+        group_in: formから構築したgroup update schema。
+        db: DB session。
+
+    Returns:
+        成功時はclose/refresh event付きfragment。validation/integrity failure時はinline error fragment。
+    """
     modal_id = f"edit-group-{group_id}"
     try:
         updated = group_service.update_group_with_validation(
@@ -125,7 +176,19 @@ async def delete_group(
     group_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """グループを削除し、標準master CRUD triggerを返す。"""
+    """groupを削除し、master CRUD responseを返す。
+
+    Args:
+        request: FastAPI request。
+        group_id: 削除対象group ID。
+        db: DB session。
+
+    Returns:
+        成功時はclose/refresh event付きempty fragment。削除できない場合はwarning付きmodal fragment。
+
+    Raises:
+        HTTPException: delete処理開始前に対象groupが存在しない場合。
+    """
     modal_id = f"group-delete-modal-{group_id}"
     group_data = group.get_or_404(db, group_id)
     group_name = str(group_data.name)

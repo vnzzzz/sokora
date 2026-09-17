@@ -28,7 +28,18 @@ def _prepare_csv_file(
     rows: Iterable[Sequence[str]],
     encoding: str = "utf-8",
 ) -> BinaryIO:
-    """全CSV行をresponse開始前にdisk-backed temporary fileへ書き込む。"""
+    """全CSV行をresponse開始前にdisk-backed temporary fileへ書き込む。
+
+    Args:
+        rows: CSVへ書き込む行のiterable。
+        encoding: 出力encoding。`sjis`はShift_JIS、それ以外はUTF-8として扱う。
+
+    Returns:
+        先頭位置へrewind済みのbinary temporary file。
+
+    Raises:
+        Exception: 行生成・encoding・file書き込みに失敗した場合。作成済みfileはcloseして再送出する。
+    """
     csv_file = tempfile.TemporaryFile(mode="w+b")
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer)
@@ -53,7 +64,17 @@ def _prepare_csv_file(
 
 
 def _stream_prepared_csv(csv_file: BinaryIO) -> Iterator[bytes]:
-    """生成済みtemporary fileをchunk単位で返し、stream終了時に必ずcloseする。"""
+    """生成済みtemporary fileをchunk単位でstreamする。
+
+    Args:
+        csv_file: 先頭位置へrewind済みのbinary file。
+
+    Yields:
+        最大64KiBのCSV byte chunk。
+
+    Notes:
+        stream完了時または中断時にfileを必ずcloseする。
+    """
     try:
         while chunk := csv_file.read(64 * 1024):
             yield chunk
@@ -71,7 +92,19 @@ def download_csv(
     ),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
-    """勤怠CSVを生成し、成功を確認してからdownload responseを返す。"""
+    """勤怠CSVを生成し、成功を確認してからdownload responseを返す。
+
+    Args:
+        month: 出力対象月。`YYYY-MM`形式。未指定時は全対象期間を出力する。
+        encoding: `utf-8`または`sjis`。
+        db: DB session。
+
+    Returns:
+        生成済みtemporary fileをstreamするCSV download response。
+
+    Raises:
+        HTTPException: month/encodingが不正、DBが利用不能、またはCSV生成に失敗した場合。
+    """
     logger.info("CSVダウンロードリクエスト: month=%s, encoding=%s", month, encoding)
 
     valid_encodings = ["utf-8", "sjis"]

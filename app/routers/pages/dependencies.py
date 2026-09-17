@@ -23,6 +23,12 @@ async def bind_custom_holiday_read_snapshot(
     更新可能なcustom holidayはprocess-global cacheへ複製しない。holidayを描画する
     requestごとに共有DBを読み、ContextVarへ束縛することで別replicaのwriteを次の
     readから観測できるようにする。
+
+    Args:
+        db: custom holiday snapshotを読むrequest-scoped DB session。
+
+    Yields:
+        snapshotをContextVarへbindしたrequest execution scope。
     """
     holidays = await run_in_threadpool(custom_holiday_crud.list_all, db)
     snapshot = {

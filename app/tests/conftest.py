@@ -4,24 +4,14 @@ from typing import Any, AsyncGenerator, Generator, List
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-
-# ASGITransport をインポート
 from httpx import ASGITransport, AsyncClient
-
-# 同期エンジン作成用の create_engine と StaticPool をインポート
 from sqlalchemy import Engine, StaticPool, create_engine
-from sqlalchemy.orm import Session, sessionmaker  # Session をインポート
+from sqlalchemy.orm import Session, sessionmaker
 
-# from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker # 不要
-# --- アプリケーションとDB設定のインポート ---
-from app.db.session import Base, DatabaseRuntime, get_db  # get_db と Base をインポート
+from app.db.session import Base, DatabaseRuntime, get_db
 from app.main import app as main_app
 
-# トップレベルでモデルをインポート
-# from app.models import User, Attendance, Location, Group, UserType
 
-
-# --- テスト用データベースフィクスチャ ---
 @pytest.fixture(scope="function")
 def db() -> Generator[Session, None, None]:
     """テスト関数ごとにインメモリDBとセッションを作成・提供するフィクスチャ"""
@@ -30,10 +20,9 @@ def db() -> Generator[Session, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    # TestingSessionLocal の定義を関数内に移動し、インデントを修正
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    # モデルをインポート (インデントを修正)
+    # Base.metadataからtableを作る前に全modelを登録する。
     from app.models import (  # noqa: F401
         Attendance,
         CustomHoliday,
@@ -43,13 +32,13 @@ def db() -> Generator[Session, None, None]:
         UserType,
     )
 
-    Base.metadata.create_all(bind=engine)  # テーブル作成
+    Base.metadata.create_all(bind=engine)
 
     db_session = TestingSessionLocal()
     try:
-        yield db_session  # テスト関数にセッションを提供
+        yield db_session
     finally:
-        Base.metadata.drop_all(bind=engine)  # テーブル削除
+        Base.metadata.drop_all(bind=engine)
         db_session.close()
 
 
@@ -64,7 +53,6 @@ def test_data_tracker(db: Session) -> Generator[dict, None, None]:
         "attendances": [],
     }
 
-    # テスト用のタイムスタンプを生成
     test_timestamp = int(time.time())
 
     def create_test_name(base_name: str) -> str:
@@ -76,7 +64,6 @@ def test_data_tracker(db: Session) -> Generator[dict, None, None]:
         if object_type in created_objects:
             created_objects[object_type].append(obj)
 
-    # ヘルパー関数を辞書に追加
     tracker = {
         "created_objects": created_objects,
         "create_test_name": create_test_name,
@@ -87,10 +74,8 @@ def test_data_tracker(db: Session) -> Generator[dict, None, None]:
     try:
         yield tracker
     finally:
-        # テスト終了時にすべての作成されたオブジェクトを削除
         try:
-            # 外部キー制約の順序を考慮して削除
-            # attendances -> users -> locations/user_types/groups の順序
+            # FK依存を壊さないようchild rowから削除する。
             for att in created_objects["attendances"]:
                 try:
                     db.delete(att)
@@ -127,7 +112,6 @@ def test_data_tracker(db: Session) -> Generator[dict, None, None]:
             db.rollback()
 
 
-# --- データ作成済みのテスト用DBフィクスチャ ---
 @pytest.fixture(scope="function")
 def db_with_data(db: Session, test_data_tracker: dict) -> Session:
     """基本テストデータが投入されたDBセッション"""
@@ -138,7 +122,7 @@ def db_with_data(db: Session, test_data_tracker: dict) -> Session:
     from app.schemas.location import LocationCreate
     from app.schemas.user_type import UserTypeCreate
 
-    # 固定名でベースデータを作成（テストが名称を前提に参照するため）
+    # 複数testが名称で参照するためseed名を固定する。
     group_data = GroupCreate(name="Test Group")
     test_group = crud_group.create(db, obj_in=group_data)
     test_data_tracker["register_created_object"]("groups", test_group)
@@ -155,21 +139,12 @@ def db_with_data(db: Session, test_data_tracker: dict) -> Session:
     return db
 
 
-# --- FastAPIアプリケーションと依存性オーバーライド ---
-
-# get_db をオーバーライドする関数 (dbフィクスチャに依存)
-# def override_get_db(db_session: Session = Depends(db)) -> Generator[Session, None, None]:
-#     yield db_session
-
-
-# test_app フィクスチャ (dbフィクスチャに依存)
 @pytest.fixture(scope="function")
 def test_app(
     db: Session,
-) -> Generator[FastAPI, None, None]:  # db フィクスチャを引数で受け取る
+) -> Generator[FastAPI, None, None]:
     """依存関係とapplication-owned DB runtimeを同じテストDBへbindする。"""
-    # routeのrequest-scoped get_dbと、short-lived managed sessionを使うserviceの双方が
-    # 同じfixture DBを参照するようapplication runtimeも明示的に差し替える。
+    # request dependencyとmanaged sessionが同じfixture DBを観測するようruntimeも差し替える。
     engine = db.get_bind()
     assert isinstance(engine, Engine)
     test_runtime = DatabaseRuntime(
@@ -191,7 +166,6 @@ def test_app(
         main_app.state.database_runtime = previous_runtime
 
 
-# --- 非同期テストクライアント (変更なし、test_app に依存) ---
 @pytest_asyncio.fixture(scope="function")
 async def async_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """テスト用の非同期HTTPクライアント"""

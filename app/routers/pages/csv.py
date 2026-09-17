@@ -13,23 +13,20 @@ from fastapi.templating import Jinja2Templates
 
 from app.utils.csv_utils import get_available_months
 
-# ルーター定義
 router = APIRouter(prefix="/csv", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("", response_class=HTMLResponse)
 def csv_page(request: Request) -> Any:
-    """
-    CSVダウンロードページを表示します
+    """CSV download pageをrenderする。
 
     Args:
-        request: FastAPIリクエストオブジェクト
+        request: FastAPI request。
 
     Returns:
-        HTMLResponse: レンダリングされたHTMLページ
+        選択可能な月一覧を含むCSV download page HTML。
     """
-    # CSVダウンロード対象として選択可能な月のリストを取得します。
     months = get_available_months()
 
     return templates.TemplateResponse(
