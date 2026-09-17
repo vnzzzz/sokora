@@ -11,16 +11,13 @@
 
 ## Quick start
 
-reference development environmentはVS Code Dev Containerです。containerを開いた状態で:
+reference development environmentはVS Code Dev Containerです。Dev Containerではworkspace向けMake targetが自動的に選択されるため、containerを開いた状態で:
 
 ```bash
 cp .env.sample .env
 ```
 
 sampleはlocal開発用の `SERVICE_PORT=8000` を含むため、そのまま起動できます。
-`VERSION` は `docker-build` / `docker-run` / `closed-bundle` 等のversioned image/package targetを使う場合だけ設定します。
-
-起動:
 
 ```bash
 make install
@@ -29,4 +26,6 @@ make run
 
 http://localhost:8000 を開きます。
 
-セットアップ、architecture、認証、API、deployment等の詳細は **[Documentation](docs/README.md)** を参照してください。
+Docker image/container/packageを扱うtargetはhost向けです。repository rootで通常の`make`を実行するとhost contextが選択され、`docker-build` / `docker-run` / `closed-bundle` 等のversioned targetでは`VERSION`が必要です。
+
+セットアップ、Make context、architecture、認証、API、deployment等の詳細は **[Documentation](docs/README.md)** を参照してください。
