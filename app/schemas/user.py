@@ -7,7 +7,7 @@
 
 from typing import List, Optional
 
-from fastapi import Form  # Form をインポート
+from fastapi import Form
 from pydantic import BaseModel, ConfigDict, Field
 
 from .group import Group
@@ -44,7 +44,7 @@ class UserUpdate(BaseModel):
         username: str = Form(...),
         group_id: int = Form(...),
         user_type_id: int = Form(...),
-    ) -> "UserUpdate":  # 戻り値の型アノテーションを追加
+    ) -> "UserUpdate":
         """フォームデータからインスタンスを生成"""
         return cls(username=username, group_id=group_id, user_type_id=user_type_id)
 
@@ -52,7 +52,6 @@ class UserUpdate(BaseModel):
 class User(UserBase):
     """ユーザー取得用スキーマ"""
 
-    # user_id: str
     id: str
     group: Optional[Group] = None
     user_type: Optional[UserType] = None
