@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ci
+      SOKORA_MAKE_CONTEXT: workspace
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,6 +103,7 @@ jobs:
           --health-retries 10
     env:
       VERSION: ci
+      SOKORA_MAKE_CONTEXT: workspace
       DATABASE_URL: postgresql://sokora:sokora@127.0.0.1:5432/sokora
       SOKORA_TEST_POSTGRES_URL: postgresql://sokora:sokora@127.0.0.1:5432/sokora
       SOKORA_AUTH_ENABLED: "false"
@@ -183,7 +185,7 @@ jobs:
       - name: Build production image with PostgreSQL driver
         env:
           VERSION: ci-postgresql
-        run: make docker-build
+        run: make SOKORA_MAKE_CONTEXT=host docker-build
 
       - name: Start production image against PostgreSQL
         run: |
@@ -220,6 +222,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ci
+      SOKORA_MAKE_CONTEXT: host
       SERVICE_PORT: "18080"
       PORT: "8080"
     steps:
@@ -264,6 +267,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ci-proxy
+      SOKORA_MAKE_CONTEXT: host
       SERVICE_PORT: "18081"
       PORT: "8081"
     steps:
