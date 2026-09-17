@@ -1,14 +1,11 @@
 {% import "components/macros/navigation.html" as navigation_ui %}
-<!-- Week display and switcher -->
 <div id="calendar">
   <div class="flex items-center justify-start space-x-4 flex-wrap gap-2">
-    <span class="text-xl font-bold">{{ week_name }}</span> {# 週名の表示 #}
-    <!-- 週切り替えコンポーネント -->
+    <span class="text-xl font-bold">{{ week_name }}</span>
     {{ navigation_ui.week_switcher( prev_week=prev_week, next_week=next_week, current_week=current_week,
     url_base='/attendance/weekly' ) }}
   </div>
 
-  <!-- Search form -->
   <div class="mt-2 mb-4 flex justify-end">
     <form hx-get="/attendance/weekly" hx-target="#calendar" hx-swap="innerHTML">
       <div class="form-control" style="width: 300px">
@@ -41,31 +38,20 @@
     </form>
   </div>
 
-  <!-- 勤怠マトリックス -->
   <div class="overflow-x-auto w-full">
-    {# テーブルレイアウトを固定し、列幅指定を有効にする #}
+    {# 固定2列の幅とleft offsetは対応させる。 #}
     <table class="table table-xs border-collapse" style="min-width: max-content; table-layout: fixed">
       <thead>
         <tr>
-          {# --- 新しい固定列: グループ (ヘッダーテキスト削除、幅縮小) --- #}
           <th class="bg-base-300 text-left sticky left-0 z-20" style="width: 50px; min-width: 50px; max-width: 50px">
-            {# グループヘッダーテキストを削除 #}
           </th>
-          {# --- 固定列: 社員名 (leftを調整) --- #}
           <th
             class="bg-base-300 text-left sticky left-[50px] z-10 whitespace-nowrap"
-            {#
-            left
-            を
-            50px
-            に
-            #}
             style="width: 200px; min-width: 200px; max-width: 200px"
           >
             社員名
           </th>
 
-          <!-- 日付ヘッダー -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
           loop.index0 %} {% set is_holiday = day.is_holiday|default(false) %} {% set day_kind =
           "holiday" if is_holiday else "sunday" if weekday_index == 6 else "saturday" if weekday_index == 5 else "weekday" %}
@@ -98,63 +84,36 @@
       </thead>
 
       <tbody>
-        {# --- グループごとのループ --- #} {% for group_name in group_names %} {# --- group_name
-        に対応するユーザータイプリストを取得 --- #} {% set user_type_list = grouped_users[group_name] %} {# ---
-        社員種別ごとのループ（orderでソート済み） --- #} {% for order, user_type_name, user_list in user_type_list %} {# --- 社員種別ヘッダー行 --- #}
+        {% for group_name in group_names %} {% set user_type_list = grouped_users[group_name] %} {% for order, user_type_name, user_list in user_type_list %}
         <tr class="bg-base-200/80">
-          {# グループ名セル (グループの最初の種別の行に表示、幅縮小) #}
           <td
             class="font-medium text-xs text-left sticky left-0 z-20 bg-base-200/80 p-1 align-top"
             style="width: 50px; min-width: 50px; max-width: 50px"
-            {#
-            幅を50pxに
-            #}
           >
-            {% if loop.first %} {# このグループの最初の社員種別の場合のみグループ名を表示 #} {{ group_name }} {% endif
-            %}
+            {% if loop.first %} {{ group_name }} {% endif %}
           </td>
-          {# 社員種別ヘッダーセル (sticky, left調整) #}
           <td
             class="font-medium text-xs py-1 px-2 text-base-content/70 sticky left-[50px] z-10 bg-base-200/80"
-            {#
-            left
-            を
-            50px
-            に
-            #}
             style="width: 200px; min-width: 200px; max-width: 200px"
           >
-            {# 未分類の場合も考慮 #} {{ user_type_name if user_type_name else "未分類" }}
+            {{ user_type_name if user_type_name else "未分類" }}
           </td>
-          {# 残りの日付セル分を埋めるためのセル #}
           <td colspan="{{ calendar_day_count|default(7) }}" class="bg-base-200/80"></td>
         </tr>
 
-        {# --- この社員種別に属する社員データ行 --- #} {% for user_name, user_id, user_type_id, user_obj in user_list %}
+        {% for user_name, user_id, user_type_id, user_obj in user_list %}
         <tr class="hover:bg-base-300/30">
-          {# グループ名セル (空、幅縮小) #}
           <td
             class="sticky left-0 z-20 bg-base-100"
             style="width: 50px; min-width: 50px; max-width: 50px"
-            {#
-            幅を50pxに
-            #}
           ></td>
-          {# 社員名セル (sticky, left調整) - クリックで個別表示に切り替わるよう修正 #}
           <td
             class="font-medium text-left sticky left-[50px] z-10 bg-base-100 whitespace-nowrap p-1"
-            {#
-            left
-            を
-            50px
-            に
-            #}
             style="width: 200px; min-width: 200px; max-width: 200px"
           >
             {{ user_name }} ({{ user_id }})
           </td>
 
-          <!-- 日付ごとのセル -->
           {% for week in calendar_data %} {% for day in week %} {% if day and day.day != 0 %} {% set weekday_index =
           loop.index0 %} {% set is_holiday = day.is_holiday|default(false) %} {% set day_kind =
           "holiday" if is_holiday else "sunday" if weekday_index == 6 else "saturday" if weekday_index == 5 else "weekday" %}
@@ -199,8 +158,7 @@
           </td>
           {% endif %} {% endfor %} {% endfor %}
         </tr>
-        {% endfor %} {# End user loop for this user_type #} {% endfor %} {# End user_type loop #} {% endfor %} {# End
-        group loop #}
+        {% endfor %} {% endfor %} {% endfor %}
       </tbody>
     </table>
   </div>
