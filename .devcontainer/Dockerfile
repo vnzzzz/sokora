@@ -51,7 +51,8 @@ RUN mkdir -p \
   /home/vscode/.cache/uv && \
   chown -R vscode:vscode /app/data /home/vscode/.cache /opt/sokora-venv
 
-# productionと同様、runtimeで外部APIへ依存しないよう祝日cacheをbuild時に生成する。
+# productionと同じ祝日cache生成手順をimage buildでも検証する。起動後は/appがworkspaceで置き換わるため、
+# fresh checkoutではmake runのprepare-dev-assetsがworkspace側のcacheを必要に応じて再生成する。
 RUN python3 scripts/build_holiday_cache.py
 
 # productionと同じfrontend assetsをimageへ配置する。/appは起動時にworkspaceで置き換わる。
