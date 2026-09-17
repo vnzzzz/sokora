@@ -30,7 +30,7 @@ taskに関係する一次情報を実装前に確認します。
 - SQLite backup / restore: `docs/sqlite-database-management.md`
 - architecture decisions: `docs/adr/`
 - dependencies / tool config: `pyproject.toml`, `uv.lock`
-- commands: `Makefile`, `scripts/`
+- commands: `Makefile`, `make/`, `scripts/`
 
 docsと実装が食い違う場合は推測で合わせず、live implementationを確認して同じ変更で正本を更新します。
 
@@ -66,7 +66,12 @@ docsと実装が食い違う場合は推測で合わせず、live implementation
 
 ## Common commands
 
-Dev Container workspaceは`/app`です。
+Make targetは実行責務で分離しています。
+
+- `workspace`: sourceへ直接作用するdevelopment command。Dev Containerでは`SOKORA_MAKE_CONTEXT=workspace`が設定済み
+- `host`: Docker image/container/package操作。repository rootでのdefault context
+
+Dev Container workspaceは`/app`です。通常のdevelopment作業では:
 
 ```bash
 make run
@@ -77,9 +82,23 @@ make seed
 make assets
 ```
 
+Dev Container外でworkspace targetを実行する必要がある場合はcontextを明示します。
+
+```bash
+make SOKORA_MAKE_CONTEXT=workspace quality
+```
+
+Docker host操作はhost contextで実行します。hostでは既定値なので通常はcontext指定不要です。
+
+```bash
+make docker-build
+make docker-run
+make docker-stop
+```
+
 必要な個別checkは`make lint`、`make format-check`、`make typecheck`。PR前はrepository標準CIで成立する状態にします。
 
-Python source/testを変更したcommitまたはpushの前は、**必ず先に `make format` を実行し、その後 `make quality` を実行します**。`make quality` のformat stepはcheck-onlyで自動修正しないため、formatを省略したままCIへ送らないこと。
+Python source/testを変更したcommitまたはpushの前は、**必ず先に `make format` を実行し、その後 `make quality` を実行します**。`make quality` のformat stepはcheck-onlyで自動修正しないため、formatを省略したままCIへ送らないこと。Dev Container外で実行する場合は両方に`SOKORA_MAKE_CONTEXT=workspace`を指定します。
 
 ## GitHub workflow
 
