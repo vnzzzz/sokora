@@ -45,7 +45,16 @@ class UserUpdate(BaseModel):
         group_id: int = Form(...),
         user_type_id: int = Form(...),
     ) -> "UserUpdate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからupdate schemaを構築する。
+
+        Args:
+            username: 更新後のユーザー名。
+            group_id: 更新後の所属group ID。
+            user_type_id: 更新後の社員種別ID。
+
+        Returns:
+            form値を保持する`UserUpdate`。
+        """
         return cls(username=username, group_id=group_id, user_type_id=user_type_id)
 
 
