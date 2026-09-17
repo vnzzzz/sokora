@@ -9,5 +9,12 @@ UNRESOLVED_LOCATION_TONE = -1
 
 
 def get_location_tone(location_id: int) -> int:
-    """Location IDをstableな30個のpalette slotへ変換する。"""
+    """Location IDをstableな30個のpalette slotへ変換する。
+
+    Args:
+        location_id: 永続的なLocation primary key。
+
+    Returns:
+        `0..LOCATION_TONE_COUNT-1`のstable palette index。
+    """
     return location_id % LOCATION_TONE_COUNT
