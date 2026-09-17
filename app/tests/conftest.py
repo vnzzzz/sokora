@@ -22,7 +22,7 @@ def db() -> Generator[Session, None, None]:
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    # Register models before creating tables from Base.metadata.
+    # Base.metadataからtableを作る前に全modelを登録する。
     from app.models import (  # noqa: F401
         Attendance,
         CustomHoliday,
@@ -75,7 +75,7 @@ def test_data_tracker(db: Session) -> Generator[dict, None, None]:
         yield tracker
     finally:
         try:
-            # Foreign-key dependencies require child rows to be deleted first.
+            # FK依存を壊さないようchild rowから削除する。
             for att in created_objects["attendances"]:
                 try:
                     db.delete(att)
@@ -122,7 +122,7 @@ def db_with_data(db: Session, test_data_tracker: dict) -> Session:
     from app.schemas.location import LocationCreate
     from app.schemas.user_type import UserTypeCreate
 
-    # Several tests address these fixtures by name, so keep the seed names stable.
+    # 複数testが名称で参照するためseed名を固定する。
     group_data = GroupCreate(name="Test Group")
     test_group = crud_group.create(db, obj_in=group_data)
     test_data_tracker["register_created_object"]("groups", test_group)
@@ -144,8 +144,7 @@ def test_app(
     db: Session,
 ) -> Generator[FastAPI, None, None]:
     """依存関係とapplication-owned DB runtimeを同じテストDBへbindする。"""
-    # Request-scoped dependencies and short-lived managed sessions must observe
-    # the same fixture DB to keep application-level tests internally consistent.
+    # request dependencyとmanaged sessionが同じfixture DBを観測するようruntimeも差し替える。
     engine = db.get_bind()
     assert isinstance(engine, Engine)
     test_runtime = DatabaseRuntime(
