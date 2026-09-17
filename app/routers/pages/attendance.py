@@ -35,7 +35,17 @@ def attendance_page(
     week: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """weekly attendance matrixをrenderする。"""
+    """weekly attendance matrixをrenderする。
+
+    Args:
+        request: FastAPI request。
+        search_query: 社員名またはIDの検索文字列。未指定時は全件表示する。
+        week: 表示対象週。ISO date文字列で、未指定時は現在週を使う。
+        db: DB session。
+
+    Returns:
+        full pageまたはHTMX fragment。weekが不正な場合は現在週へredirectする。
+    """
     if week is None:
         week = get_current_week_formatted()
     else:
@@ -70,7 +80,18 @@ def get_attendance_modal(
     mode: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """YYYY-MM-DDの日付を対象に勤怠編集モーダルを返す。"""
+    """指定user/dateの勤怠編集modalを返す。
+
+    Args:
+        request: FastAPI request。
+        user_id: 編集対象user ID。
+        date_str: 編集対象日。`YYYY-MM-DD`形式。
+        mode: UI mode。`register`等の呼び出し元contextをtemplateへ渡す。
+        db: DB session。
+
+    Returns:
+        modal HTML。日付形式が不正な場合は400、userが存在しない場合は404を返す。
+    """
     logger.info(
         f"勤怠モーダルリクエスト受信: User={user_id}, Date={date_str}, Mode={mode}"
     )
