@@ -16,21 +16,36 @@ from app.services.auth.settings import AuthSettings
 
 
 def get_runtime_auth_settings(request: Request) -> AuthSettings:
-    """Return deployment/runtime auth settings without consulting the shared DB.
+    """shared DBを参照せずdeployment/runtime authentication settingsを返す。
 
-    The auth guard and local-admin break-glass path use this dependency so OIDC
-    database configuration errors cannot disable local administrator access.
+    auth guardとlocal-admin break-glass pathはこのdependencyを使うため、OIDC DB設定の
+    failureがlocal administrator accessを無効化しない。
+
+    Args:
+        request: application stateへアクセスするrequest。
+
+    Returns:
+        environment/runtime値だけから構築したAuthSettings。
     """
     settings = request.app.state.settings_provider()
     return AuthSettings.from_app_settings(settings)
 
 
 def get_auth_settings(request: Request) -> AuthSettings:
-    """Resolve effective OIDC settings and release the DB session before returning.
+    """effective OIDC settingsを解決し、DB sessionを返却前にreleaseする。
 
-    OIDC redirect/callback handlers may await slow provider I/O after this dependency
-    completes. Keep the shared-DB read in a short-lived managed session so those
-    awaits never retain a checked-out SQLAlchemy connection.
+    OIDC redirect/callback handlerはこのdependency完了後にslow provider I/Oをawaitし得る。
+    shared-DB readを短命managed sessionへ閉じ込め、await中にSQLAlchemy connectionを保持しない。
+
+    Args:
+        request: application runtime/settingsへアクセスするrequest。
+
+    Returns:
+        DB-backed設定とruntime fallbackをprecedence ruleに従って解決したAuthSettings。
+
+    Raises:
+        DatabaseRuntimeUnavailableError: shared DB runtimeが利用不能な場合。
+        SQLAlchemyError: DB-backed設定読取に失敗した場合。
     """
     app_settings = request.app.state.settings_provider()
     runtime = get_app_database_runtime(request.app)
@@ -39,10 +54,20 @@ def get_auth_settings(request: Request) -> AuthSettings:
 
 
 def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDCClient:
-    """OIDCが必須のendpoint向けにclientを返し、未設定ならrequestを拒否する。
+    """OIDC必須endpoint向けclientを返す。
 
     redirect/callback等はOIDC configurationなしでは意味を持たないため、local adminへ
-    暗黙fallbackせずHTTP 400とする。認証経路の選択はlogin UI/callerが明示的に行う。
+    暗黙fallbackせずHTTP 400とする。
+
+    Args:
+        settings: request時点で解決済みのeffective auth settings。
+
+    Returns:
+        有効なOIDC configurationで初期化したOIDCClient。
+
+    Raises:
+        HTTPException: OIDCが未設定/無効な場合に400を返す。
+        OIDCError: client初期化に必要な設定が成立しない場合。
     """
     if not settings.oidc_enabled:
         raise HTTPException(
@@ -53,12 +78,17 @@ def get_oidc_client(settings: AuthSettings = Depends(get_auth_settings)) -> OIDC
 
 
 def get_optional_oidc_client(request: Request) -> OIDCClient | None:
-    """logout向けにOIDC clientをbest-effortで返す。
+    """logout向けOIDC clientをbest-effortで返す。
 
     provider logoutはapplication logoutの付加機能であり、shared DBが停止/fenceしていても
     session破棄を妨げてはならない。そのため通常のDB dependencyを前段に置かず、この関数内で
-    DB-backed設定を解決し、DB availability failureはNoneへ縮退する。認証必須の
-    redirect/callback endpointにはこのdependencyを使用しない。
+    DB-backed設定を解決し、DB availability failureはNoneへ縮退する。
+
+    Args:
+        request: application runtime/settingsへアクセスするrequest。
+
+    Returns:
+        利用可能なOIDCClient。DB/config/provider設定を使えない場合は ``None``。
     """
     app_settings = request.app.state.settings_provider()
     try:
@@ -80,11 +110,20 @@ def require_session_user(
     request: Request,
     settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Dict[str, Any] | None:
-    """signed session identityを返し、認証guard有効時は匿名requestを401で拒否する。
+    """signed session identityを返し、guard有効時は匿名requestを拒否する。
 
-    `SOKORA_AUTH_ENABLED=false`では匿名利用を許可するためNoneを返し得る。認証が有効な
-    runtimeではsessionの`auth` mappingを必須とし、個別endpointが独自にcookie形式を
-    解釈しないための共通boundaryとして使う。
+    `SOKORA_AUTH_ENABLED=false`では匿名利用を許可するためNoneを返し得る。認証有効時は
+    sessionの`auth` mappingを必須とし、個別endpointがcookie形式を独自解釈しない。
+
+    Args:
+        request: signed sessionへアクセスするrequest。
+        settings: runtime-only auth settings。
+
+    Returns:
+        session identity mapping。guard無効かつ匿名の場合は ``None``。
+
+    Raises:
+        HTTPException: guard有効時にvalidated session identityが無い場合に401を返す。
     """
     user = request.session.get("auth")
     if settings.auth_enabled and not isinstance(user, dict):
@@ -101,14 +140,19 @@ def require_admin(
 ) -> Dict[str, Any]:
     """current runtimeで有効なlocal-admin sessionだけに管理操作を許可する。
 
-    OIDC sessionは一般ユーザーidentityとして扱い、現行contractでは自動的にadminへ
-    昇格させない。SQLite backup/restoreや認証diagnostics等の管理操作は、このdependency
-    を通じてlocal admin sessionだけに限定する。`local_login`は``settings.local_admin_enabled``
-    が真の場合にだけ`method=local_admin, role=admin`のsessionを発行するため、
-    どちらかがこの形と一致しないsessionは正規発行され得ない。signed sessionの内容だけを
-    信頼すると、local admin credential未設定のauth-off runtimeでもdevelopment default
-    secretを知るclientがadmin cookieを偽造できるため、current runtimeのlocal admin
-    設定と実際のsession内容の両方を要求する。
+    OIDC sessionは一般ユーザーidentityとして扱い、自動的にadminへ昇格させない。signed session
+    だけでなくcurrent runtimeのlocal admin有効状態も要求し、development default secretを知る
+    clientによる偽造admin cookieを防ぐ。
+
+    Args:
+        user: validated session identity。匿名時は ``None``。
+        settings: current runtimeのlocal-admin設定。
+
+    Returns:
+        local_admin methodかつadmin roleを持つsession identity。
+
+    Raises:
+        HTTPException: local admin未設定、identity欠如、method/role不一致時に403を返す。
     """
     if (
         not settings.local_admin_enabled

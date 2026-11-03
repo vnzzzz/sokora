@@ -19,12 +19,29 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
     """Attendance rowのCRUDとread queryだけを担当する。"""
 
     def list_all(self, db: Session) -> List[Attendance]:
-        """全勤怠recordをpaginationなしで取得する。"""
+        """全勤怠recordをpaginationなしで取得する。
+
+        Args:
+            db: DB session。
+
+        Returns:
+            全勤怠recordのlist。
+        """
         return list(db.query(Attendance).all())
 
     def get_by_user_and_date(
         self, db: Session, *, user_id: str, date: date
     ) -> Optional[Attendance]:
+        """user/dateで勤怠を1件取得する。
+
+        Args:
+            db: DB session。
+            user_id: 対象user ID。
+            date: 対象日。
+
+        Returns:
+            一致する勤怠record。存在しない場合は`None`。
+        """
         return (
             db.query(Attendance)
             .filter(Attendance.user_id == user_id, Attendance.date == date)
@@ -32,7 +49,18 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         )
 
     def delete_attendances_by_user_id(self, db: Session, *, user_id: str) -> int:
-        """指定ユーザーの勤怠を一括削除対象としてflushする。"""
+        """指定userの勤怠を一括削除対象としてflushする。
+
+        Args:
+            db: DB session。
+            user_id: 対象user ID。
+
+        Returns:
+            削除stageした勤怠record数。
+
+        Notes:
+            commit/rollbackは呼び出し側が所有する。
+        """
         num_deleted = (
             db.query(Attendance)
             .filter(Attendance.user_id == user_id)
@@ -47,7 +75,15 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         return num_deleted
 
     def get_user_data(self, db: Session, *, user_id: str) -> List[Dict[str, Any]]:
-        """指定ユーザーの勤怠と勤怠種別を1 queryで取得し表示用rowへ投影する。"""
+        """指定userの勤怠と勤怠種別を表示用rowへ投影する。
+
+        Args:
+            db: DB session。
+            user_id: 対象user ID。
+
+        Returns:
+            勤怠ID、日付、勤怠種別、noteを含むdisplay rowのlist。
+        """
         rows = (
             db.query(Attendance, Location)
             .filter(Attendance.user_id == user_id)
@@ -73,7 +109,17 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         start_date: date,
         end_date: date,
     ) -> List[Attendance]:
-        """1 userの期間内勤怠をlocation込みで日付順に一括取得する。"""
+        """1 userの期間内勤怠をlocation込みで日付順に取得する。
+
+        Args:
+            db: DB session。
+            user_id: 対象user ID。
+            start_date: inclusiveな期間開始日。
+            end_date: inclusiveな期間終了日。
+
+        Returns:
+            location relationをeager-loadした勤怠modelのlist。
+        """
         return list(
             db.query(Attendance)
             .options(joinedload(Attendance.location_info))
@@ -89,7 +135,17 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
     def get_day_data(
         self, db: Session, *, day: date
     ) -> Dict[str, List[Dict[str, Any]]]:
-        """指定日の勤怠を勤怠種別ごとに返す。input validationはadapterが所有する。"""
+        """指定日の勤怠を勤怠種別ごとに投影する。
+
+        input validationはadapterが所有する。
+
+        Args:
+            db: DB session。
+            day: 対象日。
+
+        Returns:
+            勤怠種別名をkey、user detail listをvalueとするmapping。
+        """
         rows = (
             db.query(
                 Attendance.user_id,
@@ -123,7 +179,16 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
     def list_for_period(
         self, db: Session, *, start_date: date, end_date: date
     ) -> List[Attendance]:
-        """期間内の勤怠modelを日付順で取得する。"""
+        """期間内の勤怠modelを日付順で取得する。
+
+        Args:
+            db: DB session。
+            start_date: inclusiveな期間開始日。
+            end_date: inclusiveな期間終了日。
+
+        Returns:
+            日付順の勤怠model list。
+        """
         return (
             db.query(Attendance)
             .filter(Attendance.date >= start_date, Attendance.date <= end_date)
@@ -138,7 +203,19 @@ class CRUDAttendance(CRUDBase[Attendance, AttendanceCreate, AttendanceUpdate]):
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> List[Any]:
-        """CSV出力に必要なuser/date/location nameだけを取得する。"""
+        """CSV出力に必要なuser/date/locationだけを取得する。
+
+        Args:
+            db: DB session。
+            start_date: optionalなinclusive開始日。
+            end_date: optionalなinclusive終了日。
+
+        Returns:
+            user ID、日付、勤怠種別名を持つquery rowのlist。
+
+        Notes:
+            期間filterはstart/endの両方が指定された場合だけ適用する。
+        """
         query = db.query(
             Attendance.user_id,
             Attendance.date,

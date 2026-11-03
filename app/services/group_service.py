@@ -23,14 +23,31 @@ _group_master = NamedMasterService[
 
 
 def validate_group_creation(db: Session, *, group_in: schemas.GroupCreate) -> None:
-    """作成前に必須名と名前重複を検証し、違反時はHTTP 400を送出します。"""
+    """作成前に必須名と名前重複を検証する。
+
+    Args:
+        db: DB session。
+        group_in: 作成予定のgroupデータ。
+
+    Raises:
+        HTTPException: group名が空または重複する場合。
+    """
     _group_master.validate_creation(db, name=group_in.name)
 
 
 def validate_group_update(
     db: Session, *, group_id_to_update: int, group_in: schemas.GroupUpdate
 ) -> None:
-    """更新対象自身を除外してグループ名の必須・重複条件を検証します。"""
+    """更新対象自身を除外してgroup名を検証する。
+
+    Args:
+        db: DB session。
+        group_id_to_update: 更新対象group ID。
+        group_in: 更新予定のgroupデータ。
+
+    Raises:
+        HTTPException: group名が空または別groupと重複する場合。
+    """
     _group_master.validate_update(
         db,
         object_id=group_id_to_update,
@@ -41,14 +58,39 @@ def validate_group_update(
 def create_group_with_validation(
     db: Session, *, group_in: schemas.GroupCreate
 ) -> models.Group:
-    """グループを検証して作成し、service所有のtransactionでcommitします。"""
+    """groupを検証して作成し、service所有のtransactionでcommitする。
+
+    Args:
+        db: DB session。
+        group_in: 作成するgroupデータ。
+
+    Returns:
+        作成後のgroup model。
+
+    Raises:
+        HTTPException: group名validationに失敗した場合。
+        ApplicationError: DB integrity conflictが発生した場合。
+    """
     return _group_master.create(db, obj_in=group_in, name=group_in.name)
 
 
 def update_group_with_validation(
     db: Session, *, group_id: int, group_in: schemas.GroupUpdate
 ) -> models.Group:
-    """既存グループを検証して更新し、1 transactionでcommitします。"""
+    """既存groupを検証して1 transactionで更新する。
+
+    Args:
+        db: DB session。
+        group_id: 更新対象group ID。
+        group_in: 更新内容。
+
+    Returns:
+        更新後のgroup model。
+
+    Raises:
+        HTTPException: 対象不在またはgroup名validationに失敗した場合。
+        ApplicationError: DB integrity conflictが発生した場合。
+    """
     return _group_master.update(
         db,
         object_id=group_id,
@@ -58,5 +100,17 @@ def update_group_with_validation(
 
 
 def delete_group(db: Session, *, group_id: int) -> models.Group:
-    """未使用グループを削除し、参照競合はDB制約エラーとして扱います。"""
+    """未使用groupを削除する。
+
+    Args:
+        db: DB session。
+        group_id: 削除対象group ID。
+
+    Returns:
+        削除したgroup model。
+
+    Raises:
+        HTTPException: 対象groupが存在しない場合。
+        ApplicationError: DB参照制約等により削除できない場合。
+    """
     return _group_master.delete(db, object_id=group_id)

@@ -30,6 +30,14 @@ def get_calendar(
 
     HTTP month validationだけをこのadapterで処理し、read service内部のValueError等を
     validation errorへ誤変換しない。
+
+    Args:
+        request: FastAPI request。
+        month: 表示対象月。`YYYY-MM`形式。未指定時は現在月を使う。
+        db: DB session。
+
+    Returns:
+        summary calendar HTML。monthが不正な場合は現在月へredirectする。
     """
     current_month = month or get_current_month_formatted()
     try:
@@ -57,7 +65,16 @@ def get_day_detail(
     day: str,
     db: Session = Depends(get_db),
 ) -> Any:
-    """日別calendar detailをrenderする。"""
+    """日別calendar detailをrenderする。
+
+    Args:
+        request: FastAPI request。
+        day: 表示対象日。`YYYY-MM-DD`形式。
+        db: DB session。
+
+    Returns:
+        日別detail HTML。日付形式が不正な場合は400 responseを返す。
+    """
     target_date = parse_date(day)
     if target_date is None:
         return HTMLResponse(

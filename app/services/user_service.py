@@ -10,12 +10,29 @@ from app.services.transaction import transaction
 
 
 def get_user_by_username(db: Session, *, username: str) -> Optional[models.User]:
-    """ユーザー名で1件取得し、存在しない場合は ``None`` を返します。"""
+    """ユーザー名で1件取得する。
+
+    Args:
+        db: DB session。
+        username: 検索するユーザー名。
+
+    Returns:
+        一致するuser。存在しない場合は`None`。
+    """
     return db.query(models.User).filter(models.User.username == username).first()
 
 
 def validate_dependencies(db: Session, *, group_id: int, user_type_id: int) -> None:
-    """指定されたグループと社員種別が存在することを検証します。"""
+    """指定されたグループと社員種別が存在することを検証する。
+
+    Args:
+        db: DB session。
+        group_id: 検証対象group ID。
+        user_type_id: 検証対象user type ID。
+
+    Raises:
+        HTTPException: groupまたはuser typeが存在しない場合。
+    """
     group = crud.group.get(db, id=group_id)
     if not group:
         raise HTTPException(
@@ -31,7 +48,15 @@ def validate_dependencies(db: Session, *, group_id: int, user_type_id: int) -> N
 
 
 def validate_user_creation(db: Session, *, user_in: schemas.UserCreate) -> None:
-    """ユーザーIDとユーザー名が未使用であることを検証します。"""
+    """ユーザーIDとユーザー名が未使用であることを検証する。
+
+    Args:
+        db: DB session。
+        user_in: 作成予定のuserデータ。
+
+    Raises:
+        HTTPException: user IDまたはusernameが既に使用されている場合。
+    """
     existing_user_by_id = crud.user.get(db, id=user_in.id)
     if existing_user_by_id:
         raise HTTPException(
@@ -49,7 +74,16 @@ def validate_user_creation(db: Session, *, user_in: schemas.UserCreate) -> None:
 def validate_user_update(
     db: Session, *, user_id_to_update: str, user_in: schemas.UserUpdate
 ) -> None:
-    """更新対象自身を除外してユーザー名の重複を検証します。"""
+    """更新対象自身を除外してユーザー名の重複を検証する。
+
+    Args:
+        db: DB session。
+        user_id_to_update: 更新対象user ID。
+        user_in: 更新予定のuserデータ。
+
+    Raises:
+        HTTPException: usernameが別userに使用されている場合。
+    """
     existing_user_by_name = get_user_by_username(db, username=user_in.username)
     if existing_user_by_name and existing_user_by_name.id != user_id_to_update:
         raise HTTPException(
@@ -61,7 +95,19 @@ def validate_user_update(
 def create_user_with_validation(
     db: Session, *, user_in: schemas.UserCreate
 ) -> models.User:
-    """関連IDと一意性を検証してユーザーを1 transactionで作成します。"""
+    """関連IDと一意性を検証してユーザーを1 transactionで作成する。
+
+    Args:
+        db: DB session。
+        user_in: 作成するuserデータ。
+
+    Returns:
+        作成後のuser model。
+
+    Raises:
+        HTTPException: 関連ID形式/存在確認または一意性validationに失敗した場合。
+        ApplicationError: DB integrity conflictが発生した場合。
+    """
     try:
         group_id_int = int(user_in.group_id)
         user_type_id_int = int(user_in.user_type_id)
@@ -86,7 +132,20 @@ def create_user_with_validation(
 def update_user_with_validation(
     db: Session, *, user_id: str, user_in: schemas.UserUpdate
 ) -> models.User:
-    """既存ユーザーと依存先を検証し、1 transactionで更新します。"""
+    """既存ユーザーと依存先を検証し、1 transactionで更新する。
+
+    Args:
+        db: DB session。
+        user_id: 更新対象user ID。
+        user_in: 更新内容。
+
+    Returns:
+        更新後のuser model。
+
+    Raises:
+        HTTPException: user/依存先が存在しない、またはusernameが重複する場合。
+        ApplicationError: DB integrity conflictが発生した場合。
+    """
     with transaction(
         db, integrity_detail="ユーザーの一意性または参照整合性に違反しました"
     ):
@@ -100,7 +159,19 @@ def update_user_with_validation(
 
 
 def delete_user(db: Session, *, user_id: str) -> models.User:
-    """ユーザーと関連勤怠を同一transactionで削除し、削除したユーザーを返します。"""
+    """ユーザーと関連勤怠を同一transactionで削除する。
+
+    Args:
+        db: DB session。
+        user_id: 削除対象user ID。
+
+    Returns:
+        削除したuser model。
+
+    Raises:
+        HTTPException: 対象userが存在しない場合。
+        ApplicationError: DB参照整合性により削除できない場合。
+    """
     with transaction(db, integrity_detail="ユーザー削除時の参照整合性に違反しました"):
         crud.user.get_or_404(db, id=user_id)
 

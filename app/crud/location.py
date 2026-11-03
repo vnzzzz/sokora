@@ -19,7 +19,14 @@ from .base import CRUDBase
 
 
 def _display_category_sort_key(category: Any) -> Any:
-    """画面上の「未分類」値を同一categoryとしてNULL lastで並べます。"""
+    """画面上の未分類値を同一categoryとしてNULL lastにするsort expressionを返す。
+
+    Args:
+        category: SQLAlchemyのcategory column/expression。
+
+    Returns:
+        空文字・`未分類`・NULLを未分類として扱うORDER BY expression。
+    """
     normalized = func.nullif(func.nullif(category, ""), "未分類")
     return nullslast(asc(normalized))
 
@@ -30,7 +37,16 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[Location]:
-        """表示上のcategory、order、IDの順で勤怠種別一覧を取得します。"""
+        """表示上のcategory、order、ID順で勤怠種別を取得する。
+
+        Args:
+            db: DB session。
+            skip: 先頭からskipする件数。
+            limit: 最大取得件数。
+
+        Returns:
+            pagination適用済みの勤怠種別list。
+        """
         return (
             db.query(self.model)
             .order_by(
@@ -44,11 +60,16 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         )
 
     def list_all(self, db: Session) -> List[Location]:
-        """paginationせず、全勤怠種別を表示上のcategory、order、ID順で取得する。
+        """全勤怠種別を表示上のcategory、order、ID順で取得する。
 
         空文字category、NULL、literal「未分類」は画面上同じgroupなので同一sort keyとして扱う。
         paginationを持たないmaster/read pathで完全な勤怠種別集合を扱うための共通read。
-        明示的にpaginationするcallerだけ :meth:`get_multi` を利用する。
+
+        Args:
+            db: DB session。
+
+        Returns:
+            全勤怠種別のlist。
         """
         return (
             db.query(self.model)
@@ -61,11 +82,27 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         )
 
     def get_by_name(self, db: Session, *, name: str) -> Optional[Location]:
-        """勤怠種別名で1件取得し、存在しない場合は ``None`` を返します。"""
+        """勤怠種別名で1件取得する。
+
+        Args:
+            db: DB session。
+            name: 検索する勤怠種別名。
+
+        Returns:
+            一致する勤怠種別。存在しない場合は`None`。
+        """
         return db.query(Location).filter(Location.name == name).first()
 
     def create_with_name(self, db: Session, *, name: str) -> Location:
-        """同名の勤怠種別を再利用し、無い場合だけ新規行をflushします。"""
+        """同名entityを再利用し、無い場合だけ新規行をflushする。
+
+        Args:
+            db: DB session。
+            name: 取得または作成する勤怠種別名。
+
+        Returns:
+            既存または新規flush済みの勤怠種別model。
+        """
         existing = self.get_by_name(db, name=name)
         if existing:
             return existing
@@ -74,7 +111,15 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
     def get_or_create_multiple(
         self, db: Session, *, location_names: List[str]
     ) -> Dict[str, Location]:
-        """空文字を除外し、各名前の既存行または新規flush済み行を返します。"""
+        """複数名称について既存または新規flush済みentityを返す。
+
+        Args:
+            db: DB session。
+            location_names: 取得/作成対象の名称list。空文字は無視する。
+
+        Returns:
+            入力名称をkey、対応する勤怠種別modelをvalueとするmapping。
+        """
         result = {}
         for name in location_names:
             if not name.strip():
@@ -86,15 +131,22 @@ class CRUDLocation(CRUDBase[Location, LocationCreate, LocationUpdate]):
         return result
 
     def remove(self, db: Session, *, id: int) -> Location:
-        """未使用の勤怠種別を削除対象としてflushし、削除対象を返します。
+        """未使用の勤怠種別を削除対象としてflushする。
 
-        勤怠から参照されている場合はHTTP 400を送出します。commit/rollbackは
-        呼び出し側serviceが所有します。
+        勤怠から参照されている場合は利用者向け400を返すため事前チェックする。並行writeとの
+        競合時はDB FK制約が最終的な参照整合性を保証する。commit/rollbackはserviceが所有する。
+
+        Args:
+            db: DB session。
+            id: 削除対象の勤怠種別ID。
+
+        Returns:
+            削除stage済みの勤怠種別model。
+
+        Raises:
+            HTTPException: 対象不在、または勤怠から参照されている場合。
         """
         db_obj = self.get_or_404(db, id)
-
-        # この事前チェックは利用者向けエラーのために行う。
-        # 並行writeとの競合時はDBのFK制約が最終的な参照整合性を保証する。
         attendance_count = (
             db.query(Attendance).filter(Attendance.location_id == id).count()
         )

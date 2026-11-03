@@ -21,11 +21,28 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
     """グループ固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
     def get_by_name(self, db: Session, name: str) -> Optional[Group]:
-        """グループ名で1件取得し、存在しない場合は ``None`` を返します。"""
+        """グループ名で1件取得する。
+
+        Args:
+            db: DB session。
+            name: 検索するグループ名。
+
+        Returns:
+            一致するgroup。存在しない場合は`None`。
+        """
         return db.query(Group).filter(Group.name == name).first()
 
     def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Group]:
-        """``order``、次に名前の順でグループ一覧を取得します。"""
+        """表示順・名前順でgroup一覧を取得する。
+
+        Args:
+            db: DB session。
+            skip: 先頭からskipする件数。
+            limit: 最大取得件数。
+
+        Returns:
+            pagination適用済みのgroup list。
+        """
         return (
             db.query(Group)
             .order_by(Group.order.nullslast(), Group.name)
@@ -35,19 +52,34 @@ class CRUDGroup(CRUDBase[Group, GroupCreate, GroupUpdate]):
         )
 
     def list_all(self, db: Session) -> List[Group]:
-        """paginationせず、全グループを``order``、次に名前順で取得します。"""
+        """全groupを表示順・名前順で取得する。
+
+        Args:
+            db: DB session。
+
+        Returns:
+            全groupのlist。
+        """
         return db.query(Group).order_by(Group.order.nullslast(), Group.name).all()
 
     def remove(self, db: Session, *, id: int) -> Group:
-        """未使用のグループを削除対象としてflushし、削除対象を返します。
+        """未使用groupを削除対象としてflushする。
 
-        ユーザーから参照されている場合はHTTP 400を送出します。commit/rollbackは
-        呼び出し側serviceが所有します。
+        userから参照されている場合は利用者向け400を返すため事前チェックする。並行writeとの
+        競合時はDB FK制約が最終的な参照整合性を保証する。commit/rollbackはserviceが所有する。
+
+        Args:
+            db: DB session。
+            id: 削除対象group ID。
+
+        Returns:
+            削除stage済みのgroup model。
+
+        Raises:
+            HTTPException: 対象不在、またはuserから参照されている場合。
         """
         db_obj = self.get_or_404(db, id)
 
-        # この事前チェックは利用者向けエラーのために行う。
-        # 並行writeとの競合時はDBのFK制約が最終的な参照整合性を保証する。
         user_count = db.query(User).filter(User.group_id == id).count()
         if user_count > 0:
             raise HTTPException(

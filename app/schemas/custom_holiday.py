@@ -28,7 +28,15 @@ class CustomHolidayCreate(CustomHolidayBase):
         date: datetime.date = Form(...),
         name: str = Form(...),
     ) -> "CustomHolidayCreate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからcreate schemaを構築する。
+
+        Args:
+            date: 祝日として登録する日付。
+            name: 祝日名。
+
+        Returns:
+            form値を保持する`CustomHolidayCreate`。
+        """
         return cls(date=date, name=name)
 
 
@@ -41,7 +49,15 @@ class CustomHolidayUpdate(CustomHolidayBase):
         date: Optional[datetime.date] = Form(None),
         name: Optional[str] = Form(None),
     ) -> "CustomHolidayUpdate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからupdate schemaを構築する。
+
+        Args:
+            date: optionalな更新後日付。
+            name: optionalな更新後祝日名。
+
+        Returns:
+            form値を保持する`CustomHolidayUpdate`。
+        """
         return cls(date=date, name=name)
 
 

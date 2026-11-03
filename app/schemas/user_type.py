@@ -28,7 +28,15 @@ class UserTypeCreate(UserTypeBase):
         name: str = Form(...),
         order: Optional[int] = Form(None),
     ) -> "UserTypeCreate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからcreate schemaを構築する。
+
+        Args:
+            name: 社員種別名。
+            order: optionalな表示順。
+
+        Returns:
+            form値を保持する`UserTypeCreate`。
+        """
         return cls(name=name, order=order)
 
 
@@ -44,7 +52,15 @@ class UserTypeUpdate(BaseModel):
         name: Optional[str] = Form(None),
         order: Optional[int] = Form(None),
     ) -> "UserTypeUpdate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからupdate schemaを構築する。
+
+        Args:
+            name: optionalな社員種別名。
+            order: optionalな表示順。
+
+        Returns:
+            form値を保持する`UserTypeUpdate`。
+        """
         return cls(name=name, order=order)
 
 

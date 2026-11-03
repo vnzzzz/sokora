@@ -62,7 +62,8 @@ docsと実装が食い違う場合は推測で合わせず、live implementation
 - provider固有SDK / deployment abstractionをapplication coreへ持ち込まない
 - closed-network asset変更時はoperator guideと`docs/closed-deployment.md`を同期する
 - architecture decisionを変更するときは既存ADRを確認し、必要なら新しいADRでsupersedeする
-- comment/docstringは処理の言い換えではなく、codeだけでは失われる理由・制約・不変条件・resource lifetimeを残す
+- inline commentは処理の言い換えではなく、codeだけでは失われる理由・制約・不変条件・resource lifetimeを残す
+- 非自明なpublic/adapter/service/CRUD/helperのPython callableはdocstringを持ち、該当する`Args` / `Returns` / `Raises`を明示する。型注釈や関数名だけで自明な内容を重複記述しない
 
 ## Common commands
 

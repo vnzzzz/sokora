@@ -38,7 +38,11 @@ class AuthSettings:
 
     @property
     def oidc_enabled(self) -> bool:
-        """明示disabledを優先し、必要設定が揃った場合だけOIDCを有効とする。"""
+        """明示disabledを優先し、必要設定が揃った場合だけOIDCを有効とする。
+
+        Returns:
+            issuer/client/secret/redirect URIが揃い、明示disabledでない場合は ``True``。
+        """
         if self.oidc_enabled_override is False:
             return False
         return bool(
@@ -50,14 +54,25 @@ class AuthSettings:
 
     @property
     def local_admin_enabled(self) -> bool:
-        """明示flagとusername/passwordがすべて揃った場合だけlocal adminを有効にする。"""
+        """local admin経路が現在のruntimeで利用可能か返す。
+
+        Returns:
+            明示flagとusername/passwordがすべて揃う場合は ``True``。
+        """
         return self.local_auth_enabled and bool(
             self.local_admin_username and self.local_admin_password
         )
 
     @classmethod
     def from_app_settings(cls, settings: AppSettings) -> "AuthSettings":
-        """deployment runtime設定をlegacy/environment認証viewへprojectする。"""
+        """deployment runtime設定をlegacy/environment認証viewへprojectする。
+
+        Args:
+            settings: process起動時に解決済みのapplication settings。
+
+        Returns:
+            environmentをOIDC sourceとするimmutable AuthSettings。
+        """
         return cls(
             auth_enabled=settings.auth_enabled,
             session_secret=settings.session_secret,
@@ -78,5 +93,9 @@ class AuthSettings:
 
     @classmethod
     def from_env(cls) -> "AuthSettings":
-        """legacy/programmatic caller向けに現在environmentから認証設定を構築する。"""
+        """現在environmentから認証設定を構築する。
+
+        Returns:
+            ``AppSettings.from_env()`` をprojectしたAuthSettings。
+        """
         return cls.from_app_settings(AppSettings.from_env())

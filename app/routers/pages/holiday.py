@@ -26,6 +26,18 @@ responder = MasterCrudResponder(
 
 
 def _get_holiday_or_404(db: Session, holiday_id: int) -> CustomHoliday:
+    """custom holidayを取得し、存在しなければ404にする。
+
+    Args:
+        db: 読み取りに使うDB session。
+        holiday_id: 取得対象のcustom holiday ID。
+
+    Returns:
+        対象のcustom holiday model。
+
+    Raises:
+        HTTPException: 対象が存在しない場合。
+    """
     holiday = crud_custom_holiday.get(db, id=holiday_id)
     if holiday is None:
         raise HTTPException(
@@ -36,12 +48,28 @@ def _get_holiday_or_404(db: Session, holiday_id: int) -> CustomHoliday:
 
 
 def _holiday_error_field(detail: str) -> str:
+    """domain error messageを祝日formのfield keyへ対応付ける。
+
+    Args:
+        detail: 表示対象のerror detail。
+
+    Returns:
+        form validation errorを表示するfield key。
+    """
     return "date" if "日付" in detail else "name"
 
 
 @router.get("", response_class=HTMLResponse)
 def get_holiday_page(request: Request, db: Session = Depends(get_db)) -> Any:
-    """祝日管理ページを表示する。"""
+    """祝日管理ページを表示する。
+
+    Args:
+        request: 現在のHTTP request。
+        db: custom holiday取得に使うDB session。
+
+    Returns:
+        祝日管理pageのHTML response。
+    """
     custom_holidays = crud_custom_holiday.list_all(db)
     cache_info = get_cache_info()
     built_in_total = cache_info.get("total_holidays", 0) - cache_info.get(
@@ -65,7 +93,19 @@ async def custom_holiday_modal(
     holiday_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """追加・編集モーダルを返す。"""
+    """custom holidayの追加・編集モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        holiday_id: 編集対象ID。省略時は新規作成。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定したcustom holidayが存在しない場合。
+    """
     holiday = _get_holiday_or_404(db, holiday_id) if holiday_id is not None else None
     modal_id = (
         "add-custom-holiday"
@@ -85,7 +125,19 @@ async def custom_holiday_delete_modal(
     holiday_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """削除確認モーダルを返す。"""
+    """custom holiday削除の確認モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        holiday_id: 削除対象ID。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        delete modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定したcustom holidayが存在しない場合。
+    """
     holiday = _get_holiday_or_404(db, holiday_id)
     return responder.open_delete(
         request,
@@ -102,7 +154,16 @@ async def create_custom_holiday(
     ),
     db: Session = Depends(get_db),
 ) -> Any:
-    """祝日を作成し、標準master CRUD triggerを返す。"""
+    """custom holidayを作成し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        holiday_in: formから構築した作成payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = "add-custom-holiday"
     try:
         created = custom_holiday_service.create_custom_holiday_with_validation(
@@ -134,7 +195,17 @@ async def update_custom_holiday(
     ),
     db: Session = Depends(get_db),
 ) -> Any:
-    """祝日を更新し、標準master CRUD triggerを返す。"""
+    """custom holidayを更新し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        holiday_id: 更新対象ID。
+        holiday_in: formから構築した更新payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = f"edit-custom-holiday-{holiday_id}"
     try:
         updated = custom_holiday_service.update_custom_holiday_with_validation(
@@ -164,7 +235,19 @@ async def delete_custom_holiday(
     holiday_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """祝日を削除し、標準master CRUD triggerを返す。"""
+    """custom holidayを削除し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        holiday_id: 削除対象ID。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、削除拒否時はdelete modal error fragment。
+
+    Raises:
+        HTTPException: 削除対象が存在しない場合。
+    """
     modal_id = f"custom-holiday-delete-modal-{holiday_id}"
     holiday = _get_holiday_or_404(db, holiday_id)
     holiday_name = str(holiday.name)

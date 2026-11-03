@@ -7,7 +7,7 @@
 
 from typing import List, Optional
 
-from fastapi import Form  # Form をインポート
+from fastapi import Form
 from pydantic import BaseModel, ConfigDict
 
 
@@ -28,7 +28,15 @@ class GroupCreate(GroupBase):
         name: str = Form(...),
         order: Optional[int] = Form(None),
     ) -> "GroupCreate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからcreate schemaを構築する。
+
+        Args:
+            name: グループ名。
+            order: optionalな表示順。
+
+        Returns:
+            form値を保持する`GroupCreate`。
+        """
         return cls(name=name, order=order)
 
 
@@ -41,10 +49,18 @@ class GroupUpdate(BaseModel):
     @classmethod
     async def as_form(
         cls,
-        name: Optional[str] = Form(None),  # Optional なのでデフォルトを None に
+        name: Optional[str] = Form(None),
         order: Optional[int] = Form(None),
     ) -> "GroupUpdate":
-        """フォームデータからインスタンスを生成"""
+        """form fieldからupdate schemaを構築する。
+
+        Args:
+            name: optionalなグループ名。
+            order: optionalな表示順。
+
+        Returns:
+            form値を保持する`GroupUpdate`。
+        """
         return cls(name=name, order=order)
 
 

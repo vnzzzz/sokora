@@ -16,13 +16,13 @@ class AttendanceBase(BaseModel):
 
     date: date
     location_id: int
-    note: Optional[str] = None  # 備考フィールド追加
+    note: Optional[str] = None
 
 
 class AttendanceCreate(AttendanceBase):
     """新規勤怠記録作成用スキーマ"""
 
-    user_id: str  # ユーザーID
+    user_id: str
 
     @field_validator("date", mode="before")
     def validate_date(cls, v: Union[str, date]) -> date:
@@ -35,10 +35,6 @@ class AttendanceCreate(AttendanceBase):
                 )
         return v
 
-    # @field_serializer('date') # DB保存時には不要なためコメントアウト
-    # def serialize_date(self, v: date) -> str:
-    #     return v.isoformat()
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -46,7 +42,7 @@ class AttendanceUpdate(BaseModel):
     """勤怠データ更新用スキーマ"""
 
     location_id: Optional[int] = None
-    note: Optional[str] = None  # 備考フィールド追加
+    note: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -79,6 +75,6 @@ class UserAttendance(BaseModel):
 
     user_id: str
     user_name: str
-    dates: List[Dict[str, Any]]  # 日付、勤怠種別、勤怠IDのリスト
+    dates: List[Dict[str, Any]]  # 各要素は日付・勤怠種別・勤怠IDを含む。
 
     model_config = ConfigDict(from_attributes=True)

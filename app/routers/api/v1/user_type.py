@@ -20,7 +20,14 @@ router = APIRouter(tags=["UserTypes"])
 
 @router.get("", response_model=UserTypeList)
 def get_user_types(db: Session = Depends(get_db)) -> Any:
-    """社員種別一覧を表示順、次に名前順で返します。"""
+    """社員種別一覧を表示順、次に名前順で返す。
+
+    Args:
+        db: DB session。
+
+    Returns:
+        `user_types`に社員種別一覧を格納したmapping。
+    """
     user_types = user_type.list_all(db=db)
     return {"user_types": user_types}
 
@@ -29,7 +36,18 @@ def get_user_types(db: Session = Depends(get_db)) -> Any:
 def create_user_type(
     *, db: Session = Depends(get_db), user_type_in: UserTypeCreate
 ) -> Any:
-    """入力を検証して社員種別を作成し、作成後の社員種別を返します。"""
+    """入力を検証して社員種別を作成する。
+
+    Args:
+        db: DB session。
+        user_type_in: 作成する社員種別データ。
+
+    Returns:
+        作成後の社員種別。
+
+    Raises:
+        HTTPException: 名前が不正または重複する場合。
+    """
     return user_type_service.create_user_type_with_validation(
         db=db, user_type_in=user_type_in
     )
@@ -42,7 +60,19 @@ def update_user_type(
     user_type_id: int,
     user_type_in: UserTypeUpdate,
 ) -> Any:
-    """指定IDの社員種別を検証して更新し、更新後の社員種別を返します。"""
+    """指定IDの社員種別を検証して更新する。
+
+    Args:
+        db: DB session。
+        user_type_id: 更新対象の社員種別ID。
+        user_type_in: 更新内容。
+
+    Returns:
+        更新後の社員種別。
+
+    Raises:
+        HTTPException: 対象が存在しない、または名前が不正/重複する場合。
+    """
     return user_type_service.update_user_type_with_validation(
         db=db, user_type_id=user_type_id, user_type_in=user_type_in
     )
@@ -50,6 +80,17 @@ def update_user_type(
 
 @router.delete("/{user_type_id}")
 def delete_user_type(*, db: Session = Depends(get_db), user_type_id: int) -> Any:
-    """指定IDの未使用社員種別を削除し、成功時は204を返します。"""
+    """指定IDの未使用社員種別を削除する。
+
+    Args:
+        db: DB session。
+        user_type_id: 削除対象の社員種別ID。
+
+    Returns:
+        bodyなしの204 response。
+
+    Raises:
+        HTTPException: 対象が存在しない、または参照中で削除できない場合。
+    """
     user_type_service.delete_user_type(db=db, user_type_id=user_type_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,26 +1,19 @@
-{# テーブルの単一行を表示する部分テンプレート #} {# Context: user (User
-オブジェクト, group と user_type が joinedload 済みであること) #} {# user_name, user_id は user オブジェクトから取得可能
-#}
-
 <tr class="hover:bg-base-200" id="user-row-{{ user.id }}">
   <td class="font-medium">
-    {# user オブジェクトから表示 #}
     <span id="user-name-{{ user.id }}">{{ user.username }} ({{ user.id }})</span>
   </td>
-  {# 追加: グループ名表示 #}
   <td>
     {% if user.group %}
     <span>{{ user.group.name }}</span>
     {% else %} - {% endif %}
   </td>
   <td>
-    {# user オブジェクトから関連情報を表示 #} {% if user.user_type %}
+    {% if user.user_type %}
     <span id="user-type-{{ user.id }}">{{ user.user_type.name }}</span>
     {% else %} - {% endif %}
   </td>
   <td class="text-right">
     <div class="flex justify-end gap-2">
-      {# 編集ボタン #}
       <button
         class="btn btn-sm btn-outline shadow-sm hover:shadow whitespace-nowrap"
         hx-get="/users/modal/{{ user.id }}"
@@ -44,7 +37,6 @@
         編集
       </button>
 
-      {# 削除ボタン #}
       <button
         class="btn btn-sm btn-error btn-outline shadow-sm hover:shadow whitespace-nowrap"
         hx-get="/users/delete-modal/{{ user.id }}"

@@ -27,6 +27,15 @@ responder = MasterCrudResponder(
 
 
 def _user_form_context(db: Session, user_obj: Any) -> dict[str, Any]:
+    """社員formに必要なmaster dataをまとめる。
+
+    Args:
+        db: 参照に使うDB session。
+        user_obj: 編集対象社員。新規作成時は ``None``。
+
+    Returns:
+        form templateへ渡す社員・group・社員種別のcontext。
+    """
     return {
         "user": user_obj,
         "groups": group.list_all(db),
@@ -35,6 +44,14 @@ def _user_form_context(db: Session, user_obj: Any) -> dict[str, Any]:
 
 
 def _user_error_field(detail: str) -> str:
+    """domain error messageを社員formのfield keyへ対応付ける。
+
+    Args:
+        detail: service/HTTPExceptionから得た表示用error detail。
+
+    Returns:
+        form validation errorを表示するfield key。
+    """
     if "ユーザーID" in detail:
         return "id"
     if "ユーザー名" in detail:
@@ -48,7 +65,15 @@ def _user_error_field(detail: str) -> str:
 
 @router.get("", response_class=HTMLResponse)
 def user_page(request: Request, db: Session = Depends(get_db)) -> Any:
-    """社員管理ページを表示する。"""
+    """社員管理ページを表示する。
+
+    Args:
+        request: 現在のHTTP request。
+        db: read model構築に使うDB session。
+
+    Returns:
+        社員master pageのHTML response。
+    """
     view = master_read_service.get_user_master_page_view_model(db)
     return templates.TemplateResponse(
         "pages/user.html",
@@ -68,7 +93,19 @@ async def user_modal(
     user_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """追加・編集モーダルを返す。"""
+    """社員の追加・編集モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_id: 編集対象社員ID。省略時は新規作成。
+        db: master data取得に使うDB session。
+
+    Returns:
+        modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定社員が存在しない場合。
+    """
     user_obj = user.get_or_404(db, user_id) if user_id is not None else None
     modal_id = f"user-modal-{user_id or 'new'}"
     return responder.open_form(
@@ -84,7 +121,19 @@ async def user_delete_modal(
     user_id: str,
     db: Session = Depends(get_db),
 ) -> Any:
-    """削除確認モーダルを返す。"""
+    """社員削除の確認モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_id: 削除対象社員ID。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        delete modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定社員が存在しない場合。
+    """
     user_obj = user.get_or_404(db, user_id)
     return responder.open_delete(
         request,
@@ -102,7 +151,19 @@ async def create_user(
     user_type_id: str = Form(...),
     db: Session = Depends(get_db),
 ) -> Any:
-    """社員を作成し、標準master CRUD triggerを返す。"""
+    """社員を作成し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        id: 新規社員ID。
+        username: 新規社員名。
+        group_id: 所属group IDのform値。
+        user_type_id: 社員種別IDのform値。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、validation failure時はform error fragment。
+    """
     modal_id = "user-modal-new"
     try:
         user_in = schemas.UserCreate(
@@ -142,7 +203,17 @@ async def update_user(
     user_in: schemas.UserUpdate = Depends(schemas.UserUpdate.as_form),
     db: Session = Depends(get_db),
 ) -> Any:
-    """社員を更新し、標準master CRUD triggerを返す。"""
+    """社員を更新し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_id: 更新対象社員ID。
+        user_in: formから構築した更新payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = f"user-modal-{user_id}"
     try:
         updated = user_service.update_user_with_validation(
@@ -172,7 +243,19 @@ async def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
 ) -> Any:
-    """社員を削除し、標準master CRUD triggerを返す。"""
+    """社員を削除し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_id: 削除対象社員ID。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、削除拒否時はdelete modal error fragment。
+
+    Raises:
+        HTTPException: 削除対象社員が存在しない場合。
+    """
     modal_id = f"user-delete-modal-{user_id}"
     user_obj = user.get_or_404(db, user_id)
     username = str(user_obj.username)

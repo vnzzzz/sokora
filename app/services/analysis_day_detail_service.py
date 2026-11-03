@@ -16,7 +16,18 @@ def get_filtered_day_detail_view_model(
     group_name: Optional[str] = None,
     user_type_name: Optional[str] = None,
 ) -> calendar_read_service.DayDetailViewModel:
-    """汎用calendar detailを再利用し、analysis filterと一致する行だけを返す。"""
+    """汎用calendar detailを再利用し、analysis filterと一致する行だけを返す。
+
+    Args:
+        db: day detail read model構築に使うDB session。
+        day: 表示対象日。
+        selected_location_ids: 表示対象location ID。``None``は全location。
+        group_name: group filter。空値は未指定として扱う。
+        user_type_name: 社員種別filter。空値は未指定として扱う。
+
+    Returns:
+        元のday detail contractを維持しつつ、group/user-type/location filter適用済みのview model。
+    """
     view_model = calendar_read_service.get_day_detail_view_model(db, day=day)
 
     selected_ids: Optional[set[int]] = None

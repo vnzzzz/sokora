@@ -26,6 +26,12 @@ def _safe_next_path(next_path: str | None) -> str:
     scheme/netloc、protocol-relative path、backslashを含む値はrootへ縮退する。fragmentは
     server redirectに不要なため捨て、pathとqueryだけを保持する。sessionに保存したnextも
     callback直前に再度このfunctionへ通し、client入力をopen redirectへ変換しない。
+
+    Args:
+        next_path: user入力またはsessionから得た戻り先。
+
+    Returns:
+        検証済みのrelative absolute path。安全でない値は ``/``。
     """
     if not next_path or "\\" in next_path:
         return "/"
@@ -41,6 +47,15 @@ def _safe_next_path(next_path: str | None) -> str:
 
 
 def _login_url(*, next_path: str = "/", reason: str | None = None) -> str:
+    """一般login pageのURLを安全なnext path付きで構築する。
+
+    Args:
+        next_path: login後の戻り先。
+        reason: login画面へ伝える任意のreason code。
+
+    Returns:
+        URL encoded queryを含むlogin URL。
+    """
     query: dict[str, str] = {"next": _safe_next_path(next_path)}
     if reason:
         query["reason"] = reason
@@ -48,6 +63,15 @@ def _login_url(*, next_path: str = "/", reason: str | None = None) -> str:
 
 
 def _admin_login_url(*, next_path: str = "/", reason: str | None = None) -> str:
+    """local admin login pageのURLを安全なnext path付きで構築する。
+
+    Args:
+        next_path: login後の戻り先。
+        reason: login画面へ伝える任意のreason code。
+
+    Returns:
+        URL encoded queryを含むadmin login URL。
+    """
     query: dict[str, str] = {"next": _safe_next_path(next_path)}
     if reason:
         query["reason"] = reason
@@ -61,6 +85,17 @@ async def login_page(
     reason: str | None = None,
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> Response:
+    """利用可能な認証方式を示すlogin pageを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        next: 認証成功後の戻り先候補。
+        reason: login画面へ到達した理由。表示上はsession errorを優先するためここでは未使用。
+        settings: 有効な認証方式を判定するauth settings。
+
+    Returns:
+        login pageのHTML response。
+    """
     del reason
     context = {
         "request": request,
@@ -78,6 +113,16 @@ async def admin_login_page(
     next: str = "/",
     settings: AuthSettings = Depends(get_runtime_auth_settings),
 ) -> Response:
+    """local admin専用login pageを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        next: 認証成功後の戻り先候補。
+        settings: runtime auth settings。
+
+    Returns:
+        admin login pageのHTML response。
+    """
     context = {
         "request": request,
         "next_path": _safe_next_path(next),
@@ -99,6 +144,15 @@ async def oidc_redirect(
     OAuth state/OIDC nonceの生成・保持はOIDC client/Authlibへ委譲する。provider discoveryが
     失敗した場合は一時next stateを破棄してlogin画面へ戻し、local adminへ自動failoverは
     しない。
+
+    Args:
+        request: sessionを持つ現在のHTTP request。
+        next: 認証成功後の戻り先候補。
+        oidc_client: authorization URLを構築するOIDC client。
+        settings: redirect URI等を含むauth settings。
+
+    Returns:
+        IdPへのtemporary redirect、またはprovider接続失敗時のlogin redirect。
     """
     request.session["auth_next"] = _safe_next_path(next)
     try:
@@ -127,6 +181,16 @@ async def oidc_callback(
     code exchange時のstate/nonce/ID token validationはOIDC clientへ委譲する。persistent session
     にはaccess/refresh/ID tokenを保持せず、subjectと表示用usernameだけを保存する。state
     mismatchは認証失敗として400にし、通常provider failureとは区別する。
+
+    Args:
+        request: callback queryとsigned sessionを含むHTTP request。
+        oidc_client: authorization codeを検証・交換するOIDC client。
+
+    Returns:
+        認証成功時の元画面redirect、またはprovider failure時のlogin redirect。
+
+    Raises:
+        HTTPException: OIDC state validationに失敗した場合。
     """
     next_path = _safe_next_path(request.session.pop("auth_next", "/"))
     try:
@@ -166,6 +230,19 @@ async def local_login(
     local auth flagとusername/passwordが揃わないruntimeでは経路自体を利用不可とする。
     credentialはconstant-time compareで照合し、成功したlocal sessionだけへ``role=admin``
     を付与する。一般user向けlocal identityやOIDC失敗からの自動fallbackは提供しない。
+
+    Args:
+        request: sessionを持つ現在のHTTP request。
+        username: 入力されたlocal admin username。
+        password: 入力されたlocal admin password。
+        next: 認証成功後の戻り先候補。
+        settings: local admin credentialを含むruntime auth settings。
+
+    Returns:
+        成功時のnext redirect、または認証失敗時のadmin login redirect。
+
+    Raises:
+        HTTPException: local admin authentication自体が未設定の場合。
     """
     if not settings.local_admin_enabled:
         raise HTTPException(
@@ -210,6 +287,13 @@ async def logout(
     authenticated identityを含まないcookieをclientへ返してから別requestでprovider logoutを
     best-effort実行する。これによりDB接続がblack-holeしてもlocal logout完了をblockしない。
     auth guard無効時のlocal adminは、session破棄後にanonymous topへ戻す。
+
+    Args:
+        request: 現在のsessionを持つHTTP request。
+        settings: auth guard有効状態を含むruntime settings。
+
+    Returns:
+        provider logout、top page、またはlogin pageへのredirect。
     """
     auth_session = request.session.get("auth")
     was_oidc = isinstance(auth_session, dict) and auth_session.get("method") == "oidc"
@@ -238,7 +322,15 @@ async def oidc_provider_logout(
     request: Request,
     oidc_client: OIDCClient | None = Depends(get_optional_oidc_client),
 ) -> Response:
-    """local logout完了後にだけprovider logoutをbest-effortで開始する。"""
+    """local logout完了後にだけprovider logoutをbest-effortで開始する。
+
+    Args:
+        request: logout pending stateを保持するHTTP request。
+        oidc_client: 利用可能な場合のOIDC client。
+
+    Returns:
+        provider logout URLまたはapplication login pageへのredirect。
+    """
     if request.session.pop("logout_pending", None) is not True:
         request.session.clear()
         return RedirectResponse(
@@ -275,6 +367,16 @@ async def oidc_logout_callback(
 
     state mismatchは400として拒否する。provider metadata/validationの一般failureはlogへ残すが、
     logout後のapplication sessionを復活させる理由にはせず最終的にclearする。
+
+    Args:
+        request: provider callback queryとsessionを含むHTTP request。
+        oidc_client: 利用可能な場合のOIDC client。
+
+    Returns:
+        application login pageへのredirect。
+
+    Raises:
+        HTTPException: logout responseのstate validationに失敗した場合。
     """
     if oidc_client is not None:
         try:

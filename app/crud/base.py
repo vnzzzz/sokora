@@ -23,18 +23,39 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     write操作は ``flush()`` までを担当し、``commit()`` / ``rollback()`` は
     呼び出し側のserviceがuse case単位で所有します。
+
+    Args:
+        model: CRUD対象のSQLAlchemy model class。
     """
 
     def __init__(self, model: Type[ModelType]):
-        """操作対象のSQLAlchemyモデルを指定してCRUDを初期化します。"""
         self.model = model
 
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
-        """主キーで1件取得し、存在しない場合は ``None`` を返します。"""
+        """主キーで1件取得する。
+
+        Args:
+            db: DB session。
+            id: 取得対象のprimary key。
+
+        Returns:
+            一致するmodel。存在しない場合は`None`。
+        """
         return db.query(self.model).filter(self.model.id == id).first()
 
     def get_or_404(self, db: Session, id: Any) -> ModelType:
-        """主キーで1件取得し、存在しない場合はHTTP 404を送出します。"""
+        """主キーで1件取得し、不在時は404を送出する。
+
+        Args:
+            db: DB session。
+            id: 取得対象のprimary key。
+
+        Returns:
+            一致するmodel。
+
+        Raises:
+            HTTPException: 対象modelが存在しない場合。
+        """
         db_obj = self.get(db, id)
         if db_obj is None:
             model_name = self.model.__name__
@@ -46,13 +67,29 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[ModelType]:
-        """``skip`` と ``limit`` を指定してモデル一覧を取得します。"""
+        """offset/limit付きでmodel一覧を取得する。
+
+        Args:
+            db: DB session。
+            skip: 先頭からskipする件数。
+            limit: 最大取得件数。
+
+        Returns:
+            対象modelのlist。
+        """
         return db.query(self.model).offset(skip).limit(limit).all()
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        """新規行を追加してflushし、生成値を反映したモデルを返します。
+        """新規行を追加してflushする。
 
-        transactionは確定しないため、呼び出し側serviceでcommit/rollbackしてください。
+        transactionは確定しないため、呼び出し側serviceでcommit/rollbackする。
+
+        Args:
+            db: DB session。
+            obj_in: create schema。
+
+        Returns:
+            DB生成値をrefresh済みのmodel。
         """
         obj_in_data = obj_in.model_dump()
         db_obj = self.model(**obj_in_data)
@@ -68,9 +105,17 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db_obj: ModelType,
         obj_in: Union[UpdateSchemaType, Dict[str, Any]],
     ) -> ModelType:
-        """指定モデルへ更新値を適用してflushし、更新後モデルを返します。
+        """指定modelへ更新値を適用してflushする。
 
-        transactionは確定しないため、呼び出し側serviceでcommit/rollbackしてください。
+        transactionは確定しないため、呼び出し側serviceでcommit/rollbackする。
+
+        Args:
+            db: DB session。
+            db_obj: 更新対象model。
+            obj_in: update schemaまたはfield/value mapping。
+
+        Returns:
+            refresh済みの更新後model。
         """
         if isinstance(obj_in, dict):
             update_data = obj_in
@@ -87,9 +132,19 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def remove(self, db: Session, *, id: Any) -> ModelType:
-        """主キーで対象を削除してflushし、削除対象モデルを返します。
+        """主キーで対象を削除してflushする。
 
-        transactionは確定しないため、呼び出し側serviceでcommit/rollbackしてください。
+        transactionは確定しないため、呼び出し側serviceでcommit/rollbackする。
+
+        Args:
+            db: DB session。
+            id: 削除対象のprimary key。
+
+        Returns:
+            削除stage済みのmodel。
+
+        Raises:
+            ValueError: 対象modelが存在しない場合。
         """
         obj = db.get(self.model, id)
         if obj is None:

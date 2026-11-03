@@ -25,7 +25,7 @@ source checkoutからimageをbuildしてbundle化:
 VERSION=2026.09.09 make closed-bundle
 ```
 
-すでに別工程でbuildしたimageをpackageする場合、**そのimageをbuildした40文字commit SHA**を明示します。
+すでに別工程でbuildしたimageをpackageする場合は、そのimageをbuildした40文字commit SHAを明示します。
 
 ```bash
 VERSION=2026.09.09 \
@@ -33,11 +33,9 @@ SOURCE_REVISION=<40-character-build-commit> \
 make package-closed-bundle
 ```
 
-既定出力は`dist/sokora-<version>-closed/`です。
+既定出力は`dist/sokora-<version>-closed/`です。packaging checkoutのHEADをprebuilt imageのprovenanceとして暗黙利用しません。bundle生成はstaging directoryで完了してから出力先を置き換えるため、途中failureでprevious known-good bundleを破壊しません。
 
-packaging checkoutのHEADをprebuilt imageのprovenanceとして暗黙利用しません。bundle生成はstaging directoryで完了してから出力先を置き換えるため、途中failureでprevious known-good bundleを破壊しません。
-
-## Bundle
+## Bundle contract
 
 | File | Purpose |
 | --- | --- |
@@ -65,59 +63,21 @@ bundleはreplace可能なartifactです。mutable stateとsecretはbundle外へ�
 | PostgreSQL data | external PostgreSQL |
 | image | immutable version tag |
 
-reference operatorでは`runtime.env`を`0600`、deployment envを`0640`とし、`docker compose`を実行するidentityが読めるownershipにします。
+SQLiteはsingle-instance、PostgreSQLはexternal DBを利用します。一般的なdatabase選択条件は [Deployment](deployment.md) を参照してください。
 
-## Runtime mode
+## Operation contract
 
-| Mode | Database | Persistent mount | Replica |
-| --- | --- | --- | --- |
-| SQLite | `sqlite:///data/sokora.db` | host data dir → `/app/data` | 1 |
-| PostgreSQL | explicit `DATABASE_URL` | application data mountなし | surrounding platform次第 |
+install、startup、health確認、upgrade、rollbackの具体的なcommandはbundle内operator guideに維持します。この文書では変更時にも維持するcontractだけを示します。
 
-PostgreSQL Composeは`DATABASE_URL`がblankまたはPostgreSQL scheme以外ならapplication startup前にfailします。設定漏れをdefault SQLiteへfallbackさせません。
+- runtime hostでは`load-image.sh`でmanifest / checksum / loaded image IDを検証する
+- persistent config / secret / SQLite dataをbundle directoryから分離する
+- SQLite upgrade前はSQLite backup APIによるbackup、PostgreSQLはDB基盤のbackup / snapshotを取得する
+- startup migrationはapplicationが所有し、operatorは別系統のmanual schema bootstrapを行わない
+- schema-changing upgradeのrollbackではimageだけでなくpre-upgrade DB stateも戻す
+- automatic Alembic downgradeは実行しない
+- proxyはimageへ焼き込まず、必要なruntimeで標準proxy environmentを設定する
 
-SQLite / PostgreSQLの一般的な選択基準は [Deployment](deployment.md) を参照してください。
-
-## Install and start
-
-runtime hostでは次の順で操作します。
-
-1. bundleを搬入
-2. `./load-image.sh`でimageを検証・load
-3. `runtime.env.example` / `compose.env.example`をpersistent configへinstall
-4. runtime secret、port、DB設定を編集
-5. SQLiteの場合はpersistent data directoryを作成
-6. 選択したCompose fileで`up -d --pull never`
-7. `/healthz`と主要user flowを確認
-
-正確な`install` / `docker compose` commandはbundle内 [operator guide](../deploy/closed/README.md) に維持します。
-
-## Upgrade
-
-1. current DB backup / snapshotを取得
-2. new bundleを搬入し`load-image.sh`で検証
-3. `SOKORA_IMAGE`をnew immutable tagへ変更
-4. new bundleの同じCompose modeでcontainerをreplace
-5. startup migration完了後に`/healthz`と主要操作を確認
-6. acceptanceまでprevious image / bundle / DB backupを保持
-
-startupがAlembic migrationを所有するため、operatorが別系統のmanual schema bootstrapを行いません。
-
-## Rollback
-
-image rollbackとDB rollbackを別物として扱います。
-
-- schema互換が確認できる場合: previous image tagへ戻す
-- schema-changing upgrade: applicationを停止し、pre-upgrade DB stateをrestoreしてからprevious imageを起動
-- automatic Alembic downgrade: 実行しない
-
-SQLite backupはlive DBの単純copyではなくbackup APIを利用します。PostgreSQLは対象DB基盤のbackup / snapshot機能を利用します。
-
-## Proxy
-
-proxy設定をimageへ焼き込みません。runtimeでは標準`HTTP_PROXY` / `HTTPS_PROXY` / lowercase variants / `NO_PROXY`をenvironmentから渡します。
-
-internal PostgreSQL / OIDC endpoint等、proxyを経由させない宛先はdeployment環境側の`NO_PROXY`へ追加します。
+SQLite admin backup/restoreのapplication側contractは [SQLite database management](sqlite-database-management.md)、production startup/healthは [Runtime](runtime.md) を参照してください。
 
 ## Validation
 

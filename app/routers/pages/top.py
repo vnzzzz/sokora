@@ -13,7 +13,6 @@ from fastapi.templating import Jinja2Templates
 
 from app.utils.calendar_utils import get_today_formatted
 
-# ページ表示用ルーター
 router = APIRouter(prefix="", tags=["Pages"])
 templates = Jinja2Templates(directory="app/templates")
 
@@ -24,7 +23,14 @@ logger = logging.getLogger(__name__)
     "/", response_class=HTMLResponse, tags=["Pages"], summary="トップページ表示"
 )
 def read_root(request: Request) -> Response:
-    """トップページをレンダリングして返す。"""
+    """トップページをrenderする。
+
+    Args:
+        request: FastAPI request。
+
+    Returns:
+        現在日を含むトップページHTML response。
+    """
     logger.info("Top page accessed")
     context = {
         "request": request,

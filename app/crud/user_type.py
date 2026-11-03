@@ -21,13 +21,30 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
     """社員種別固有の検索・並び順・参照チェックを追加したCRUD操作。"""
 
     def get_by_name(self, db: Session, name: str) -> Optional[UserType]:
-        """社員種別名で1件取得し、存在しない場合は ``None`` を返します。"""
+        """社員種別名で1件取得する。
+
+        Args:
+            db: DB session。
+            name: 検索する社員種別名。
+
+        Returns:
+            一致する社員種別。存在しない場合は`None`。
+        """
         return db.query(UserType).filter(UserType.name == name).first()
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[UserType]:
-        """``order``、次に名前の順で社員種別一覧を取得します。"""
+        """表示順・名前順で社員種別一覧を取得する。
+
+        Args:
+            db: DB session。
+            skip: 先頭からskipする件数。
+            limit: 最大取得件数。
+
+        Returns:
+            pagination適用済みの社員種別list。
+        """
         return (
             db.query(UserType)
             .order_by(UserType.order.nullslast(), UserType.name)
@@ -37,20 +54,34 @@ class CRUDUserType(CRUDBase[UserType, UserTypeCreate, UserTypeUpdate]):
         )
 
     def list_all(self, db: Session) -> List[UserType]:
-        """paginationせず、全社員種別を``order``、次に名前順で取得します。"""
+        """全社員種別を表示順・名前順で取得する。
+
+        Args:
+            db: DB session。
+
+        Returns:
+            全社員種別のlist。
+        """
         query = db.query(UserType)
         return query.order_by(UserType.order.nullslast(), UserType.name).all()
 
     def remove(self, db: Session, *, id: int) -> UserType:
-        """未使用の社員種別を削除対象としてflushし、削除対象を返します。
+        """未使用の社員種別を削除対象としてflushする。
 
-        ユーザーから参照されている場合はHTTP 400を送出します。commit/rollbackは
-        呼び出し側serviceが所有します。
+        userから参照されている場合は利用者向け400を返すため事前チェックする。並行writeとの
+        競合時はDB FK制約が最終的な参照整合性を保証する。commit/rollbackはserviceが所有する。
+
+        Args:
+            db: DB session。
+            id: 削除対象の社員種別ID。
+
+        Returns:
+            削除stage済みの社員種別model。
+
+        Raises:
+            HTTPException: 対象不在、またはuserから参照されている場合。
         """
         db_obj = self.get_or_404(db, id)
-
-        # この事前チェックは利用者向けエラーのために行う。
-        # 並行writeとの競合時はDBのFK制約が最終的な参照整合性を保証する。
         user_count = db.query(User).filter(User.user_type_id == id).count()
         if user_count > 0:
             raise HTTPException(

@@ -1,35 +1,13 @@
 # API
 
-JSON APIは`/api/v1`配下で提供します。request/response schemaはgenerated OpenAPIと`app/schemas/`に対応します。
+JSON APIは`/api/v1`配下で提供します。route discoveryと、annotation済みendpointのrequest / response schemaはgenerated OpenAPIを参照してください。
 
 - Swagger UI: `/docs`
 - ReDoc: `/redoc`
 - page / HTMX routeはOpenAPIへ含めません
+- annotationが不完全なendpointでは、OpenAPIだけでruntime response contractを完全には表現できません。実装とcontract testを併せて確認します
 
-## Endpoints
-
-| Resource | Method / path | Purpose |
-| --- | --- | --- |
-| Attendance | `GET /api/v1/attendances` | 一覧 |
-|  | `GET /api/v1/attendances/day/{day}` | 日別projection |
-|  | `POST /api/v1/attendances` | 作成 |
-|  | `PUT /api/v1/attendances/{attendance_id}` | 更新 |
-|  | `DELETE /api/v1/attendances/{attendance_id}` | ID指定削除 |
-|  | `DELETE /api/v1/attendances?user_id=...&date=...` | user/date指定削除 |
-| Users | `GET /api/v1/users` | 一覧 |
-|  | `GET /api/v1/users/{user_id}` | 1件取得 |
-|  | `POST /api/v1/users` | 作成 |
-|  | `PUT /api/v1/users/{user_id}` | 更新 |
-|  | `DELETE /api/v1/users/{user_id}` | 削除 |
-| Locations | `GET/POST /api/v1/locations` | 一覧 / 作成 |
-|  | `PUT/DELETE /api/v1/locations/{location_id}` | 更新 / 削除 |
-| Groups | `GET/POST /api/v1/groups` | 一覧 / 作成 |
-|  | `PUT/DELETE /api/v1/groups/{group_id}` | 更新 / 削除 |
-| User types | `GET/POST /api/v1/user_types` | 一覧 / 作成 |
-|  | `PUT/DELETE /api/v1/user_types/{user_type_id}` | 更新 / 削除 |
-| CSV | `GET /api/v1/csv/download` | 月次勤怠CSV |
-
-custom holidayはJSON APIを持たず、page / HTMX routeからserviceを利用します。APIの対称性だけを理由に未使用endpointを追加しません。
+主なresourceはattendance、users、locations、groups、user types、CSVです。custom holidayはJSON APIを持たず、page / HTMX routeからserviceを利用します。APIの対称性だけを理由に未使用endpointを追加しません。
 
 ## Adapter rules
 

@@ -74,6 +74,14 @@ def get_attendance_data_for_csv(
     optionalな開始/終了日はpersistence queryへそのまま渡し、範囲外rowをservice側で再filter
     しない。1ユーザー1日1勤怠というDB unique contractを前提に1 keyへ1 valueだけを持つ。
     export readは共有DBのcurrent stateから毎回構築し、process-local cacheを作らない。
+
+    Args:
+        db: DB session。
+        start_date: optionalなinclusive開始日。
+        end_date: optionalなinclusive終了日。
+
+    Returns:
+        `user_id_YYYY-MM-DD`をkey、勤怠種別名をvalueとするmapping。
     """
     rows = crud.attendance.list_export_rows(
         db,
@@ -91,7 +99,16 @@ def _optional_order_key(
     object_id: int,
     name: str,
 ) -> tuple[bool, int, int, str]:
-    """nullable orderを末尾へ送り、ID/nameで表示順を安定化する。"""
+    """nullable orderを末尾へ送り、ID/nameで表示順を安定化する。
+
+    Args:
+        order: optionalな明示表示順。
+        object_id: stable tie-break用persistent ID。
+        name: 最終tie-break用表示名。
+
+    Returns:
+        未設定orderを末尾へ送るdeterministic sort key。
+    """
     return (
         order is None,
         order if order is not None else 0,
@@ -101,7 +118,14 @@ def _optional_order_key(
 
 
 def _read_users(db: Session) -> list[models.User]:
-    """group/user typeを同時loadし、template accessのN+1を防ぐ。"""
+    """group/user typeを同時loadして全userを取得する。
+
+    Args:
+        db: DB session。
+
+    Returns:
+        group/user type relationをeager-loadしたuser list。
+    """
     return list(
         db.query(models.User)
         .options(
@@ -117,6 +141,15 @@ def _filter_user_rows(
     *,
     search_query: Optional[str],
 ) -> list[UserViewRow]:
+    """user一覧をname/ID検索し、template用rowへ変換する。
+
+    Args:
+        users: relationをload済みのuser list。
+        search_query: optionalなname/ID検索文字列。
+
+    Returns:
+        検索条件に一致したtemplate用user row list。
+    """
     search_term = (search_query or "").strip().lower()
     rows: list[UserViewRow] = []
     for user in users:
@@ -135,7 +168,14 @@ def _filter_user_rows(
 def _group_user_rows(
     rows: list[UserViewRow],
 ) -> tuple[dict[str, list[UserTypeSection]], list[str]]:
-    """group/user type/userの表示順を1箇所で決定する。"""
+    """user rowをgroup/user type単位へ編成し表示順を決定する。
+
+    Args:
+        rows: template用user row list。
+
+    Returns:
+        group別user type section mappingと、表示順に並べたgroup名list。
+    """
     grouped: dict[str, dict[str, list[UserViewRow]]] = {}
     group_sort_keys: dict[str, tuple[bool, int, int, str]] = {}
     user_type_sort_keys: dict[str, tuple[bool, int, int, str]] = {}
@@ -205,6 +245,15 @@ def _directory_view_model(
     *,
     search_query: Optional[str],
 ) -> AttendanceDirectoryViewModel:
+    """weekly/monthly共通のuser directory view modelを構築する。
+
+    Args:
+        db: DB session。
+        search_query: optionalなname/ID検索文字列。
+
+    Returns:
+        user row、group編成、検索条件を含むdirectory view model。
+    """
     rows = _filter_user_rows(_read_users(db), search_query=search_query)
     grouped_users, group_names = _group_user_rows(rows)
     return {
@@ -216,6 +265,14 @@ def _directory_view_model(
 
 
 def _attendance_counts(rows: list[models.Attendance]) -> dict[int, int]:
+    """勤怠recordを月内の日番号ごとの件数へ集計する。
+
+    Args:
+        rows: 集計対象の勤怠record list。
+
+    Returns:
+        日番号をkey、件数をvalueとするmapping。
+    """
     counts: dict[int, int] = {}
     for attendance in rows:
         day = int(attendance.date.day)
@@ -224,7 +281,14 @@ def _attendance_counts(rows: list[models.Attendance]) -> dict[int, int]:
 
 
 def _location_tones(locations: list[models.Location]) -> dict[str, int]:
-    """DB identityをpresentation-neutralなpalette slotへ射影する。"""
+    """DB identityをpresentation-neutralなpalette slotへ射影する。
+
+    Args:
+        locations: 勤怠種別model list。
+
+    Returns:
+        勤怠種別名をkey、stable tone indexをvalueとするmapping。
+    """
     return {
         str(location.name): get_location_tone(int(location.id))
         for location in locations
@@ -241,6 +305,17 @@ def get_weekly_page_view_model(
 
     user/group/user typeはrelationship eager-load済み1 query、location masterは1 query、
     対象週attendanceはlocation込み1 queryで取得する。user数に比例するqueryは発行しない。
+
+    Args:
+        db: DB session。
+        week: 対象週の月曜日。ISO date文字列。
+        search_query: optionalなname/ID検索文字列。
+
+    Returns:
+        weekly attendance matrix用のrender-ready view model。
+
+    Raises:
+        ValueError: `week`がISO dateとして解釈できない場合。
     """
     monday = date.fromisoformat(week)
     attendances = calendar_crud.get_week_attendances(db, monday=monday)
@@ -308,7 +383,18 @@ def get_monthly_register_page_view_model(
     month: str,
     search_query: Optional[str] = None,
 ) -> MonthlyRegisterViewModel:
-    """monthly registerのuser listだけをreadし、不要なcalendar queryを発行しない。"""
+    """monthly registerのuser listだけをreadする。
+
+    calendar queryを発行せず、directoryとcurrent monthだけを返す。
+
+    Args:
+        db: DB session。
+        month: 表示対象月のcanonical `YYYY-MM`文字列。
+        search_query: optionalなname/ID検索文字列。
+
+    Returns:
+        monthly register user-list用view model。
+    """
     directory = _directory_view_model(db, search_query=search_query)
     return {
         **directory,
@@ -322,7 +408,19 @@ def get_user_monthly_calendar_view_model(
     user_id: str,
     month: str,
 ) -> Optional[UserMonthlyCalendarViewModel]:
-    """1 userのmonthly calendarをperiod-scoped queryで構築する。"""
+    """1 userのmonthly calendarをperiod-scoped queryで構築する。
+
+    Args:
+        db: DB session。
+        user_id: 表示対象user ID。
+        month: `YYYY-MM`形式の対象月。
+
+    Returns:
+        user monthly calendar用view model。userが存在しない場合は`None`。
+
+    Raises:
+        ValueError: `month`が有効な`YYYY-MM`として解釈できない場合。
+    """
     user = crud.user.get_user_with_details(db, id=user_id)
     if user is None:
         return None

@@ -25,7 +25,15 @@ responder = MasterCrudResponder(
 
 @router.get("", response_class=HTMLResponse)
 def get_user_type_manage_page(request: Request, db: Session = Depends(get_db)) -> Any:
-    """社員種別管理ページを表示する。"""
+    """社員種別管理ページを表示する。
+
+    Args:
+        request: 現在のHTTP request。
+        db: 社員種別取得に使うDB session。
+
+    Returns:
+        社員種別master pageのHTML response。
+    """
     return templates.TemplateResponse(
         "pages/user_type.html",
         {"request": request, "user_types": user_type.list_all(db)},
@@ -39,7 +47,19 @@ async def user_type_modal(
     user_type_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ) -> Any:
-    """追加・編集モーダルを返す。"""
+    """社員種別の追加・編集モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_type_id: 編集対象ID。省略時は新規作成。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定した社員種別が存在しない場合。
+    """
     user_type_data = (
         user_type.get_or_404(db, user_type_id) if user_type_id is not None else None
     )
@@ -59,7 +79,19 @@ async def user_type_delete_modal(
     user_type_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """削除確認モーダルを返す。"""
+    """社員種別削除の確認モーダルを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_type_id: 削除対象ID。
+        db: 対象取得に使うDB session。
+
+    Returns:
+        delete modal fragmentのHTML response。
+
+    Raises:
+        HTTPException: 指定した社員種別が存在しない場合。
+    """
     user_type_data = user_type.get_or_404(db, user_type_id)
     return responder.open_delete(
         request,
@@ -76,7 +108,16 @@ async def create_user_type(
     ),
     db: Session = Depends(get_db),
 ) -> Any:
-    """社員種別を作成し、標準master CRUD triggerを返す。"""
+    """社員種別を作成し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_type_in: formから構築した作成payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = "add-user-type"
     try:
         created = user_type_service.create_user_type_with_validation(
@@ -107,7 +148,17 @@ async def update_user_type(
     ),
     db: Session = Depends(get_db),
 ) -> Any:
-    """社員種別を更新し、標準master CRUD triggerを返す。"""
+    """社員種別を更新し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_type_id: 更新対象ID。
+        user_type_in: formから構築した更新payload。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、domain error時はform error fragment。
+    """
     modal_id = f"edit-user-type-{user_type_id}"
     try:
         updated = user_type_service.update_user_type_with_validation(
@@ -136,7 +187,19 @@ async def delete_user_type(
     user_type_id: int,
     db: Session = Depends(get_db),
 ) -> Any:
-    """社員種別を削除し、標準master CRUD triggerを返す。"""
+    """社員種別を削除し、標準master CRUD triggerを返す。
+
+    Args:
+        request: 現在のHTTP request。
+        user_type_id: 削除対象ID。
+        db: write transactionに使うDB session。
+
+    Returns:
+        成功時はrefresh trigger付きresponse、削除拒否時はdelete modal error fragment。
+
+    Raises:
+        HTTPException: 削除対象が存在しない場合。
+    """
     modal_id = f"user-type-delete-modal-{user_type_id}"
     user_type_data = user_type.get_or_404(db, user_type_id)
     user_type_name = str(user_type_data.name)

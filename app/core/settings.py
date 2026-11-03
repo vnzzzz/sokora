@@ -17,6 +17,16 @@ DEFAULT_SESSION_SECRET = "dev-session-secret"
 
 
 def _get_bool(values: Mapping[str, str], name: str, default: bool) -> bool:
+    """mappingからboolean settingを読む。
+
+    Args:
+        values: setting source mapping。
+        name: 読み取るkey。
+        default: key未設定時のfallback。
+
+    Returns:
+        `1/true/yes/on`を`True`として解釈した値。
+    """
     value = values.get(name)
     if value is None:
         return default
@@ -24,6 +34,16 @@ def _get_bool(values: Mapping[str, str], name: str, default: bool) -> bool:
 
 
 def _get_int(values: Mapping[str, str], name: str, default: int) -> int:
+    """mappingからinteger settingを読む。
+
+    Args:
+        values: setting source mapping。
+        name: 読み取るkey。
+        default: 未設定またはinteger変換不能時のfallback。
+
+    Returns:
+        parse済みinteger、または`default`。
+    """
     value = values.get(name)
     if value is None:
         return default
@@ -34,6 +54,16 @@ def _get_int(values: Mapping[str, str], name: str, default: int) -> int:
 
 
 def _get_float(values: Mapping[str, str], name: str, default: float) -> float:
+    """mappingからfloat settingを読む。
+
+    Args:
+        values: setting source mapping。
+        name: 読み取るkey。
+        default: 未設定またはfloat変換不能時のfallback。
+
+    Returns:
+        parse済みfloat、または`default`。
+    """
     value = values.get(name)
     if value is None:
         return default
@@ -91,6 +121,10 @@ class AppSettings:
 
         OIDC credentialの完全性はauth settings側で扱う。local adminについては、実際にsessionを
         発行できる既存contract（enable flag + username/password）と同じ条件だけをここで見る。
+
+        Raises:
+            ValueError: authentication/local admin sessionが利用可能なのに安全なsession secretが
+                明示設定されていない場合。
         """
         normalized_secret = self.session_secret.strip()
         local_admin_configured = self.local_auth_enabled and bool(
@@ -111,6 +145,12 @@ class AppSettings:
         ``values`` を渡せるのはtestやprogrammatic callerがprocess-global environmentへ
         依存せず同じparserを利用するためである。このmethodは設定変更を監視せず、返却後に
         source mappingが変わっても既存instanceへ反映しない。
+
+        Args:
+            values: optionalなsetting source。未指定時はprocess environmentを使う。
+
+        Returns:
+            source読取時点のimmutable `AppSettings` snapshot。
         """
         source = environ if values is None else values
         return cls(
